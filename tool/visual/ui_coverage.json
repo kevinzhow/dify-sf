@@ -1,0 +1,1455 @@
+{
+  "schema": 1,
+  "policy": "UI_TESTING.md",
+  "catalogs": [
+    "component_cases_complete.json",
+    "page_cases.json",
+    "editor_cases.json",
+    "extra_panel_cases.json",
+    "editor_overlay_cases.json"
+  ],
+  "exports": [
+    {
+      "source": "app/lib/src/design/dify_palette.dart",
+      "visual": false,
+      "reason": "Color lookup/scheme infrastructure. Its resolved colors are painted by the actual widgets; it is not a standalone rendered component.",
+      "publicClasses": [
+        "DifyAgentRosterColors",
+        "DifyAppIconColors",
+        "DifyAppListColors",
+        "DifyCanvasPlaceholderColors",
+        "DifyCaretColors",
+        "DifyChartColors",
+        "DifyChecklistColors",
+        "DifyConfirmAddVarColors",
+        "DifyConnectionLineColors",
+        "DifyCreateAppColors",
+        "DifyDatasetIconColors",
+        "DifyErrorHandleTipColors",
+        "DifyFileTypeColors",
+        "DifyImageExportColors",
+        "DifyIndexBarColors",
+        "DifyInvitedModalColors",
+        "DifyLlmPanelColors",
+        "DifyModelProviderColors",
+        "DifyModerationColors",
+        "DifyNoteNodeColors",
+        "DifyOptionCardEffectColors",
+        "DifyPresetsParameterColors",
+        "DifyPromptBlockColors",
+        "DifyRunDividerColors",
+        "DifyRunStatusColors",
+        "DifySigninSplitColors",
+        "DifyTailwind",
+        "DifyToggleExpendColors",
+        "DifyUserColors",
+        "DifyViewHistoryColors"
+      ]
+    },
+    {
+      "source": "app/lib/src/design/dify_type_tw.dart",
+      "visual": false,
+      "reason": "Typography constants, not a widget. Actual text is rendered in each control and page case.",
+      "publicClasses": [
+        "DifyMarkdownHeadingStyles",
+        "DifyTw"
+      ]
+    },
+    {
+      "source": "app/lib/src/design/widgets/adaptive.dart",
+      "visual": true,
+      "cases": [
+        "controls.toolbar.light.en-US",
+        "controls.toolbar.dark.en-US",
+        "controls.toolbar.light.zh-Hans",
+        "controls.toolbar.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyAdaptive",
+        "DifyToolbarStrip",
+        "DifyViewport"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/alert_dialog.dart",
+      "visual": true,
+      "cases": [
+        "controls.alert-dialog.light.en-US",
+        "controls.alert-dialog.dark.en-US",
+        "controls.alert-dialog.light.zh-Hans",
+        "controls.alert-dialog.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyAlertDialog",
+        "DifyAlertDialogActions",
+        "DifyAlertDialogContent"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/app_icon.dart",
+      "visual": true,
+      "cases": [
+        "controls.app-icon.light.en-US",
+        "controls.app-icon.dark.en-US",
+        "controls.app-icon.light.zh-Hans",
+        "controls.app-icon.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyAppIcon"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/avatar.dart",
+      "visual": true,
+      "cases": [
+        "controls.avatar.light.en-US",
+        "controls.avatar.dark.en-US",
+        "controls.avatar.light.zh-Hans",
+        "controls.avatar.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyAvatar",
+        "DifyAvatarEditColors"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/badge.dart",
+      "visual": true,
+      "cases": [
+        "controls.badge.light.en-US",
+        "controls.badge.dark.en-US",
+        "controls.badge.light.zh-Hans",
+        "controls.badge.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyBadge"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/button.dart",
+      "visual": true,
+      "cases": [
+        "controls.button-primary.light.en-US",
+        "controls.button-primary.dark.en-US",
+        "controls.button-primary.light.zh-Hans",
+        "controls.button-primary.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyButton"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/button_style.dart",
+      "visual": true,
+      "cases": [
+        "controls.button-primary.light.en-US",
+        "controls.button-primary.dark.en-US",
+        "controls.button-primary.light.zh-Hans",
+        "controls.button-primary.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyButtonLook",
+        "DifyButtonSurface",
+        "DifyPressable"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/checkbox.dart",
+      "visual": true,
+      "cases": [
+        "controls.checkbox-checked.light.en-US",
+        "controls.checkbox-checked.dark.en-US",
+        "controls.checkbox-checked.light.zh-Hans",
+        "controls.checkbox-checked.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyCheckbox",
+        "DifyCheckboxBox"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/checkbox_list.dart",
+      "visual": true,
+      "cases": [
+        "controls.checkbox-list.light.en-US",
+        "controls.checkbox-list.dark.en-US",
+        "controls.checkbox-list.light.zh-Hans",
+        "controls.checkbox-list.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyCheckboxList"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/chip.dart",
+      "visual": true,
+      "cases": [
+        "controls.chip.light.en-US",
+        "controls.chip.dark.en-US",
+        "controls.chip.light.zh-Hans",
+        "controls.chip.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyChip"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/collapse.dart",
+      "visual": true,
+      "cases": [
+        "controls.collapse.light.en-US",
+        "controls.collapse.dark.en-US",
+        "controls.collapse.light.zh-Hans",
+        "controls.collapse.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyCollapse"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/compositions.dart",
+      "visual": true,
+      "cases": [
+        "controls.labeled-switch.light.en-US",
+        "controls.labeled-switch.dark.en-US",
+        "controls.labeled-switch.light.zh-Hans",
+        "controls.labeled-switch.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyActionMenu",
+        "DifyContentDialog",
+        "DifyLabeledSwitch",
+        "DifyMenuOption",
+        "DifyValueChip"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/copy_feedback.dart",
+      "visual": true,
+      "cases": [
+        "controls.copy-feedback.light.en-US",
+        "controls.copy-feedback.dark.en-US",
+        "controls.copy-feedback.light.zh-Hans",
+        "controls.copy-feedback.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyCopyFeedback"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/dashed_border.dart",
+      "visual": true,
+      "cases": [
+        "controls.dashed-border.light.en-US",
+        "controls.dashed-border.dark.en-US",
+        "controls.dashed-border.light.zh-Hans",
+        "controls.dashed-border.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DashedBorderBox"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/date_and_time_picker.dart",
+      "visual": true,
+      "cases": [
+        "controls.calendar.light.en-US",
+        "controls.calendar.dark.en-US",
+        "controls.calendar.light.zh-Hans",
+        "controls.calendar.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyCalendar"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/dialog.dart",
+      "visual": true,
+      "cases": [
+        "controls.dialog.light.en-US",
+        "controls.dialog.dark.en-US",
+        "controls.dialog.light.zh-Hans",
+        "controls.dialog.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyDialogSurface"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/divider.dart",
+      "visual": true,
+      "cases": [
+        "controls.divider.light.en-US",
+        "controls.divider.dark.en-US",
+        "controls.divider.light.zh-Hans",
+        "controls.divider.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyDivider"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/drawer.dart",
+      "visual": true,
+      "cases": [
+        "controls.drawer.light.en-US",
+        "controls.drawer.dark.en-US",
+        "controls.drawer.light.zh-Hans",
+        "controls.drawer.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyDrawerBackdrop",
+        "DifyDrawerCloseButton",
+        "DifyDrawerPopup"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/floating.dart",
+      "visual": true,
+      "cases": [
+        "controls.popover.light.en-US",
+        "controls.popover.dark.en-US",
+        "controls.popover.light.zh-Hans",
+        "controls.popover.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyFloating",
+        "DifyFloatingController",
+        "DifyFloatingLayout",
+        "RenderDifyFloatingLayout"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/form_control_shared.dart",
+      "visual": true,
+      "cases": [
+        "controls.input.light.en-US",
+        "controls.input.dark.en-US",
+        "controls.input.light.zh-Hans",
+        "controls.input.dark.zh-Hans",
+        "controls.input-focus.light.en-US",
+        "controls.input-focus.dark.en-US",
+        "controls.input-focus.light.zh-Hans",
+        "controls.input-focus.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyControl",
+        "DifyFocusDecoration"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/icon_button.dart",
+      "visual": true,
+      "cases": [
+        "controls.icon-button.light.en-US",
+        "controls.icon-button.dark.en-US",
+        "controls.icon-button.light.zh-Hans",
+        "controls.icon-button.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyIconButton"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/infotip.dart",
+      "visual": true,
+      "cases": [
+        "controls.infotip.light.en-US",
+        "controls.infotip.dark.en-US",
+        "controls.infotip.light.zh-Hans",
+        "controls.infotip.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyInfotip"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/inline_delete_confirm.dart",
+      "visual": true,
+      "cases": [
+        "controls.inline-delete-confirm.light.en-US",
+        "controls.inline-delete-confirm.dark.en-US",
+        "controls.inline-delete-confirm.light.zh-Hans",
+        "controls.inline-delete-confirm.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyInlineDeleteConfirm"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/inline_extent.dart",
+      "visual": false,
+      "reason": "CSS inline extent render-object layout plumbing; no independent ink. Used by input/chip text in the captured actual widgets.",
+      "publicClasses": [
+        "CssInlineExtent",
+        "RenderCssInlineExtent"
+      ]
+    },
+    {
+      "source": "app/lib/src/design/widgets/input.dart",
+      "visual": true,
+      "cases": [
+        "controls.input.light.en-US",
+        "controls.input-disabled.light.en-US",
+        "controls.input.dark.en-US",
+        "controls.input-disabled.dark.en-US",
+        "controls.input.light.zh-Hans",
+        "controls.input-disabled.light.zh-Hans",
+        "controls.input.dark.zh-Hans",
+        "controls.input-disabled.dark.zh-Hans",
+        "controls.input-focus.light.en-US",
+        "controls.input-focus.dark.en-US",
+        "controls.input-focus.light.zh-Hans",
+        "controls.input-focus.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyEditableArea",
+        "DifyInput",
+        "DifyInputBox"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/input_mode.dart",
+      "visual": false,
+      "reason": "Input modality state; no independent painted surface. Focus cases exercise the controls.",
+      "publicClasses": [
+        "DifyInputMode"
+      ]
+    },
+    {
+      "source": "app/lib/src/design/widgets/kbd.dart",
+      "visual": true,
+      "cases": [
+        "controls.kbd.light.en-US",
+        "controls.kbd.dark.en-US",
+        "controls.kbd.light.zh-Hans",
+        "controls.kbd.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyKbd",
+        "DifyKbdGroup"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/loading.dart",
+      "visual": true,
+      "cases": [
+        "controls.loading.light.en-US",
+        "controls.loading-anim.light.en-US",
+        "controls.spinner.light.en-US",
+        "controls.loading.dark.en-US",
+        "controls.loading-anim.dark.en-US",
+        "controls.spinner.dark.en-US",
+        "controls.loading.light.zh-Hans",
+        "controls.loading-anim.light.zh-Hans",
+        "controls.spinner.light.zh-Hans",
+        "controls.loading.dark.zh-Hans",
+        "controls.loading-anim.dark.zh-Hans",
+        "controls.spinner.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyLoading",
+        "DifyLoadingAnim",
+        "DifySpinner",
+        "DifySpinnerIcon"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/menu.dart",
+      "visual": true,
+      "cases": [
+        "controls.menu.light.en-US",
+        "controls.menu.dark.en-US",
+        "controls.menu.light.zh-Hans",
+        "controls.menu.dark.zh-Hans",
+        "controls.menu-submenu.light.en-US",
+        "controls.context-menu.light.en-US",
+        "controls.menu-submenu.dark.en-US",
+        "controls.context-menu.dark.en-US",
+        "controls.menu-submenu.light.zh-Hans",
+        "controls.context-menu.light.zh-Hans",
+        "controls.menu-submenu.dark.zh-Hans",
+        "controls.context-menu.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyContextMenu",
+        "DifyDropdownMenu",
+        "DifyMenuPopup"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/number_field.dart",
+      "visual": true,
+      "cases": [
+        "controls.number-field.light.en-US",
+        "controls.number-field.dark.en-US",
+        "controls.number-field.light.zh-Hans",
+        "controls.number-field.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyNumberField",
+        "DifyNumberFieldText"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/page.dart",
+      "visual": true,
+      "cases": [
+        "controls.text.light.en-US",
+        "controls.text.dark.en-US",
+        "controls.text.light.zh-Hans",
+        "controls.text.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyApplication",
+        "DifyPage",
+        "DifySurface"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/page_route.dart",
+      "visual": false,
+      "reason": "Navigation route policy; no independent surface. Real page cases navigate through it.",
+      "publicClasses": []
+    },
+    {
+      "source": "app/lib/src/design/widgets/pagination.dart",
+      "visual": true,
+      "cases": [
+        "controls.pagination.light.en-US",
+        "controls.pagination.dark.en-US",
+        "controls.pagination.light.zh-Hans",
+        "controls.pagination.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyPagination"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/placement.dart",
+      "visual": false,
+      "reason": "Floating placement values and geometry; no independent paint. Popover/menu cases capture their outputs.",
+      "publicClasses": [
+        "DifyCollision",
+        "DifyFloatingPosition"
+      ]
+    },
+    {
+      "source": "app/lib/src/design/widgets/popover.dart",
+      "visual": true,
+      "cases": [
+        "controls.popover.light.en-US",
+        "controls.popover.dark.en-US",
+        "controls.popover.light.zh-Hans",
+        "controls.popover.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyPopover",
+        "DifyPopoverSurface"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/qrcode.dart",
+      "visual": true,
+      "cases": [
+        "controls.qrcode.light.en-US",
+        "controls.qrcode.dark.en-US",
+        "controls.qrcode.light.zh-Hans",
+        "controls.qrcode.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyQrCode"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/radio_group.dart",
+      "visual": true,
+      "cases": [
+        "controls.radio.light.en-US",
+        "controls.radio.dark.en-US",
+        "controls.radio.light.zh-Hans",
+        "controls.radio.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyRadio",
+        "DifyRadioControl",
+        "DifyRadioGroup",
+        "DifyRadioItem",
+        "DifyRadioSkeleton"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/reorderable_list.dart",
+      "visual": true,
+      "cases": [
+        "controls.reorderable-list.light.en-US",
+        "controls.reorderable-list.dark.en-US",
+        "controls.reorderable-list.light.zh-Hans",
+        "controls.reorderable-list.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyReorderableDragStartListener",
+        "DifyReorderableList"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/scrollbar.dart",
+      "visual": true,
+      "cases": [
+        "panel-code-scroll"
+      ],
+      "publicClasses": [
+        "DifyEditorScrollbar"
+      ],
+      "scope": "Monaco editor scrollbar, via the actual long-code application panel; modern ScrollArea is not its counterpart."
+    },
+    {
+      "source": "app/lib/src/design/widgets/search_input.dart",
+      "visual": true,
+      "cases": [
+        "controls.search-input.light.en-US",
+        "controls.search-input.dark.en-US",
+        "controls.search-input.light.zh-Hans",
+        "controls.search-input.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifySearchInput"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/segmented_control.dart",
+      "visual": true,
+      "cases": [
+        "controls.segmented-control.light.en-US",
+        "controls.segmented-control.dark.en-US",
+        "controls.segmented-control.light.zh-Hans",
+        "controls.segmented-control.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifySegmentedControl"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/select.dart",
+      "visual": true,
+      "cases": [
+        "controls.select.light.en-US",
+        "controls.select.dark.en-US",
+        "controls.select.light.zh-Hans",
+        "controls.select.dark.zh-Hans",
+        "controls.select-open.light.en-US",
+        "controls.select-open.dark.en-US",
+        "controls.select-open.light.zh-Hans",
+        "controls.select-open.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifySelect"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/selection.dart",
+      "visual": true,
+      "cases": [
+        "controls.selection.light.en-US",
+        "controls.selection.dark.en-US",
+        "controls.selection.light.zh-Hans",
+        "controls.selection.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifySelectableText",
+        "DifySelectionMenu",
+        "DifySelectionRegion"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/shortcut_kbd.dart",
+      "visual": true,
+      "cases": [
+        "controls.shortcut-kbd.light.en-US",
+        "controls.shortcut-kbd.dark.en-US",
+        "controls.shortcut-kbd.light.zh-Hans",
+        "controls.shortcut-kbd.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyShortcutKbd"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/skeleton.dart",
+      "visual": true,
+      "cases": [
+        "controls.skeleton.light.en-US",
+        "controls.skeleton.dark.en-US",
+        "controls.skeleton.light.zh-Hans",
+        "controls.skeleton.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyPulse",
+        "DifySkeletonContainer",
+        "DifySkeletonPoint",
+        "DifySkeletonRectangle",
+        "DifySkeletonRow"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/slider.dart",
+      "visual": true,
+      "cases": [
+        "controls.slider.light.en-US",
+        "controls.slider.dark.en-US",
+        "controls.slider.light.zh-Hans",
+        "controls.slider.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifySlider"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/status_dot.dart",
+      "visual": true,
+      "cases": [
+        "controls.status-dot.light.en-US",
+        "controls.status-dot.dark.en-US",
+        "controls.status-dot.light.zh-Hans",
+        "controls.status-dot.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyStatusDot",
+        "DifyStatusDotSkeleton"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/surface.dart",
+      "visual": true,
+      "cases": [
+        "controls.surface.light.en-US",
+        "controls.surface.dark.en-US",
+        "controls.surface.light.zh-Hans",
+        "controls.surface.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyBlurredBox"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/switch.dart",
+      "visual": true,
+      "cases": [
+        "controls.switch-checked.light.en-US",
+        "controls.switch-checked.dark.en-US",
+        "controls.switch-checked.light.zh-Hans",
+        "controls.switch-checked.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifySwitch"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/tab_slider_plain.dart",
+      "visual": true,
+      "cases": [
+        "controls.tab-slider-plain.light.en-US",
+        "controls.tab-slider-plain.dark.en-US",
+        "controls.tab-slider-plain.light.zh-Hans",
+        "controls.tab-slider-plain.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyTabSliderPlain"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/table.dart",
+      "visual": true,
+      "cases": [
+        "controls.table.light.en-US",
+        "controls.table.dark.en-US",
+        "controls.table.light.zh-Hans",
+        "controls.table.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyAutoTableCells",
+        "DifyAutoTableScope",
+        "DifyTable",
+        "DifyTableColumn",
+        "DifyTableRow"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/tabs.dart",
+      "visual": true,
+      "cases": [
+        "controls.tabs.light.en-US",
+        "controls.tabs.dark.en-US",
+        "controls.tabs.light.zh-Hans",
+        "controls.tabs.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyTab",
+        "DifyTabsList"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/tag_input.dart",
+      "visual": true,
+      "cases": [
+        "controls.tag-input.light.en-US",
+        "controls.tag-input.dark.en-US",
+        "controls.tag-input.light.zh-Hans",
+        "controls.tag-input.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyTagInput"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/text.dart",
+      "visual": true,
+      "cases": [
+        "controls.text.light.en-US",
+        "controls.text.dark.en-US",
+        "controls.text.light.zh-Hans",
+        "controls.text.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyText"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/text_field.dart",
+      "visual": true,
+      "cases": [
+        "controls.input.light.en-US",
+        "controls.input.dark.en-US",
+        "controls.input.light.zh-Hans",
+        "controls.input.dark.zh-Hans",
+        "controls.input-focus.light.en-US",
+        "controls.input-focus.dark.en-US",
+        "controls.input-focus.light.zh-Hans",
+        "controls.input-focus.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyFieldBox",
+        "DifyFieldDecoration",
+        "DifyTextField"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/text_line.dart",
+      "visual": true,
+      "cases": [
+        "controls.text.light.en-US",
+        "controls.text.dark.en-US",
+        "controls.text.light.zh-Hans",
+        "controls.text.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyControlLabelScope",
+        "DifyTextLine"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/textarea.dart",
+      "visual": true,
+      "cases": [
+        "controls.textarea.light.en-US",
+        "controls.textarea.dark.en-US",
+        "controls.textarea.light.zh-Hans",
+        "controls.textarea.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyTextarea"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/toast.dart",
+      "visual": true,
+      "cases": [
+        "controls.toast.light.en-US",
+        "controls.toast.dark.en-US",
+        "controls.toast.light.zh-Hans",
+        "controls.toast.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyToast",
+        "DifyToastAction",
+        "DifyToastData",
+        "DifyToastHost",
+        "DifyToastManager",
+        "DifyToastUpdate"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/tooltip.dart",
+      "visual": true,
+      "cases": [
+        "controls.tooltip.light.en-US",
+        "controls.tooltip.dark.en-US",
+        "controls.tooltip.light.zh-Hans",
+        "controls.tooltip.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyTipPopup",
+        "DifyTipPopupBox",
+        "DifyTooltip",
+        "DifyTooltipSurface"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/workspace_avatar.dart",
+      "visual": true,
+      "cases": [
+        "controls.workspace-avatar.light.en-US",
+        "controls.workspace-avatar.dark.en-US",
+        "controls.workspace-avatar.light.zh-Hans",
+        "controls.workspace-avatar.dark.zh-Hans"
+      ],
+      "publicClasses": [
+        "DifyWorkspaceAvatar"
+      ],
+      "scope": "shared visual family; representative declared states, not every possible prop combination"
+    }
+  ],
+  "pages": [
+    {
+      "source": "app/lib/src/account/account_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.account.light.en-US"
+      ],
+      "publicClasses": [
+        "AccountAvatarMenu",
+        "AccountHeader",
+        "AccountPage",
+        "AccountPageBody"
+      ]
+    },
+    {
+      "source": "app/lib/src/active_page.dart",
+      "visual": false,
+      "reason": "ActivePage is a lifecycle/mounted-page interface, not a rendered leaf route.",
+      "publicClasses": [
+        "ActivePage"
+      ]
+    },
+    {
+      "source": "app/lib/src/app_detail/access/access_point_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.app-access-point.light.en-US"
+      ],
+      "publicClasses": [
+        "AccessPointPage",
+        "AccessPointPageState",
+        "AccessPoints",
+        "BuiltInAccessPoints",
+        "EnvironmentTabs"
+      ]
+    },
+    {
+      "source": "app/lib/src/app_detail/annotations/annotations_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.app-annotations.light.en-US"
+      ],
+      "publicClasses": [
+        "AnnotationEmptyElement",
+        "AnnotationsPage",
+        "AnnotationsPageState"
+      ]
+    },
+    {
+      "source": "app/lib/src/app_detail/app_detail_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.app-access-point.light.en-US"
+      ],
+      "publicClasses": [
+        "AppDetailEditorHost",
+        "AppDetailPage",
+        "AppDetailPageState"
+      ]
+    },
+    {
+      "source": "app/lib/src/app_detail/logs/logs_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.app-logs-workflow.light.en-US"
+      ],
+      "publicClasses": [
+        "LogAnnotation"
+      ]
+    },
+    {
+      "source": "app/lib/src/app_detail/overview/overview_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.app-overview.light.en-US"
+      ],
+      "publicClasses": [
+        "ChartView",
+        "OverviewView"
+      ]
+    },
+    {
+      "source": "app/lib/src/auth/activate_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.activate-expired.light.en-US"
+      ],
+      "publicClasses": [
+        "ActivateForm",
+        "ActivatePage",
+        "InvalidInvitation"
+      ]
+    },
+    {
+      "source": "app/lib/src/auth/install_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.install.light.en-US"
+      ],
+      "publicClasses": [
+        "InstallForm",
+        "InstallPage"
+      ]
+    },
+    {
+      "source": "app/lib/src/auth/invite_settings_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.invite-settings.light.en-US"
+      ],
+      "publicClasses": [
+        "InviteSettingsForm",
+        "InviteSettingsPage"
+      ]
+    },
+    {
+      "source": "app/lib/src/auth/reset_password_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.reset-password-email.light.en-US"
+      ],
+      "publicClasses": [
+        "ResendCountdown",
+        "ResetPasswordCheckCodeForm",
+        "ResetPasswordCheckCodePage",
+        "ResetPasswordForm",
+        "ResetPasswordPage",
+        "ResetPasswordSetPage",
+        "SetPasswordForm"
+      ]
+    },
+    {
+      "source": "app/lib/src/auth/signin_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.signin.light.en-US"
+      ],
+      "publicClasses": [
+        "MailAndPasswordAuth",
+        "NormalForm",
+        "SignInPage"
+      ]
+    },
+    {
+      "source": "app/lib/src/auth/unreachable_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.unreachable.light.en-US"
+      ],
+      "publicClasses": [
+        "UnreachablePage"
+      ]
+    },
+    {
+      "source": "app/lib/src/design/widgets/page.dart",
+      "visual": true,
+      "cases": [
+        "pages.studio-empty.light.en-US"
+      ],
+      "publicClasses": [
+        "DifyApplication",
+        "DifyPage",
+        "DifySurface"
+      ]
+    },
+    {
+      "source": "app/lib/src/editor/editor_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.editor.light.en-US",
+        "pages.editor.dark.en-US"
+      ],
+      "publicClasses": [
+        "EditorPage"
+      ]
+    },
+    {
+      "source": "app/lib/src/home_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.studio-empty.light.en-US"
+      ],
+      "publicClasses": [
+        "HomePage",
+        "MainNavFrame",
+        "MainNavLink"
+      ]
+    },
+    {
+      "source": "app/lib/src/human_input/human_input_form_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.human-form.light.en-US"
+      ],
+      "publicClasses": [
+        "HumanInputFormPage"
+      ]
+    },
+    {
+      "source": "app/lib/src/settings/integrations_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.integrations-models.light.en-US"
+      ],
+      "publicClasses": [
+        "IntegrationsPage",
+        "IntegrationsSettingModal"
+      ]
+    },
+    {
+      "source": "app/lib/src/settings/members/members_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.members.light.en-US"
+      ],
+      "publicClasses": [
+        "MembersPage"
+      ]
+    },
+    {
+      "source": "app/lib/src/settings/model_provider/model_provider_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.integrations-models.light.en-US"
+      ],
+      "publicClasses": [
+        "EmptyProviderState",
+        "ModelProviderListSkeleton",
+        "ModelProviderPage"
+      ]
+    },
+    {
+      "source": "app/lib/src/settings/preference_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.preferences.light.en-US"
+      ],
+      "publicClasses": [
+        "PreferencePage"
+      ]
+    },
+    {
+      "source": "app/lib/src/studio/studio_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.studio-empty.light.en-US"
+      ],
+      "publicClasses": [
+        "FirstEmptyState",
+        "StudioEmpty",
+        "StudioPage",
+        "StudioPageState"
+      ]
+    }
+  ],
+  "nodeBodies": [
+    {
+      "source": "agent",
+      "visual": true,
+      "cases": [
+        "panel-agent"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "agent-v2",
+      "visual": true,
+      "cases": [
+        "panel-agent-v2"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "answer",
+      "visual": true,
+      "cases": [
+        "panel-answer"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "assigner",
+      "visual": true,
+      "cases": [
+        "panel-assigner"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "code",
+      "visual": true,
+      "cases": [
+        "panel-code"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "datasource",
+      "visual": true,
+      "cases": [
+        "panel-datasource"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "document-extractor",
+      "visual": true,
+      "cases": [
+        "panel-document-extractor"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "end",
+      "visual": true,
+      "cases": [
+        "panel-end"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "http-request",
+      "visual": true,
+      "cases": [
+        "panel-http-request"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "human-input",
+      "visual": true,
+      "cases": [
+        "panel-human-input"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "if-else",
+      "visual": true,
+      "cases": [
+        "panel-if-else"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "iteration",
+      "visual": true,
+      "cases": [
+        "panel-iteration"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "knowledge-index",
+      "visual": true,
+      "cases": [
+        "panel-knowledge-index"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "knowledge-retrieval",
+      "visual": true,
+      "cases": [
+        "panel-knowledge-retrieval"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "list-operator",
+      "visual": true,
+      "cases": [
+        "panel-list-operator"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "llm",
+      "visual": true,
+      "cases": [
+        "panel-llm"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "loop",
+      "visual": true,
+      "cases": [
+        "panel-loop"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "loop-end",
+      "visual": true,
+      "cases": [
+        "panel-loop-end"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "parameter-extractor",
+      "visual": true,
+      "cases": [
+        "panel-parameter-extractor"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "question-classifier",
+      "visual": true,
+      "cases": [
+        "panel-question-classifier"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "start",
+      "visual": true,
+      "cases": [
+        "panel-start"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "start-placeholder",
+      "visual": true,
+      "cases": [
+        "panel-start-placeholder"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "template-transform",
+      "visual": true,
+      "cases": [
+        "panel-template-transform"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "tool",
+      "visual": true,
+      "cases": [
+        "panel-tool"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "trigger-plugin",
+      "visual": true,
+      "cases": [
+        "panel-trigger-plugin"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "trigger-schedule",
+      "visual": true,
+      "cases": [
+        "panel-trigger-schedule"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "trigger-webhook",
+      "visual": true,
+      "cases": [
+        "panel-trigger-webhook"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "variable-aggregator",
+      "visual": true,
+      "cases": [
+        "panel-variable-aggregator"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    },
+    {
+      "source": "variable-assigner",
+      "visual": true,
+      "cases": [
+        "panel-variable-assigner"
+      ],
+      "scope": "default selected node body; empty/default provider state is not a configured plugin proof"
+    }
+  ]
+}

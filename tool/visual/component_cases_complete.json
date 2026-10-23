@@ -1,0 +1,4070 @@
+[
+  {
+    "id": "controls.alert-dialog.light.en-US",
+    "kind": "alert-dialog",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.app-icon.light.en-US",
+    "kind": "app-icon",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.avatar.light.en-US",
+    "kind": "avatar",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.badge.light.en-US",
+    "kind": "badge",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-disabled.light.en-US",
+    "kind": "button-disabled",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-ghost.light.en-US",
+    "kind": "button-ghost",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-primary.light.en-US",
+    "kind": "button-primary",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-secondary.light.en-US",
+    "kind": "button-secondary",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.calendar.light.en-US",
+    "kind": "calendar",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-checked.light.en-US",
+    "kind": "checkbox-checked",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-disabled.light.en-US",
+    "kind": "checkbox-disabled",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-indeterminate.light.en-US",
+    "kind": "checkbox-indeterminate",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-list.light.en-US",
+    "kind": "checkbox-list",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300,
+    "expectedText": [
+      "Option A",
+      "Option B"
+    ]
+  },
+  {
+    "id": "controls.chip.light.en-US",
+    "kind": "chip",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.collapse.light.en-US",
+    "kind": "collapse",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.context-menu.light.en-US",
+    "kind": "context-menu",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.copy-feedback.light.en-US",
+    "kind": "copy-feedback",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.dashed-border.light.en-US",
+    "kind": "dashed-border",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.dialog.light.en-US",
+    "kind": "dialog",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.divider.light.en-US",
+    "kind": "divider",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.drawer.light.en-US",
+    "kind": "drawer",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.icon-button.light.en-US",
+    "kind": "icon-button",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.infotip.light.en-US",
+    "kind": "infotip",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.inline-delete-confirm.light.en-US",
+    "kind": "inline-delete-confirm",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input.light.en-US",
+    "kind": "input",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input-focus.light.en-US",
+    "kind": "input",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "focus",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input-disabled.light.en-US",
+    "kind": "input-disabled",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.kbd.light.en-US",
+    "kind": "kbd",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.labeled-switch.light.en-US",
+    "kind": "labeled-switch",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.loading.light.en-US",
+    "kind": "loading",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.loading-anim.light.en-US",
+    "kind": "loading-anim",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.menu.light.en-US",
+    "kind": "menu",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.menu-submenu.light.en-US",
+    "kind": "menu-submenu",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.number-field.light.en-US",
+    "kind": "number-field",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.pagination.light.en-US",
+    "kind": "pagination",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.popover.light.en-US",
+    "kind": "popover",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.qrcode.light.en-US",
+    "kind": "qrcode",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 160
+  },
+  {
+    "id": "controls.radio.light.en-US",
+    "kind": "radio",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.reorderable-list.light.en-US",
+    "kind": "reorderable-list",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.search-input.light.en-US",
+    "kind": "search-input",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.segmented-control.light.en-US",
+    "kind": "segmented-control",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.select.light.en-US",
+    "kind": "select",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.select-open.light.en-US",
+    "kind": "select",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.selection.light.en-US",
+    "kind": "selection",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.shortcut-kbd.light.en-US",
+    "kind": "shortcut-kbd",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "expectedText": [
+      "Ctrl",
+      "K"
+    ]
+  },
+  {
+    "id": "controls.skeleton.light.en-US",
+    "kind": "skeleton",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.slider.light.en-US",
+    "kind": "slider",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.spinner.light.en-US",
+    "kind": "spinner",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.status-dot.light.en-US",
+    "kind": "status-dot",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.surface.light.en-US",
+    "kind": "surface",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.switch-checked.light.en-US",
+    "kind": "switch-checked",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.switch-disabled.light.en-US",
+    "kind": "switch-disabled",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tab-slider-plain.light.en-US",
+    "kind": "tab-slider-plain",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.table.light.en-US",
+    "kind": "table",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tabs.light.en-US",
+    "kind": "tabs",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tag-input.light.en-US",
+    "kind": "tag-input",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.text.light.en-US",
+    "kind": "text",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.textarea.light.en-US",
+    "kind": "textarea",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.toast.light.en-US",
+    "kind": "toast",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.toolbar.light.en-US",
+    "kind": "toolbar",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tooltip.light.en-US",
+    "kind": "tooltip",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.workspace-avatar.light.en-US",
+    "kind": "workspace-avatar",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.alert-dialog.dark.en-US",
+    "kind": "alert-dialog",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.app-icon.dark.en-US",
+    "kind": "app-icon",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.avatar.dark.en-US",
+    "kind": "avatar",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.badge.dark.en-US",
+    "kind": "badge",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-disabled.dark.en-US",
+    "kind": "button-disabled",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-ghost.dark.en-US",
+    "kind": "button-ghost",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-primary.dark.en-US",
+    "kind": "button-primary",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-secondary.dark.en-US",
+    "kind": "button-secondary",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.calendar.dark.en-US",
+    "kind": "calendar",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-checked.dark.en-US",
+    "kind": "checkbox-checked",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-disabled.dark.en-US",
+    "kind": "checkbox-disabled",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-indeterminate.dark.en-US",
+    "kind": "checkbox-indeterminate",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-list.dark.en-US",
+    "kind": "checkbox-list",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300,
+    "expectedText": [
+      "Option A",
+      "Option B"
+    ]
+  },
+  {
+    "id": "controls.chip.dark.en-US",
+    "kind": "chip",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.collapse.dark.en-US",
+    "kind": "collapse",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.context-menu.dark.en-US",
+    "kind": "context-menu",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.copy-feedback.dark.en-US",
+    "kind": "copy-feedback",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.dashed-border.dark.en-US",
+    "kind": "dashed-border",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.dialog.dark.en-US",
+    "kind": "dialog",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.divider.dark.en-US",
+    "kind": "divider",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.drawer.dark.en-US",
+    "kind": "drawer",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.icon-button.dark.en-US",
+    "kind": "icon-button",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.infotip.dark.en-US",
+    "kind": "infotip",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.inline-delete-confirm.dark.en-US",
+    "kind": "inline-delete-confirm",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input.dark.en-US",
+    "kind": "input",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input-focus.dark.en-US",
+    "kind": "input",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "focus",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input-disabled.dark.en-US",
+    "kind": "input-disabled",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.kbd.dark.en-US",
+    "kind": "kbd",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.labeled-switch.dark.en-US",
+    "kind": "labeled-switch",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.loading.dark.en-US",
+    "kind": "loading",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.loading-anim.dark.en-US",
+    "kind": "loading-anim",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.menu.dark.en-US",
+    "kind": "menu",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.menu-submenu.dark.en-US",
+    "kind": "menu-submenu",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.number-field.dark.en-US",
+    "kind": "number-field",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.pagination.dark.en-US",
+    "kind": "pagination",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.popover.dark.en-US",
+    "kind": "popover",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.qrcode.dark.en-US",
+    "kind": "qrcode",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 160
+  },
+  {
+    "id": "controls.radio.dark.en-US",
+    "kind": "radio",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.reorderable-list.dark.en-US",
+    "kind": "reorderable-list",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.search-input.dark.en-US",
+    "kind": "search-input",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.segmented-control.dark.en-US",
+    "kind": "segmented-control",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.select.dark.en-US",
+    "kind": "select",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.select-open.dark.en-US",
+    "kind": "select",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.selection.dark.en-US",
+    "kind": "selection",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.shortcut-kbd.dark.en-US",
+    "kind": "shortcut-kbd",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "expectedText": [
+      "Ctrl",
+      "K"
+    ]
+  },
+  {
+    "id": "controls.skeleton.dark.en-US",
+    "kind": "skeleton",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.slider.dark.en-US",
+    "kind": "slider",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.spinner.dark.en-US",
+    "kind": "spinner",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.status-dot.dark.en-US",
+    "kind": "status-dot",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.surface.dark.en-US",
+    "kind": "surface",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.switch-checked.dark.en-US",
+    "kind": "switch-checked",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.switch-disabled.dark.en-US",
+    "kind": "switch-disabled",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tab-slider-plain.dark.en-US",
+    "kind": "tab-slider-plain",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.table.dark.en-US",
+    "kind": "table",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tabs.dark.en-US",
+    "kind": "tabs",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tag-input.dark.en-US",
+    "kind": "tag-input",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.text.dark.en-US",
+    "kind": "text",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.textarea.dark.en-US",
+    "kind": "textarea",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.toast.dark.en-US",
+    "kind": "toast",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.toolbar.dark.en-US",
+    "kind": "toolbar",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tooltip.dark.en-US",
+    "kind": "tooltip",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.workspace-avatar.dark.en-US",
+    "kind": "workspace-avatar",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.alert-dialog.light.zh-Hans",
+    "kind": "alert-dialog",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.app-icon.light.zh-Hans",
+    "kind": "app-icon",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.avatar.light.zh-Hans",
+    "kind": "avatar",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.badge.light.zh-Hans",
+    "kind": "badge",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-disabled.light.zh-Hans",
+    "kind": "button-disabled",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-ghost.light.zh-Hans",
+    "kind": "button-ghost",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-primary.light.zh-Hans",
+    "kind": "button-primary",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-secondary.light.zh-Hans",
+    "kind": "button-secondary",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.calendar.light.zh-Hans",
+    "kind": "calendar",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-checked.light.zh-Hans",
+    "kind": "checkbox-checked",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-disabled.light.zh-Hans",
+    "kind": "checkbox-disabled",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-indeterminate.light.zh-Hans",
+    "kind": "checkbox-indeterminate",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-list.light.zh-Hans",
+    "kind": "checkbox-list",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300,
+    "expectedText": [
+      "Option A",
+      "Option B"
+    ]
+  },
+  {
+    "id": "controls.chip.light.zh-Hans",
+    "kind": "chip",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.collapse.light.zh-Hans",
+    "kind": "collapse",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.context-menu.light.zh-Hans",
+    "kind": "context-menu",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.copy-feedback.light.zh-Hans",
+    "kind": "copy-feedback",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.dashed-border.light.zh-Hans",
+    "kind": "dashed-border",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.dialog.light.zh-Hans",
+    "kind": "dialog",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.divider.light.zh-Hans",
+    "kind": "divider",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.drawer.light.zh-Hans",
+    "kind": "drawer",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.icon-button.light.zh-Hans",
+    "kind": "icon-button",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.infotip.light.zh-Hans",
+    "kind": "infotip",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.inline-delete-confirm.light.zh-Hans",
+    "kind": "inline-delete-confirm",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input.light.zh-Hans",
+    "kind": "input",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input-focus.light.zh-Hans",
+    "kind": "input",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "focus",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input-disabled.light.zh-Hans",
+    "kind": "input-disabled",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.kbd.light.zh-Hans",
+    "kind": "kbd",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.labeled-switch.light.zh-Hans",
+    "kind": "labeled-switch",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.loading.light.zh-Hans",
+    "kind": "loading",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.loading-anim.light.zh-Hans",
+    "kind": "loading-anim",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.menu.light.zh-Hans",
+    "kind": "menu",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.menu-submenu.light.zh-Hans",
+    "kind": "menu-submenu",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.number-field.light.zh-Hans",
+    "kind": "number-field",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.pagination.light.zh-Hans",
+    "kind": "pagination",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.popover.light.zh-Hans",
+    "kind": "popover",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.qrcode.light.zh-Hans",
+    "kind": "qrcode",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 160
+  },
+  {
+    "id": "controls.radio.light.zh-Hans",
+    "kind": "radio",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.reorderable-list.light.zh-Hans",
+    "kind": "reorderable-list",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.search-input.light.zh-Hans",
+    "kind": "search-input",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.segmented-control.light.zh-Hans",
+    "kind": "segmented-control",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.select.light.zh-Hans",
+    "kind": "select",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.select-open.light.zh-Hans",
+    "kind": "select",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.selection.light.zh-Hans",
+    "kind": "selection",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.shortcut-kbd.light.zh-Hans",
+    "kind": "shortcut-kbd",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "expectedText": [
+      "Ctrl",
+      "K"
+    ]
+  },
+  {
+    "id": "controls.skeleton.light.zh-Hans",
+    "kind": "skeleton",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.slider.light.zh-Hans",
+    "kind": "slider",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.spinner.light.zh-Hans",
+    "kind": "spinner",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.status-dot.light.zh-Hans",
+    "kind": "status-dot",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.surface.light.zh-Hans",
+    "kind": "surface",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.switch-checked.light.zh-Hans",
+    "kind": "switch-checked",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.switch-disabled.light.zh-Hans",
+    "kind": "switch-disabled",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tab-slider-plain.light.zh-Hans",
+    "kind": "tab-slider-plain",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.table.light.zh-Hans",
+    "kind": "table",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tabs.light.zh-Hans",
+    "kind": "tabs",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tag-input.light.zh-Hans",
+    "kind": "tag-input",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.text.light.zh-Hans",
+    "kind": "text",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.textarea.light.zh-Hans",
+    "kind": "textarea",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.toast.light.zh-Hans",
+    "kind": "toast",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.toolbar.light.zh-Hans",
+    "kind": "toolbar",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tooltip.light.zh-Hans",
+    "kind": "tooltip",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.workspace-avatar.light.zh-Hans",
+    "kind": "workspace-avatar",
+    "captureType": "component-fixture",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.alert-dialog.dark.zh-Hans",
+    "kind": "alert-dialog",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.app-icon.dark.zh-Hans",
+    "kind": "app-icon",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.avatar.dark.zh-Hans",
+    "kind": "avatar",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.badge.dark.zh-Hans",
+    "kind": "badge",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-disabled.dark.zh-Hans",
+    "kind": "button-disabled",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-ghost.dark.zh-Hans",
+    "kind": "button-ghost",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-primary.dark.zh-Hans",
+    "kind": "button-primary",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.button-secondary.dark.zh-Hans",
+    "kind": "button-secondary",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.calendar.dark.zh-Hans",
+    "kind": "calendar",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-checked.dark.zh-Hans",
+    "kind": "checkbox-checked",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-disabled.dark.zh-Hans",
+    "kind": "checkbox-disabled",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-indeterminate.dark.zh-Hans",
+    "kind": "checkbox-indeterminate",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.checkbox-list.dark.zh-Hans",
+    "kind": "checkbox-list",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300,
+    "expectedText": [
+      "Option A",
+      "Option B"
+    ]
+  },
+  {
+    "id": "controls.chip.dark.zh-Hans",
+    "kind": "chip",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.collapse.dark.zh-Hans",
+    "kind": "collapse",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.context-menu.dark.zh-Hans",
+    "kind": "context-menu",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.copy-feedback.dark.zh-Hans",
+    "kind": "copy-feedback",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.dashed-border.dark.zh-Hans",
+    "kind": "dashed-border",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.dialog.dark.zh-Hans",
+    "kind": "dialog",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.divider.dark.zh-Hans",
+    "kind": "divider",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.drawer.dark.zh-Hans",
+    "kind": "drawer",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.icon-button.dark.zh-Hans",
+    "kind": "icon-button",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.infotip.dark.zh-Hans",
+    "kind": "infotip",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.inline-delete-confirm.dark.zh-Hans",
+    "kind": "inline-delete-confirm",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input.dark.zh-Hans",
+    "kind": "input",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input-focus.dark.zh-Hans",
+    "kind": "input",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "focus",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.input-disabled.dark.zh-Hans",
+    "kind": "input-disabled",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.kbd.dark.zh-Hans",
+    "kind": "kbd",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.labeled-switch.dark.zh-Hans",
+    "kind": "labeled-switch",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.loading.dark.zh-Hans",
+    "kind": "loading",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.loading-anim.dark.zh-Hans",
+    "kind": "loading-anim",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.menu.dark.zh-Hans",
+    "kind": "menu",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.menu-submenu.dark.zh-Hans",
+    "kind": "menu-submenu",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.number-field.dark.zh-Hans",
+    "kind": "number-field",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.pagination.dark.zh-Hans",
+    "kind": "pagination",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.popover.dark.zh-Hans",
+    "kind": "popover",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.qrcode.dark.zh-Hans",
+    "kind": "qrcode",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 160
+  },
+  {
+    "id": "controls.radio.dark.zh-Hans",
+    "kind": "radio",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.reorderable-list.dark.zh-Hans",
+    "kind": "reorderable-list",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.search-input.dark.zh-Hans",
+    "kind": "search-input",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.segmented-control.dark.zh-Hans",
+    "kind": "segmented-control",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.select.dark.zh-Hans",
+    "kind": "select",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.select-open.dark.zh-Hans",
+    "kind": "select",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.selection.dark.zh-Hans",
+    "kind": "selection",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.shortcut-kbd.dark.zh-Hans",
+    "kind": "shortcut-kbd",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "expectedText": [
+      "Ctrl",
+      "K"
+    ]
+  },
+  {
+    "id": "controls.skeleton.dark.zh-Hans",
+    "kind": "skeleton",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.slider.dark.zh-Hans",
+    "kind": "slider",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.spinner.dark.zh-Hans",
+    "kind": "spinner",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.status-dot.dark.zh-Hans",
+    "kind": "status-dot",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.surface.dark.zh-Hans",
+    "kind": "surface",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.switch-checked.dark.zh-Hans",
+    "kind": "switch-checked",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.switch-disabled.dark.zh-Hans",
+    "kind": "switch-disabled",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tab-slider-plain.dark.zh-Hans",
+    "kind": "tab-slider-plain",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.table.dark.zh-Hans",
+    "kind": "table",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tabs.dark.zh-Hans",
+    "kind": "tabs",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tag-input.dark.zh-Hans",
+    "kind": "tag-input",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.text.dark.zh-Hans",
+    "kind": "text",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.textarea.dark.zh-Hans",
+    "kind": "textarea",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    },
+    "fixtureWidth": 300
+  },
+  {
+    "id": "controls.toast.dark.zh-Hans",
+    "kind": "toast",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.toolbar.dark.zh-Hans",
+    "kind": "toolbar",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.tooltip.dark.zh-Hans",
+    "kind": "tooltip",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "open",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  },
+  {
+    "id": "controls.workspace-avatar.dark.zh-Hans",
+    "kind": "workspace-avatar",
+    "captureType": "component-fixture",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "state": "default",
+    "sources": {
+      "react": "actual pinned Dify React component / declared CSS primitive",
+      "flutter-web": "actual Dify design-system widget"
+    },
+    "commits": {
+      "react": "8387590a (Dify 1.17.1)",
+      "flutter-web": null
+    }
+  }
+]

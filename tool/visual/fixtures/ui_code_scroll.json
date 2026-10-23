@@ -1,0 +1,302 @@
+{
+  "app": {
+    "description": "Workflow without models for run visuals: start, code, template, end; environment variables and a note.",
+    "icon": "🏃",
+    "icon_background": "#E0F2FE",
+    "mode": "workflow",
+    "name": "sf_run",
+    "use_icon_as_answer_icon": false
+  },
+  "dependencies": [],
+  "kind": "app",
+  "version": "0.7.0",
+  "workflow": {
+    "conversation_variables": [],
+    "environment_variables": [
+      {
+        "description": "",
+        "id": "e1a2b3c4-0001-4d5e-8f90-a1b2c3d4e501",
+        "name": "api_base",
+        "selector": [
+          "env",
+          "api_base"
+        ],
+        "value": "https://api.example.com",
+        "value_type": "string"
+      },
+      {
+        "description": "",
+        "id": "e1a2b3c4-0002-4d5e-8f90-a1b2c3d4e502",
+        "name": "max_items",
+        "selector": [
+          "env",
+          "max_items"
+        ],
+        "value": 20,
+        "value_type": "number"
+      },
+      {
+        "description": "",
+        "id": "e1a2b3c4-0003-4d5e-8f90-a1b2c3d4e503",
+        "name": "api_key",
+        "selector": [
+          "env",
+          "api_key"
+        ],
+        "value": "",
+        "value_type": "secret"
+      }
+    ],
+    "features": {
+      "file_upload": {
+        "enabled": false
+      },
+      "opening_statement": "",
+      "retriever_resource": {
+        "enabled": false
+      },
+      "sensitive_word_avoidance": {
+        "enabled": false
+      },
+      "speech_to_text": {
+        "enabled": false
+      },
+      "suggested_questions": [],
+      "suggested_questions_after_answer": {
+        "enabled": false
+      },
+      "text_to_speech": {
+        "enabled": false,
+        "language": "",
+        "voice": ""
+      }
+    },
+    "graph": {
+      "edges": [
+        {
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "start",
+            "targetType": "code"
+          },
+          "id": "1761000000001-source-1761000000002-target",
+          "source": "1761000000001",
+          "sourceHandle": "source",
+          "target": "1761000000002",
+          "targetHandle": "target",
+          "type": "custom",
+          "zIndex": 0
+        },
+        {
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "code",
+            "targetType": "template-transform"
+          },
+          "id": "1761000000002-source-1761000000003-target",
+          "source": "1761000000002",
+          "sourceHandle": "source",
+          "target": "1761000000003",
+          "targetHandle": "target",
+          "type": "custom",
+          "zIndex": 0
+        },
+        {
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "template-transform",
+            "targetType": "end"
+          },
+          "id": "1761000000003-source-1761000000004-target",
+          "source": "1761000000003",
+          "sourceHandle": "source",
+          "target": "1761000000004",
+          "targetHandle": "target",
+          "type": "custom",
+          "zIndex": 0
+        }
+      ],
+      "nodes": [
+        {
+          "data": {
+            "desc": "",
+            "selected": false,
+            "title": "Start",
+            "type": "start",
+            "variables": [
+              {
+                "label": "Name",
+                "max_length": 48,
+                "options": [],
+                "required": false,
+                "type": "text-input",
+                "variable": "name"
+              }
+            ]
+          },
+          "height": 88,
+          "id": "1761000000001",
+          "position": {
+            "x": 80,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 80,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 242
+        },
+        {
+          "data": {
+            "code": "# UI parity scrollbar line 000\n# UI parity scrollbar line 001\n# UI parity scrollbar line 002\n# UI parity scrollbar line 003\n# UI parity scrollbar line 004\n# UI parity scrollbar line 005\n# UI parity scrollbar line 006\n# UI parity scrollbar line 007\n# UI parity scrollbar line 008\n# UI parity scrollbar line 009\n# UI parity scrollbar line 010\n# UI parity scrollbar line 011\n# UI parity scrollbar line 012\n# UI parity scrollbar line 013\n# UI parity scrollbar line 014\n# UI parity scrollbar line 015\n# UI parity scrollbar line 016\n# UI parity scrollbar line 017\n# UI parity scrollbar line 018\n# UI parity scrollbar line 019\n# UI parity scrollbar line 020\n# UI parity scrollbar line 021\n# UI parity scrollbar line 022\n# UI parity scrollbar line 023\n# UI parity scrollbar line 024\n# UI parity scrollbar line 025\n# UI parity scrollbar line 026\n# UI parity scrollbar line 027\n# UI parity scrollbar line 028\n# UI parity scrollbar line 029\n# UI parity scrollbar line 030\n# UI parity scrollbar line 031\n# UI parity scrollbar line 032\n# UI parity scrollbar line 033\n# UI parity scrollbar line 034\n# UI parity scrollbar line 035\n# UI parity scrollbar line 036\n# UI parity scrollbar line 037\n# UI parity scrollbar line 038\n# UI parity scrollbar line 039\n# UI parity scrollbar line 040\n# UI parity scrollbar line 041\n# UI parity scrollbar line 042\n# UI parity scrollbar line 043\n# UI parity scrollbar line 044\n# UI parity scrollbar line 045\n# UI parity scrollbar line 046\n# UI parity scrollbar line 047\n# UI parity scrollbar line 048\n# UI parity scrollbar line 049\n# UI parity scrollbar line 050\n# UI parity scrollbar line 051\n# UI parity scrollbar line 052\n# UI parity scrollbar line 053\n# UI parity scrollbar line 054\n# UI parity scrollbar line 055\n# UI parity scrollbar line 056\n# UI parity scrollbar line 057\n# UI parity scrollbar line 058\n# UI parity scrollbar line 059\n# UI parity scrollbar line 060\n# UI parity scrollbar line 061\n# UI parity scrollbar line 062\n# UI parity scrollbar line 063\n# UI parity scrollbar line 064\n# UI parity scrollbar line 065\n# UI parity scrollbar line 066\n# UI parity scrollbar line 067\n# UI parity scrollbar line 068\n# UI parity scrollbar line 069\n# UI parity scrollbar line 070\n# UI parity scrollbar line 071\n# UI parity scrollbar line 072\n# UI parity scrollbar line 073\n# UI parity scrollbar line 074\n# UI parity scrollbar line 075\n# UI parity scrollbar line 076\n# UI parity scrollbar line 077\n# UI parity scrollbar line 078\n# UI parity scrollbar line 079\n# UI parity scrollbar line 080\n# UI parity scrollbar line 081\n# UI parity scrollbar line 082\n# UI parity scrollbar line 083\n# UI parity scrollbar line 084\n# UI parity scrollbar line 085\n# UI parity scrollbar line 086\n# UI parity scrollbar line 087\n# UI parity scrollbar line 088\n# UI parity scrollbar line 089\n# UI parity scrollbar line 090\n# UI parity scrollbar line 091\n# UI parity scrollbar line 092\n# UI parity scrollbar line 093\n# UI parity scrollbar line 094\n# UI parity scrollbar line 095\n# UI parity scrollbar line 096\n# UI parity scrollbar line 097\n# UI parity scrollbar line 098\n# UI parity scrollbar line 099\n# UI parity scrollbar line 100\n# UI parity scrollbar line 101\n# UI parity scrollbar line 102\n# UI parity scrollbar line 103\n# UI parity scrollbar line 104\n# UI parity scrollbar line 105\n# UI parity scrollbar line 106\n# UI parity scrollbar line 107\n# UI parity scrollbar line 108\n# UI parity scrollbar line 109\n# UI parity scrollbar line 110\n# UI parity scrollbar line 111\n# UI parity scrollbar line 112\n# UI parity scrollbar line 113\n# UI parity scrollbar line 114\n# UI parity scrollbar line 115\n# UI parity scrollbar line 116\n# UI parity scrollbar line 117\n# UI parity scrollbar line 118\n# UI parity scrollbar line 119\ndef main(name: str) -> dict:\n    return {\"result\": \"Hello \" + (name or \"there\")}\n",
+            "code_language": "python3",
+            "desc": "",
+            "outputs": {
+              "result": {
+                "children": null,
+                "type": "string"
+              }
+            },
+            "selected": false,
+            "title": "Code",
+            "type": "code",
+            "variables": [
+              {
+                "value_selector": [
+                  "1761000000001",
+                  "name"
+                ],
+                "value_type": "string",
+                "variable": "name"
+              }
+            ]
+          },
+          "height": 52,
+          "id": "1761000000002",
+          "position": {
+            "x": 382,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 382,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 242
+        },
+        {
+          "data": {
+            "desc": "",
+            "selected": false,
+            "template": "{{ greeting }}!",
+            "title": "Template",
+            "type": "template-transform",
+            "variables": [
+              {
+                "value_selector": [
+                  "1761000000002",
+                  "result"
+                ],
+                "value_type": "string",
+                "variable": "greeting"
+              }
+            ]
+          },
+          "height": 52,
+          "id": "1761000000003",
+          "position": {
+            "x": 684,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 684,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 242
+        },
+        {
+          "data": {
+            "desc": "",
+            "outputs": [
+              {
+                "value_selector": [
+                  "1761000000003",
+                  "output"
+                ],
+                "value_type": "string",
+                "variable": "greeting"
+              }
+            ],
+            "selected": false,
+            "title": "End",
+            "type": "end"
+          },
+          "height": 88,
+          "id": "1761000000004",
+          "position": {
+            "x": 986,
+            "y": 282
+          },
+          "positionAbsolute": {
+            "x": 986,
+            "y": 282
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 242
+        },
+        {
+          "data": {
+            "author": "alice",
+            "desc": "",
+            "height": 120,
+            "selected": false,
+            "showAuthor": true,
+            "text": "{\"root\":{\"children\":[{\"children\":[{\"detail\":0,\"format\":0,\"mode\":\"normal\",\"style\":\"\",\"text\":\"Greets the user by name: the code node builds the greeting, the template adds the punctuation.\",\"type\":\"text\",\"version\":1}],\"direction\":\"ltr\",\"format\":\"\",\"indent\":0,\"type\":\"paragraph\",\"version\":1,\"textFormat\":0,\"textStyle\":\"\"}],\"direction\":\"ltr\",\"format\":\"\",\"indent\":0,\"type\":\"root\",\"version\":1}}",
+            "theme": "blue",
+            "title": "",
+            "type": "",
+            "width": 260
+          },
+          "height": 120,
+          "id": "1761000000009",
+          "position": {
+            "x": 382,
+            "y": 420
+          },
+          "positionAbsolute": {
+            "x": 382,
+            "y": 420
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom-note",
+          "width": 260
+        }
+      ],
+      "viewport": {
+        "x": 40,
+        "y": 120,
+        "zoom": 0.8
+      }
+    },
+    "rag_pipeline_variables": []
+  }
+}

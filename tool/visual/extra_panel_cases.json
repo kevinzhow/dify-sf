@@ -1,0 +1,264 @@
+[
+  {
+    "id": "panel-agent",
+    "fixture": "tool/visual/fixtures/ui_agent.json",
+    "select": "ui-parity-agent",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      0,
+      0,
+      1
+    ],
+    "fixtureScope": "actual default empty node; no provider calls"
+  },
+  {
+    "id": "panel-agent-v2",
+    "fixture": "tool/visual/fixtures/ui_agent-v2.json",
+    "select": "ui-parity-agent-v2",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      0,
+      0,
+      1
+    ],
+    "fixtureScope": "actual default empty node; no provider calls"
+  },
+  {
+    "id": "panel-trigger-plugin",
+    "fixture": "tool/visual/fixtures/ui_trigger-plugin.json",
+    "select": "ui-parity-trigger-plugin",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      0,
+      0,
+      1
+    ],
+    "fixtureScope": "actual default empty node; no provider calls"
+  },
+  {
+    "id": "panel-start-placeholder",
+    "fixture": "tool/visual/fixtures/ui_start-placeholder.json",
+    "select": "ui-parity-start-placeholder",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      0,
+      0,
+      1
+    ],
+    "fixtureScope": "actual default empty node; no provider calls"
+  },
+  {
+    "id": "panel-datasource",
+    "fixture": "tool/visual/fixtures/ui_datasource.json",
+    "select": "ui-parity-datasource",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      0,
+      0,
+      1
+    ],
+    "fixtureScope": "actual default empty node; no provider calls"
+  },
+  {
+    "id": "panel-knowledge-index",
+    "fixture": "tool/visual/fixtures/ui_knowledge-index.json",
+    "select": "ui-parity-knowledge-index",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      0,
+      0,
+      1
+    ],
+    "fixtureScope": "actual default empty node; no provider calls"
+  },
+  {
+    "id": "panel-loop-end",
+    "fixture": "tool/visual/fixtures/ui_loop_end_in_container.json",
+    "select": "ui-loop-end-in-container",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      0,
+      0,
+      1
+    ],
+    "fixtureScope": "Exit Loop inside the actual Loop container, using original custom-simple node type; selected header-only node has no configuration panel; no execution",
+    "expectPanel": false
+  },
+  {
+    "id": "panel-variable-assigner",
+    "fixture": "tool/visual/fixtures/ui_variable-assigner.json",
+    "select": "ui-parity-variable-assigner",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      0,
+      0,
+      1
+    ],
+    "fixtureScope": "actual default empty node; no provider calls"
+  },
+  {
+    "id": "panel-loop",
+    "fixture": "tool/visual/fixtures/increment_loop_with_break_condition_workflow.yml",
+    "select": "1754827949615",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      0,
+      0,
+      1
+    ]
+  },
+  {
+    "id": "panel-code-scroll",
+    "fixture": "tool/visual/fixtures/ui_code_scroll.json",
+    "select": "1761000000002",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      0,
+      0,
+      1
+    ],
+    "steps": [
+      {
+        "hover": ".monaco-editor",
+        "at": [
+          180,
+          100
+        ]
+      },
+      {
+        "wait": 800
+      }
+    ],
+    "fixtureScope": "actual Dify Monaco code panel and actual Flutter code panel, long comment-only source; hover reveals the real editor scrollbar; no execution"
+  }
+]

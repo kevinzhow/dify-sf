@@ -150,3 +150,5 @@ Enable web forms separately from outbound email. Email delivery remains a separa
 its flag off until that work is complete. Web-only workflows can run without a model daemon; LLM execution
 is not advertised in that configuration. Periodic recovery starts after migration/startup work and retries accepted
 answers after transient database failures. See the [protocol](docs/protocol.md#human-input-116).
+
+UI visual acceptance: [Raft Visual Testing policy and source/case inventory](tool/visual/UI_TESTING.md). Use the unchanged pinned framework, original screenshot pairs and its Pixel/RGB report; unit tests do not establish visual parity.

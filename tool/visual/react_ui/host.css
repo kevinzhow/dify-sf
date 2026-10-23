@@ -1,0 +1,4 @@
+/* Fixture positioning only. All control styling comes from the pinned product source. */
+html,body,#root {margin:0;width:100%;min-height:100%;}
+#parity-stage {box-sizing:border-box;width:640px;height:480px;padding:16px;background:var(--color-background-body);}
+#parity-component {box-sizing:border-box;width:400px;min-height:160px;display:flex;align-items:flex-start;justify-content:flex-start;}

@@ -5,6 +5,7 @@ repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_dir"
 python3 tool/fonts/check_metrics.py
 python3 tool/design/check_control_coverage.py
+python3 tool/visual/check_ui_coverage.py
 python3 tool/design/check.py
 cd app
 flutter analyze --no-pub

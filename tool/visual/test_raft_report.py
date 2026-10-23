@@ -70,6 +70,20 @@ class ReportContract(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unequal original dimensions'):
             self.run_report()
 
+    def test_failed_cases_remain_in_the_manifest_as_missing(self):
+        self.receipt['cases'].append({'id': 'pages.failed', 'captureType': 'real-screen',
+                                     'captures': {}, 'captureErrors': ['real route did not reach expected state']})
+        self.run_report()
+        manifest = json.loads((self.root / 'out/cases.json').read_text())
+        self.assertEqual([c['id'] for c in manifest['cases']], ['components.test', 'pages.failed'])
+        self.assertTrue(manifest['cases'][1]['captureErrors'])
+        self.assertFalse((self.root / 'out/visual-testing-results/react/pages.failed.png').exists())
+
+    def test_empty_capture_requires_a_failure_receipt(self):
+        self.receipt['cases'][0]['captures'] = {}
+        with self.assertRaisesRegex(ValueError, 'explicit captureErrors'):
+            self.run_report()
+
     def test_previous_output_is_immutable(self):
         (self.root / 'out').mkdir()
         marker = self.root / 'out/previous-failure'

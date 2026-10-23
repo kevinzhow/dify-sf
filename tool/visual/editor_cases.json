@@ -1,0 +1,870 @@
+[
+  {
+    "id": "canvas-basic-llm",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-if-else",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/conditional_hello_branching_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-iteration",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/array_iteration_formatting_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-loop",
+    "fixture": "tool/visual/fixtures/increment_loop_with_break_condition_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-answer",
+    "fixture": "tool/visual/fixtures/basic_chatflow.yml",
+    "viewport": [
+      0,
+      -178,
+      1.0
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-tool-template",
+    "fixture": "tool/visual/fixtures/chatflow_time_tool_static_output_workflow.yml",
+    "viewport": [
+      58,
+      -84,
+      0.73
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-http",
+    "fixture": "tool/visual/fixtures/http_request_with_json_tool_workflow.yml",
+    "viewport": [
+      58,
+      -62,
+      0.73
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-aggregator",
+    "fixture": "tool/visual/fixtures/dual_switch_variable_aggregator_workflow.yml",
+    "viewport": [
+      38,
+      27,
+      0.52
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-assigner",
+    "fixture": "tool/visual/fixtures/test_streaming_conversation_variables.yml",
+    "viewport": [
+      50,
+      -146,
+      0.99
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-loop-answer",
+    "fixture": "tool/visual/fixtures/loop_contains_answer.yml",
+    "viewport": [
+      63,
+      -71,
+      0.56
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-classify-extract",
+    "fixture": "tool/visual/fixtures/sf_classify_extract_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-retrieval-human",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/sf_retrieval_human_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "canvas-triggers",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/sf_triggers_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "region": [
+      60,
+      64,
+      940,
+      700
+    ]
+  },
+  {
+    "id": "editor-basic-llm",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ]
+  },
+  {
+    "id": "editor-classify-extract",
+    "fixture": "tool/visual/fixtures/sf_classify_extract_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ]
+  },
+  {
+    "id": "editor-retrieval-human",
+    "fixture": "tool/visual/fixtures/sf_retrieval_human_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ]
+  },
+  {
+    "id": "panel-start",
+    "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "start_node",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-llm",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "llm_node",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-end",
+    "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "end_node",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-question-classifier",
+    "fixture": "tool/visual/fixtures/sf_classify_extract_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760600030001",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-parameter-extractor",
+    "fixture": "tool/visual/fixtures/sf_classify_extract_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760600060001",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-document-extractor",
+    "fixture": "tool/visual/fixtures/sf_classify_extract_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760600060002",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-list-operator",
+    "fixture": "tool/visual/fixtures/sf_classify_extract_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760600060003",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-knowledge-retrieval",
+    "fixture": "tool/visual/fixtures/sf_retrieval_human_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760700030001",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-answer",
+    "fixture": "tool/visual/fixtures/sf_retrieval_human_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760700090002",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-code",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/sf_retrieval_human_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760700090001",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-template-transform",
+    "fixture": "tool/visual/fixtures/sf_retrieval_human_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760700120001",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-human-input",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/sf_retrieval_human_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760700150001",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-assigner",
+    "fixture": "tool/visual/fixtures/sf_retrieval_human_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760700180001",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-trigger-schedule",
+    "fixture": "tool/visual/fixtures/sf_triggers_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760800000001",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-trigger-webhook",
+    "fixture": "tool/visual/fixtures/sf_triggers_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760800000002",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-http-request",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/sf_triggers_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1760800030001",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-if-else",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/conditional_hello_branching_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1754217359748",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-iteration",
+    "fixture": "tool/visual/fixtures/array_iteration_formatting_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1754683430480",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-tool",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/http_request_with_json_tool_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "tool_node",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  },
+  {
+    "id": "panel-variable-aggregator",
+    "fixture": "tool/visual/fixtures/dual_switch_variable_aggregator_workflow.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "1754405693104",
+    "intentional": {
+      "node-run": "ours shows Run this step on the selected node (owner's decision); Dify 1.17.1 never does (a bug: !nodesReadOnly on an object). Masked by compare.py from our bar's reported rect"
+    }
+  }
+]

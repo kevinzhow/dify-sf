@@ -56,6 +56,12 @@ def generate(receipt_path, framework_root, out, site, node):
             source = Path(capture['image'])
             size = png_size(source)
             sizes.append(size)
+            view=capture.get('viewport',{})
+            clip=capture.get('crop',{}).get('origin')
+            density=view.get('density',view.get('dpr'))
+            if clip and density:
+                expected=[round(clip['width']*density),round(clip['height']*density)]
+                if size!=expected:raise ValueError(f'PNG dimensions disagree with the declared crop for {cid}: {size} != {expected}')
             dest = out / 'visual-testing-results' / provider / f'{cid}.png'
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, dest)
@@ -71,7 +77,9 @@ def generate(receipt_path, framework_root, out, site, node):
                 meta['capturedAt'] = dt.datetime.fromtimestamp(source.stat().st_mtime, dt.timezone.utc).isoformat()
             dest.with_suffix('.metadata.json').write_text(json.dumps(meta, ensure_ascii=False, indent=2)+'\n')
             raw.append({'case': cid, 'provider': provider, 'sha256': sha(dest), 'size': size})
-        if not sizes or any(size != sizes[0] for size in sizes):
+        if not sizes and not case.get('captureErrors'):
+            raise ValueError(f'Empty capture {cid} requires explicit captureErrors; never drop failed cases.')
+        if sizes and any(size != sizes[0] for size in sizes):
             raise ValueError(f'Unequal original dimensions for {cid}; no resize/padding allowed by this adapter.')
     manifest_path = out / 'cases.json'
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+'\n')
@@ -97,6 +105,10 @@ def main():
     p.add_argument('--site-dir', type=Path, required=True)
     p.add_argument('--node', type=Path, required=True)
     args = p.parse_args()
+    pinned = json.loads(Path(__file__).with_name('raft_framework.json').read_text())
+    actual = json.loads(args.receipt.read_text())['framework']
+    if actual != pinned:
+        p.error('Receipt framework must match the repository raft_framework.json pin.')
     generate(args.receipt, args.framework_root, args.out, args.site_dir, args.node)
 
 

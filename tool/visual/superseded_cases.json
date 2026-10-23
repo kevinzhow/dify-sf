@@ -1,0 +1,36 @@
+{
+  "cases": {
+    "controls.scroll-area.light.en-US": {
+      "reason": "Wrong reference component: DifyEditorScrollbar ports Monaco’s square editor scrollbar, not the modern dify-ui ScrollArea. Keep the raw diagnostic attempt; exclude the incomparable pair.",
+      "replacement": [
+        "editors.panel-code-scroll.light.en-US",
+        "editors.panel-code-scroll.dark.en-US"
+      ],
+      "referenceEvidence": "web/app/components/workflow/nodes/_base/components/editor/code-editor/index.tsx; app/lib/src/design/widgets/scrollbar.dart"
+    },
+    "controls.scroll-area.dark.en-US": {
+      "reason": "Wrong reference component: DifyEditorScrollbar ports Monaco’s square editor scrollbar, not the modern dify-ui ScrollArea. Keep the raw diagnostic attempt; exclude the incomparable pair.",
+      "replacement": [
+        "editors.panel-code-scroll.light.en-US",
+        "editors.panel-code-scroll.dark.en-US"
+      ],
+      "referenceEvidence": "web/app/components/workflow/nodes/_base/components/editor/code-editor/index.tsx; app/lib/src/design/widgets/scrollbar.dart"
+    },
+    "controls.scroll-area.light.zh-Hans": {
+      "reason": "Wrong reference component: DifyEditorScrollbar ports Monaco’s square editor scrollbar, not the modern dify-ui ScrollArea. Keep the raw diagnostic attempt; exclude the incomparable pair.",
+      "replacement": [
+        "editors.panel-code-scroll.light.en-US",
+        "editors.panel-code-scroll.dark.en-US"
+      ],
+      "referenceEvidence": "web/app/components/workflow/nodes/_base/components/editor/code-editor/index.tsx; app/lib/src/design/widgets/scrollbar.dart"
+    },
+    "controls.scroll-area.dark.zh-Hans": {
+      "reason": "Wrong reference component: DifyEditorScrollbar ports Monaco’s square editor scrollbar, not the modern dify-ui ScrollArea. Keep the raw diagnostic attempt; exclude the incomparable pair.",
+      "replacement": [
+        "editors.panel-code-scroll.light.en-US",
+        "editors.panel-code-scroll.dark.en-US"
+      ],
+      "referenceEvidence": "web/app/components/workflow/nodes/_base/components/editor/code-editor/index.tsx; app/lib/src/design/widgets/scrollbar.dart"
+    }
+  }
+}

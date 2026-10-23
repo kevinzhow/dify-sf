@@ -1,0 +1,1172 @@
+[
+  {
+    "id": "var-env",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/sf_run_workflow.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": {
+          "role": "button",
+          "name": "Environment Variables"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Environment Variables"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 800
+      }
+    ],
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "Environment variables can be used to store"
+    ]
+  },
+  {
+    "id": "var-system",
+    "fixture": "tool/visual/fixtures/sf_run_workflow.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": {
+          "role": "button",
+          "name": "System Variables"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "System Variables"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 800
+      }
+    ],
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "System variables are global variables"
+    ]
+  },
+  {
+    "id": "var-conversation",
+    "fixture": "tool/visual/fixtures/sf_chat_preview.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": {
+          "role": "button",
+          "name": "Conversation Variables"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Conversation Variables"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 800
+      }
+    ],
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "Conversation Variables are used to store"
+    ]
+  },
+  {
+    "id": "features",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/sf_chat_preview.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": {
+          "role": "button",
+          "name": "Features"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Features"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      }
+    ],
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "Enhance web app user experience"
+    ]
+  },
+  {
+    "id": "inspect",
+    "fixture": "tool/visual/fixtures/sf_run_workflow.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": {
+          "text": "View cached variables"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      }
+    ],
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "After stepping through a node"
+    ]
+  },
+  {
+    "id": "inspect-run",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/ui_model_free_run.json",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": "button:has-text(\"Test Run\")"
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "click": {
+          "role": "button",
+          "name": "Start Run"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Start Run"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 5000,
+        "ours": 500,
+        "until": "VISUAL_RUN"
+      },
+      {
+        "click": {
+          "text": "View cached variables"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1500
+      }
+    ],
+    "modelFreeRun": true,
+    "captureScope": "real editor overlay; only built-in Start, End, Answer and Variable Aggregator execution; no model/code/template sandbox/HTTP/tool calls",
+    "expectedCorpus": [
+      "Reset all"
+    ],
+    "expectSucceeded": true
+  },
+  {
+    "id": "comment-mode",
+    "fixture": "tool/visual/fixtures/sf_run_workflow.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": {
+          "role": "button",
+          "name": "Comment Mode"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Comment Mode"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      }
+    ],
+    "comments": [
+      {
+        "x": 420,
+        "y": 200,
+        "content": "Should the code node trim the name?",
+        "replies": [
+          "Yes, and lower-case it."
+        ]
+      }
+    ],
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [],
+    "expectCommentMode": true
+  },
+  {
+    "id": "comment-thread",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/sf_run_workflow.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": {
+          "role": "button",
+          "name": "Open comment by alice"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Open comment by alice"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      }
+    ],
+    "comments": [
+      {
+        "x": 420,
+        "y": 200,
+        "content": "Should the code node trim the name?",
+        "replies": [
+          "Yes, and lower-case it."
+        ]
+      }
+    ],
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "Should the code node trim the name"
+    ]
+  },
+  {
+    "id": "note-selected",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/sf_run_workflow.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": ".react-flow__node-custom-note",
+        "at": [
+          30,
+          40
+        ]
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 800
+      }
+    ],
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "Bold"
+    ]
+  },
+  {
+    "id": "run-input",
+    "fixture": "tool/visual/fixtures/sf_run_workflow.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": "button:has-text(\"Test Run\")"
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      }
+    ],
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "Start Run"
+    ]
+  },
+  {
+    "id": "run-result",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/ui_model_free_run.json",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": "button:has-text(\"Test Run\")"
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "click": {
+          "role": "button",
+          "name": "Start Run"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Start Run"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 5000,
+        "ours": 500,
+        "until": "VISUAL_RUN"
+      }
+    ],
+    "modelFreeRun": true,
+    "captureScope": "real editor overlay; only built-in Start, End, Answer and Variable Aggregator execution; no model/code/template sandbox/HTTP/tool calls",
+    "expectedCorpus": [
+      "SUCCESS|SUCCEEDED"
+    ],
+    "expectSucceeded": true
+  },
+  {
+    "id": "run-detail",
+    "fixture": "tool/visual/fixtures/ui_model_free_run.json",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": "button:has-text(\"Test Run\")"
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "click": {
+          "role": "button",
+          "name": "Start Run"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Start Run"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 5000,
+        "ours": 500,
+        "until": "VISUAL_RUN"
+      },
+      {
+        "click": {
+          "text": "DETAIL"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 800
+      }
+    ],
+    "modelFreeRun": true,
+    "captureScope": "real editor overlay; only built-in Start, End, Answer and Variable Aggregator execution; no model/code/template sandbox/HTTP/tool calls",
+    "expectedCorpus": [
+      "SUCCESS|SUCCEEDED"
+    ],
+    "expectSucceeded": true,
+    "expectedTab": "DETAIL"
+  },
+  {
+    "id": "run-tracing",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/ui_model_free_run.json",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": "button:has-text(\"Test Run\")"
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "click": {
+          "role": "button",
+          "name": "Start Run"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Start Run"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 5000,
+        "ours": 500,
+        "until": "VISUAL_RUN"
+      },
+      {
+        "click": {
+          "text": "TRACING"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 800
+      }
+    ],
+    "modelFreeRun": true,
+    "captureScope": "real editor overlay; only built-in Start, End, Answer and Variable Aggregator execution; no model/code/template sandbox/HTTP/tool calls",
+    "expectedCorpus": [
+      "SUCCESS|SUCCEEDED"
+    ],
+    "expectSucceeded": true,
+    "expectedTab": "TRACING"
+  },
+  {
+    "id": "run-history",
+    "fixture": "tool/visual/fixtures/ui_model_free_run.json",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": "button:has-text(\"Test Run\")"
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "click": {
+          "role": "button",
+          "name": "Start Run"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Start Run"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 5000,
+        "ours": 500,
+        "until": "VISUAL_RUN"
+      },
+      {
+        "click": {
+          "role": "button",
+          "name": "View run history"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "View run history"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1000
+      }
+    ],
+    "modelFreeRun": true,
+    "captureScope": "real editor overlay; only built-in Start, End, Answer and Variable Aggregator execution; no model/code/template sandbox/HTTP/tool calls",
+    "expectedCorpus": [
+      "Run History"
+    ],
+    "expectSucceeded": true,
+    "expectedReferenceCorpus": [
+      "Run History"
+    ]
+  },
+  {
+    "id": "run-last-run",
+    "fixture": "tool/visual/fixtures/ui_model_free_run.json",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": "button:has-text(\"Test Run\")"
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "click": {
+          "role": "button",
+          "name": "Start Run"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Start Run"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 5000,
+        "ours": 500,
+        "until": "VISUAL_RUN"
+      },
+      {
+        "click": ".react-flow__node[data-id=\"1761000000004\"]",
+        "at": [
+          16,
+          16
+        ]
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 800
+      },
+      {
+        "click": {
+          "role": "tab",
+          "name": "Last Run",
+          "exact": false
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1000
+      }
+    ],
+    "modelFreeRun": true,
+    "captureScope": "real editor overlay; only built-in Start, End, Answer and Variable Aggregator execution; no model/code/template sandbox/HTTP/tool calls",
+    "expectedCorpus": [],
+    "expectSucceeded": true,
+    "expectedTab": "LAST RUN"
+  },
+  {
+    "id": "run-single",
+    "fixture": "tool/visual/fixtures/ui_model_free_run.json",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": ".react-flow__node[data-id=\"1761000000003\"]",
+        "at": [
+          16,
+          16
+        ]
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 800
+      },
+      {
+        "click": {
+          "role": "button",
+          "name": "Run this step"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Run this step"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1000
+      }
+    ],
+    "modelFreeRun": true,
+    "captureScope": "real editor overlay; only built-in Start, End, Answer and Variable Aggregator execution; no model/code/template sandbox/HTTP/tool calls",
+    "expectedCorpus": [],
+    "expectedTab": "LAST RUN"
+  },
+  {
+    "id": "preview",
+    "fixture": "tool/visual/fixtures/sf_chat_preview.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": {
+          "role": "button",
+          "name": "Preview"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Preview"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      }
+    ],
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "Send"
+    ]
+  },
+  {
+    "id": "preview-chat",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/ui_model_free_chat.json",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": {
+          "role": "button",
+          "name": "Preview"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Preview"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "click": "textarea"
+      },
+      {
+        "type": "Hello there"
+      },
+      {
+        "press": "Enter"
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 6000,
+        "ours": 500,
+        "until": "VISUAL_RUN"
+      }
+    ],
+    "modelFreeRun": true,
+    "captureScope": "real editor overlay; only built-in Start, End, Answer and Variable Aggregator execution; no model/code/template sandbox/HTTP/tool calls",
+    "expectedCorpus": [
+      "Thanks, your message was received."
+    ]
+  },
+  {
+    "id": "toast-publish",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/basic_chatflow.yml",
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "steps": [
+      {
+        "click": {
+          "role": "button",
+          "name": "Publish"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Publish"
+        }
+      },
+      {
+        "wait": 500
+      },
+      {
+        "click": "button:has-text(\"Ctrl\")",
+        "oursClick": {
+          "role": "button",
+          "name": "Publish",
+          "last": true
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 600
+      }
+    ],
+    "note": "the checklist has an issue (the LLM has no model): publishing says so in an error toast, over the open publish menu",
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "Make sure all issues are resolved before publishing"
+    ],
+    "expectedReferenceCorpus": [
+      "Make sure all issues are resolved before publishing"
+    ],
+    "admissionWaitMs": 0
+  },
+  {
+    "id": "model-selector-credentials",
+    "dark": true,
+    "fixture": "tool/visual/fixtures/sf_model_credentials.yml",
+    "viewport": [
+      40,
+      120,
+      0.8
+    ],
+    "window": [
+      1440,
+      900
+    ],
+    "oursWindow": [
+      1192,
+      900
+    ],
+    "region": [
+      0,
+      0,
+      1192,
+      900
+    ],
+    "select": "llm_node",
+    "steps": [
+      {
+        "click": {
+          "role": "button",
+          "name": "Configure model"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Configure model"
+        }
+      },
+      {
+        "wait": 800
+      },
+      {
+        "click": {
+          "role": "button",
+          "name": "Primary key"
+        },
+        "oursClick": {
+          "role": "button",
+          "name": "Primary key"
+        }
+      },
+      {
+        "park": true
+      },
+      {
+        "wait": 800
+      }
+    ],
+    "routes": [
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/model-providers/summary",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/model-providers",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/models/model-types/llm",
+        "jsonFile": "tool/visual/fixtures/model-provider-llm-list.json"
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/model-providers/summary",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/model-providers",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/models/model-types/llm",
+        "jsonFile": "tool/visual/fixtures/model-provider-llm-list.json"
+      },
+      {
+        "url": "**/visual-provider-icon.svg",
+        "bodyFile": "tool/visual/fixtures/model-provider-icon.svg",
+        "contentType": "image/svg+xml"
+      }
+    ],
+    "note": "Synthetic primary and backup credentials; all recommended plugins installed, only OpenAI configured, to exercise the common credential menu without the unported marketplace recommendations.",
+    "captureScope": "real editor overlay; template-only execution when modelFreeRun is true",
+    "expectedCorpus": [
+      "Backup key"
+    ]
+  }
+]

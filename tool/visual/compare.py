@@ -221,11 +221,12 @@ def locate(page, loc):
     if isinstance(loc, str):
         return page.locator(loc).first
     if 'role' in loc:
-        return page.get_by_role(loc['role'], **({'name': loc['name'], 'exact': loc.get('exact', True)} if 'name' in loc else {})).first
+        target = page.get_by_role(loc['role'], **({'name': loc['name'], 'exact': loc.get('exact', True)} if 'name' in loc else {}))
+        return target.last if loc.get('last') else target.first
     return page.get_by_text(loc['text'], exact=loc.get('exact', True)).first
 
 
-def run_dify_steps(page, steps, box):
+def run_dify_steps(page, steps, box, failure_dir=None):
     """Does [steps] in Dify; returns them with each pointer step's point relative to [box] (for the replay)."""
     done = []
     for i, st in enumerate(steps):
@@ -236,7 +237,7 @@ def run_dify_steps(page, steps, box):
                 try:
                     el.wait_for(state='visible', timeout=30000)
                 except Exception:
-                    failure_dir = ROOT / 'build/visual-failures'
+                    failure_dir = failure_dir or ROOT / 'build/visual-failures'
                     failure_dir.mkdir(parents=True, exist_ok=True)
                     page.screenshot(path=str(failure_dir / 'step-failed.png'))
                     raise RuntimeError(f'step {i} {st}: not found (Dify page in build/visual-failures/step-failed.png)')
@@ -267,7 +268,10 @@ def run_our_steps(page, steps, box, log=()):
     for st in steps:
         if st.get('dify'):
             continue
-        if 'point' in st:
+        if 'oursClick' in st:
+            locate(page, st['oursClick']).click(timeout=10000)
+            page.wait_for_timeout(150)
+        elif 'point' in st:
             x, y = box['x'] + st['point'][0], box['y'] + st['point'][1]
             if 'click' in st:
                 page.mouse.click(x, y)
@@ -344,7 +348,7 @@ def capture_dify(browsers, s, app_id, case, out, invite=None):
     ctx = browsers.context(*case['window'])
     if THEME == 'dark':
         # Dify's theme switch (next-themes: localStorage `theme`, light | dark | system), set before the app starts.
-        ctx.add_init_script("localStorage.setItem('theme', 'dark')")
+        ctx.add_init_script("if (window.top === window && /^https?:$/.test(location.protocol)) localStorage.setItem('theme', 'dark')")
     pg_case = case.get('page')
     if not pg_case or pg_case.get('signedIn', True):
         ctx.add_cookies([{'name': c.name, 'value': c.value, 'url': DIFY} for c in s.cookies if c.name != 'locale'])
@@ -388,11 +392,12 @@ def capture_dify(browsers, s, app_id, case, out, invite=None):
             page.wait_for_timeout(300)
         except Exception:
             print(f'  {case["id"]}: a Dify toast stayed')
-    steps = run_dify_steps(page, case.get('steps', []), box)
+    steps = run_dify_steps(page, case.get('steps', []), box, failure_dir=out.parent/'failures'/out.stem)
     out.with_suffix('.steps.json').write_text(json.dumps(steps))
     if steps:
         page.wait_for_timeout(800)
     capture_controls(page, case, 'dify', out)
+    page.screenshot(path=str(out.with_suffix('.full.png')))
     shot(page, box, case, out)
     # Where Dify draws text (every non-empty text node on the page: canvas, header, node panel), relative to the
     # captured region.
@@ -439,12 +444,13 @@ TEXT_RECTS = """() => {
 def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None):
     # Our page is only the editor; Dify's has its app sidebar too, so a whole-canvas case gives ours the size of
     # Dify's canvas (`oursWindow`).
-    w, h = case.get('oursWindow', case['window'])
+    w, h = case['window'] if case.get('realEditor') else case.get('oursWindow', case['window'])
     ctx = browsers.context(w, h)
     pg_case = case.get('page')
     # Signed in before the app starts: its token store (web) is localStorage['dify-sf/tokens/<server>'].
     if not pg_case or pg_case.get('signedIn', True):
         ctx.add_init_script(
+            f'if (window.top === window && /^https?:$/.test(location.protocol)) '
             f'localStorage.setItem({json.dumps("dify-sf/tokens/" + SF)}, {json.dumps(json.dumps(sf_tokens()))})')
     page = ctx.new_page()
     add_routes(page, case, 'ours')
@@ -470,7 +476,8 @@ def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None
     else:
         x, y, z = viewport
         select = f'&select={case["select"]}' if case.get('select') else ''
-        page.goto(f'{base}/?server={SF}&doc={doc}&view={x},{y},{z}&visual=1{select}' + (f'&{EXTRA}' if EXTRA else '')
+        target = f'app={doc}&page=workflow' if case.get('realEditor') else f'doc={doc}'
+        page.goto(f'{base}/?server={SF}&{target}&view={x},{y},{z}&visual=1{select}' + (f'&{EXTRA}' if EXTRA else '')
                   + theme)
         t0 = time.time()
         while not rect and time.time() - t0 < 60:
@@ -483,9 +490,13 @@ def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None
         l, t, w, h = (float(v) for v in rect[-1].split()[1].split(','))
         box = {'x': l, 'y': t, 'width': w, 'height': h}
     if steps:
+        if any(st.get('oursClick') for st in steps) and page.locator('flt-semantics-placeholder').count():
+            page.locator('flt-semantics-placeholder').evaluate('(e)=>e.click()')
+            page.wait_for_timeout(400)
         run_our_steps(page, steps, box, log)
         page.wait_for_timeout(1200)
     capture_controls(page, case, 'ours', out)
+    page.screenshot(path=str(out.with_suffix('.full.png')))
     shot(page, box, case, out)
     if views:
         print(f'  ours at rest: {views[-1]}{"" if settled or pg_case else " (never settled)"}')

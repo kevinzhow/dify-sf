@@ -1,0 +1,15 @@
+{
+  "repository": "https://github.com/botiverse/raft-source",
+  "commit": "26f77ef97c40d3d91aa2c5e42b0fd66b8bf39fe6",
+  "binding": "raft-flutter/docs/source-reference.json",
+  "files": {
+    "src/cli.mjs": "cc7ba19b968fa567ef25bd2c2458b9fd12285dc051ffbc87dbc848d297ece22b",
+    "src/pi-model.mjs": "170ce27668685aca2f64b9a4e3c022ae6fe9e95c6fade2c1bb8709ad6b4e7dc1",
+    "src/sharp-image-diff.mjs": "17c90fa30b325eaf414ab44b1bb17f49bd5d2fc9830a47e1ec2743bd210eab50",
+    "src/sharp-image-overlay.mjs": "a9d4a42d26f1de3b0bd0eaf5df0566f16202cdb6fa97221010da0402f53b48a2",
+    "src/slock-visual-image-diff.swift": "dd39b6838e1307efee0f1097179f97dc18af7a5d7314510b8f9f448ab029c6cc",
+    "site/home.css": "c96c49692d6d09c426cd05be6de00e986a5268d794365998077963b7251334ab",
+    "site/home.html": "a3c9a037c5a6fde2347940ed986fc12023a86c0f6b68a7b7a86496d0e7ee1dd6",
+    "site/home.js": "13421736a4123d0186e8ee08aacaf282bdb9fed6a36516d62b533ee111b0b269"
+  }
+}

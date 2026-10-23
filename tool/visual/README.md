@@ -1,3 +1,13 @@
+# UI visual testing
+
+**UI acceptance uses the pinned, unchanged Raft Visual Testing framework.** Follow [UI_TESTING.md](UI_TESTING.md) and [RAFT_REPORT.md](RAFT_REPORT.md). The permanent source inventory is `ui_coverage.json`; run `python3 tool/visual/check_ui_coverage.py` whenever shared exports, pages or node bodies change.
+
+Use `capture_components.py`, `capture_pages.py` and `capture_editors.py` to produce original paired PNGs and source/state receipts, then `raft_report.py` to invoke the actual upstream `diff` + `site --skip-analysis`. Failed captures remain Missing in the report. The official scores include text and every pixel; no masks or resizing are permitted. A compile/unit-test pass or high average RGB is not a visual pass.
+
+The historical documentation below describes diagnostic scripts and earlier limited cases. Its Δ16 scores, masks and non-text thresholds are **not the current acceptance method**.
+
+---
+
 # Comparing the browser UIs
 
 `compare.py` captures the pinned Dify 1.17.1 and a fixed Flutter web build in Chromium. These are selected screenshot cases, not a claim of whole-application visual parity. Behavioral tests and the design-system allowlist do not establish visual parity either.

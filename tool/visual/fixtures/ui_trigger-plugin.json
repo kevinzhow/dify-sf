@@ -1,0 +1,109 @@
+{
+  "app": {
+    "description": "Workflow with LLM node for testing auto-mock",
+    "icon": "🤖",
+    "icon_background": "#FFEAD5",
+    "mode": "workflow",
+    "name": "llm-simple",
+    "use_icon_as_answer_icon": false
+  },
+  "dependencies": [],
+  "kind": "app",
+  "version": "0.3.1",
+  "workflow": {
+    "conversation_variables": [],
+    "environment_variables": [],
+    "features": {
+      "file_upload": {
+        "enabled": false
+      },
+      "opening_statement": "",
+      "retriever_resource": {
+        "enabled": false
+      },
+      "sensitive_word_avoidance": {
+        "enabled": false
+      },
+      "speech_to_text": {
+        "enabled": false
+      },
+      "suggested_questions": [],
+      "suggested_questions_after_answer": {
+        "enabled": false
+      },
+      "text_to_speech": {
+        "enabled": false
+      }
+    },
+    "graph": {
+      "edges": [],
+      "nodes": [
+        {
+          "data": {
+            "type": "trigger-plugin",
+            "title": "Trigger Plugin",
+            "desc": "",
+            "selected": false,
+            "plugin_id": "",
+            "event_name": "",
+            "event_parameters": {},
+            "config": {}
+          },
+          "height": 90,
+          "id": "ui-parity-trigger-plugin",
+          "position": {
+            "x": 500,
+            "y": 300
+          },
+          "positionAbsolute": {
+            "x": 334,
+            "y": 227
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 244
+        },
+        {
+          "data": {
+            "desc": "",
+            "outputs": [
+              {
+                "value_selector": [
+                  "llm_node",
+                  "text"
+                ],
+                "value_type": "string",
+                "variable": "answer"
+              }
+            ],
+            "selected": false,
+            "title": "End",
+            "type": "end"
+          },
+          "height": 90,
+          "id": "end_node",
+          "position": {
+            "x": 638,
+            "y": 227
+          },
+          "positionAbsolute": {
+            "x": 638,
+            "y": 227
+          },
+          "selected": false,
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "type": "custom",
+          "width": 244
+        }
+      ],
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "zoom": 0.7
+      }
+    }
+  }
+}

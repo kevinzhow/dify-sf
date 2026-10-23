@@ -1,0 +1,6524 @@
+[
+  {
+    "kind": "signin",
+    "dify": "/signin",
+    "ours": "",
+    "signedIn": false,
+    "expected": {
+      "dify": "Welcome",
+      "ours": "Welcome"
+    },
+    "actions": {},
+    "id": "pages.signin.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "install",
+    "dify": "/install",
+    "ours": "",
+    "signedIn": false,
+    "expected": {
+      "dify": "Set Up",
+      "ours": "Set Up"
+    },
+    "actions": {},
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/setup",
+        "json": {
+          "step": "not_started"
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/setup",
+        "json": {
+          "step": "not_started"
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.install.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "activate-expired",
+    "dify": "/activate?token=expired-ui-parity&email=alice%40example.test",
+    "ours": "invite=expired-ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "expired",
+      "ours": "expired"
+    },
+    "actions": {},
+    "id": "pages.activate-expired.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/activate/check",
+        "method": "POST",
+        "json": {
+          "is_valid": false
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "signin-invite",
+    "dify": "/signin?invite_token=ui-parity&email=alice%40example.test",
+    "ours": "invite=ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "Sign in",
+      "ours": "Sign in"
+    },
+    "actions": {},
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/activate/check**",
+        "json": {
+          "is_valid": true,
+          "data": {
+            "email": "alice@example.test",
+            "workspace_id": "ui-parity",
+            "workspace_name": "alice's Workspace",
+            "requires_setup": true,
+            "account_status": "pending"
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/activate/check",
+        "method": "POST",
+        "json": {
+          "is_valid": true,
+          "data": {
+            "email": "alice@example.test",
+            "workspace_id": "ui-parity",
+            "workspace_name": "alice's Workspace",
+            "requires_setup": true,
+            "account_status": "pending"
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.signin-invite.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "invite-settings",
+    "dify": "/signin/invite-settings?invite_token=ui-parity",
+    "ours": "invite=ui-parity",
+    "signedIn": true,
+    "expected": {
+      "dify": "Set Your Account",
+      "ours": "Set Your Account"
+    },
+    "actions": {
+      "ours": [
+        {
+          "locator": "input[type=password]",
+          "fill": "UiParityOnly123"
+        },
+        {
+          "role": "button",
+          "name": "Sign in"
+        }
+      ]
+    },
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/activate/check**",
+        "json": {
+          "is_valid": true,
+          "data": {
+            "email": "alice@example.test",
+            "workspace_id": "ui-parity",
+            "workspace_name": "alice's Workspace",
+            "requires_setup": true,
+            "account_status": "pending"
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/activate/check",
+        "method": "POST",
+        "json": {
+          "is_valid": true,
+          "data": {
+            "email": "alice@example.test",
+            "workspace_id": "ui-parity",
+            "workspace_name": "alice's Workspace",
+            "requires_setup": true,
+            "account_status": "pending"
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "id": "pages.invite-settings.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "reset-password-email",
+    "dify": "/reset-password",
+    "ours": "",
+    "signedIn": false,
+    "expected": {
+      "dify": "Reset",
+      "ours": "Reset"
+    },
+    "actions": {
+      "ours": [
+        {
+          "text": "Forgot your password?"
+        }
+      ]
+    },
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.reset-password-email.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "reset-password-set",
+    "dify": "/reset-password/set-password?token=ui-parity",
+    "ours": "#/reset-password/set-password?token=ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "password",
+      "ours": "password"
+    },
+    "actions": {},
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.reset-password-set.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-empty",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Create",
+      "ours": "Create"
+    },
+    "actions": {},
+    "emptyStudio": true,
+    "id": "pages.studio-empty.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "account",
+    "dify": "/account",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Account",
+      "ours": "Account"
+    },
+    "actions": {
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Account"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.account.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "preferences",
+    "dify": "/apps?settings=preferences",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Preferences",
+      "ours": "Preferences"
+    },
+    "actions": {
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Preferences"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.preferences.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "members",
+    "dify": "/apps?settings=members",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Members",
+      "ours": "Members"
+    },
+    "actions": {
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Preferences"
+        },
+        {
+          "text": "Members"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.members.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "members-invite",
+    "dify": "/apps?settings=members",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": {
+        "role": "button",
+        "name": "Send invitations"
+      },
+      "ours": {
+        "role": "button",
+        "name": "Send invitations"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "Add"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Preferences"
+        },
+        {
+          "text": "Members"
+        },
+        {
+          "role": "button",
+          "name": "Add"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.members-invite.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "integrations-models",
+    "dify": "/integrations/model-provider",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Model",
+      "ours": "Model"
+    },
+    "actions": {
+      "ours": [
+        {
+          "role": "button",
+          "name": "Integrations"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.integrations-models.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/api/v1/collections/*/plugins",
+        "method": "POST",
+        "json": {
+          "data": {
+            "plugins": [],
+            "total": 0
+          },
+          "plugins": [],
+          "total": 0
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/api/v1/plugins/search/advanced",
+        "method": "POST",
+        "json": {
+          "data": {
+            "plugins": [],
+            "total": 0
+          },
+          "plugins": [],
+          "total": 0
+        }
+      }
+    ],
+    "routes": [
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/model-providers/summary",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/model-providers",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/models/model-types/llm",
+        "jsonFile": "tool/visual/fixtures/model-provider-llm-list.json"
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/model-providers/summary",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/model-providers",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/models/model-types/llm",
+        "jsonFile": "tool/visual/fixtures/model-provider-llm-list.json"
+      },
+      {
+        "url": "**/visual-provider-icon.svg",
+        "bodyFile": "tool/visual/fixtures/model-provider-icon.svg",
+        "contentType": "image/svg+xml"
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "account-menu",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Appearance",
+      "ours": {
+        "role": "menuitem",
+        "name": "Appearance"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.account-menu.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "appearance-menu",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Light",
+      "ours": {
+        "role": "menuitemradio",
+        "name": "Light"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Appearance"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Appearance"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.appearance-menu.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-access-point",
+    "dify": "/app/{app}/access-point",
+    "ours": "app={app}&page=access-point",
+    "signedIn": true,
+    "expected": {},
+    "actions": {},
+    "fixture": "tool/visual/fixtures/basic_chatflow.yml",
+    "page": {
+      "routes": []
+    },
+    "state": "default",
+    "id": "pages.app-access-point.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-api-keys",
+    "dify": "/app/{app}/access-point",
+    "ours": "app={app}&page=access-point",
+    "signedIn": true,
+    "expected": {
+      "dify": {
+        "role": "button",
+        "name": "Create new Secret key"
+      },
+      "ours": {
+        "role": "button",
+        "name": "Create new Secret key"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "API Key 0"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "API Key 0"
+        }
+      ]
+    },
+    "fixture": "tool/visual/fixtures/basic_chatflow.yml",
+    "page": {
+      "routes": []
+    },
+    "state": "default",
+    "id": "pages.app-api-keys.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-annotations",
+    "dify": "/app/{app}/annotations",
+    "ours": "app={app}&page=annotations",
+    "signedIn": true,
+    "expected": {},
+    "actions": {},
+    "fixture": "tool/visual/fixtures/basic_chatflow.yml",
+    "page": {
+      "routes": []
+    },
+    "state": "default",
+    "id": "pages.app-annotations.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-overview",
+    "dify": "/app/{app}/overview",
+    "ours": "app={app}&page=overview",
+    "signedIn": true,
+    "expected": {},
+    "actions": {},
+    "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml",
+    "page": {
+      "routes": [
+        {
+          "side": "dify",
+          "url": "**/console/api/apps/*/workflow/statistics/daily-conversations**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "runs": 12
+              },
+              {
+                "date": "2026-10-14",
+                "runs": 30
+              },
+              {
+                "date": "2026-10-15",
+                "runs": 22
+              },
+              {
+                "date": "2026-10-16",
+                "runs": 41
+              },
+              {
+                "date": "2026-10-17",
+                "runs": 18
+              },
+              {
+                "date": "2026-10-18",
+                "runs": 9
+              },
+              {
+                "date": "2026-10-19",
+                "runs": 27
+              }
+            ]
+          }
+        },
+        {
+          "side": "ours",
+          "url": "**/v1/apps/*/workflow/statistics/daily-conversations**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "runs": 12
+              },
+              {
+                "date": "2026-10-14",
+                "runs": 30
+              },
+              {
+                "date": "2026-10-15",
+                "runs": 22
+              },
+              {
+                "date": "2026-10-16",
+                "runs": 41
+              },
+              {
+                "date": "2026-10-17",
+                "runs": 18
+              },
+              {
+                "date": "2026-10-18",
+                "runs": 9
+              },
+              {
+                "date": "2026-10-19",
+                "runs": 27
+              }
+            ]
+          }
+        },
+        {
+          "side": "dify",
+          "url": "**/console/api/apps/*/workflow/statistics/daily-terminals**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "terminal_count": 5
+              },
+              {
+                "date": "2026-10-14",
+                "terminal_count": 11
+              },
+              {
+                "date": "2026-10-15",
+                "terminal_count": 8
+              },
+              {
+                "date": "2026-10-16",
+                "terminal_count": 14
+              },
+              {
+                "date": "2026-10-17",
+                "terminal_count": 7
+              },
+              {
+                "date": "2026-10-18",
+                "terminal_count": 3
+              },
+              {
+                "date": "2026-10-19",
+                "terminal_count": 10
+              }
+            ]
+          }
+        },
+        {
+          "side": "ours",
+          "url": "**/v1/apps/*/workflow/statistics/daily-terminals**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "terminal_count": 5
+              },
+              {
+                "date": "2026-10-14",
+                "terminal_count": 11
+              },
+              {
+                "date": "2026-10-15",
+                "terminal_count": 8
+              },
+              {
+                "date": "2026-10-16",
+                "terminal_count": 14
+              },
+              {
+                "date": "2026-10-17",
+                "terminal_count": 7
+              },
+              {
+                "date": "2026-10-18",
+                "terminal_count": 3
+              },
+              {
+                "date": "2026-10-19",
+                "terminal_count": 10
+              }
+            ]
+          }
+        },
+        {
+          "side": "dify",
+          "url": "**/console/api/apps/*/workflow/statistics/token-costs**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "token_count": 1820,
+                "total_price": 0.00364,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-14",
+                "token_count": 4210,
+                "total_price": 0.00842,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-15",
+                "token_count": 3300,
+                "total_price": 0.0066,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-16",
+                "token_count": 6150,
+                "total_price": 0.0123,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-17",
+                "token_count": 2400,
+                "total_price": 0.0048,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-18",
+                "token_count": 1100,
+                "total_price": 0.0022,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-19",
+                "token_count": 3900,
+                "total_price": 0.0078,
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "side": "ours",
+          "url": "**/v1/apps/*/workflow/statistics/token-costs**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "token_count": 1820,
+                "total_price": 0.00364,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-14",
+                "token_count": 4210,
+                "total_price": 0.00842,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-15",
+                "token_count": 3300,
+                "total_price": 0.0066,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-16",
+                "token_count": 6150,
+                "total_price": 0.0123,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-17",
+                "token_count": 2400,
+                "total_price": 0.0048,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-18",
+                "token_count": 1100,
+                "total_price": 0.0022,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-19",
+                "token_count": 3900,
+                "total_price": 0.0078,
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "side": "dify",
+          "url": "**/console/api/apps/*/workflow/statistics/average-app-interactions**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "interactions": 1.5
+              },
+              {
+                "date": "2026-10-14",
+                "interactions": 2.25
+              },
+              {
+                "date": "2026-10-15",
+                "interactions": 1.8
+              },
+              {
+                "date": "2026-10-16",
+                "interactions": 3.1
+              },
+              {
+                "date": "2026-10-17",
+                "interactions": 2.0
+              },
+              {
+                "date": "2026-10-18",
+                "interactions": 1.2
+              },
+              {
+                "date": "2026-10-19",
+                "interactions": 2.6
+              }
+            ]
+          }
+        },
+        {
+          "side": "ours",
+          "url": "**/v1/apps/*/workflow/statistics/average-app-interactions**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "interactions": 1.5
+              },
+              {
+                "date": "2026-10-14",
+                "interactions": 2.25
+              },
+              {
+                "date": "2026-10-15",
+                "interactions": 1.8
+              },
+              {
+                "date": "2026-10-16",
+                "interactions": 3.1
+              },
+              {
+                "date": "2026-10-17",
+                "interactions": 2.0
+              },
+              {
+                "date": "2026-10-18",
+                "interactions": 1.2
+              },
+              {
+                "date": "2026-10-19",
+                "interactions": 2.6
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "state": "network-fixture",
+    "id": "pages.app-overview.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-logs-workflow",
+    "dify": "/app/{app}/logs",
+    "ours": "app={app}&page=logs",
+    "signedIn": true,
+    "expected": {},
+    "actions": {},
+    "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml",
+    "page": {
+      "routes": [
+        {
+          "side": "dify",
+          "url": "**/console/api/apps/*/workflow-app-logs**",
+          "method": "GET",
+          "json": {
+            "page": 1,
+            "limit": 10,
+            "total": 3,
+            "has_more": false,
+            "data": [
+              {
+                "id": "log-0",
+                "workflow_run": {
+                  "id": "run-0",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "succeeded",
+                  "triggered_from": "app-run",
+                  "error": null,
+                  "elapsed_time": 1.234,
+                  "total_tokens": 312,
+                  "total_steps": 4,
+                  "created_at": 1760860800,
+                  "finished_at": 1760860802,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "web-app",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                  "id": "eu-0",
+                  "type": "browser",
+                  "is_anonymous": true,
+                  "session_id": "session-0"
+                },
+                "created_at": 1760860800,
+                "read_at": 1760860800
+              },
+              {
+                "id": "log-1",
+                "workflow_run": {
+                  "id": "run-1",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "failed",
+                  "triggered_from": "service-api",
+                  "error": null,
+                  "elapsed_time": 0.82,
+                  "total_tokens": 128,
+                  "total_steps": 3,
+                  "created_at": 1760857200,
+                  "finished_at": 1760857202,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "service-api",
+                "created_by_role": "account",
+                "created_by_account": {
+                  "id": "acc-1",
+                  "name": "alice",
+                  "email": "alice@example.test"
+                },
+                "created_by_end_user": null,
+                "created_at": 1760857200,
+                "read_at": 1760857200
+              },
+              {
+                "id": "log-2",
+                "workflow_run": {
+                  "id": "run-2",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "succeeded",
+                  "triggered_from": "app-run",
+                  "error": null,
+                  "elapsed_time": 3.5,
+                  "total_tokens": 940,
+                  "total_steps": 5,
+                  "created_at": 1760853600,
+                  "finished_at": 1760853602,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "web-app",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                  "id": "eu-2",
+                  "type": "browser",
+                  "is_anonymous": true,
+                  "session_id": "session-2"
+                },
+                "created_at": 1760853600,
+                "read_at": 1760853600
+              }
+            ]
+          }
+        },
+        {
+          "side": "ours",
+          "url": "**/v1/apps/*/workflow-app-logs**",
+          "method": "GET",
+          "json": {
+            "page": 1,
+            "limit": 10,
+            "total": 3,
+            "has_more": false,
+            "data": [
+              {
+                "id": "log-0",
+                "workflow_run": {
+                  "id": "run-0",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "succeeded",
+                  "triggered_from": "app-run",
+                  "error": null,
+                  "elapsed_time": 1.234,
+                  "total_tokens": 312,
+                  "total_steps": 4,
+                  "created_at": 1760860800,
+                  "finished_at": 1760860802,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "web-app",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                  "id": "eu-0",
+                  "type": "browser",
+                  "is_anonymous": true,
+                  "session_id": "session-0"
+                },
+                "created_at": 1760860800,
+                "read_at": 1760860800
+              },
+              {
+                "id": "log-1",
+                "workflow_run": {
+                  "id": "run-1",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "failed",
+                  "triggered_from": "service-api",
+                  "error": null,
+                  "elapsed_time": 0.82,
+                  "total_tokens": 128,
+                  "total_steps": 3,
+                  "created_at": 1760857200,
+                  "finished_at": 1760857202,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "service-api",
+                "created_by_role": "account",
+                "created_by_account": {
+                  "id": "acc-1",
+                  "name": "alice",
+                  "email": "alice@example.test"
+                },
+                "created_by_end_user": null,
+                "created_at": 1760857200,
+                "read_at": 1760857200
+              },
+              {
+                "id": "log-2",
+                "workflow_run": {
+                  "id": "run-2",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "succeeded",
+                  "triggered_from": "app-run",
+                  "error": null,
+                  "elapsed_time": 3.5,
+                  "total_tokens": 940,
+                  "total_steps": 5,
+                  "created_at": 1760853600,
+                  "finished_at": 1760853602,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "web-app",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                  "id": "eu-2",
+                  "type": "browser",
+                  "is_anonymous": true,
+                  "session_id": "session-2"
+                },
+                "created_at": 1760853600,
+                "read_at": 1760853600
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "state": "network-fixture",
+    "id": "pages.app-logs-workflow.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-logs-empty",
+    "dify": "/app/{app}/logs",
+    "ours": "app={app}&page=logs",
+    "signedIn": true,
+    "expected": {},
+    "actions": {},
+    "fixture": "tool/visual/fixtures/basic_chatflow.yml",
+    "page": {
+      "routes": []
+    },
+    "state": "default",
+    "id": "pages.app-logs-empty.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "human-form",
+    "dify": "/form/ui-parity",
+    "ours": "#/form/ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "Approve",
+      "ours": "Approve"
+    },
+    "actions": {},
+    "network": [
+      {
+        "url": "**/form/human_input/ui-parity",
+        "status": 200,
+        "json": {
+          "site": {
+            "site": {
+              "title": "Review",
+              "icon_type": "emoji",
+              "icon": "🤖",
+              "icon_background": "#FFEAD5"
+            }
+          },
+          "form_content": "Please review: {{#$output.review#}}",
+          "rendered_content": "Please review: {{#$output.review#}}",
+          "inputs": [
+            {
+              "type": "paragraph",
+              "output_variable_name": "review",
+              "default": {
+                "type": "constant",
+                "value": ""
+              }
+            }
+          ],
+          "user_actions": [
+            {
+              "id": "approve",
+              "title": "Approve",
+              "button_style": "primary"
+            }
+          ],
+          "resolved_default_values": {},
+          "default_values": {},
+          "expiration_time": 1893456000
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.human-form.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "human-form-expired",
+    "dify": "/form/ui-parity",
+    "ours": "#/form/ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "expired",
+      "ours": "expired"
+    },
+    "actions": {},
+    "network": [
+      {
+        "url": "**/form/human_input/ui-parity",
+        "status": 412,
+        "json": {
+          "code": "human_input_form_expired",
+          "message": "Expired",
+          "error": {
+            "code": "human_input_form_expired",
+            "message": "Expired"
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.human-form-expired.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "human-form-completed",
+    "dify": "/form/ui-parity",
+    "ours": "#/form/ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "dealt with elsewhere",
+      "ours": "dealt with elsewhere"
+    },
+    "actions": {},
+    "network": [
+      {
+        "url": "**/form/human_input/ui-parity",
+        "status": 409,
+        "json": {
+          "code": "human_input_form_submitted",
+          "message": "Submitted",
+          "error": {
+            "code": "human_input_form_submitted",
+            "message": "Submitted"
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.human-form-completed.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "human-form-not-found",
+    "dify": "/form/ui-parity",
+    "ours": "#/form/ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "not found",
+      "ours": "not found"
+    },
+    "actions": {},
+    "network": [
+      {
+        "url": "**/form/human_input/ui-parity",
+        "status": 404,
+        "json": {
+          "code": "not_found",
+          "message": "Not found",
+          "error": {
+            "code": "not_found",
+            "message": "Not found"
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.human-form-not-found.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "signin",
+    "dify": "/signin",
+    "ours": "",
+    "signedIn": false,
+    "expected": {
+      "dify": "Welcome",
+      "ours": "Welcome"
+    },
+    "actions": {},
+    "id": "pages.signin.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "install",
+    "dify": "/install",
+    "ours": "",
+    "signedIn": false,
+    "expected": {
+      "dify": "Set Up",
+      "ours": "Set Up"
+    },
+    "actions": {},
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/setup",
+        "json": {
+          "step": "not_started"
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/setup",
+        "json": {
+          "step": "not_started"
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.install.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "activate-expired",
+    "dify": "/activate?token=expired-ui-parity&email=alice%40example.test",
+    "ours": "invite=expired-ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "expired",
+      "ours": "expired"
+    },
+    "actions": {},
+    "id": "pages.activate-expired.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/activate/check",
+        "method": "POST",
+        "json": {
+          "is_valid": false
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "signin-invite",
+    "dify": "/signin?invite_token=ui-parity&email=alice%40example.test",
+    "ours": "invite=ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "Sign in",
+      "ours": "Sign in"
+    },
+    "actions": {},
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/activate/check**",
+        "json": {
+          "is_valid": true,
+          "data": {
+            "email": "alice@example.test",
+            "workspace_id": "ui-parity",
+            "workspace_name": "alice's Workspace",
+            "requires_setup": true,
+            "account_status": "pending"
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/activate/check",
+        "method": "POST",
+        "json": {
+          "is_valid": true,
+          "data": {
+            "email": "alice@example.test",
+            "workspace_id": "ui-parity",
+            "workspace_name": "alice's Workspace",
+            "requires_setup": true,
+            "account_status": "pending"
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.signin-invite.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "invite-settings",
+    "dify": "/signin/invite-settings?invite_token=ui-parity",
+    "ours": "invite=ui-parity",
+    "signedIn": true,
+    "expected": {
+      "dify": "Set Your Account",
+      "ours": "Set Your Account"
+    },
+    "actions": {
+      "ours": [
+        {
+          "locator": "input[type=password]",
+          "fill": "UiParityOnly123"
+        },
+        {
+          "role": "button",
+          "name": "Sign in"
+        }
+      ]
+    },
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/activate/check**",
+        "json": {
+          "is_valid": true,
+          "data": {
+            "email": "alice@example.test",
+            "workspace_id": "ui-parity",
+            "workspace_name": "alice's Workspace",
+            "requires_setup": true,
+            "account_status": "pending"
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/activate/check",
+        "method": "POST",
+        "json": {
+          "is_valid": true,
+          "data": {
+            "email": "alice@example.test",
+            "workspace_id": "ui-parity",
+            "workspace_name": "alice's Workspace",
+            "requires_setup": true,
+            "account_status": "pending"
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "id": "pages.invite-settings.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "reset-password-email",
+    "dify": "/reset-password",
+    "ours": "",
+    "signedIn": false,
+    "expected": {
+      "dify": "Reset",
+      "ours": "Reset"
+    },
+    "actions": {
+      "ours": [
+        {
+          "text": "Forgot your password?"
+        }
+      ]
+    },
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.reset-password-email.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "reset-password-set",
+    "dify": "/reset-password/set-password?token=ui-parity",
+    "ours": "#/reset-password/set-password?token=ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "password",
+      "ours": "password"
+    },
+    "actions": {},
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.reset-password-set.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-empty",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Create",
+      "ours": "Create"
+    },
+    "actions": {},
+    "emptyStudio": true,
+    "id": "pages.studio-empty.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "account",
+    "dify": "/account",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Account",
+      "ours": "Account"
+    },
+    "actions": {
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Account"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.account.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "preferences",
+    "dify": "/apps?settings=preferences",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Preferences",
+      "ours": "Preferences"
+    },
+    "actions": {
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Preferences"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.preferences.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "members",
+    "dify": "/apps?settings=members",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Members",
+      "ours": "Members"
+    },
+    "actions": {
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Preferences"
+        },
+        {
+          "text": "Members"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.members.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "members-invite",
+    "dify": "/apps?settings=members",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": {
+        "role": "button",
+        "name": "Send invitations"
+      },
+      "ours": {
+        "role": "button",
+        "name": "Send invitations"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "Add"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Preferences"
+        },
+        {
+          "text": "Members"
+        },
+        {
+          "role": "button",
+          "name": "Add"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.members-invite.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "integrations-models",
+    "dify": "/integrations/model-provider",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Model",
+      "ours": "Model"
+    },
+    "actions": {
+      "ours": [
+        {
+          "role": "button",
+          "name": "Integrations"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.integrations-models.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/api/v1/collections/*/plugins",
+        "method": "POST",
+        "json": {
+          "data": {
+            "plugins": [],
+            "total": 0
+          },
+          "plugins": [],
+          "total": 0
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/api/v1/plugins/search/advanced",
+        "method": "POST",
+        "json": {
+          "data": {
+            "plugins": [],
+            "total": 0
+          },
+          "plugins": [],
+          "total": 0
+        }
+      }
+    ],
+    "routes": [
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/model-providers/summary",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/model-providers",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/models/model-types/llm",
+        "jsonFile": "tool/visual/fixtures/model-provider-llm-list.json"
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/model-providers/summary",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/model-providers",
+        "jsonFile": "tool/visual/fixtures/model-provider-credentials.json"
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/models/model-types/llm",
+        "jsonFile": "tool/visual/fixtures/model-provider-llm-list.json"
+      },
+      {
+        "url": "**/visual-provider-icon.svg",
+        "bodyFile": "tool/visual/fixtures/model-provider-icon.svg",
+        "contentType": "image/svg+xml"
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "account-menu",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Appearance",
+      "ours": {
+        "role": "menuitem",
+        "name": "Appearance"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.account-menu.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "appearance-menu",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Light",
+      "ours": {
+        "role": "menuitemradio",
+        "name": "Light"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Appearance"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "alice Account"
+        },
+        {
+          "role": "menuitem",
+          "name": "Appearance"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.appearance-menu.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-access-point",
+    "dify": "/app/{app}/access-point",
+    "ours": "app={app}&page=access-point",
+    "signedIn": true,
+    "expected": {},
+    "actions": {},
+    "fixture": "tool/visual/fixtures/basic_chatflow.yml",
+    "page": {
+      "routes": []
+    },
+    "state": "default",
+    "id": "pages.app-access-point.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-api-keys",
+    "dify": "/app/{app}/access-point",
+    "ours": "app={app}&page=access-point",
+    "signedIn": true,
+    "expected": {
+      "dify": {
+        "role": "button",
+        "name": "Create new Secret key"
+      },
+      "ours": {
+        "role": "button",
+        "name": "Create new Secret key"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "API Key 0"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "API Key 0"
+        }
+      ]
+    },
+    "fixture": "tool/visual/fixtures/basic_chatflow.yml",
+    "page": {
+      "routes": []
+    },
+    "state": "default",
+    "id": "pages.app-api-keys.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-annotations",
+    "dify": "/app/{app}/annotations",
+    "ours": "app={app}&page=annotations",
+    "signedIn": true,
+    "expected": {},
+    "actions": {},
+    "fixture": "tool/visual/fixtures/basic_chatflow.yml",
+    "page": {
+      "routes": []
+    },
+    "state": "default",
+    "id": "pages.app-annotations.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-overview",
+    "dify": "/app/{app}/overview",
+    "ours": "app={app}&page=overview",
+    "signedIn": true,
+    "expected": {},
+    "actions": {},
+    "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml",
+    "page": {
+      "routes": [
+        {
+          "side": "dify",
+          "url": "**/console/api/apps/*/workflow/statistics/daily-conversations**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "runs": 12
+              },
+              {
+                "date": "2026-10-14",
+                "runs": 30
+              },
+              {
+                "date": "2026-10-15",
+                "runs": 22
+              },
+              {
+                "date": "2026-10-16",
+                "runs": 41
+              },
+              {
+                "date": "2026-10-17",
+                "runs": 18
+              },
+              {
+                "date": "2026-10-18",
+                "runs": 9
+              },
+              {
+                "date": "2026-10-19",
+                "runs": 27
+              }
+            ]
+          }
+        },
+        {
+          "side": "ours",
+          "url": "**/v1/apps/*/workflow/statistics/daily-conversations**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "runs": 12
+              },
+              {
+                "date": "2026-10-14",
+                "runs": 30
+              },
+              {
+                "date": "2026-10-15",
+                "runs": 22
+              },
+              {
+                "date": "2026-10-16",
+                "runs": 41
+              },
+              {
+                "date": "2026-10-17",
+                "runs": 18
+              },
+              {
+                "date": "2026-10-18",
+                "runs": 9
+              },
+              {
+                "date": "2026-10-19",
+                "runs": 27
+              }
+            ]
+          }
+        },
+        {
+          "side": "dify",
+          "url": "**/console/api/apps/*/workflow/statistics/daily-terminals**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "terminal_count": 5
+              },
+              {
+                "date": "2026-10-14",
+                "terminal_count": 11
+              },
+              {
+                "date": "2026-10-15",
+                "terminal_count": 8
+              },
+              {
+                "date": "2026-10-16",
+                "terminal_count": 14
+              },
+              {
+                "date": "2026-10-17",
+                "terminal_count": 7
+              },
+              {
+                "date": "2026-10-18",
+                "terminal_count": 3
+              },
+              {
+                "date": "2026-10-19",
+                "terminal_count": 10
+              }
+            ]
+          }
+        },
+        {
+          "side": "ours",
+          "url": "**/v1/apps/*/workflow/statistics/daily-terminals**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "terminal_count": 5
+              },
+              {
+                "date": "2026-10-14",
+                "terminal_count": 11
+              },
+              {
+                "date": "2026-10-15",
+                "terminal_count": 8
+              },
+              {
+                "date": "2026-10-16",
+                "terminal_count": 14
+              },
+              {
+                "date": "2026-10-17",
+                "terminal_count": 7
+              },
+              {
+                "date": "2026-10-18",
+                "terminal_count": 3
+              },
+              {
+                "date": "2026-10-19",
+                "terminal_count": 10
+              }
+            ]
+          }
+        },
+        {
+          "side": "dify",
+          "url": "**/console/api/apps/*/workflow/statistics/token-costs**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "token_count": 1820,
+                "total_price": 0.00364,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-14",
+                "token_count": 4210,
+                "total_price": 0.00842,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-15",
+                "token_count": 3300,
+                "total_price": 0.0066,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-16",
+                "token_count": 6150,
+                "total_price": 0.0123,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-17",
+                "token_count": 2400,
+                "total_price": 0.0048,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-18",
+                "token_count": 1100,
+                "total_price": 0.0022,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-19",
+                "token_count": 3900,
+                "total_price": 0.0078,
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "side": "ours",
+          "url": "**/v1/apps/*/workflow/statistics/token-costs**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "token_count": 1820,
+                "total_price": 0.00364,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-14",
+                "token_count": 4210,
+                "total_price": 0.00842,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-15",
+                "token_count": 3300,
+                "total_price": 0.0066,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-16",
+                "token_count": 6150,
+                "total_price": 0.0123,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-17",
+                "token_count": 2400,
+                "total_price": 0.0048,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-18",
+                "token_count": 1100,
+                "total_price": 0.0022,
+                "currency": "USD"
+              },
+              {
+                "date": "2026-10-19",
+                "token_count": 3900,
+                "total_price": 0.0078,
+                "currency": "USD"
+              }
+            ]
+          }
+        },
+        {
+          "side": "dify",
+          "url": "**/console/api/apps/*/workflow/statistics/average-app-interactions**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "interactions": 1.5
+              },
+              {
+                "date": "2026-10-14",
+                "interactions": 2.25
+              },
+              {
+                "date": "2026-10-15",
+                "interactions": 1.8
+              },
+              {
+                "date": "2026-10-16",
+                "interactions": 3.1
+              },
+              {
+                "date": "2026-10-17",
+                "interactions": 2.0
+              },
+              {
+                "date": "2026-10-18",
+                "interactions": 1.2
+              },
+              {
+                "date": "2026-10-19",
+                "interactions": 2.6
+              }
+            ]
+          }
+        },
+        {
+          "side": "ours",
+          "url": "**/v1/apps/*/workflow/statistics/average-app-interactions**",
+          "method": "GET",
+          "json": {
+            "data": [
+              {
+                "date": "2026-10-13",
+                "interactions": 1.5
+              },
+              {
+                "date": "2026-10-14",
+                "interactions": 2.25
+              },
+              {
+                "date": "2026-10-15",
+                "interactions": 1.8
+              },
+              {
+                "date": "2026-10-16",
+                "interactions": 3.1
+              },
+              {
+                "date": "2026-10-17",
+                "interactions": 2.0
+              },
+              {
+                "date": "2026-10-18",
+                "interactions": 1.2
+              },
+              {
+                "date": "2026-10-19",
+                "interactions": 2.6
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "state": "network-fixture",
+    "id": "pages.app-overview.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-logs-workflow",
+    "dify": "/app/{app}/logs",
+    "ours": "app={app}&page=logs",
+    "signedIn": true,
+    "expected": {},
+    "actions": {},
+    "fixture": "tool/visual/fixtures/basic_llm_chat_workflow.yml",
+    "page": {
+      "routes": [
+        {
+          "side": "dify",
+          "url": "**/console/api/apps/*/workflow-app-logs**",
+          "method": "GET",
+          "json": {
+            "page": 1,
+            "limit": 10,
+            "total": 3,
+            "has_more": false,
+            "data": [
+              {
+                "id": "log-0",
+                "workflow_run": {
+                  "id": "run-0",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "succeeded",
+                  "triggered_from": "app-run",
+                  "error": null,
+                  "elapsed_time": 1.234,
+                  "total_tokens": 312,
+                  "total_steps": 4,
+                  "created_at": 1760860800,
+                  "finished_at": 1760860802,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "web-app",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                  "id": "eu-0",
+                  "type": "browser",
+                  "is_anonymous": true,
+                  "session_id": "session-0"
+                },
+                "created_at": 1760860800,
+                "read_at": 1760860800
+              },
+              {
+                "id": "log-1",
+                "workflow_run": {
+                  "id": "run-1",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "failed",
+                  "triggered_from": "service-api",
+                  "error": null,
+                  "elapsed_time": 0.82,
+                  "total_tokens": 128,
+                  "total_steps": 3,
+                  "created_at": 1760857200,
+                  "finished_at": 1760857202,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "service-api",
+                "created_by_role": "account",
+                "created_by_account": {
+                  "id": "acc-1",
+                  "name": "alice",
+                  "email": "alice@example.test"
+                },
+                "created_by_end_user": null,
+                "created_at": 1760857200,
+                "read_at": 1760857200
+              },
+              {
+                "id": "log-2",
+                "workflow_run": {
+                  "id": "run-2",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "succeeded",
+                  "triggered_from": "app-run",
+                  "error": null,
+                  "elapsed_time": 3.5,
+                  "total_tokens": 940,
+                  "total_steps": 5,
+                  "created_at": 1760853600,
+                  "finished_at": 1760853602,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "web-app",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                  "id": "eu-2",
+                  "type": "browser",
+                  "is_anonymous": true,
+                  "session_id": "session-2"
+                },
+                "created_at": 1760853600,
+                "read_at": 1760853600
+              }
+            ]
+          }
+        },
+        {
+          "side": "ours",
+          "url": "**/v1/apps/*/workflow-app-logs**",
+          "method": "GET",
+          "json": {
+            "page": 1,
+            "limit": 10,
+            "total": 3,
+            "has_more": false,
+            "data": [
+              {
+                "id": "log-0",
+                "workflow_run": {
+                  "id": "run-0",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "succeeded",
+                  "triggered_from": "app-run",
+                  "error": null,
+                  "elapsed_time": 1.234,
+                  "total_tokens": 312,
+                  "total_steps": 4,
+                  "created_at": 1760860800,
+                  "finished_at": 1760860802,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "web-app",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                  "id": "eu-0",
+                  "type": "browser",
+                  "is_anonymous": true,
+                  "session_id": "session-0"
+                },
+                "created_at": 1760860800,
+                "read_at": 1760860800
+              },
+              {
+                "id": "log-1",
+                "workflow_run": {
+                  "id": "run-1",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "failed",
+                  "triggered_from": "service-api",
+                  "error": null,
+                  "elapsed_time": 0.82,
+                  "total_tokens": 128,
+                  "total_steps": 3,
+                  "created_at": 1760857200,
+                  "finished_at": 1760857202,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "service-api",
+                "created_by_role": "account",
+                "created_by_account": {
+                  "id": "acc-1",
+                  "name": "alice",
+                  "email": "alice@example.test"
+                },
+                "created_by_end_user": null,
+                "created_at": 1760857200,
+                "read_at": 1760857200
+              },
+              {
+                "id": "log-2",
+                "workflow_run": {
+                  "id": "run-2",
+                  "version": "2026-10-19 08:00:00.000000",
+                  "status": "succeeded",
+                  "triggered_from": "app-run",
+                  "error": null,
+                  "elapsed_time": 3.5,
+                  "total_tokens": 940,
+                  "total_steps": 5,
+                  "created_at": 1760853600,
+                  "finished_at": 1760853602,
+                  "exceptions_count": 0
+                },
+                "details": null,
+                "created_from": "web-app",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                  "id": "eu-2",
+                  "type": "browser",
+                  "is_anonymous": true,
+                  "session_id": "session-2"
+                },
+                "created_at": 1760853600,
+                "read_at": 1760853600
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "state": "network-fixture",
+    "id": "pages.app-logs-workflow.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "app-logs-empty",
+    "dify": "/app/{app}/logs",
+    "ours": "app={app}&page=logs",
+    "signedIn": true,
+    "expected": {},
+    "actions": {},
+    "fixture": "tool/visual/fixtures/basic_chatflow.yml",
+    "page": {
+      "routes": []
+    },
+    "state": "default",
+    "id": "pages.app-logs-empty.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "human-form",
+    "dify": "/form/ui-parity",
+    "ours": "#/form/ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "Approve",
+      "ours": "Approve"
+    },
+    "actions": {},
+    "network": [
+      {
+        "url": "**/form/human_input/ui-parity",
+        "status": 200,
+        "json": {
+          "site": {
+            "site": {
+              "title": "Review",
+              "icon_type": "emoji",
+              "icon": "🤖",
+              "icon_background": "#FFEAD5"
+            }
+          },
+          "form_content": "Please review: {{#$output.review#}}",
+          "rendered_content": "Please review: {{#$output.review#}}",
+          "inputs": [
+            {
+              "type": "paragraph",
+              "output_variable_name": "review",
+              "default": {
+                "type": "constant",
+                "value": ""
+              }
+            }
+          ],
+          "user_actions": [
+            {
+              "id": "approve",
+              "title": "Approve",
+              "button_style": "primary"
+            }
+          ],
+          "resolved_default_values": {},
+          "default_values": {},
+          "expiration_time": 1893456000
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.human-form.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "human-form-expired",
+    "dify": "/form/ui-parity",
+    "ours": "#/form/ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "expired",
+      "ours": "expired"
+    },
+    "actions": {},
+    "network": [
+      {
+        "url": "**/form/human_input/ui-parity",
+        "status": 412,
+        "json": {
+          "code": "human_input_form_expired",
+          "message": "Expired",
+          "error": {
+            "code": "human_input_form_expired",
+            "message": "Expired"
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.human-form-expired.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "human-form-completed",
+    "dify": "/form/ui-parity",
+    "ours": "#/form/ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "dealt with elsewhere",
+      "ours": "dealt with elsewhere"
+    },
+    "actions": {},
+    "network": [
+      {
+        "url": "**/form/human_input/ui-parity",
+        "status": 409,
+        "json": {
+          "code": "human_input_form_submitted",
+          "message": "Submitted",
+          "error": {
+            "code": "human_input_form_submitted",
+            "message": "Submitted"
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.human-form-completed.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "human-form-not-found",
+    "dify": "/form/ui-parity",
+    "ours": "#/form/ui-parity",
+    "signedIn": false,
+    "expected": {
+      "dify": "not found",
+      "ours": "not found"
+    },
+    "actions": {},
+    "network": [
+      {
+        "url": "**/form/human_input/ui-parity",
+        "status": 404,
+        "json": {
+          "code": "not_found",
+          "message": "Not found",
+          "error": {
+            "code": "not_found",
+            "message": "Not found"
+          }
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.human-form-not-found.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "reset-password-code",
+    "dify": "/reset-password/check-code?token=ui-parity&email=alice%40example.test",
+    "ours": "",
+    "signedIn": false,
+    "expected": {
+      "dify": "Check your email",
+      "ours": "Check your email"
+    },
+    "actions": {
+      "ours": [
+        {
+          "text": "Forgot your password?"
+        },
+        {
+          "locator": {
+            "role": "textbox",
+            "name": "Email",
+            "exact": false
+          },
+          "fill": "alice@example.test"
+        },
+        {
+          "press": "Enter"
+        }
+      ]
+    },
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/forgot-password",
+        "method": "POST",
+        "json": {
+          "result": "success",
+          "data": "ui-parity"
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.reset-password-code.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "unreachable",
+    "dify": "/signin",
+    "ours": "",
+    "signedIn": false,
+    "expected": {},
+    "actions": {},
+    "id": "pages.unreachable.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/setup",
+        "status": 503,
+        "json": {
+          "code": "service_unavailable",
+          "message": "UI fixture service unavailable"
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/setup",
+        "status": 503,
+        "json": {
+          "code": "service_unavailable",
+          "message": "UI fixture service unavailable"
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "reset-password-code",
+    "dify": "/reset-password/check-code?token=ui-parity&email=alice%40example.test",
+    "ours": "",
+    "signedIn": false,
+    "expected": {
+      "dify": "Check your email",
+      "ours": "Check your email"
+    },
+    "actions": {
+      "ours": [
+        {
+          "text": "Forgot your password?"
+        },
+        {
+          "locator": {
+            "role": "textbox",
+            "name": "Email",
+            "exact": false
+          },
+          "fill": "alice@example.test"
+        },
+        {
+          "press": "Enter"
+        }
+      ]
+    },
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/system-features",
+        "json": {
+          "is_email_setup": true,
+          "enable_email_password_login": true,
+          "enable_email_code_login": false,
+          "is_allow_register": false,
+          "branding": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/forgot-password",
+        "method": "POST",
+        "json": {
+          "result": "success",
+          "data": "ui-parity"
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "id": "pages.reset-password-code.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "unreachable",
+    "dify": "/signin",
+    "ours": "",
+    "signedIn": false,
+    "expected": {},
+    "actions": {},
+    "id": "pages.unreachable.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/setup",
+        "status": 503,
+        "json": {
+          "code": "service_unavailable",
+          "message": "UI fixture service unavailable"
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/setup",
+        "status": 503,
+        "json": {
+          "code": "service_unavailable",
+          "message": "UI fixture service unavailable"
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/refresh-token",
+        "method": "POST",
+        "status": 401,
+        "json": {
+          "code": "unauthorized",
+          "message": "Anonymous UI fixture"
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "id": "pages.editor.light.en-US",
+    "kind": "editor",
+    "captureType": "real-screen",
+    "theme": "light",
+    "locale": "en-US",
+    "state": "default fit from imported graph",
+    "fixture": "tool/visual/fixtures/sf_run_workflow.yml",
+    "dify": "/app/{app}/workflow",
+    "ours": "app={app}&page=workflow",
+    "signedIn": true,
+    "expected": {
+      "dify": "Publish",
+      "ours": "Publish"
+    },
+    "actions": {},
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "id": "pages.editor.dark.en-US",
+    "kind": "editor",
+    "captureType": "real-screen",
+    "theme": "dark",
+    "locale": "en-US",
+    "state": "default fit from imported graph",
+    "fixture": "tool/visual/fixtures/sf_run_workflow.yml",
+    "dify": "/app/{app}/workflow",
+    "ours": "app={app}&page=workflow",
+    "signedIn": true,
+    "expected": {
+      "dify": "Publish",
+      "ours": "Publish"
+    },
+    "actions": {},
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-import-dsl",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Import App",
+      "ours": "Import App"
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "Create"
+        },
+        {
+          "text": "Import DSL file"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "Create"
+        },
+        {
+          "text": "Import DSL file"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.studio-import-dsl.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "open dialog",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-create-blank",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "App Name & Icon",
+      "ours": "App Name & Icon"
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "Create"
+        },
+        {
+          "role": "menuitem",
+          "name": "Create from Blank"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "Create"
+        },
+        {
+          "role": "menuitem",
+          "name": "Create from Blank"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.studio-create-blank.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "open dialog",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-toolbar-default",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": {
+        "role": "button",
+        "name": "创建"
+      },
+      "ours": {
+        "role": "button",
+        "name": "创建"
+      }
+    },
+    "actions": {},
+    "emptyStudio": true,
+    "id": "pages.studio-toolbar-default.light.zh-Hans",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-toolbar-focus",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": {
+        "role": "button",
+        "name": "创建"
+      },
+      "ours": {
+        "role": "button",
+        "name": "创建"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "focus": {
+            "role": "button",
+            "name": "排序方式",
+            "exact": false
+          }
+        }
+      ],
+      "ours": [
+        {
+          "focus": {
+            "role": "button",
+            "name": "排序方式",
+            "exact": false
+          }
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.studio-toolbar-focus.light.zh-Hans",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "captureType": "real-screen",
+    "state": "focus",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-toolbar-open",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": {
+        "role": "menuitemradio",
+        "name": "最近修改"
+      },
+      "ours": {
+        "role": "menuitemradio",
+        "name": "最近修改"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "排序方式",
+          "exact": false
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "排序方式",
+          "exact": false
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.studio-toolbar-open.light.zh-Hans",
+    "theme": "light",
+    "locale": "zh-Hans",
+    "captureType": "real-screen",
+    "state": "open",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-import-dsl",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "Import App",
+      "ours": "Import App"
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "Create"
+        },
+        {
+          "text": "Import DSL file"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "Create"
+        },
+        {
+          "text": "Import DSL file"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.studio-import-dsl.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "open dialog",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-create-blank",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": "App Name & Icon",
+      "ours": "App Name & Icon"
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "Create"
+        },
+        {
+          "role": "menuitem",
+          "name": "Create from Blank"
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "Create"
+        },
+        {
+          "role": "menuitem",
+          "name": "Create from Blank"
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.studio-create-blank.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "open dialog",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "en-US",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-toolbar-default",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": {
+        "role": "button",
+        "name": "创建"
+      },
+      "ours": {
+        "role": "button",
+        "name": "创建"
+      }
+    },
+    "actions": {},
+    "emptyStudio": true,
+    "id": "pages.studio-toolbar-default.dark.zh-Hans",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "captureType": "real-screen",
+    "state": "default",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-toolbar-focus",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": {
+        "role": "button",
+        "name": "创建"
+      },
+      "ours": {
+        "role": "button",
+        "name": "创建"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "focus": {
+            "role": "button",
+            "name": "排序方式",
+            "exact": false
+          }
+        }
+      ],
+      "ours": [
+        {
+          "focus": {
+            "role": "button",
+            "name": "排序方式",
+            "exact": false
+          }
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.studio-toolbar-focus.dark.zh-Hans",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "captureType": "real-screen",
+    "state": "focus",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "studio-toolbar-open",
+    "dify": "/apps",
+    "ours": "",
+    "signedIn": true,
+    "expected": {
+      "dify": {
+        "role": "menuitemradio",
+        "name": "最近修改"
+      },
+      "ours": {
+        "role": "menuitemradio",
+        "name": "最近修改"
+      }
+    },
+    "actions": {
+      "dify": [
+        {
+          "role": "button",
+          "name": "排序方式",
+          "exact": false
+        }
+      ],
+      "ours": [
+        {
+          "role": "button",
+          "name": "排序方式",
+          "exact": false
+        }
+      ]
+    },
+    "emptyStudio": true,
+    "id": "pages.studio-toolbar-open.dark.zh-Hans",
+    "theme": "dark",
+    "locale": "zh-Hans",
+    "captureType": "real-screen",
+    "state": "open",
+    "network": [
+      {
+        "side": "dify",
+        "url": "**/console/api/account/profile",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null,
+          "is_password_set": true,
+          "last_login_at": 1760860800
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/account",
+        "json": {
+          "id": "ui-parity-owner",
+          "email": "alice@example.test",
+          "name": "alice",
+          "role": "owner",
+          "status": "active",
+          "interface_language": "zh-Hans",
+          "timezone": "America/New_York",
+          "created_at": 1760860800,
+          "avatar_url": null
+        }
+      },
+      {
+        "side": "dify",
+        "url": "**/console/api/workspaces/current/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      },
+      {
+        "side": "ours",
+        "url": "**/v1/workspace/members",
+        "json": {
+          "accounts": [
+            {
+              "id": "ui-parity-owner",
+              "email": "alice@example.test",
+              "name": "alice",
+              "role": "owner",
+              "status": "active",
+              "interface_language": "en-US",
+              "timezone": "America/New_York",
+              "created_at": 1760860800,
+              "avatar_url": null
+            }
+          ]
+        }
+      }
+    ],
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  }
+]

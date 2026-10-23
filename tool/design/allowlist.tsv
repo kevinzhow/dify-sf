@@ -115,3 +115,4 @@ raw-text-style	workflow_editor/note_node/note_toolbar.dart	1	legit:font-size pic
 raw-text-style	workflow_editor/prompt_editor/prompt_editor.dart	1	legit:controlled editor font and CSS line-box metrics are derived from its supplied size/line-height/mode
 raw-text-style	workflow_editor/prompt_editor/prompt_editor_controller.dart	3	legit:inline chip edge spacing and copying arbitrary editor styles while removing height to avoid doubled leading
 raw-text-style	workflow_editor/run/ui/markdown.dart	3	third-party:github-markdown-css stylesheet
+raw-text-style	workflow_editor/run/ui/thinking_details.dart	1	third-party:markdown-blocks/thinking-details.tsx summary inherits app/styles/markdown.css 15px/1.6 and font-bold; source CSS metrics, not a per-label alignment offset
