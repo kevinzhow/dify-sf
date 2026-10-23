@@ -12,6 +12,8 @@ docker compose -f docker-compose.yml -f docker-compose.runtime.yml --profile run
 
 Use one project name consistently. Do not run these commands against another developer's stack or existing user volumes as a test fixture. Set private secrets through a protected environment file before a real deployment; the repository's development defaults are not production credentials. Preserve the existing `COLLAB_SECRETS_KEY`, PostgreSQL and upload volumes when upgrading an installation.
 
+If an existing installation has no `COLLAB_SECRETS_KEY`, check its provider-credential and secret-variable stores before provisioning one. An empty store may receive a new base64-encoded 32-byte key, saved in the protected persistent deployment configuration; an existing encrypted store requires its original key. The file-signing key is separate and must remain unchanged. Do not assume that a key is present merely because file uploads work.
+
 The overlay sets the server's daemon/sandbox/proxy URLs and waits for healthy dependencies. Daemon health means its HTTP service is ready, not that a particular model plugin has been installed or its credentials are valid. Validate installation with a controlled local model before offering that provider.
 
 | Service | Pinned version | Memory cap | CPU cap | State |
@@ -69,3 +71,7 @@ Private/loopback/link-local/multicast destinations and unsafe ports remain denie
 The additional `acceptance.py` and `faults.py` checks target the dedicated `winnie-runtime-check` fixture on localhost ports 19092/19094. They are not deployment or user-account setup tools. The matrix invokes structured LLM output, classification and extraction through the signed plugin, exercises Python/JavaScript/Jinja2 errors, reuses the recorded Dify iteration/loop cases, counts real HTTP retries, and stops a running upstream request before any downstream node can execute. The parallel iteration sample intentionally ends `partial-succeeded` because two invalid numeric outputs exercise its error policies.
 
 Configuration-failure checks recreate only that fixture's server, preserve its PostgreSQL/upload volumes and encryption key, and restore the original configuration in `finally`. They use short explicit test dispatch deadlines rather than waiting the default 600-second model timeout. A new process must read the previously completed run with identical stored details. Never substitute these tests for the formal browser-to-service-to-persistence check, or run them against the populated trial.
+
+## Browser result regression
+
+`OutputPanel` passes JSON values directly to the shared code editor, which performs serialization once. Both object responses and stored JSON-text responses are covered by assertions against the rendered/copied editor text, including nested HTTP JSON strings that must stay strings. The phase-1 browser check runs the frozen Wasm client against isolated real services: missing-daemon refusal creates no fake run, restored configuration produces an actual local-model request and persisted outputs, and a new backend process exposes the stored history. The populated trial is checked without signing into a user account or creating fixture data there.
