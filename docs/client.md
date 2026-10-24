@@ -196,6 +196,31 @@ For multithreaded rendering, serve over HTTPS (localhost is also a secure contex
 the full Dart Wasm/skwasm build in single-threaded mode. See the
 [Flutter Wasm deployment documentation](https://docs.flutter.dev/platform-integration/web/wasm).
 
+On iOS 27, plain HTTP can additionally trigger WebKit's Enhanced Security and
+disable JIT compilation for both JavaScript and Wasm, even after the complete
+Wasm application has loaded. WebKit confirms this is intentional in
+[issue 324968](https://bugs.webkit.org/show_bug.cgi?id=324968). A successful
+Wasm capability probe does not measure this execution cost. Selecting CanvasKit
+does not avoid the browser's policy either.
+
+For Safari performance acceptance, open the HTTPS URL directly in Safari (for
+example, through the address bar or a new tab), rather than changing
+`location.href` inside an already loaded HTTP page. Script navigation can retain
+the previous page's Enhanced Security state (see WebKit's
+[navigation tracking](https://github.com/WebKit/WebKit/blob/main/Source/WebKit/UIProcess/EnhancedSecurityTracking.cpp)). Direct localhost navigation is a
+separate local test; merely observing `isSecureContext === true` does not prove
+that an inherited security state or interpreter execution has ended. Leave
+browser protections enabled.
+
+Keep the compiled application, graph, zoom, viewport and gesture identical when
+comparing entry points. Record native frame timelines and the actual selected
+renderer; a callback wrapper omits microtasks that can perform rasterization.
+`window.__difyWebRuntime.browserContext` records the document protocol, secure
+context and isolation flags without claiming to detect JIT. The Chromium
+artifact check accepts `--require-https` to reject a final HTTP document (even a
+secure-context localhost URL); this transport check is not Safari or physical
+iPhone performance evidence.
+
 HTTP previews have no Async Clipboard API. `web/clipboard_compat.js` supplies user-initiated text copying through the browser's legacy copy command only when the native API is absent; HTTPS/localhost retain the native API. Clipboard reads are not fabricated or cached, and native keyboard paste remains available in editable inputs. Programmatic clipboard reading still requires a secure origin. This is HTTP preview compatibility, not a replacement for HTTPS hosting; see [MDN's clipboard security requirements](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API). Actual HTTP copy/paste and context-menu copying are verified without granting browser clipboard permissions.
 
 
