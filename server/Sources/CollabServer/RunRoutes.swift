@@ -23,9 +23,9 @@ extension Routes {
 
     /// The services nodes call: models (plugin daemon) when configured, the code sandbox (Jinja2 too) and HTTP through the
     /// SSRF proxy.
-    func runtimeServices(appId: String, userId: String? = nil) -> RuntimeServices {
+    func runtimeServices(appId: String, userId: String? = nil, endUserId: String? = nil) -> RuntimeServices {
         var services = config.runtimeServices.services(models: nil)
-        if let userId, config.files.isConfigured { services.files = ServerWorkflowFiles(routes: self, userId: userId) }
+        if let userId, config.files.isConfigured { services.files = ServerWorkflowFiles(routes: self, userId: userId, endUserId: endUserId) }
         if runtimeConfigured {
             let daemon = PluginDaemonClient(baseURL: config.pluginDaemonURL, key: config.pluginDaemonKey, tenant: config.pluginDaemonTenant,
                                             timeoutSeconds: config.pluginDaemonTimeoutSeconds)
@@ -38,7 +38,7 @@ extension Routes {
             let plugin: PluginDaemonToolRuntime? = runtimeConfigured ? PluginDaemonToolRuntime(daemon: toolDaemon(), credential: { tool in
                 try await self.toolCredentials(tool, userId: userId)
             }) : nil
-            services.tools = ServerToolRuntime(routes: self, userId: userId, plugin: plugin, callStack: [appId])
+            services.tools = ServerToolRuntime(routes: self, userId: userId, plugin: plugin, callStack: [appId], endUserId: endUserId)
         }
         return services
     }
@@ -47,14 +47,14 @@ extension Routes {
     /// needs the run id and the ledger the run persists from, so it cannot live in `runtimeServices` (which is shared by
     /// the single-node and container paths, and by graphs built before a run exists).
     func runServices(appId: String, runId: String, docId: String, userId: String, pending: PendingHumanInputForms,
-                     decisions: [String: StoredHumanInputForm] = [:], resuming: Bool = false) -> RuntimeServices {
-        var services = runtimeServices(appId: appId, userId: userId)
+                     decisions: [String: StoredHumanInputForm] = [:], resuming: Bool = false, endUserId: String? = nil) -> RuntimeServices {
+        var services = runtimeServices(appId: appId, userId: userId, endUserId: endUserId)
         services.memory = ServerConversationMemory(store: store, runId: runId)
         if config.humanInputWebEnabled || resuming {
             services.humanInput = ServerHumanInputRuntime(store: store, workflowRunId: runId, docId: docId, userId: userId,
                                                       pending: pending, decisions: decisions,
                                                       // Draft runs are Dify's debugger; published runs come with M5.
-                                                      isDebugger: true, files: services.files)
+                                                      isDebugger: endUserId == nil, files: services.files)
         }
         return services
     }
@@ -130,15 +130,25 @@ extension Routes {
     /// Records the run (`workflow_runs`, `debugging`), starts it in its own task and answers its SSE stream.
     func startRun(appId: String, principal p: Principal, seq: Int, workflow: JSONValue, runId: String, graph: RuntimeGraph, pool: VariablePool,
                   workflowInputs: JSONObject, nodeTriggeredFrom: String,
-                  pendingForms: PendingHumanInputForms = PendingHumanInputForms(), chat: ChatTurn? = nil) async throws -> Response {
+                  pendingForms: PendingHumanInputForms = PendingHumanInputForms(), chat: ChatTurn? = nil,
+                  publicRun: PublicRunBinding? = nil, responseMode: String = "streaming") async throws -> Response {
         // Dify's task id is a separate uuid; here it is the run's id (clients read it from the events).
         let taskId = runId
-        let account: JSONValue = ["id": .string(p.id), "name": .string(p.account.name), "email": .string(p.account.email)]
+        let account: JSONValue = publicRun.map { ["id": .string($0.endUser.id)] } ?? ["id": .string(p.id), "name": .string(p.account.name), "email": .string(p.account.email)]
         var stored = StoredWorkflowRun(id: runId, docId: appId, docSeq: seq, workflowId: appId, type: chat == nil ? "workflow" : "chat", triggeredFrom: "debugging",
                                        version: "draft", graph: (workflow["graph"] ?? .null).compactJSON(),
                                        inputs: JSONValue.object(workflowInputs).compactJSON(), status: "running", createdBy: p.id,
                                        createdAt: Date())
-        stored.createdByName = p.account.name
+        if let publicRun {
+            stored.workflowId = publicRun.version.id
+            stored.version = publicRun.version.version
+            stored.triggeredFrom = "app-run"
+            stored.endUserId = publicRun.endUser.id
+            stored.executionAccountId = p.id
+            stored.sourceApiKeyId = publicRun.apiKeyId
+            stored.createdByRole = "end_user"
+        }
+        stored.createdByName = publicRun == nil ? p.account.name : nil
         let lease = UUID().uuidString.lowercased()
         var pool = pool
         if let chat {
@@ -151,7 +161,7 @@ extension Routes {
                     }
                 }
                 try pool.add(["sys", "conversation_id"], .string(conversation.id))
-                let count = try await store.chatMessageCount(doc: appId, conversation: conversation.id, account: p.id)
+                let count = try await store.chatMessageCount(doc: appId, conversation: conversation.id, account: p.id, endUser: publicRun?.endUser.id)
                 try pool.add(["sys", "dialogue_count"], .int(count))
             } catch ChatStoreError.busy {
                 throw ServerError.http(status: 409, code: "conversation_busy", message: "Wait for the current turn to finish or stop it first")
@@ -164,17 +174,17 @@ extension Routes {
         let channel = await runChannels.channel(runId, pingSeconds: config.ssePingSeconds)
         let commands = GraphEngineCommands()
         await runs.add(taskId, WorkflowRunRegistry.Active(appId: appId, runId: runId, commands: commands, lease: lease))
-        var encoder = RunStreamEncoder(taskId: taskId, runId: runId, workflowId: appId, graph: graph, account: account,
+        var encoder = RunStreamEncoder(taskId: taskId, runId: runId, workflowId: stored.workflowId, graph: graph, account: account,
                                        inputs: workflowInputs, startedAt: stored.createdAt)
         encoder.chat = chat?.message
         let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
                                                                         maxSteps: config.runtimeMaxSteps,
                                                                         maxTimeSeconds: config.runtimeMaxTimeSeconds),
-                                 commands: commands, userId: p.id, appId: appId)
+                                 commands: commands, userId: publicRun?.endUser.id ?? p.id, appId: appId)
         let routes = self
         let execution = RunExecution(routes: routes, appId: appId, docSeq: seq, runId: runId, taskId: taskId, createdBy: p.id,
                                      channel: channel, encoder: encoder, triggeredFrom: nodeTriggeredFrom,
-                                     pendingForms: pendingForms, lease: lease)
+                                     pendingForms: pendingForms, lease: lease, isPublished: publicRun != nil)
         Task.detached { await execution.run(engine: engine, pool: pool) }
 
         var headers = HTTPFields()
@@ -182,6 +192,9 @@ extension Routes {
         headers[.cacheControl] = "no-store"
         headers[HTTPField.Name("X-Accel-Buffering")!] = "no"
         let subscription = await channel.subscribe()
+        if responseMode == "blocking" {
+            return try await publicBlockingResponse(subscription: subscription, runId: runId, chat: chat?.message)
+        }
         let logger = self.logger
         let body = try Response.Body(stream: { writer in
             do {
@@ -247,7 +260,7 @@ extension Routes {
         }
         let decisions = Dictionary(uniqueKeysWithValues: claim.decisions.map { ($0.executionId, $0) })
         let pending = PendingHumanInputForms()
-        let userId = run.createdBy ?? ""
+        let userId = run.executionAccountId ?? run.createdBy ?? ""
         let graph: RuntimeGraph
         do {
             let config = try GraphConfig(json: graphJSON)
@@ -255,7 +268,7 @@ extension Routes {
             graph = try await RuntimeGraph.build(config, rootId: rootId,
                                                  factory: BuiltinNodeFactory(services: runServices(
                                                     appId: appId, runId: runId, docId: appId, userId: userId, pending: pending,
-                                                    decisions: decisions, resuming: true)))
+                                                    decisions: decisions, resuming: true, endUserId: run.endUserId)))
         } catch {
             logger.error("run \(runId) could not rebuild its graph: \(error)")
             try? await store.finishWorkflowRun(id: runId, status: "failed", outputs: nil, error: "could not rebuild the paused run: \(error)",
@@ -263,9 +276,9 @@ extension Routes {
             await finishRunWithoutEngine(runId)
             return false
         }
-        let account: JSONValue = ["id": .string(userId), "name": .string(run.createdByName ?? ""), "email": .string(run.createdByEmail ?? "")]
+        let account: JSONValue = run.endUserId.map { ["id": .string($0)] } ?? ["id": .string(userId), "name": .string(run.createdByName ?? ""), "email": .string(run.createdByEmail ?? "")]
         let inputs = (try? JSONValue.parse(run.inputs))?.object ?? [:]
-        var encoder = RunStreamEncoder(taskId: runId, runId: runId, workflowId: appId, graph: graph, account: account,
+        var encoder = RunStreamEncoder(taskId: runId, runId: runId, workflowId: run.workflowId, graph: graph, account: account,
                                        inputs: inputs, startedAt: run.createdAt)
         // `elapsed_time` counts from the round (the resume), while `created_at` stays the run's original creation.
         encoder.roundStartedAt = Date()
@@ -274,11 +287,11 @@ extension Routes {
         let engine = GraphEngine(graph: graph, config: GraphEngineConfig(maxWorkers: config.runtimeMaxWorkers,
                                                                         maxSteps: config.runtimeMaxSteps,
                                                                         maxTimeSeconds: config.runtimeMaxTimeSeconds),
-                                 commands: commands, userId: userId, appId: appId)
+                                 commands: commands, userId: run.endUserId ?? userId, appId: appId)
         var snapshot: GraphEngineSnapshot
         do {
             snapshot = try GraphEngineSnapshot(data: Data(claim.pause.snapshot.utf8))
-            if let files = runtimeServices(appId: appId, userId: userId).files {
+            if let files = runtimeServices(appId: appId, userId: userId, endUserId: run.endUserId).files {
                 try await snapshot.materializeFiles(using: files)
             }
         } catch {
@@ -299,7 +312,7 @@ extension Routes {
         let routes = self
         let execution = RunExecution(routes: routes, appId: appId, docSeq: run.docSeq, runId: runId, taskId: runId,
                                      createdBy: userId, channel: channel, encoder: encoder, triggeredFrom: "workflow-run",
-                                     pendingForms: pending, lease: lease, decisions: claim.decisions)
+                                     pendingForms: pending, lease: lease, decisions: claim.decisions, isPublished: run.endUserId != nil)
         // TEST ONLY (`testDefect: slowResume`): hold the resumed round after it took the run over, so a test can stop it
         // while it is the run's round and prove the stop reaches this engine.
         if config.testDefect == "slowResume" { try? await Task.sleep(for: .milliseconds(300)) }
@@ -452,17 +465,18 @@ extension Routes {
         guard let id = req.parameters.get("run") else { throw ServerError.missing("Workflow run not found") }
         let found: StoredWorkflowRun?
         do { found = try await store.workflowRun(doc: a.id, id: id.lowercased()) } catch { throw ServerError.unavailable("\(error)") }
-        guard let r = found, r.type != "chat" || r.createdBy == p.id else { throw ServerError.missing("Workflow run not found") }
+        guard let r = found, r.type != "chat" || r.createdBy == p.id || (r.endUserId != nil && p.role.canEdit) else { throw ServerError.missing("Workflow run not found") }
         func parsed(_ text: String?) -> JSONValue { text.flatMap { try? JSONValue.parse($0) } ?? .null }
         let detail: JSONValue = [
             "id": .string(r.id), "version": .string(r.version), "graph": parsed(r.graph), "inputs": parsed(r.inputs),
             "status": .string(r.status), "outputs": r.outputs.map { parsed($0) } ?? .object([:]), "error": r.error.map(JSONValue.string) ?? .null,
             "elapsed_time": .double(r.elapsedTime), "total_tokens": .int(r.totalTokens), "total_steps": .int(r.totalSteps),
-            "created_by_role": r.createdBy == nil ? .null : "account", "created_by_account": Self.accountJSON(r), "created_by_end_user": .null,
+            "created_by_role": .string(r.createdByRole), "created_by_account": r.endUserId == nil ? Self.accountJSON(r) : .null,
+            "created_by_end_user": r.endUserId.map { ["id":.string($0)] } ?? .null,
             "created_at": Self.epochSeconds(r.createdAt), "finished_at": r.finishedAt.map(Self.epochSeconds) ?? .null,
             "exceptions_count": .int(r.exceptionsCount),
         ]
-        return await fileJSONResponse(detail, userId: p.id)
+        return await fileJSONResponse(detail, userId: r.executionAccountId ?? p.id, endUserId: r.endUserId)
     }
 
     /// `GET /v1/apps/{app}/workflow-runs/{run}/node-executions` (any member): `{"data": [WorkflowRunNodeExecutionResponse]}`,
@@ -471,12 +485,13 @@ extension Routes {
         let p = try await authenticate(req)
         let a = try await appOfMode(req, p, Self.workflowModes)
         guard let id = req.parameters.get("run") else { return rawJSON(["data": []]) }
-        if let run = try await store.workflowRun(doc: a.id, id: id.lowercased()), run.type == "chat", run.createdBy != p.id {
+        let run = try await store.workflowRun(doc:a.id,id:id.lowercased())
+        if let run, run.type == "chat", run.createdBy != p.id, run.endUserId == nil || !p.role.canEdit {
             throw ServerError.notFound
         }
         let list: [StoredNodeExecution]
         do { list = try await store.nodeExecutions(doc: a.id, run: id.lowercased()) } catch { throw ServerError.unavailable("\(error)") }
-        return await fileJSONResponse(["data": .array(list.flatMap(RetryHistory.traces))], userId: p.id)
+        return await fileJSONResponse(["data": .array(list.flatMap(RetryHistory.traces))], userId: run?.executionAccountId ?? p.id, endUserId: run?.endUserId)
     }
 
     static func epochSeconds(_ d: Date) -> JSONValue { .int(Int(d.timeIntervalSince1970.rounded(.down))) }
@@ -631,11 +646,12 @@ final class RunExecution: Sendable {
     let lease: String
     /// The answers this round's claim took; a filled frame is published when their node succeeds.
     let decisions: [StoredHumanInputForm]
+    let isPublished: Bool
 
     init(routes: Routes, appId: String, docSeq: Int, runId: String, taskId: String, createdBy: String, channel: RunChannel,
          encoder: RunStreamEncoder, triggeredFrom: String = "workflow-run",
          pendingForms: PendingHumanInputForms = PendingHumanInputForms(), lease: String = "",
-         decisions: [StoredHumanInputForm] = []) {
+         decisions: [StoredHumanInputForm] = [], isPublished: Bool = false) {
         self.routes = routes
         self.appId = appId
         self.docSeq = docSeq
@@ -649,6 +665,7 @@ final class RunExecution: Sendable {
         self.pendingForms = pendingForms
         self.lease = lease
         self.decisions = decisions
+        self.isPublished = isPublished
     }
 
     /// A started node not finished yet (for its record and the end of the run).
@@ -679,7 +696,7 @@ final class RunExecution: Sendable {
         } : nil
         defer { heartbeat?.cancel() }
         if let message = encoderBox.withLock({ $0.chat }),
-           let conversation = try? await routes.store.chatConversation(doc: appId, id: message.conversationId, account: createdBy),
+           let conversation = try? await routes.store.chatConversation(doc: appId, id: message.conversationId, account: createdBy, endUser: message.endUserId),
            let values = (try? JSONValue.parse(conversation.variables))?.object {
             let initial = snapshot?.variablePool() ?? pool
             let defaults = JSONObject((initial.variables["conversation"] ?? []).map { ($0.name, $0.segment.value) })
@@ -955,8 +972,8 @@ final class RunExecution: Sendable {
         }
         let enclosing = (start?.scope ?? NodeScope(metadata: r.metadata)).containerId
         if enclosing != nil && nodeType != NodeType.variableAssigner { return }
-        await routes.saveRunDraftVariables(appId: appId, userId: createdBy, docSeq: docSeq, nodeId: nodeId, nodeType: nodeType, executionId: executionId,
-                                           status: status, result: r)
+        if !isPublished { await routes.saveRunDraftVariables(appId: appId, userId: createdBy, docSeq: docSeq, nodeId: nodeId, nodeType: nodeType, executionId: executionId,
+                                           status: status, result: r) }
     }
 
     func finish(status: String, error: String?, stats: GraphRunStats, started: ContinuousClock.Instant,

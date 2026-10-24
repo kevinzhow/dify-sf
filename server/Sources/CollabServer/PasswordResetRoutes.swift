@@ -139,15 +139,17 @@ extension Routes {
             var is_allow_register = false
             var is_email_setup: Bool
             /// 1.12: the account page offers changing the email (Dify's `ENABLE_CHANGE_EMAIL`; dify-sf needs mail for it).
+            var enable_published_apps = true
             var enable_file_upload: Bool
             var enable_change_email: Bool
             /// 1.13 (dify-sf only): what the workflow runtime can run; absent without a model runtime (plugin daemon).
             var workflow_runtime: WorkflowRuntime?
         }
         struct WorkflowRuntime: Encodable {
-            var protocol_version = "1.18"
+            var protocol_version = "1.20"
             /// Durable, creator-scoped console Chatflow conversations (published/end-user runs remain separate).
             var chatflow = true
+            var published_run = true
             /// The node types `POST .../workflows/draft/nodes/{node}/run` runs.
             var single_node_run: [String]
             /// 1.14: the node types a draft run (`POST .../workflows/draft/run`) runs; a graph with others is refused.

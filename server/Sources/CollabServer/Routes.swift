@@ -73,6 +73,7 @@ struct Routes: Sendable {
         registerAppDetail(on: r)
         registerRuntime(on: r)
         registerRuns(on: r)
+        registerPublicRuntime(on: r)
         registerChatRuns(on: r)
         registerContainerRuns(on: r)
         registerDraftVariables(on: r)

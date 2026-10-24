@@ -29,6 +29,10 @@ public struct StoredWorkflowRun: Sendable, Equatable {
     /// The creator's name and email (read only).
     public var createdByName: String?
     public var createdByEmail: String?
+    public var endUserId: String?
+    public var executionAccountId: String?
+    public var sourceApiKeyId: String?
+    public var createdByRole = "account"
 
     public init(id: String, docId: String, docSeq: Int, workflowId: String, type: String, triggeredFrom: String, version: String, graph: String,
                 inputs: String, status: String, createdBy: String?, createdAt: Date) {
@@ -61,10 +65,10 @@ extension PostgresStore {
     static func insertWorkflowRunQuery(_ r: StoredWorkflowRun) -> PostgresQuery {
         """
                 INSERT INTO workflow_runs (id, doc_id, doc_seq, workflow_id, type, triggered_from, version, graph, inputs, status, outputs,
-                    error, elapsed_time, total_tokens, total_steps, exceptions_count, created_by, created_at, finished_at)
+                    error, elapsed_time, total_tokens, total_steps, exceptions_count, created_by, created_at, finished_at, end_user_id, execution_account_id, source_api_key_id, created_by_role)
                 VALUES (\(r.id), \(r.docId), \(r.docSeq), \(r.workflowId), \(r.type), \(r.triggeredFrom), \(r.version), \(r.graph), \(r.inputs),
                     \(r.status), \(r.outputs), \(r.error), \(r.elapsedTime), \(r.totalTokens), \(r.totalSteps), \(r.exceptionsCount),
-                    \(r.createdBy), \(r.createdAt), \(r.finishedAt))
+                    \(r.createdBy), \(r.createdAt), \(r.finishedAt), \(r.endUserId), \(r.executionAccountId), \(r.sourceApiKeyId), \(r.createdByRole))
                 """
     }
 
@@ -119,7 +123,7 @@ extension PostgresStore {
 
     static let runColumns = """
         r.id, r.doc_id, r.doc_seq, r.workflow_id, r.type, r.triggered_from, r.version, r.graph, r.inputs, r.status, r.outputs, r.error,
-        r.elapsed_time, r.total_tokens, r.total_steps, r.exceptions_count, r.created_by, r.created_at, r.finished_at, a.name, a.email
+        r.elapsed_time, r.total_tokens, r.total_steps, r.exceptions_count, r.created_by, r.created_at, r.finished_at, a.name, a.email, r.end_user_id, r.execution_account_id, r.source_api_key_id, r.created_by_role
         """
 
     static func decodeRun(_ row: PostgresRow) throws -> StoredWorkflowRun {
@@ -138,6 +142,10 @@ extension PostgresStore {
         run.finishedAt = try r[18].decode(Date?.self)
         run.createdByName = try r[19].decode(String?.self)
         run.createdByEmail = try r[20].decode(String?.self)
+        run.endUserId = try r[21].decode(String?.self)
+        run.executionAccountId = try r[22].decode(String?.self)
+        run.sourceApiKeyId = try r[23].decode(String?.self)
+        run.createdByRole = try r[24].decode(String.self)
         return run
     }
 

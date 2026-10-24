@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'auth/auth_api.dart';
 import 'auth/auth_session.dart';
 import 'client/transport.dart';
 

@@ -112,7 +112,8 @@ public struct ServerHumanInputRuntime: HumanInputRuntime {
             actions: try Self.jsonText(form.actions),
             displayInUi: Self.displayInUi(isDebugger: isDebugger, webappDeliveryEnabled: form.webappDeliveryEnabled),
             // The deadline counts from when this form is created, not from when the adapter was built.
-            expirationTime: Int(form.expirationTime(from: now).timeIntervalSince1970), createdAt: now)
+            expirationTime: Int(form.expirationTime(from: now).timeIntervalSince1970), createdAt: now,
+            recipientType: isDebugger ? .console : .webapp)
         pending.add(created, deliveryMethods: form.deliveryMethods, resolvedInputs: form.inputsResolved(pool: context.pool))
         return .pause(sessionId: id)
     }

@@ -7,6 +7,7 @@ public struct StoredChatConversation: Sendable, Equatable {
     public var id: String
     public var docId: String
     public var accountId: String
+    public var endUserId: String?
     public var inputs: String
     public var variables: String
     public var activeRunId: String?
@@ -23,6 +24,7 @@ public struct StoredChatMessage: Sendable, Equatable {
     public var docId: String
     public var conversationId: String
     public var accountId: String
+    public var endUserId: String?
     public var parentMessageId: String?
     public var workflowRunId: String
     public var query: String
@@ -84,13 +86,14 @@ enum ChatSchema {
 }
 
 extension PostgresStore {
-    static let chatConversationColumns = "id, doc_id, account_id, inputs, variables, active_run_id, created_at, updated_at"
-    static let chatMessageColumns = "id, doc_id, conversation_id, account_id, parent_message_id, workflow_run_id, query, inputs, files, answer, reasoning, output_files, metadata, status, error, created_at, updated_at"
+    static let chatConversationColumns = "id, doc_id, account_id, inputs, variables, active_run_id, created_at, updated_at, end_user_id"
+    static let chatMessageColumns = "id, doc_id, conversation_id, account_id, parent_message_id, workflow_run_id, query, inputs, files, answer, reasoning, output_files, metadata, status, error, created_at, updated_at, end_user_id"
     static func decodeChatConversation(_ row: PostgresRow) throws -> StoredChatConversation {
         let r = row.makeRandomAccess()
         var c = StoredChatConversation(id: try r[0].decode(UUID.self).uuidString.lowercased(), docId: try r[1].decode(String.self),
             accountId: try r[2].decode(String.self), inputs: try r[3].decode(String.self), variables: try r[4].decode(String.self), at: try r[6].decode(Date.self))
         c.activeRunId = try r[5].decode(String?.self); c.updatedAt = try r[7].decode(Date.self)
+        c.endUserId = try r[8].decode(String?.self)
         return c
     }
     static func decodeChatMessage(_ row: PostgresRow) throws -> StoredChatMessage {
@@ -102,14 +105,15 @@ extension PostgresStore {
         m.answer = try r[9].decode(String.self); m.reasoning = try r[10].decode(String.self); m.outputFiles = try r[11].decode(String.self)
         m.metadata = try r[12].decode(String.self); m.status = try r[13].decode(String.self); m.error = try r[14].decode(String?.self)
         m.updatedAt = try r[16].decode(Date.self)
+        m.endUserId = try r[17].decode(String?.self)
         return m
     }
-    public func chatConversation(doc: String, id: String, account: String) async throws -> StoredChatConversation? {
+    public func chatConversation(doc: String, id: String, account: String, endUser: String? = nil) async throws -> StoredChatConversation? {
         guard let uuid = UUID(uuidString: id) else { return nil }
         return try await bounded {
             for try await row in try await self.client.query("""
                 SELECT \(unescaped: Self.chatConversationColumns) FROM app_chat_conversations
-                WHERE id = \(uuid) AND doc_id = \(doc) AND account_id = \(account)
+                WHERE id = \(uuid) AND doc_id = \(doc) AND account_id = \(account) AND end_user_id IS NOT DISTINCT FROM \(endUser)::text
                 """, logger: self.logger) { return try Self.decodeChatConversation(row) }
             return nil
         }
@@ -122,13 +126,15 @@ extension PostgresStore {
             return nil
         }
     }
-    public func chatMessages(doc: String, conversation: String, account: String, limit: Int = 500) async throws -> [StoredChatMessage] {
+    public func chatMessages(doc: String, conversation: String, account: String, limit: Int = 500, endUser: String? = nil, before: StoredChatMessage? = nil) async throws -> [StoredChatMessage] {
         guard let uuid = UUID(uuidString: conversation) else { throw ChatStoreError.notFound }
+        let beforeId = before.flatMap { UUID(uuidString:$0.id) }, beforeDate = before?.createdAt
         return try await bounded {
             var out: [StoredChatMessage] = []
             for try await row in try await self.client.query("""
                 SELECT \(unescaped: Self.chatMessageColumns) FROM app_messages
-                WHERE doc_id = \(doc) AND conversation_id = \(uuid) AND account_id = \(account)
+                WHERE doc_id = \(doc) AND conversation_id = \(uuid) AND account_id = \(account) AND end_user_id IS NOT DISTINCT FROM \(endUser)::text
+                AND (\(beforeId)::uuid IS NULL OR (created_at,id) < (\(beforeDate)::timestamptz,\(beforeId)::uuid))
                 ORDER BY created_at DESC, id DESC LIMIT \(min(max(limit, 1), 500))
                 """, logger: self.logger) { out.append(try Self.decodeChatMessage(row)) }
             return out
@@ -147,15 +153,15 @@ extension PostgresStore {
                 return try await self.client.withTransaction(logger: self.logger) { c in
                     if create {
                         _ = try await c.query("""
-                            INSERT INTO app_chat_conversations (id, doc_id, account_id, inputs, variables, created_at, updated_at)
+                            INSERT INTO app_chat_conversations (id, doc_id, account_id, inputs, variables, created_at, updated_at, end_user_id)
                             VALUES (\(cid), \(proposed.docId), \(proposed.accountId), \(proposed.inputs), \(proposed.variables),
-                                    \(proposed.createdAt), \(proposed.updatedAt)) ON CONFLICT DO NOTHING
+                                    \(proposed.createdAt), \(proposed.updatedAt), \(proposed.endUserId)) ON CONFLICT DO NOTHING
                             """, logger: self.logger)
                     }
                     var conversation: StoredChatConversation?
                     for try await row in try await c.query("""
                         SELECT \(unescaped: Self.chatConversationColumns) FROM app_chat_conversations
-                        WHERE id = \(cid) AND doc_id = \(m.docId) AND account_id = \(m.accountId) FOR UPDATE
+                        WHERE id = \(cid) AND doc_id = \(m.docId) AND account_id = \(m.accountId) AND end_user_id IS NOT DISTINCT FROM \(m.endUserId)::text FOR UPDATE
                         """, logger: self.logger) { conversation = try Self.decodeChatConversation(row) }
                     guard var conversation else { throw ChatStoreError.notFound }
                     guard conversation.activeRunId == nil else { throw ChatStoreError.busy }
@@ -165,16 +171,16 @@ extension PostgresStore {
                         var exists = false
                         for try await _ in try await c.query("""
                             SELECT 1 FROM app_messages WHERE id = \(parent) AND conversation_id = \(cid)
-                                AND doc_id = \(m.docId) AND account_id = \(m.accountId)
+                                AND doc_id = \(m.docId) AND account_id = \(m.accountId) AND end_user_id IS NOT DISTINCT FROM \(m.endUserId)::text
                             """, logger: self.logger) { exists = true }
                         guard exists else { throw ChatStoreError.invalidParent }
                     }
                     _ = try await c.query(Self.insertWorkflowRunQuery(run), logger: self.logger)
                     _ = try await c.query("""
                         INSERT INTO app_messages (id, doc_id, conversation_id, account_id, parent_message_id, workflow_run_id,
-                            query, inputs, files, created_at, updated_at)
+                            query, inputs, files, created_at, updated_at, end_user_id)
                         VALUES (\(mid), \(m.docId), \(cid), \(m.accountId), \(parent), \(m.workflowRunId),
-                            \(m.query), \(m.inputs), \(m.files), \(m.createdAt), \(m.updatedAt))
+                            \(m.query), \(m.inputs), \(m.files), \(m.createdAt), \(m.updatedAt), \(m.endUserId))
                         """, logger: self.logger)
                     _ = try await c.query("""
                         UPDATE app_chat_conversations SET active_run_id = \(run.id), lease_id = \(lease),
@@ -337,11 +343,11 @@ extension PostgresStore {
             }
         }
     }
-    public func chatMessageCount(doc: String, conversation: String, account: String) async throws -> Int {
+    public func chatMessageCount(doc: String, conversation: String, account: String, endUser: String? = nil) async throws -> Int {
         guard let id = UUID(uuidString: conversation) else { throw ChatStoreError.notFound }
         return try await bounded {
             for try await row in try await self.client.query("""
-                SELECT count(*)::bigint FROM app_messages WHERE doc_id = \(doc) AND conversation_id = \(id) AND account_id = \(account)
+                SELECT count(*)::bigint FROM app_messages WHERE doc_id = \(doc) AND conversation_id = \(id) AND account_id = \(account) AND end_user_id IS NOT DISTINCT FROM \(endUser)::text
                 """, logger: self.logger) { return Int(try row.decode(Int64.self)) }
             return 0
         }

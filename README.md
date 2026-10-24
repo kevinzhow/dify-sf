@@ -8,7 +8,7 @@ provider configuration, a Swift workflow runtime, and local file uploads with si
 on `main`. New delivery integrates on `main`; the completed `client/step1` and feature branches have been removed after merge. Workflow model calls use the optional Dify plugin daemon; code and HTTP execution
 use the configured sandbox and SSRF proxy. Human-input web forms and email delivery have separate, default-off
 rollout flags. Runtime files/vision and durable console Chatflow conversations reuse the same workflow engine and
-storage. Tools and published end-user execution/log aggregation remain separate delivery phases. The sections below describe configuration and the supported boundaries.
+storage. Built-in and published workflow tools, durable Chatflow and published workflow/Chatflow Web/API execution are available. Public end users and operational logs remain separate from console debug state. The sections below describe configuration and supported boundaries.
 
 * `docs/protocol.md` - the wire protocol (HTTP `POST` for ops, SSE for updates). Clients are written from this.
 * `docs/architecture.md` - how the server works and why.
@@ -20,13 +20,13 @@ storage. Tools and published end-user execution/log aggregation remain separate 
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-293 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
+294 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
 
 | Status | Features |
 |---|---|
-| ported | 177 |
-| partial | 52 |
-| not ported | 33 |
+| ported | 180 |
+| partial | 51 |
+| not ported | 32 |
 | n/a | 17 |
 | dify-sf only | 14 |
 
@@ -85,7 +85,7 @@ The complete, digest-pinned runtime profile and its readiness/resource checks ar
 `docker-compose.runtime.yml`; the base stack leaves runtime dependencies unconfigured.
 
 [Persistent console Chatflow](docs/chatflow-runtime.md) documents protocol 1.18, durable parent-thread memory,
-conversation isolation, reconnect and restart behavior, and the explicit boundary to published/end-user apps.
+conversation isolation, reconnect and restart behavior. [Published Web/API](docs/protocol.md#published-web-and-service-api-120) adds immutable published revisions, independent visitors/API callers, files/forms, recovery and real monitoring; it shares the existing engine.
 
 ## Test
 

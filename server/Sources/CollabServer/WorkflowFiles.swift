@@ -10,6 +10,7 @@ import Vapor
 struct ServerWorkflowFiles: RuntimeFiles {
     let routes: Routes
     let userId: String
+    var endUserId: String? = nil
     var workspace: String = uploadWorkspaceId
 
     func resolve(_ mapping: JSONValue, config: JSONObject?) async throws -> RuntimeFile {
@@ -20,6 +21,7 @@ struct ServerWorkflowFiles: RuntimeFiles {
         var record: StoredUploadFile
         if let id = RuntimeFile.recordId(in: mapping) {
             guard let stored = try await routes.store.uploadFile(id: id, workspace: workspace),
+                  (endUserId == nil ? stored.endUserId == nil : stored.endUserId == endUserId),
                   let info = try await routes.blobs.info(key: stored.key), info.size == stored.size else {
                 throw RuntimeFileError("File not found")
             }
@@ -90,7 +92,7 @@ struct ServerWorkflowFiles: RuntimeFiles {
         let name = filename.count > 200 ? String(filename.prefix(180)) + "." + ext : filename
         let stored = StoredUploadFile(id: id, workspaceId: workspace, key: "\(workspace)/\(id)", name: name,
             size: Int64(bytes.count), extensionName: ext, mimeType: Routes.fileMIME(mimeType, ext: ext), createdBy: userId,
-            sha256: SHA256.hash(data: Data(bytes)).map { String(format: "%02x", $0) }.joined(), sourceURL: sourceURL)
+            sha256: SHA256.hash(data: Data(bytes)).map { String(format: "%02x", $0) }.joined(), sourceURL: sourceURL, endUserId: endUserId)
         try await routes.persistUpload(stored, bytes: Data(bytes))
         return try canonical(stored, method: sourceURL == nil ? "tool_file" : "remote_url")
     }
@@ -128,10 +130,10 @@ private final class WorkflowFileBytes: Sendable {
 extension Routes {
     /// Re-sign only DB-backed files authorized in this workspace. Merely storing a file-shaped JSON object cannot
     /// mint a bearer link or make an outbound request. Missing/deleted files stay visible but have no usable link.
-    func projectRuntimeFiles(_ value: JSONValue, userId: String) async -> JSONValue {
+    func projectRuntimeFiles(_ value: JSONValue, userId: String, endUserId: String? = nil) async -> JSONValue {
         if RuntimeFile.isFile(value) {
             if RuntimeFile.recordId(in: value) != nil,
-               let file = try? await ServerWorkflowFiles(routes: self, userId: userId).resolve(value, config: nil) { return file.json }
+               let file = try? await ServerWorkflowFiles(routes: self, userId: userId, endUserId: endUserId).resolve(value, config: nil) { return file.json }
             var missing = value.object ?? [:]
             missing["url"] = ""; missing["remote_url"] = .null
             return .object(missing)
@@ -139,16 +141,16 @@ extension Routes {
         switch value {
         case .array(let items):
             var projected: [JSONValue] = []
-            for item in items { projected.append(await projectRuntimeFiles(item, userId: userId)) }
+            for item in items { projected.append(await projectRuntimeFiles(item, userId: userId, endUserId: endUserId)) }
             return .array(projected)
         case .object(let object):
             var projected = JSONObject()
-            for (key, item) in object { projected[key] = await projectRuntimeFiles(item, userId: userId) }
+            for (key, item) in object { projected[key] = await projectRuntimeFiles(item, userId: userId, endUserId: endUserId) }
             return .object(projected)
         default: return value
         }
     }
-    func fileJSONResponse(_ value: JSONValue, userId: String) async -> Response {
-        rawJSON(await projectRuntimeFiles(value, userId: userId))
+    func fileJSONResponse(_ value: JSONValue, userId: String, endUserId: String? = nil) async -> Response {
+        rawJSON(await projectRuntimeFiles(value, userId: userId, endUserId: endUserId))
     }
 }

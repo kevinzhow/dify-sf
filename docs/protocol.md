@@ -2240,3 +2240,67 @@ The console authenticates these routes with its account bearer token:
 Workflow tools retain their immutable published version until explicitly reconfigured. The call chain is limited to five workflows including the root and rejects recursion. Child runs and node records are persisted as `workflow-tool`; the parent tool execution records the child's `workflow_run_id` and version. Cancellation reaches the child engine; already accepted remote side effects cannot be undone. Pausing inside a workflow tool is disabled, matching upstream.
 
 This slice supports credential-free and API-key tools; OAuth, custom API/MCP provider services, plugin marketplace and plugin callbacks into Dify's inner model/app/file APIs remain unsupported. Tools requiring those callbacks fail explicitly. Model invocations within a published workflow tool use the existing configured model runtime.
+
+## Published Web and service API (1.20)
+
+Discovery advertises `enable_published_apps: true`, `workflow_runtime.published_run: true` and
+`workflow_runtime.protocol_version: "1.20"`. Tools remain available as described in 1.19. A workflow or Chatflow must
+have a published version; public execution never reads the current draft. Each run persists the selected version,
+`triggered_from=app-run`, its end user, API-key source (when present), and execution account. The same graph engine,
+run channels, typed files, node history, retries and human-input resume machinery serve console and public runs.
+Published runs do not overwrite debugger variables.
+
+Authentication has three separate surfaces:
+
+- Console access tokens retain their existing member permissions and cannot execute a public run.
+- An enabled application's API key is a bearer credential. Every call requires a nonempty `user` (up to 256 UTF-8
+  bytes), supplied in JSON for writes or the query for reads. Two keys have separate end-user namespaces even when
+  the caller supplies the same `user`. **This deliberately differs from Dify's app-wide external-user namespace:**
+  rotating a key revokes the old caller and starts a new history namespace; it does not transfer existing sessions.
+- A browser calls `GET /v1/passport` with `X-App-Code`. It receives an opaque visitor bearer token, stored separately
+  from console credentials; only its hash is persisted on the server. A still-valid visitor token can be supplied to
+  the same call to retain identity. An unproved `user_id` cannot restore another visitor. Tokens expire after 30 days;
+  every subsequent request also checks the live app/site/code. Disabling the site, changing its code or deleting the
+  app makes its previous sessions unusable. Site access remains within the deployment's network restrictions.
+
+`GET /v1/site`, `/v1/info`, `/v1/parameters` and `/v1/meta` require one of the public credentials above. Definitions
+contain the published Start form/features and whitelisted site presentation fields; creator/updater account details
+are not exposed. `/workflow/{code}`, `/chat/{code}` and `/chatbot/{code}` open the standalone Flutter public page,
+with existing design-system inputs, file picker, Markdown, results and human-input forms. The fixed upstream embed
+script is served at `/embed.min.js` with its license/attribution. Only declared Start variables are accepted from launch
+parameters; bounded gzip/base64 and plain base64 inputs are supported, while `sys.*`/`user.*` do not override identity.
+
+`POST /v1/workflows/run` takes `{inputs, response_mode, user?, files?}`. `POST /v1/chat-messages` additionally takes a
+nonempty `query` and optional `conversation_id` / `parent_message_id`. `response_mode` is `streaming` (default) or
+`blocking`. Streaming reuses existing SSE events, with the public end user as `sys.user_id` and no owner email. Blocking
+workflow responses contain `{task_id, workflow_run_id, data}`; Chatflow responses contain the durable message and
+answer. A human pause returns the original blocking paused envelope (including top-level Chatflow message identity), rather than fabricated completion. Failed blocking Chatflow returns HTTP 400 `workflow_run_failed`; it does not return an empty successful answer. This error code is the local mapping of Dify's raised blocking error. Typed output files are additionally exposed as `files`, with caller-scoped signed links.
+
+Public ownership is rechecked by `GET /v1/workflows/run/{run}`, `GET /v1/workflow/{run}/events`,
+`POST /v1/workflows/tasks/{run}/stop`, `POST /v1/chat-messages/{run}/stop`, uploads/previews, conversation/messages and
+human-input forms. `include_state_snapshot=true&continue_on_pause=true` follows the same durable run through pauses.
+The public page retains its run/conversation, reconnects after a lost stream and does not start a replacement run;
+401/403/404 stops reconnect attempts. Restoring history blocks a new start until its identity and state are loaded.
+
+`GET /v1/conversations` supports `last_id`, `limit` (1–100, default 20), and `sort_by` (`created_at`, `-created_at`,
+`updated_at`, `-updated_at`). `GET /v1/messages?conversation_id=...` supports `first_id` and `limit` (1–101, default 20).
+Message pages are chronological, containing the latest requested slice; `first_id` requests an older slice. Responses
+carry `data`, `limit`, `has_more`. Cursor ownership is checked, and timestamp ties have a stable ID ordering. Unknown
+or foreign conversations, messages, forms, runs and previews return 404.
+
+Public uploads use the existing bounded local storage and signed download contract, with additional end-user
+ownership on uploads and generated files. An API-key upload includes multipart `user`; a browser passport supplies
+identity directly. Local file references belonging to another end user are refused. Signed download URLs remain
+transferable, expiring bearer links as before. Nested workflow tools inherit the public file scope. Human-input forms
+use enabled `webapp` delivery, preserve their end user through process restart and validate the same caller on submit.
+
+Console overview/statistic and workflow/conversation log routes now read persisted published root runs. Debug and
+workflow-tool child runs do not inflate published traffic. Counts, distinct end users, actual stored token usage,
+elapsed time, message/conversation totals and feedback feed the existing charts/tables; date grouping uses the
+account timezone. Cost is exposed only when a stored usage price/currency exists. Console monitoring explicitly
+projects an end-user identity; it does not borrow a public visitor's authority or expose its bearer token.
+
+This is the workflow/Chatflow public runtime, not the complete Dify chat product. Agent v2, knowledge retrieval,
+public registration/SSO, enterprise environments, the Chrome extension itself and paid hosted services remain out of
+scope. The minimal public page reuses established controls; no claim of whole-page pixel parity is implied. Email
+human-input delivery remains a separately gated feature and is not enabled by public web delivery.

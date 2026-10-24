@@ -40,7 +40,7 @@ extension Routes {
     }
 
     private func uploadConfig(_ req: Request) async throws -> Response {
-        _ = try await authenticate(req)
+        if (try? await authenticate(req)) == nil { _ = try await publicCaller(req) }
         _ = try fileSigner()
         let c = config.files
         return try json(["file_size_limit": c.fileMiB, "knowledge_file_size_limit": c.fileMiB,
@@ -57,7 +57,6 @@ extension Routes {
     }
 
     private func uploadFile(_ req: Request) async throws -> Response {
-        let p = try await authenticate(req)
         _ = try fileSigner()
         guard uploadBudget.acquire() else {
             throw ServerError.http(status: 429, code: "upload_busy", message: "Two uploads are already being processed; retry shortly.")
@@ -77,6 +76,7 @@ extension Routes {
         catch { throw Self.bad("bad_request", "Invalid multipart form data.") }
         var uploads: [(name: String, file: MultipartPart<Data>, filename: String)] = []
         var source = query(req)["source"]
+        var publicUser = query(req)["user"]
         do {
             for part in parts {
                 guard let field = part.headerFields[.contentDisposition] else { continue }
@@ -84,8 +84,12 @@ extension Routes {
                 if let filename = disposition.filename {
                     uploads.append((disposition.name ?? "", part, filename))
                 } else if disposition.name == "source" { source = String(data: part.body, encoding: .utf8) }
+                else if disposition.name == "user" { publicUser = String(data: part.body, encoding: .utf8) }
             }
         } catch { throw Self.bad("bad_request", "Invalid multipart headers.") }
+        let console = try? await authenticate(req)
+        let publicIdentity: PublicCaller? = console == nil ? try await publicCaller(req, user: publicUser) : nil
+        let accountId = console?.id ?? publicIdentity!.executor.id
         guard uploads.contains(where: { $0.name == "file" }) else { throw Self.bad("no_file_uploaded", "Please upload your file.") }
         guard uploads.count == 1 else { throw Self.bad("too_many_files", "Only one file is allowed.") }
         guard source != "datasets" else {
@@ -110,8 +114,8 @@ extension Routes {
         if name.count > 200 { name = String(name.split(separator: ".").first?.prefix(200) ?? "") + "." + ext }
         let id = UUID().uuidString.lowercased()
         let file = StoredUploadFile(id: id, workspaceId: uploadWorkspaceId, key: "\(uploadWorkspaceId)/\(id)", name: name,
-            size: Int64(item.file.body.count), extensionName: ext, mimeType: mime, createdBy: p.id,
-            sha256: SHA256.hash(data: item.file.body).map { String(format: "%02x", $0) }.joined())
+            size: Int64(item.file.body.count), extensionName: ext, mimeType: mime, createdBy: accountId,
+            sha256: SHA256.hash(data: item.file.body).map { String(format: "%02x", $0) }.joined(), endUserId: publicIdentity?.endUser.id)
         try await persistUpload(file, bytes: item.file.body)
         return try json(fileJSON(file), status: .created)
     }
@@ -159,9 +163,9 @@ extension Routes {
             .replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_")
         return .object(["id": .string(f.id), "reference": .string(reference), "name": .string(f.name),
             "size": .int(Int(f.size)), "extension": .string(f.extensionName), "mime_type": .string(f.mimeType),
-            "created_by": .string(f.createdBy), "created_at": .int(Self.seconds(f.createdAt)),
+            "created_by": .string(f.endUserId ?? f.createdBy), "created_at": .int(Self.seconds(f.createdAt)),
             "preview_url": .string(signer.url(id: f.id)), "source_url": f.sourceURL.map(JSON.string) ?? .null,
-            "original_url": .null, "user_id": .null, "tenant_id": .string(f.workspaceId), "conversation_id": .null, "file_key": .null])
+            "original_url": .null, "user_id": f.endUserId.map(JSON.string) ?? .null, "tenant_id": .string(f.workspaceId), "conversation_id": .null, "file_key": .null])
     }
 
     private func uploadedFile(_ req: Request) async throws -> StoredUploadFile {
@@ -174,9 +178,11 @@ extension Routes {
     }
 
     private func textFilePreview(_ req: Request) async throws -> Response {
-        _ = try await authenticate(req)
+        let console = try? await authenticate(req)
+        let caller: PublicCaller? = console == nil ? try await publicCaller(req) : nil
         _ = try fileSigner()
         let file = try await uploadedFile(req)
+        if let caller { guard file.endUserId == caller.endUser.id else { throw ServerError.notFound } }
         guard FileStorageConfig.text.contains(file.extensionName) else {
             throw ServerError.http(status: 415, code: "unsupported_file_type", message: "Text extraction is not supported for this type. Download the original file.")
         }

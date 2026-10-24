@@ -1173,3 +1173,153 @@ class HttpFilesApi extends HttpConsoleApi implements FilesApi {
     return content;
   }
 }
+
+/// Published app transport. Its passport is a visitor credential, isolated from
+/// AuthSession and console refresh. Existing SSE parsing and file transport are
+/// reused, with only the public paths and audience changed.
+class HttpPublicAppApi extends HttpWorkflowRunApi implements FilesApi {
+  factory HttpPublicAppApi(
+    Uri server, {
+    required String code,
+    String? passport,
+    http.Client? client,
+  }) {
+    final scoped = _PublicAppClient(client ?? http.Client(), code, passport);
+    return HttpPublicAppApi._(server, scoped);
+  }
+  HttpPublicAppApi._(super.baseUrl, this._publicClient) : super(client: _publicClient);
+  final _PublicAppClient _publicClient;
+  String? get passport => _publicClient.passport;
+
+  Future<String> establishPassport() async {
+    Map<String, Object?> value;
+    try {
+      value = HttpConsoleApi._map(
+        (await _send('GET', '/v1/passport', ok: const [200])).json,
+      );
+    } on TransportException catch (e) {
+      if (e.statusCode != 401 || _publicClient.passport == null) rethrow;
+      _publicClient.passport = null;
+      value = HttpConsoleApi._map(
+        (await _send('GET', '/v1/passport', ok: const [200])).json,
+      );
+    }
+    final token = value['access_token'];
+    if (token is! String || token.isEmpty) {
+      throw const TransportException('Missing visitor passport');
+    }
+    return _publicClient.passport = token;
+  }
+
+  Future<Map<String, Object?>> definition() async => HttpConsoleApi._map(
+    (await _send('GET', '/v1/site', ok: const [200])).json,
+  );
+  Stream<Map<String, Object?>> runPublished(
+    Map<String, Object?> body, {
+    bool chat = false,
+  }) => _runStream(chat ? '/v1/chat-messages' : '/v1/workflows/run', {
+    ...body,
+    'response_mode': 'streaming',
+  });
+  Future<void> stopPublished(String taskId, {bool chat = false}) async => _send(
+    'POST',
+    chat
+        ? '/v1/chat-messages/${HttpConsoleApi._seg(taskId)}/stop'
+        : '/v1/workflows/tasks/${HttpConsoleApi._seg(taskId)}/stop',
+    ok: const [200],
+    body: const {},
+  );
+  Future<List<Map<String, Object?>>> publicConversations() async => HttpConsoleApi._data(
+    (await _send('GET', '/v1/conversations', ok: const [200])).json,
+  );
+
+  /// The public protocol returns each page in chronological order. The shared
+  /// runner consumes newest-first history, so normalize only at this boundary.
+  Future<List<Map<String, Object?>>> publicMessages(String conversationId) async {
+    final values = <Map<String, Object?>>[];
+    String? first;
+    while (true) {
+      final page = HttpConsoleApi._map(
+        (await _send(
+          'GET',
+          '/v1/messages',
+          ok: const [200],
+          query: {
+            'conversation_id': [conversationId],
+            'limit': ['100'],
+            if (first != null) 'first_id': [first],
+          },
+        )).json,
+      );
+      final rows = HttpConsoleApi._data(page);
+      values.addAll(rows.reversed);
+      if (page['has_more'] != true || rows.isEmpty) return values;
+      final next = rows.first['id'];
+      if (next is! String || next.isEmpty || next == first) {
+        throw const TransportException('Invalid message history cursor');
+      }
+      first = next;
+    }
+  }
+
+  Future<Map<String, Object?>> publishedRun(String id) async => HttpConsoleApi._map(
+    (await _send(
+      'GET',
+      '/v1/workflows/run/${HttpConsoleApi._seg(id)}',
+      ok: const [200],
+    )).json,
+  );
+  @override
+  Future<FileUploadLimits> limits() async => FileUploadLimits.fromJson(
+    HttpConsoleApi._map(
+      (await _send('GET', '/v1/files/upload', ok: const [200])).json,
+    ),
+  );
+  @override
+  Future<UploadedFile> upload(
+    List<int> bytes, {
+    required String filename,
+    String? mimeType,
+  }) async {
+    final request = http.MultipartRequest('POST', _url('/v1/files/upload'))
+      ..files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      );
+    return UploadedFile.fromJson(
+      HttpConsoleApi._map(
+        (await _send(
+          'POST',
+          '/v1/files/upload',
+          ok: const [201],
+          request: request,
+        )).json,
+      ),
+    );
+  }
+
+  @override
+  Future<String> textPreview(String fileId) async {
+    final body = HttpConsoleApi._map(
+      (await _send('GET', '/v1/files/${HttpConsoleApi._seg(fileId)}/preview', ok: const [200])).json,
+    );
+    if (body['content'] is! String) throw const TransportException('Malformed file preview');
+    return body['content']! as String;
+  }
+}
+
+class _PublicAppClient extends http.BaseClient {
+  _PublicAppClient(this.client, this.code, this.passport);
+  final http.Client client;
+  final String code;
+  String? passport;
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    request.headers['X-App-Code'] = code;
+    final token = passport;
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    return client.send(request);
+  }
+
+  @override
+  void close() => client.close();
+}

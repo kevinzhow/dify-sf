@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collab_client/collab_client.dart' show WorkflowRunApi;
 import 'package:flutter/material.dart';
 
+import 'public_app/public_app_page.dart';
 import 'auth/activate_page.dart';
 import 'auth/auth_api.dart';
 import 'auth/auth_controller.dart';
@@ -71,7 +72,11 @@ class _AppRootState extends State<AppRoot> {
   void initState() {
     super.initState();
     if (widget.auth == null) {
-      _connect(widget.settings.serverUrl, activate: widget.launch?.invite, reset: widget.launch?.resetToken);
+      _connect(
+        widget.settings.serverUrl,
+        activate: widget.launch?.invite,
+        reset: widget.launch?.resetToken,
+      );
     }
     _shown = _auth.route;
     widget.auth?.addListener(_routeChanged);
@@ -92,8 +97,11 @@ class _AppRootState extends State<AppRoot> {
     _own?.removeListener(_routeChanged);
     _own?.dispose();
     final api = (widget.authApiFor ?? defaultAuthApiFor)(Uri.parse(server));
-    _own = AuthController.on(server: server, api: api, store: widget.tokenStore ?? TokenStore.platform())
-      ..addListener(_routeChanged);
+    _own = AuthController.on(
+      server: server,
+      api: api,
+      store: widget.tokenStore ?? TokenStore.platform(),
+    )..addListener(_routeChanged);
     unawaited(_own!.start(activateToken: activate, resetToken: reset));
     if (mounted) _publish();
   }
@@ -126,11 +134,20 @@ class _AppRootState extends State<AppRoot> {
   Widget build(BuildContext context) {
     // Dify's mailed link (`/form/{token}`) is a page of its own, outside the account: a recipient has none.
     if (widget.launch?.formToken case final token?) {
-      return HumanInputFormPage(token: token, server: Uri.parse(_auth.server), apiFor: widget.humanInputApiFor);
+      return HumanInputFormPage(
+        token: token,
+        server: Uri.parse(_auth.server),
+        apiFor: widget.humanInputApiFor,
+      );
+    }
+    if (widget.launch?.publicAppCode case final code?) {
+      return PublicAppPage(code: code, server: Uri.parse(_auth.server), parameters: widget.launch!.publicParameters);
     }
     final route = _auth.route;
     final Widget page = switch (route) {
-      StartingRoute() => const AuthPageFrame(child: Center(child: DifyLoading())),
+      StartingRoute() => const AuthPageFrame(
+        child: Center(child: DifyLoading()),
+      ),
       UnreachableRoute(:final error) => UnreachablePage(
         server: _auth.server,
         error: error,
@@ -138,11 +155,22 @@ class _AppRootState extends State<AppRoot> {
       ),
       InstallRoute() => const InstallPage(),
       SignInRoute() => SignInPage(key: ValueKey(route), route: route),
-      ActivateRoute(:final token) => ActivatePage(key: ValueKey(token), token: token),
-      InviteSettingsRoute(:final inviteToken) => InviteSettingsPage(inviteToken: inviteToken),
+      ActivateRoute(:final token) => ActivatePage(
+        key: ValueKey(token),
+        token: token,
+      ),
+      InviteSettingsRoute(:final inviteToken) => InviteSettingsPage(
+        inviteToken: inviteToken,
+      ),
       ResetPasswordRoute() => ResetPasswordPage(route: route),
-      ResetPasswordCheckCodeRoute(:final token) => ResetPasswordCheckCodePage(key: ValueKey(token), route: route),
-      ResetPasswordSetRoute(:final token) => ResetPasswordSetPage(key: ValueKey(token), route: route),
+      ResetPasswordCheckCodeRoute(:final token) => ResetPasswordCheckCodePage(
+        key: ValueKey(token),
+        route: route,
+      ),
+      ResetPasswordSetRoute(:final token) => ResetPasswordSetPage(
+        key: ValueKey(token),
+        route: route,
+      ),
       HomeRoute() => Builder(builder: widget.home),
     };
     return AuthScope(controller: _auth, child: page);

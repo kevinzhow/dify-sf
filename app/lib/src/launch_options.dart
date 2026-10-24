@@ -16,11 +16,17 @@ class LaunchOptions {
     this.app,
     this.page,
     this.formToken,
+    this.publicAppCode,
+    this.publicParameters = const {},
   });
 
   /// The web build's URL query as options; [path] `/activate` (Dify's invitation link `/activate?token=…`) or `#/activate`
   /// makes `token` the invitation, `/reset-password/set-password` (an admin's reset link) the reset token.
-  factory LaunchOptions.fromQuery(Map<String, String> q, {String path = '', String fragment = ''}) => LaunchOptions(
+  factory LaunchOptions.fromQuery(
+    Map<String, String> q, {
+    String path = '',
+    String fragment = '',
+  }) => LaunchOptions(
     server: q['server'],
     doc: q['doc'],
     invite: path.endsWith('/activate') || fragment.startsWith('/activate')
@@ -39,7 +45,14 @@ class LaunchOptions {
     page: q['page'],
     // Dify's mailed link is `/form/{token}` (`(humanInputLayout)/form/[token]`): it opens the form, no account needed.
     formToken: _formTokenOf(path) ?? _formTokenOf(fragment),
+    publicAppCode: _publicCodeOf(path) ?? _publicCodeOf(fragment),
+    publicParameters: Map.unmodifiable(q),
   );
+
+  static String? _publicCodeOf(String path) {
+    final match = RegExp(r'^/?(?:workflow|chat|chatbot)/([^/?#]+)').firstMatch(path);
+    return match?.group(1);
+  }
 
   /// The token of Dify's `/form/{token}` page, when the URL is that page.
   static String? _formTokenOf(String path) {
@@ -148,6 +161,8 @@ class LaunchOptions {
 
   /// Dify's mailed link (`/form/{token}`): the human input form to show, without an account.
   final String? formToken;
+  final String? publicAppCode;
+  final Map<String, String> publicParameters;
 
   bool get autoOpen => demo || doc != null;
 

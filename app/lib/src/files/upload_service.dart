@@ -17,7 +17,9 @@ UploadAppIcon? appIconUploader(AuthController auth) {
     try {
       final uploaded = await api.upload(file.bytes, filename: file.name);
       final url = uploaded.previewUrl;
-      if (url == null || url.isEmpty) throw const TransportException('uploaded image has no preview URL');
+      if (url == null || url.isEmpty) {
+        throw const TransportException('uploaded image has no preview URL');
+      }
       return (fileId: uploaded.id, url: url);
     } finally {
       api.close();
@@ -27,7 +29,23 @@ UploadAppIcon? appIconUploader(AuthController auth) {
 
 /// Run inputs reuse the authenticated UploadFile host; only opaque ids go back into the graph.
 RunFilePicker? runtimeFilePicker(BuildContext context, AuthController? auth) {
-  if (auth == null || !auth.signedIn || !auth.systemFeatures.fileUpload) return null;
+  if (auth == null || !auth.signedIn || !auth.systemFeatures.fileUpload) {
+    return null;
+  }
+  return runtimeFilePickerWithApi(
+    context,
+    () => HttpFilesApi(Uri.parse(auth.server), auth: auth.session),
+    close: (api) => (api as HttpFilesApi).close(),
+  );
+}
+
+/// Same picker, size validation and field mappings for a published visitor's
+/// FilesApi. The caller owns the audience; it cannot borrow console credentials.
+RunFilePicker runtimeFilePickerWithApi(
+  BuildContext context,
+  FilesApi Function() apiFor, {
+  void Function(FilesApi)? close,
+}) {
   return (method) async {
     try {
       if (method == TransferMethod.remoteUrl) {
@@ -46,7 +64,7 @@ RunFilePicker? runtimeFilePicker(BuildContext context, AuthController? auth) {
       }
       final picked = await openFile();
       if (picked == null) return null;
-      final api = HttpFilesApi(Uri.parse(auth.server), auth: auth.session);
+      final api = apiFor();
       try {
         final limits = await api.limits();
         final ext = picked.name.split('.').last.toLowerCase();
@@ -77,7 +95,7 @@ RunFilePicker? runtimeFilePicker(BuildContext context, AuthController? auth) {
           'progress': 100,
         };
       } finally {
-        api.close();
+        close?.call(api);
       }
     } on TransportException catch (e) {
       toast.error(e.message);
@@ -91,7 +109,9 @@ RunFilePicker? runtimeFilePicker(BuildContext context, AuthController? auth) {
 
 String runtimeFileType(String extension) {
   final ext = extension.toLowerCase();
-  if (const {'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'}.contains(ext)) return 'image';
+  if (const {'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'}.contains(ext)) {
+    return 'image';
+  }
   if (const {'mp3', 'm4a', 'wav', 'amr', 'mpga'}.contains(ext)) return 'audio';
   if (const {'mp4', 'mov', 'mpeg', 'webm'}.contains(ext)) return 'video';
   if (const {
@@ -132,7 +152,10 @@ class _RuntimeFileLinkState extends State<_RuntimeFileLink> {
   String value = '';
   bool get valid {
     final uri = Uri.tryParse(value.trim());
-    return uri != null && const {'http', 'https'}.contains(uri.scheme) && uri.host.isNotEmpty && uri.userInfo.isEmpty;
+    return uri != null &&
+        const {'http', 'https'}.contains(uri.scheme) &&
+        uri.host.isNotEmpty &&
+        uri.userInfo.isEmpty;
   }
 
   @override

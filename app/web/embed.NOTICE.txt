@@ -1,0 +1,1 @@
+embed.min.js is copied without modification from LangGenius Dify 1.17.1, commit 8387590ace4a094de812b7847fc6a4c3a27cd52b, web/public/embed.min.js. Copyright 2025 LangGenius, Inc. License: DIFY-LICENSE.txt (modified Apache License 2.0); branding retained. Replaces no Flutter engine or business control.

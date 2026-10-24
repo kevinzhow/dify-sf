@@ -1,6 +1,7 @@
 import CollabCore
 import CollabDSL
 import CollabModels
+import CollabRuntime
 import CollabStore
 import Foundation
 import HTTPTypes
@@ -787,13 +788,56 @@ extension Routes {
         if let start, let end, start > end { throw ServerError.badRequest("start must be earlier than or equal to end") }
     }
 
-    /// Any member (Dify: `app.acl.monitor`, not enforced without RBAC): `{data: []}`.
+    /// Published root records, excluding console debugging and internal tool runs.
     private func statistic(_ req: Request, _ s: Statistic) async throws -> Response {
         let p = try await authenticate(req)
         let a = try await liveApp(try appId(req), viewer: p.id)
         if let modes = s.modes, !modes.contains(a.mode) { throw notAllowedMode(modes) }
-        try timeRange(queryAll(req))
-        return try json(JSON.object(["data": .array([])]))
+        let q = queryAll(req)
+        try timeRange(q)
+        let zone = TimeZone(identifier:p.account.timezone ?? "UTC") ?? TimeZone(secondsFromGMT:0)!
+        let start = try monitoringDate(q["start"]?.last,zone:zone), end = try monitoringDate(q["end"]?.last,zone:zone)
+        let metrics = try await store.publishedMetrics(app:a.id,start:start,end:end,timezone:zone.identifier)
+        let rows:[JSONValue] = metrics.map { day in
+            var value:JSONObject = ["date":.string(day.date)]
+            switch s.path {
+            case "workflow/statistics/daily-conversations": value["runs"] = .int(day.runs)
+            case "statistics/daily-messages": value["message_count"] = .int(day.messages)
+            case "statistics/daily-conversations": value["conversation_count"] = .int(day.conversations)
+            case "statistics/daily-end-users", "workflow/statistics/daily-terminals": value["terminal_count"] = .int(day.users)
+            case "statistics/token-costs", "workflow/statistics/token-costs":
+                value["token_count"] = .int(day.tokens)
+                if !s.path.hasPrefix("workflow/") {
+                    value["total_price"] = day.price.map(JSONValue.string) ?? .null
+                    value["currency"] = day.currency.map(JSONValue.string) ?? .null
+                }
+            case "workflow/statistics/average-app-interactions": value["interactions"] = .double(day.interactions)
+            case "statistics/average-session-interactions": value["interactions"] = .double(day.sessionInteractions)
+            case "statistics/user-satisfaction-rate": value["rate"] = .double(day.messages==0 ? 0 : (Double(day.likes)*100000/Double(day.messages)).rounded()/100)
+            case "statistics/average-response-time": value["latency"] = .double((day.latency*1000*10000).rounded()/10000)
+            case "statistics/tokens-per-second": value["tps"] = .double((day.tps*10000).rounded()/10000)
+            default: break
+            }
+            return .object(value)
+        }
+        return try json(JSONValue.object(["data":.array(rows)]))
+    }
+
+    func monitoringDate(_ raw: String?, zone:TimeZone, iso:Bool=false) throws -> Date? {
+        guard let raw, !raw.isEmpty else { return nil }
+        if iso {
+            let parser=ISO8601DateFormatter()
+            parser.formatOptions=[.withInternetDateTime,.withFractionalSeconds]
+            if let date=parser.date(from:raw) { return date }
+            parser.formatOptions=[.withInternetDateTime]
+            if let date=parser.date(from:raw.replacingOccurrences(of:" ",with:"T")) { return date }
+        }
+        let parser=DateFormatter();parser.locale=Locale(identifier:"en_US_POSIX");parser.timeZone=zone;parser.isLenient=false
+        for format in iso ? ["yyyy-MM-dd","yyyy-MM-dd HH:mm","yyyy-MM-dd HH:mm:ss"] : ["yyyy-MM-dd HH:mm"] {
+            parser.dateFormat=format
+            if let date=parser.date(from:raw) { return date }
+        }
+        throw ServerError.badRequest("Invalid time format")
     }
 
     // MARK: - Logs
@@ -803,7 +847,7 @@ extension Routes {
     /// `GET /v1/apps/{app}/workflow-app-logs` (any member; workflow apps): an empty page.
     private func workflowLogs(_ req: Request) async throws -> Response {
         let p = try await authenticate(req)
-        _ = try await appOfMode(req, p, ["workflow"])
+        let a = try await appOfMode(req, p, ["workflow"])
         let q = queryAll(req)
         let page = try queryInt(q, "page", 1, 1...99999), limit = try queryInt(q, "limit", 20, 1...100)
         if let s = q["status"]?.last, !s.isEmpty, !Self.runStatuses.contains(s) {
@@ -816,42 +860,80 @@ extension Routes {
                 throw ServerError.badRequest("\(key) must be an ISO 8601 time")
             }
         }
-        return try json(JSON.object(["page": .int(page), "limit": .int(limit), "total": 0, "has_more": false, "data": .array([])]))
+        var filter=PublishedLogFilter();filter.page=page;filter.limit=limit
+        filter.status=q["status"]?.last.flatMap{$0.isEmpty ? nil : $0}
+        filter.keyword=q["keyword"]?.last;filter.endUser=q["end_user_id"]?.last
+        let source=q["created_from"]?.last
+        if let source, !source.isEmpty {
+            guard ["web-app","service-api","api"].contains(source) else { throw Self.invalidParam("Invalid created_from") }
+            filter.source=source=="service-api" ? "api" : source
+        }
+        let zone=TimeZone(identifier:p.account.timezone ?? "UTC") ?? TimeZone(secondsFromGMT:0)!
+        filter.start=try monitoringDate(q["created_at__after"]?.last,zone:zone,iso:true)
+        filter.end=try monitoringDate(q["created_at__before"]?.last,zone:zone,iso:true)
+        let(total,logs)=try await store.publishedRunPage(app:a.id,filter:filter)
+        let data:[JSONValue]=logs.map{ log in
+            var run=publicRunJSON(log.run).object ?? [:]
+            run["version"] = .string(log.run.version);run["triggered_from"] = .string(log.run.triggeredFrom)
+            run["exceptions_count"] = .int(log.run.exceptionsCount)
+            return ["id":.string(log.run.id),"workflow_run":.object(run),"created_from":.string(log.user.source=="api" ? "service-api" : "web-app"),
+                "created_by_role":"end_user","created_by_account":.null,"created_by_end_user":endUserJSON(log.user),"created_at":Self.epochSeconds(log.run.createdAt)]
+        }
+        return try json(JSONValue.object(["page":.int(page),"limit":.int(limit),"total":.int(total),"has_more":.bool(page*limit<total),"data":.array(data)]))
     }
 
     static let chatModes = ["chat", "agent-chat", "advanced-chat", "agent"]
 
     /// `GET /v1/apps/{app}/chat-conversations` (owner, admin, editor; chat apps): an empty page.
     private func chatConversations(_ req: Request) async throws -> Response {
-        let p = try await authenticate(req, .edit)
-        _ = try await appOfMode(req, p, Self.chatModes)
-        let q = queryAll(req)
-        let page = try queryInt(q, "page", 1, 1...99999), limit = try queryInt(q, "limit", 20, 1...100)
-        if let s = q["annotation_status"]?.last, !s.isEmpty, !["annotated", "not_annotated", "all"].contains(s) {
-            throw ServerError.badRequest("annotation_status must be one of annotated, not_annotated, all")
-        }
-        if let s = q["sort_by"]?.last, !s.isEmpty, !["created_at", "-created_at", "updated_at", "-updated_at"].contains(s) {
-            throw ServerError.badRequest("sort_by must be one of created_at, -created_at, updated_at, -updated_at")
-        }
+        let p=try await authenticate(req,.edit), a=try await appOfMode(req,p,Self.chatModes)
+        let q=queryAll(req),page=try queryInt(q,"page",1,1...99999),limit=try queryInt(q,"limit",20,1...100)
+        let annotated=q["annotation_status"]?.last ?? "all", sort=q["sort_by"]?.last ?? "-updated_at"
+        guard ["annotated","not_annotated","all"].contains(annotated), ["created_at","-created_at","updated_at","-updated_at"].contains(sort) else { throw Self.invalidParam("Invalid log filter") }
         try timeRange(q)
-        return try json(JSON.object(["page": .int(page), "limit": .int(limit), "total": 0, "has_more": false, "data": .array([])]))
+        let zone=TimeZone(identifier:p.account.timezone ?? "UTC") ?? TimeZone(secondsFromGMT:0)!
+        let(total,rows)=try await store.publishedConversationPage(app:a.id,page:page,limit:limit,keyword:q["keyword"]?.last,
+            start:monitoringDate(q["start"]?.last,zone:zone),end:monitoringDate(q["end"]?.last,zone:zone),sort:sort)
+        var data:[JSONValue]=[]
+        if annotated != "annotated" { for row in rows { data.append(try await conversationLogJSON(row)) } }
+        return try json(JSONValue.object(["page":.int(page),"limit":.int(limit),"total":.int(annotated=="annotated" ? 0 : total),
+            "has_more":.bool(annotated != "annotated" && page*limit<total),"data":.array(data)]))
     }
-
-    /// `GET /v1/apps/{app}/chat-conversations/{conversation}` (owner, admin, editor): no conversations yet -> `404`.
     private func chatConversation(_ req: Request) async throws -> Response {
-        let p = try await authenticate(req, .edit)
-        _ = try await appOfMode(req, p, Self.chatModes)
-        throw ServerError.missing("Conversation Not Exists.")
+        let p=try await authenticate(req,.edit),a=try await appOfMode(req,p,Self.chatModes)
+        guard let id=req.parameters.get("conversation"),let conversation=try await store.publishedConversation(app:a.id,id:id) else { throw ServerError.missing("Conversation Not Exists.") }
+        return try json(try await conversationLogJSON(conversation))
     }
-
-    /// `GET /v1/apps/{app}/chat-messages?conversation_id` (owner, admin, editor): no conversations yet -> `404`.
     private func chatMessages(_ req: Request) async throws -> Response {
-        let p = try await authenticate(req, .edit)
-        let a = try await appOfMode(req, p, Self.chatModes)
-        guard let id = queryAll(req)["conversation_id"]?.last, !id.isEmpty else { throw ServerError.badRequest("conversation_id is required") }
-        guard try await store.chatConversation(doc: a.id, id: id, account: p.id) != nil else { throw ServerError.missing("Conversation Not Exists.") }
-        let messages = try await store.chatMessages(doc: a.id, conversation: id, account: p.id)
-        return await fileJSONResponse(["data": .array(messages.reversed().map(Self.chatMessageJSON)), "has_more": false, "limit": 500], userId: p.id)
+        let p=try await authenticate(req,.edit),a=try await appOfMode(req,p,Self.chatModes)
+        guard let id=queryAll(req)["conversation_id"]?.last,!id.isEmpty else { throw ServerError.badRequest("conversation_id is required") }
+        let published=try await store.publishedConversation(app:a.id,id:id)
+        let conversation:StoredChatConversation
+        if let published { conversation=published }
+        else if let own=try await store.chatConversation(doc:a.id,id:id,account:p.id) { conversation=own }
+        else { throw ServerError.missing("Conversation Not Exists.") }
+        let messages=try await store.chatMessages(doc:a.id,conversation:id,account:conversation.accountId,endUser:conversation.endUserId)
+        return try json(await projectRuntimeFiles(["data":.array(messages.reversed().map(Self.chatMessageJSON)),"has_more":false,"limit":500],
+            userId:conversation.accountId,endUserId:conversation.endUserId))
+    }
+    func endUserJSON(_ user:StoredEndUser) -> JSONValue {
+        ["id":.string(user.id),"type":.string(user.source),"session_id":.string(user.externalId),"is_anonymous":.bool(user.source=="web-app")]
+    }
+    func conversationLogJSON(_ conversation:StoredChatConversation) async throws -> JSONValue {
+        let summary=try await store.conversationSummary(app:conversation.docId,conversation:conversation.id)
+        let user=if let id=conversation.endUserId { try await store.endUser(id:id) } else { nil } as StoredEndUser?
+        var statuses=JSONObject(),userFeedback:JSONObject=["like":0,"dislike":0],adminFeedback:JSONObject=["like":0,"dislike":0]
+        for item in try await store.conversationFeedbackStats(app:conversation.docId,conversation:conversation.id) {
+            if item.source=="user" { userFeedback[item.rating] = .int(item.count) } else { adminFeedback[item.rating] = .int(item.count) }
+        }
+        for (status,count) in summary.statuses {
+            let name=["succeeded":"success","partial-succeeded":"partial_success","failed":"failed","paused":"paused"][status] ?? status
+            statuses[name] = .int(count)
+        }
+        return ["id":.string(conversation.id),"name":.string(summary.title),"summary":.string(summary.title),
+            "status":"normal","from_source":.string(user?.source=="api" ? "api" : "web_app"),"from_end_user_session_id":user.map{.string($0.externalId)} ?? .null,
+            "from_account_name":.null,"message_count":.int(summary.count),"annotated":false,"user_feedback_stats":.object(userFeedback),"admin_feedback_stats":.object(adminFeedback),
+            "status_count":.object(statuses),"created_at":Self.epochSeconds(conversation.createdAt),"updated_at":Self.epochSeconds(conversation.updatedAt)]
     }
 
     /// Python's `uuid.UUID(s)` for the usual spellings (hyphenated or 32 hex digits, any case); nil otherwise.

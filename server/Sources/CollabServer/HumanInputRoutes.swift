@@ -93,8 +93,18 @@ extension Routes {
     /// (`human_input_form_recipients`), which is served without an account — that is what a recipient of the mail has —
     /// while a console token still needs one (`consoleForm`). A console form's token without a session is therefore 404,
     /// not an anonymous form: the console boundary stays where Dify keeps it.
-    private func formAndRecipient(_ req: Request) async throws -> (form: StoredHumanInputForm, recipient: StoredFormRecipient?) {
-        if req.headers[.authorization] != nil { return (try await consoleForm(req), nil) }
+    private func formAndRecipient(_ req: Request, user: String? = nil) async throws -> (form: StoredHumanInputForm, recipient: StoredFormRecipient?) {
+        if req.headers[.authorization] != nil {
+            if let form = try await store.humanInputForm(token: try humanInputToken(req)), form.recipientType == .webapp,
+               let runId = form.workflowRunId, let run = try await store.workflowRun(id: runId), run.endUserId != nil {
+                let caller: PublicCaller
+                do { caller = try await publicCaller(req, user:user) }
+                catch ServerError.unauthorized(_) { throw ServerError.notFound }
+                guard run.docId == caller.app.id, run.endUserId == caller.endUser.id, form.displayInUi else { throw ServerError.notFound }
+                return (form, nil)
+            }
+            return (try await consoleForm(req), nil)
+        }
         guard let found = try? await store.formRecipient(token: try humanInputToken(req)) else {
             throw ServerError.notFound
         }
@@ -142,7 +152,7 @@ extension Routes {
         // `HumanInputFormApi.get` runs `ensure_form_active`, the same rule its submit path applies). The console surface
         // keeps the console's own rule (submitted is 412 above; the rest is the console's to check on submit), so this
         // branch is the recipient's only.
-        if recipient != nil {
+        if recipient != nil || form.recipientType == .webapp {
             try Self.ensureFormActive(form, now: Date(), globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds)
         }
         return try json(Self.formDefinitionJSON(form, inputs: Self.resolvedInputs(form, pauseSnapshot: pause?.snapshot)))
@@ -162,14 +172,18 @@ extension Routes {
     }
 
     private func submitHumanInputForm(_ req: Request) async throws -> Response {
-        // A console answer is attributable to its account; a mail recipient's answer is attributable to the recipient row.
-        let (form0, recipient) = try await formAndRecipient(req)
-        let p = req.headers[.authorization] != nil ? try await authenticate(req) : nil
-        let token = form0.token
         let data = try await body(req)
         guard let parsed = try? JSONValue.parse(data.isEmpty ? Data("{}".utf8) : data), case .object(let b) = parsed else {
             throw Self.invalidFormData("the body must be a JSON object")
         }
+        let (form0, recipient) = try await formAndRecipient(req, user: b["user"]?.string)
+        let publicIdentity: PublicCaller? = form0.recipientType == .webapp && form0.workflowRunId != nil
+            ? try await publicCaller(req, user: b["user"]?.string) : nil
+        let p: Principal?
+        if let publicIdentity { p = publicIdentity.executor }
+        else if req.headers[.authorization] != nil { p = try await authenticate(req) }
+        else { p = nil }
+        let token = form0.token
         guard case .object(let values)? = b["inputs"] else {
             throw Self.invalidFormData("inputs must be an object")
         }
@@ -186,7 +200,7 @@ extension Routes {
             let formConfig = try Self.formConfig(form)
             // Anonymous recipient upload scopes belong to email delivery; never let a token borrow console files.
             if formConfig.requiresFileStorage && p == nil { throw RuntimeFileError("File inputs require an authenticated console account") }
-            normalizedValues = try await formConfig.normalizedFiles(values, using: p.map { ServerWorkflowFiles(routes: self, userId: $0.id) })
+            normalizedValues = try await formConfig.normalizedFiles(values, using: p.map { ServerWorkflowFiles(routes: self, userId: $0.id, endUserId: publicIdentity?.endUser.id) })
             try formConfig.validateSubmission(action: action, values: normalizedValues)
         } catch {
             throw Self.invalidFormData("\(error)")

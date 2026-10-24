@@ -10,6 +10,7 @@ struct ServerToolRuntime: ToolRuntime {
     let userId: String
     let plugin: PluginDaemonToolRuntime?
     let callStack: [String]
+    var endUserId: String? = nil
 
     func workflow(_ tool: ToolReference) async throws -> StoredWorkflowTool {
         guard let definition = try await routes.store.workflowTools().first(where: { $0.id == tool.providerID && $0.name == tool.name }) else {
@@ -51,15 +52,15 @@ struct ServerToolRuntime: ToolRuntime {
                 let secrets = try await routes.store.secrets(definition.appId)
                 let root = try DifyDSL.exportValue(WireJSON.decode(Document.self, from: version.state), metadata: WireJSON.decode(Value.self, from: version.dsl), secrets: secrets)
                 let value = try JSONValue.parse(WireJSON.encode(root))
-                var services = routes.runtimeServices(appId: definition.appId, userId: userId)
-                services.tools = ServerToolRuntime(routes: routes, userId: userId, plugin: plugin, callStack: callStack + [definition.appId])
+                var services = routes.runtimeServices(appId: definition.appId, userId: userId, endUserId: endUserId)
+                services.tools = ServerToolRuntime(routes: routes, userId: userId, plugin: plugin, callStack: callStack + [definition.appId], endUserId: endUserId)
                 // Upstream deliberately disables pausing inside a workflow tool.
                 services.humanInput = nil
                 let runId = UUID().uuidString.lowercased()
                 var inputs = tool.configurations
                 for (key, value) in parameters { inputs[key] = value }
                 let prepared = try await PreparedRun.make(workflow: value["workflow"] ?? .null, rawInputs: inputs,
-                    services: services, userId: userId, appId: definition.appId, workflowId: version.id, runId: runId)
+                    services: services, userId: endUserId ?? userId, appId: definition.appId, workflowId: version.id, runId: runId)
                 try await routes.store.insertWorkflowRun(StoredWorkflowRun(id: runId, docId: definition.appId, docSeq: version.seq,
                     workflowId: version.id, type: "workflow", triggeredFrom: "workflow-tool", version: version.version,
                     graph: (value["workflow"]?["graph"] ?? .null).compactJSON(), inputs: JSONValue.object(prepared.workflowInputs).compactJSON(),
@@ -68,7 +69,7 @@ struct ServerToolRuntime: ToolRuntime {
                 trace = recorder
                 continuation.yield(.metadata(["workflow_run_id": .string(runId), "workflow_id": .string(version.id)]))
                 let engine = GraphEngine(graph: prepared.graph, config: GraphEngineConfig(maxWorkers: routes.config.runtimeMaxWorkers,
-                    maxSteps: routes.config.runtimeMaxSteps, maxTimeSeconds: routes.config.runtimeMaxTimeSeconds), commands: commands, userId: userId, appId: definition.appId)
+                    maxSteps: routes.config.runtimeMaxSteps, maxTimeSeconds: routes.config.runtimeMaxTimeSeconds), commands: commands, userId: endUserId ?? userId, appId: definition.appId)
                 var completed = false
                 for await event in engine.run(pool: prepared.pool) {
                     if context.isAborted() || Task.isCancelled { commands.abort(); throw CancellationError() }

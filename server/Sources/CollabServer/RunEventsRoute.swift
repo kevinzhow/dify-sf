@@ -36,12 +36,14 @@ extension Routes {
     }
 
     private func workflowRunEvents(_ req: Request) async throws -> Response {
-        let p = try await authenticate(req)
         guard let runId = req.parameters.get("runId"), !runId.isEmpty,
-              let run = try await store.workflowRun(id: runId),
-              // Dify's events endpoint is narrower than the run detail: only the account that created the run.
-              run.createdBy == p.id else {
-            throw ServerError.notFound
+              let run = try await store.workflowRun(id: runId) else { throw ServerError.notFound }
+        if run.endUserId != nil {
+            let caller = try await publicCaller(req)
+            guard run.docId == caller.app.id, run.endUserId == caller.endUser.id else { throw ServerError.notFound }
+        } else {
+            let p = try await authenticate(req)
+            guard run.createdBy == p.id else { throw ServerError.notFound }
         }
         let query = query(req)
         // Dify's default is no snapshot: a client asking only for live events must not receive history.
@@ -147,7 +149,7 @@ extension Routes {
     /// paused run, the forms still waiting with the pause that names them.
     private func snapshotFrames(_ run: StoredWorkflowRun, paused: Bool) async throws -> SnapshotFrames {
         var frames: [String] = []
-        let account: JSONValue = ["id": .string(run.createdBy ?? ""), "name": .string(run.createdByName ?? ""),
+        let account: JSONValue = run.endUserId.map { ["id": .string($0)] } ?? ["id": .string(run.createdBy ?? ""), "name": .string(run.createdByName ?? ""),
                                   "email": .string(run.createdByEmail ?? "")]
         frames.append(RunExecution.sse(["event": "workflow_started", "workflow_run_id": .string(run.id), "task_id": .string(run.id),
                                 "data": ["id": .string(run.id), "workflow_id": .string(run.workflowId),
@@ -200,7 +202,7 @@ extension Routes {
         for frame in frames {
             guard let line = frame.split(separator: "\n").first(where: { $0.hasPrefix("data: ") }),
                   let value = try? JSONValue.parse(Data(line.dropFirst(6).utf8)) else { projected.append(frame); continue }
-            projected.append(RunExecution.sse(await projectRuntimeFiles(value, userId: run.createdBy ?? "")))
+            projected.append(RunExecution.sse(await projectRuntimeFiles(value, userId: run.executionAccountId ?? run.createdBy ?? "", endUserId: run.endUserId)))
         }
         let chat = try await store.chatMessage(runId: run.id)
         if let chat {
@@ -253,7 +255,7 @@ extension Routes {
     }
 
     func finishedFrame(_ run: StoredWorkflowRun) async throws -> JSONValue {
-        let account: JSONValue = ["id": .string(run.createdBy ?? ""), "name": .string(run.createdByName ?? ""),
+        let account: JSONValue = run.endUserId.map { ["id": .string($0)] } ?? ["id": .string(run.createdBy ?? ""), "name": .string(run.createdByName ?? ""),
                                   "email": .string(run.createdByEmail ?? "")]
         var terminal: JSONObject = ["event": "workflow_finished", "workflow_run_id": .string(run.id), "task_id": .string(run.id),
                 "data": ["id": .string(run.id), "workflow_id": .string(run.workflowId), "status": .string(run.status),
@@ -267,7 +269,7 @@ extension Routes {
             terminal["message_id"] = .string(chat.id); terminal["conversation_id"] = .string(chat.conversationId)
             terminal["created_at"] = .int(Int(chat.createdAt.timeIntervalSince1970))
         }
-        return await projectRuntimeFiles(.object(terminal), userId: run.createdBy ?? "")
+        return await projectRuntimeFiles(.object(terminal), userId: run.executionAccountId ?? run.createdBy ?? "", endUserId: run.endUserId)
     }
 
     static var eventHeaders: HTTPFields {

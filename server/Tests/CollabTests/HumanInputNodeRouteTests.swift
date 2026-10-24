@@ -79,7 +79,7 @@ struct HumanInputNodeRouteTests {
         try await withFakeDaemon { daemon, _ in
             try await withHumanInputServer(config: runtimeConfig(daemon: daemon)) { api, _, _ in
                 let runtime = try JSONValue.parse(try await api.get("/v1/system-features").text)["workflow_runtime"]
-                #expect(runtime?["protocol_version"] == "1.18")
+                #expect(runtime?["protocol_version"] == "1.20")
                 #expect(runtime?["human_input"] == true)
                 // Human input runs inside a draft run; its own form endpoints replace a plain single node run.
                 #expect(runtime?["draft_run"]?.array?.contains("human-input") == true)

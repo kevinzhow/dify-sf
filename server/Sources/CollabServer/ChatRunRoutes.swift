@@ -17,7 +17,7 @@ struct ServerConversationMemory: ConversationMemory {
     func history(messageLimit: Int) async throws -> [ConversationMemoryTurn] {
         guard let current = try await store.chatMessage(runId: runId) else { return [] }
         let messages = try await store.chatMessages(doc: current.docId, conversation: current.conversationId,
-                                                   account: current.accountId, limit: messageLimit > 0 ? messageLimit : 500)
+                                                   account: current.accountId, limit: messageLimit > 0 ? messageLimit : 500, endUser: current.endUserId)
         var cursor = current.parentMessageId
         var history: [StoredChatMessage] = []
         for message in messages where message.id != current.id {
@@ -182,7 +182,7 @@ extension RunExecution {
             let node = output["data"]?["node_id"]?.string ?? ""
             return ChatReasoningCursor(nodeId: node, bytes: (state?.reasoning[node]?.string ?? "").utf8.count)
         } : nil
-        await channel.publish(Self.sse(await routes.projectRuntimeFiles(.object(output), userId: createdBy)),
+        await channel.publish(Self.sse(await routes.projectRuntimeFiles(.object(output), userId: createdBy, endUserId: progress.withLock { $0?.message.endUserId })),
             pauseGeneration: generation, chatOffset: event == "text_chunk" ? progress.withLock { $0?.message.answer.utf8.count } : nil,
             reasoning: reasoning)
         if event == "workflow_finished", let message = progress.withLock({ $0?.message }) {
@@ -207,14 +207,14 @@ extension Routes {
         await projectRuntimeFiles(["event": "message_end", "task_id": .string(message.workflowRunId),
             "workflow_run_id": .string(message.workflowRunId), "message_id": .string(message.id), "id": .string(message.id),
             "conversation_id": .string(message.conversationId), "created_at": .int(Int(message.createdAt.timeIntervalSince1970)),
-            "metadata": (try? JSONValue.parse(message.metadata)) ?? [:], "files": (try? JSONValue.parse(message.outputFiles)) ?? []], userId: message.accountId)
+            "metadata": (try? JSONValue.parse(message.metadata)) ?? [:], "files": (try? JSONValue.parse(message.outputFiles)) ?? []], userId: message.accountId, endUserId: message.endUserId)
     }
     func chatReplaceFrame(_ message: StoredChatMessage) async -> JSONValue {
         await projectRuntimeFiles(["event": "message_replace", "task_id": .string(message.workflowRunId),
             "workflow_run_id": .string(message.workflowRunId), "message_id": .string(message.id),
             "conversation_id": .string(message.conversationId), "answer": .string(message.answer),
             "reasoning": (try? JSONValue.parse(message.reasoning)) ?? [:], "files": (try? JSONValue.parse(message.outputFiles)) ?? [],
-            "created_at": .int(Int(message.createdAt.timeIntervalSince1970))], userId: message.accountId)
+            "created_at": .int(Int(message.createdAt.timeIntervalSince1970))], userId: message.accountId, endUserId: message.endUserId)
     }
 }
 
