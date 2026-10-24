@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../design/dify_tokens.g.dart';
 import 'canvas_graph.dart';
@@ -27,6 +28,7 @@ class WidgetRenderer extends CanvasRenderer {
     required this.cards,
     this.live,
     this.overlaidControls = true,
+    this.onSettled,
   });
 
   final CanvasGraph graph;
@@ -35,6 +37,19 @@ class WidgetRenderer extends CanvasRenderer {
   final CardSpec cards;
   final LiveCardLayer? live;
   final bool overlaidControls;
+
+  /// Called after this renderer and its visible cards have painted a frame.
+  final VoidCallback? onSettled;
+  bool _disposed = false;
+  int _paintGeneration = 0;
+
+  void _afterPaint() {
+    if (onSettled == null || _disposed) return;
+    final generation = ++_paintGeneration;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!_disposed && generation == _paintGeneration) onSettled?.call();
+    });
+  }
 
   final _version = ValueNotifier(0);
   final _edgesVersion = ValueNotifier(0);
@@ -96,6 +111,7 @@ class WidgetRenderer extends CanvasRenderer {
     return ListenableBuilder(
       listenable: Listenable.merge([_version, view, ?live?.source]),
       builder: (context, _) {
+        _afterPaint();
         final visible = view.visible.inflate(80);
         // Per nesting depth: that depth's edges, then its cards (edges inside a container lie above the container
         // and below its children).
@@ -190,8 +206,10 @@ class WidgetRenderer extends CanvasRenderer {
     final cardWidget = _cardWidgets[n] ??= KeyedSubtree(
       key: ValueKey('node-${n.id}'),
       child: overlaidControls
-          ? CanvasCardControls(child: RepaintBoundary(child: cards.build(context, n, graph, live: true)))
-          : RepaintBoundary(child: cards.build(context, n, graph, live: true)),
+          ? CanvasCardControls(
+              child: RepaintBoundary(child: cards.build(context, n, graph, live: true, onPainted: _afterPaint)),
+            )
+          : RepaintBoundary(child: cards.build(context, n, graph, live: true, onPainted: _afterPaint)),
     );
     return Positioned.fromRect(
       key: ValueKey('canvas-node-${n.id}'),
@@ -269,6 +287,7 @@ class WidgetRenderer extends CanvasRenderer {
 
   @override
   void dispose() {
+    _disposed = true;
     _version.dispose();
     _edgesVersion.dispose();
   }

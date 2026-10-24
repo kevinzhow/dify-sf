@@ -95,13 +95,9 @@ class _WorkflowOperatorState extends State<WorkflowOperator> {
               child: child,
             ),
             child: LayoutBuilder(
-              builder: (context, constraints) => constraints.maxWidth < 480
+              builder: (context, constraints) => compact
                   ? Wrap(alignment: WrapAlignment.spaceBetween, spacing: 8, runSpacing: 4, children: controls)
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: controls,
-                    ),
+                  : DifyJustifiedRow(crossAxisAlignment: CrossAxisAlignment.start, children: controls),
             ),
           ),
           ?widget.variableInspectPanel,

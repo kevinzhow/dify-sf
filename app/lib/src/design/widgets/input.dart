@@ -135,6 +135,8 @@ TextField difyTextField({
   TextInputAction? textInputAction,
   int? minLines,
   int? maxLines = 1,
+  bool expands = false,
+  bool centerCap = true,
 }) => TextField(
   controller: controller,
   focusNode: focusNode,
@@ -155,12 +157,13 @@ TextField difyTextField({
   strutStyle: Css.lineStrut(
     DefaultTextStyle.of(context).style.merge(style),
     textScaler: MediaQuery.textScalerOf(context),
-    centerCap: true,
+    centerCap: centerCap,
   ),
   cursorColor: const Color(0xFF155EEF), // caret-primary-600
   cursorWidth: 1,
   minLines: minLines,
   maxLines: maxLines,
+  expands: expands,
   decoration: InputDecoration(
     isCollapsed: true,
     border: InputBorder.none,
@@ -170,7 +173,7 @@ TextField difyTextField({
     hint: placeholder == null
         ? null
         : DifyTextLine(
-            centerCap: true,
+            centerCap: centerCap,
             placeholder,
             style: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
             maxLines: 1,

@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../design/dify_tokens.g.dart';
+import '../design/dify_icon.dart';
 import 'public_inputs.dart';
 import '../design/widgets/widgets.dart';
 import '../files/upload_service.dart';
@@ -422,112 +423,234 @@ class _PublicAppPageState extends State<PublicAppPage> {
   Widget build(BuildContext context) {
     final api = _api;
     final picker = api == null ? null : runtimeFilePickerWithApi(context, () => api);
-    return DifyPage(
-      body: Center(
+    final title = '${_definition?['title'] ?? _definition?['name'] ?? ''}';
+    final site = _map(_definition?['site']);
+    final unavailable = _busy || _loading || _loadFailed || _followDenied;
+    Widget icon(DifyAppIconSize size) => DifyAppIcon(
+      size: size,
+      iconType: site['icon_type'] as String?,
+      icon: site['icon'] as String?,
+      background: site['icon_background'] as String?,
+      imageUrl: site['icon_url'] as String?,
+    );
+    final header = Row(
+      spacing: 12,
+      children: [
+        icon(DifyAppIconSize.large),
+        Expanded(
+          child: DifyTextLine(
+            title,
+            style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textSecondary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+    final form = RunForm(
+      props: RunFormProps(
+        inputs: _fields.where((f) => f['hide'] != true).toList(),
+        values: _inputs,
+        onChange: (v) => setState(() => _inputs = v),
+      ),
+      pickFile: picker,
+    );
+    final errors = <Widget>[
+      if (_error != null) ...[
+        DifyTextLine(
+          _error!,
+          key: const Key('public-app-error'),
+          maxLines: null,
+          style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textDestructive),
+        ),
+        if (!_busy)
+          DifyButton(
+            onPressed: () => unawaited(_definition == null || _loadFailed || _followDenied ? _load() : _start()),
+            child: DifyTextLine(DifyI18n.tr('common', 'operation.retry')),
+          ),
+      ],
+    ];
+    final humanForms = <Widget>[
+      for (final form in _forms)
+        HumanInputForm(
+          key: ValueKey(form['form_token']),
+          formData: form,
+          onSubmit: _submit,
+          pickFile: picker,
+          requireParagraph: true,
+        ),
+    ];
+    if (_definition == null) {
+      return DifyPage(
+        body: Center(
+          child: _loading ? const DifyLoading() : Column(mainAxisSize: MainAxisSize.min, children: errors),
+        ),
+      );
+    }
+    final footer = DifyBrandingFooter(alignment: _chat ? MainAxisAlignment.end : MainAxisAlignment.start);
+    if (!_chat) {
+      final hasResult = _result.isNotEmpty || _busy;
+      return DifyPage(
+        backgroundColor: DifyColors.backgroundDefaultBurn,
+        body: DifyPublicWorkflowLayout(
+          header: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 16,
+            children: [
+              header,
+              if ('${_definition!['description'] ?? ''}'.isNotEmpty)
+                DifyMarkdown(content: '${_definition!['description']}'),
+            ],
+          ),
+          tabs: DifyTabsList(
+            children: [DifyTab(label: _share('generation.tabs.create'), active: true, onPressed: () {})],
+          ),
+          inputs: Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [...errors, form]),
+          ),
+          actions: DifyJustifiedRow(
+            children: [
+              DifyButton(
+                disabled: unavailable,
+                onPressed: () => setState(() {
+                  _error = null;
+                  _inputs = {
+                    for (final field in _fields)
+                      '${field['variable']}': switch (field['type']) {
+                        'checkbox' => false,
+                        'file-list' => <Object?>[],
+                        _ => '',
+                      },
+                  };
+                }),
+                child: DifyTextLine(DifyI18n.tr('common', 'operation.clear')),
+              ),
+              DifyButton(
+                onPressed: () => unawaited(_busy ? _stop() : _start()),
+                disabled: _loading || _loadFailed || _followDenied,
+                variant: DifyButtonVariant.primary,
+                leading: RemixIcon(_busy ? 'stop-circle-fill' : 'play-large-line', size: 16),
+                child: DifyTextLine(_share(_busy ? 'generation.stopRun' : 'generation.run')),
+              ),
+            ],
+          ),
+          hasResult: hasResult,
+          result: hasResult
+              ? SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 56, vertical: 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: 16,
+                    children: [
+                      ...humanForms,
+                      OutputPanel(
+                        outputs: _result['outputs'],
+                        error: _result['error'] as String?,
+                        isRunning: _busy && _forms.isEmpty,
+                      ),
+                    ],
+                  ),
+                )
+              : Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 8,
+                    children: [
+                      RemixIcon('sparkling-fill', size: 48, color: DifyColors.textEmptyStateIcon),
+                      DifyTextLine(
+                        _share('generation.noData'),
+                        maxLines: null,
+                        style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textQuaternary),
+                      ),
+                    ],
+                  ),
+                ),
+          footer: footer,
+        ),
+      );
+    }
+    final opening = '${_map(_definition?['parameters'])['opening_statement'] ?? ''}';
+    final empty = _history.isEmpty && _question.isEmpty && _answer.isEmpty;
+    final chat = SingleChildScrollView(
+      child: Align(
+        alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+          constraints: const BoxConstraints(maxWidth: 768),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: 16,
               children: [
-                if (_loading) const Center(child: DifyLoading()),
-                if (_definition != null) ...[
-                  DifyTextLine(
-                    '${_definition!['title'] ?? _definition!['name'] ?? ''}',
-                    style: difyTextStyle(
-                      DifyType.systemXlSemibold,
-                      DifyColors.textPrimary,
-                    ),
-                  ),
-                  if ('${_definition!['description'] ?? ''}'.isNotEmpty)
-                    DifyMarkdown(content: '${_definition!['description']}'),
-                ],
-                if (_error != null) ...[
-                  DifyTextLine(
-                    _error!,
-                    key: const Key('public-app-error'),
-                    style: difyTextStyle(
-                      DifyType.systemSmRegular,
-                      DifyColors.textDestructive,
-                    ),
-                  ),
-                  if (!_busy)
-                    DifyButton(
-                      onPressed: () =>
-                          unawaited(_definition == null || _loadFailed || _followDenied ? _load() : _start()),
-                      child: DifyTextLine(
-                        DifyI18n.tr('common', 'operation.retry'),
-                      ),
-                    ),
-                ],
-                if (_definition != null) ...[
-                  RunForm(
-                    props: RunFormProps(
-                      inputs: _fields.where((f) => f['hide'] != true).toList(),
-                      values: _inputs,
-                      onChange: (v) => setState(() => _inputs = v),
-                    ),
-                    pickFile: picker,
-                  ),
-                  for (final message in _history) ...[
-                    DifyMarkdown(content: '${message['query'] ?? ''}'),
-                    DifyMarkdown(content: '${message['answer'] ?? ''}'),
-                    RunFileList(files: getProcessedFilesFromResponse(_files(message['files']))),
-                  ],
-                  if (_chat)
-                    DifyInput(
-                      value: _query,
-                      onChanged: (v) => setState(() => _query = v),
-                      disabled: _busy || _loading || _loadFailed || _followDenied,
-                    ),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      DifyButton(
-                        onPressed: () => unawaited(_start()),
-                        disabled: _busy || _loading || _loadFailed || _followDenied,
-                        variant: DifyButtonVariant.primary,
-                        child: DifyTextLine(_share('generation.run')),
-                      ),
-                      if (_busy)
-                        DifyButton(
-                          onPressed: () => unawaited(_stop()),
-                          child: DifyTextLine(_share('generation.stopRun')),
+                ...errors,
+                if (_fields.any((f) => f['hide'] != true)) form,
+                if (empty && opening.isNotEmpty)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: MediaQuery.sizeOf(context).height / 2),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      spacing: 12,
+                      children: [
+                        icon(DifyAppIconSize.xl),
+                        DifyMarkdown(
+                          content: opening,
+                          paragraphStyle: difyTextStyle(DifyType.body2xlRegular, DifyColors.textTertiary),
                         ),
-                      if (_chat)
-                        DifyButton(
-                          onPressed: () => unawaited(_newChat()),
-                          disabled: _busy || _loading || _loadFailed || _followDenied,
-                          child: DifyTextLine(_share('chat.newChat')),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                  if (_question.isNotEmpty) DifyMarkdown(content: _question),
-                  if (_answer.isNotEmpty) DifyMarkdown(content: _answer, isStreaming: _busy),
-                  if (_chatFiles.isNotEmpty) RunFileList(files: getProcessedFilesFromResponse(_chatFiles)),
-                  for (final form in _forms)
-                    HumanInputForm(
-                      key: ValueKey(form['form_token']),
-                      formData: form,
-                      onSubmit: _submit,
-                      pickFile: picker,
-                      requireParagraph: true,
-                    ),
-                  if (!_chat && (_result.isNotEmpty || _busy))
-                    OutputPanel(
-                      outputs: _result['outputs'],
-                      error: _result['error'] as String?,
-                      isRunning: _busy && _forms.isEmpty,
-                    ),
-                  const DifyBrandingFooter(),
+                for (final message in _history) ...[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: DifyChatBubbleSurface(child: DifyMarkdown(content: '${message['query'] ?? ''}')),
+                  ),
+                  DifyMarkdown(content: '${message['answer'] ?? ''}'),
+                  RunFileList(files: getProcessedFilesFromResponse(_files(message['files']))),
                 ],
+                if (_question.isNotEmpty)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: DifyChatBubbleSurface(child: DifyMarkdown(content: _question)),
+                  ),
+                if (_answer.isNotEmpty) DifyMarkdown(content: _answer, isStreaming: _busy),
+                if (_chatFiles.isNotEmpty) RunFileList(files: getProcessedFilesFromResponse(_chatFiles)),
+                ...humanForms,
               ],
             ),
           ),
         ),
+      ),
+    );
+    return DifyPage(
+      backgroundColor: DifyColors.backgroundDefaultBurn,
+      body: DifyPublicChatLayout(
+        header: header,
+        newChat: DifyButton(
+          variant: DifyButtonVariant.secondaryAccent,
+          onPressed: () => unawaited(_newChat()),
+          disabled: unavailable,
+          leading: const RemixIcon('edit-box-line', size: 16),
+          child: DifyTextLine(_share('chat.newChat')),
+        ),
+        body: chat,
+        composer: DifyPublicChatComposer(
+          value: _query,
+          disabled: unavailable,
+          onChanged: (v) => setState(() => _query = v),
+          onSubmitted: () => unawaited(_start()),
+          placeholder:
+              '${site['input_placeholder'] ?? DifyI18n.tr('common', 'chat.inputPlaceholder', {'botName': title})}',
+          action: DifyIconButton(
+            label: _share(_busy ? 'generation.stopRun' : 'generation.run'),
+            variant: DifyButtonVariant.primary,
+            size: DifyIconButtonSize.lg,
+            disabled: _loading || _loadFailed || _followDenied,
+            onPressed: () => unawaited(_busy ? _stop() : _start()),
+            icon: RemixIcon(_busy ? 'stop-fill' : 'send-plane-2-fill', size: 16),
+          ),
+        ),
+        footer: footer,
       ),
     );
   }

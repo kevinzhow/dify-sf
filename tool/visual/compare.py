@@ -50,6 +50,7 @@ import argparse, base64, functools, http.server, io, json, os, pathlib, re, sys,
 import numpy as np
 import requests
 from PIL import Image, ImageChops
+from capture_contract import install_display_fixtures
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -78,8 +79,8 @@ class Browsers:
             self.browsers[size] = self.playwright.chromium.launch(
                 args=[f'--force-device-scale-factor={DSF:g}', f'--window-size={size[0]},{size[1]}'])
         if THEME == 'dark':
-            return self.browsers[size].new_context(no_viewport=True, color_scheme='dark', locale=LOCALE)
-        return self.browsers[size].new_context(no_viewport=True, locale=LOCALE)
+            return self.browsers[size].new_context(no_viewport=True, color_scheme='dark', locale=LOCALE, timezone_id='America/New_York')
+        return self.browsers[size].new_context(no_viewport=True, locale=LOCALE, timezone_id='America/New_York')
 
     def close(self):
         for b in self.browsers.values():
@@ -360,6 +361,7 @@ def capture_dify(browsers, s, app_id, case, out, invite=None):
     ctx.add_cookies([{'name': 'locale', 'value': LOCALE, 'url': DIFY}])
     page = ctx.new_page()
     add_routes(page, case, 'dify')
+    install_display_fixtures(page, 'dify')
     if pg_case:
         page.goto(DIFY + fill(pg_case['dify'], invite))
         page.wait_for_load_state('networkidle')
@@ -369,6 +371,8 @@ def capture_dify(browsers, s, app_id, case, out, invite=None):
     else:
         page.goto(f'{DIFY}/app/{app_id}/workflow')
         page.wait_for_selector('.react-flow__node', timeout=60000)
+        page.wait_for_load_state('networkidle')
+        page.evaluate('document.fonts.ready')
         page.wait_for_timeout(1500)  # icons, fonts, fit
         box = page.locator('.react-flow').bounding_box()
         # Dify fits the view on load: read the viewport it actually shows, and open ours at the same one.
@@ -459,6 +463,7 @@ def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None
             f'localStorage.setItem({json.dumps("dify-sf/tokens/" + SF)}, {json.dumps(json.dumps(sf_tokens()))})')
     page = ctx.new_page()
     add_routes(page, case, 'ours')
+    install_display_fixtures(page, 'ours')
     rect = []
     views = []
     page.on('console', lambda m: rect.append(m.text) if m.text.startswith('CANVAS_RECT') else None)
@@ -491,7 +496,12 @@ def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None
         t1 = time.time()
         while not settled and time.time() - t1 < 20:
             page.wait_for_timeout(200)
-        page.wait_for_timeout(500 if settled else 0)
+        if not rect:
+            raise RuntimeError("Canvas never reported its laid-out rectangle")
+        if not settled:
+            raise RuntimeError("Canvas renderer did not finish painting before capture")
+        page.wait_for_load_state('networkidle')
+        page.wait_for_timeout(500)
         l, t, w, h = (float(v) for v in rect[-1].split()[1].split(','))
         box = {'x': l, 'y': t, 'width': w, 'height': h}
     if steps:
@@ -500,6 +510,8 @@ def capture_ours(browsers, base, doc, case, out, viewport, steps=(), invite=None
             page.wait_for_timeout(400)
         run_our_steps(page, steps, box, log)
         page.wait_for_timeout(1200)
+    case['canvasAdmission'] = {'settledFrames': len(settled), 'rectangleReports': len(rect), 'timeoutIsFailure': True,
+                               'lastViewport': views[-1] if views else None} if not pg_case else None
     capture_controls(page, case, 'ours', out)
     page.screenshot(path=str(out.with_suffix('.full.png')))
     shot(page, box, case, out)

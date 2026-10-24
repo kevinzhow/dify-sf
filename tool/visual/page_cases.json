@@ -1232,7 +1232,7 @@
     "theme": "light",
     "locale": "en-US",
     "captureType": "real-screen",
-    "state": "default",
+    "state": "appearance submenu expanded",
     "network": [
       {
         "side": "dify",
@@ -1305,7 +1305,47 @@
         }
       }
     ],
-    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict",
+    "pointer": {
+      "dify": {
+        "text": "Light",
+        "exact": true
+      },
+      "ours": {
+        "role": "menuitemradio",
+        "name": "Light"
+      }
+    },
+    "finalVisible": {
+      "dify": [
+        {
+          "text": "Light",
+          "exact": true
+        },
+        {
+          "text": "Dark",
+          "exact": true
+        },
+        {
+          "text": "System",
+          "exact": true
+        }
+      ],
+      "ours": [
+        {
+          "role": "menuitemradio",
+          "name": "Light"
+        },
+        {
+          "role": "menuitemradio",
+          "name": "Dark"
+        },
+        {
+          "role": "menuitemradio",
+          "name": "System"
+        }
+      ]
+    }
   },
   {
     "kind": "app-access-point",
@@ -3808,7 +3848,7 @@
     "theme": "dark",
     "locale": "en-US",
     "captureType": "real-screen",
-    "state": "default",
+    "state": "appearance submenu expanded",
     "network": [
       {
         "side": "dify",
@@ -3881,7 +3921,47 @@
         }
       }
     ],
-    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+    "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict",
+    "pointer": {
+      "dify": {
+        "text": "Light",
+        "exact": true
+      },
+      "ours": {
+        "role": "menuitemradio",
+        "name": "Light"
+      }
+    },
+    "finalVisible": {
+      "dify": [
+        {
+          "text": "Light",
+          "exact": true
+        },
+        {
+          "text": "Dark",
+          "exact": true
+        },
+        {
+          "text": "System",
+          "exact": true
+        }
+      ],
+      "ours": [
+        {
+          "role": "menuitemradio",
+          "name": "Light"
+        },
+        {
+          "role": "menuitemradio",
+          "name": "Dark"
+        },
+        {
+          "role": "menuitemradio",
+          "name": "System"
+        }
+      ]
+    }
   },
   {
     "kind": "app-access-point",

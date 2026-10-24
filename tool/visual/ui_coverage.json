@@ -67,7 +67,8 @@
       "publicClasses": [
         "DifyAdaptive",
         "DifyToolbarStrip",
-        "DifyViewport"
+        "DifyViewport",
+        "DifyJustifiedRow"
       ],
       "scope": "shared visual family; representative declared states, not every possible prop combination"
     },
@@ -985,6 +986,22 @@
         "pages.studio-toolbar-default.dark.zh-Hans"
       ],
       "scope": "actual active primary-navigation control on English/Chinese product pages; pointer/keyboard/font-scale regression"
+    },
+    {
+      "source": "app/lib/src/design/widgets/public_app_layout.dart",
+      "visual": true,
+      "cases": [
+        "pages.public-workflow.light.en-US",
+        "pages.public-workflow.dark.en-US",
+        "pages.public-chat.light.en-US",
+        "pages.public-chat.dark.en-US"
+      ],
+      "publicClasses": [
+        "DifyPublicWorkflowLayout",
+        "DifyPublicChatLayout",
+        "DifyPublicChatComposer"
+      ],
+      "scope": "Actual published app layouts; transport and form state remain in PublicAppPage"
     }
   ],
   "pages": [
