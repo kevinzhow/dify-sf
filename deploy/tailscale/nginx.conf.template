@@ -6,6 +6,8 @@ error_log /dev/stderr warn;
 events { worker_connections 512; }
 http {
     include /etc/nginx/mime.types;
+    # Some stable nginx MIME tables omit ES modules. They must not be served as binary.
+    types { application/javascript mjs; }
     default_type application/octet-stream;
     # Avoid recording signed file queries and anonymous form tokens.
     access_log off;
