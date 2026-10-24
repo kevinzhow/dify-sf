@@ -62,7 +62,13 @@ class EditorHeaderBinding {
     }
   }
 
-  void _saved() => store.setDraftUpdatedAt(DateTime.now().millisecondsSinceEpoch ~/ 1000);
+  // QA fixture only: keep the saved label deterministic without changing the
+  // browser clock, which also drives Dart timers. Normal builds use real time.
+  void _saved() => store.setDraftUpdatedAt(
+    (const bool.fromEnvironment('VISUAL_FIXED_SAVE_TIME') ? DateTime.utc(2026, 10, 24) : DateTime.now())
+            .millisecondsSinceEpoch ~/
+        1000,
+  );
 
   void _update() {
     if (!controller.ready) return;
