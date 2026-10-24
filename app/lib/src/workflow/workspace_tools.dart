@@ -213,7 +213,9 @@ class _ToolCredentialControlState extends State<ToolCredentialControl> {
     if (confirmed != true) return;
     try {
       await _api?.deleteCredential(widget.providerId, '${value['id']}');
-      if (mounted) widget.onSelected(null);
+      // Keep an explicit missing identity: clearing it could silently select a
+      // different default secret. Pin the resolved default before removing it.
+      if (mounted && widget.selectedId == null) widget.onSelected('${value['id']}');
       await _load();
       await host?.reload();
     } on Object catch (error) {
@@ -229,6 +231,7 @@ class _ToolCredentialControlState extends State<ToolCredentialControl> {
     final selected =
         _credentials.where((c) => c['id'] == widget.selectedId).firstOrNull ??
         (widget.selectedId == null ? _credentials.firstOrNull : null);
+    final unavailable = widget.selectedId != null && selected == null;
     final canManage = !widget.readOnly && selected?['can_manage'] == true;
     final needsCredentials = (widget.provider?['credentials_schema'] as Map?)?.isNotEmpty ?? false;
     return Padding(
@@ -251,11 +254,19 @@ class _ToolCredentialControlState extends State<ToolCredentialControl> {
             semanticLabel: DifyI18n.tr('plugin', 'auth.authorization'),
             options: [
               (value: '', label: DifyI18n.tr('plugin', 'auth.default')),
+              if (unavailable)
+                (value: widget.selectedId!, label: DifyI18n.tr('plugin', 'auth.credentialUnavailableInButton')),
               for (final value in _credentials) (value: '${value['id']}', label: '${value['name']}'),
             ],
             disabled: widget.readOnly,
+            disabledValues: {if (unavailable) widget.selectedId!},
             onChanged: (id) => widget.onSelected(id.isEmpty ? null : id),
           ),
+          if (unavailable)
+            DifyTextLine(
+              DifyI18n.tr('plugin', 'auth.credentialUnavailable'),
+              style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textDestructive),
+            ),
           Wrap(
             spacing: 8,
             runSpacing: 8,

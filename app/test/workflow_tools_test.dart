@@ -15,6 +15,65 @@ import 'dify_spec/workflow/nodes_panel/data/harness.dart' as panel;
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/tool/tool_panel.dart';
 
 void main() {
+  for (final useDefault in [false, true]) {
+    testWidgets('deleting ${useDefault ? "default" : "selected"} authorization preserves its unavailable identity', (
+      tester,
+    ) async {
+      var deleted = false;
+      final selections = <String?>[];
+      String? selectedId = useDefault ? null : 'selected';
+      final api = ToolsApi(
+        Uri.parse('https://fixture.invalid'),
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/delete')) {
+            expect(jsonDecode(request.body), {'credential_id': 'selected'});
+            deleted = true;
+            return http.Response('{"result":"success"}', 200);
+          }
+          return http.Response(
+            jsonEncode([
+              if (!deleted) {'id': 'selected', 'name': 'Chosen key', 'can_manage': true},
+              {'id': 'other', 'name': 'Another key', 'can_manage': true},
+            ]),
+            200,
+          );
+        }),
+      );
+      addTearDown(api.close);
+      await renderForm(
+        tester,
+        WorkflowToolsScope(
+          api: api,
+          reload: () async {},
+          child: StatefulBuilder(
+            builder: (context, setState) => ToolCredentialControl(
+              providerId: 'fixture/tools/echo',
+              provider: const {
+                'credentials_schema': {
+                  'api_key': {'type': 'secret-input', 'required': true},
+                },
+              },
+              selectedId: selectedId,
+              onSelected: (id) {
+                selections.add(id);
+                setState(() => selectedId = id);
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(DifyButton, 'common.operation.delete'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(DifyButton, 'common.operation.delete').last);
+      await tester.pumpAndSettle();
+      expect(deleted, isTrue);
+      expect(selections, useDefault ? ['selected'] : isEmpty);
+      expect(tester.widget<DifySelect<String>>(find.byType(DifySelect<String>)).value, 'selected');
+      expect(find.text('plugin.auth.credentialUnavailable'), findsOneWidget);
+      expect(find.text('Another key'), findsNothing);
+    });
+  }
   testWidgets('authorization refuses then retries without losing the secret or disabling Save', (tester) async {
     var saves = 0;
     final api = ToolsApi(
