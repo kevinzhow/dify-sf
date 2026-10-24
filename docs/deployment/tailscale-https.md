@@ -37,3 +37,18 @@ Rollback by replacing only the gateway's image/config/frozen mount with the prev
 ## Safari performance
 
 Use a direct HTTPS navigation for iOS Web performance comparisons. A script navigation from an HTTP page may retain an existing enhanced-security process. The browser reporting a secure context alone does not prove that JIT acceleration is enabled. Record actual renderer and operating system alongside timing evidence; simulator results are not physical-device frame rates. See [the client deployment notes](../client.md) for the recorded investigation.
+
+
+## Current retained trial resources (2026-10-24, D update)
+
+- Owner and maintenance contact: Winnie; authoritative tracking: Raft task #27 and #dify:b521f2fc. The 2026-11-24 review is a maintenance check, not an automatic shutdown or permission to delete data. Keep the trial until an explicit revocation or replacement, and propagate any endpoint change to users.
+- HTTPS gateway `winnie-https-trial-gateway`: loopback 19197 behind the existing Tailscale Serve 443; non-root/read-only, 128 MiB / 0.5 CPU, frozen `helpers-e0b84fd`, backend `/v1/` and signed files on the same HTTPS origin. Funnel remains off.
+- API `winnie-files-trial-server`: clean image `f6d9c599`, 1 GiB / 1 CPU; existing three runtime networks, PostgreSQL and upload volumes retained. The private configuration authority remains at its existing local path; original encryption and file-signing keys are unchanged.
+- Annotation service `winnie-trial-annotation-vector`: fixed Weaviate 1.39.2 digest, 640 MiB / 1 CPU, `unless-stopped`, authenticated internal service, no host port; persistent `winnie-trial-annotation-vectors`. Its private key and vector volume join the backup set. Legacy annotation flags are `needs_rebuild`, without automatic embedding calls.
+- The D private backup directory contains a verified database dump, upload archive, old-column fingerprints, original environment and exact previous container inspection, plus `ROLLBACK.md`. The previous C API/gateway containers remain stopped and retained. Never publish that directory, use it as test data, restore it over newer user writes, or remove current data as part of rollback.
+
+For rollback, inspect current runs/writes, stop and retain the new containers under unique names, restore the prior container names and start them against the **current** PostgreSQL/uploads. Restore the prior configuration authority with the prior API, retaining both original keys; keep the additive schema. Preserve the vector service/key/volume, stopping its process if no longer needed. Validate current health and HTTPS before redirecting traffic. Database dumps are disaster-recovery material, not a routine downgrade operation.
+
+For retained visual reports on this same HTTPS origin, render the gateway with `--reports` and mount an explicit, reviewed public report directory read-only at `/srv/reports`. Only that opt-in mount is served at `/reports/`; missing reports return 404 rather than the application shell. Never mount the working directory, authentication fixtures, database backups or private evidence there. Keep product assets on their existing independent frozen mount. Do not enable directory listing. Report publication does not require Funnel or an additional listening port.
+
+For a fresh empty database, use `/healthz` as process liveness and a successful `GET /v1/setup` as application/schema readiness before bootstrapping an account or admitting traffic. A liveness response alone does not prove that the initial schema migration has finished.

@@ -9,7 +9,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 
-def render(api_origin: str, listen_port: int) -> str:
+def render(api_origin: str, listen_port: int, *, reports: bool = False) -> str:
     parsed = urlsplit(api_origin)
     if (parsed.scheme not in ('http', 'https') or not parsed.hostname
             or parsed.username or parsed.password or parsed.path not in ('', '/')
@@ -19,8 +19,20 @@ def render(api_origin: str, listen_port: int) -> str:
     if not 1024 <= listen_port <= 65535:
         raise ValueError('listen port must be an unprivileged TCP port')
     template = Path(__file__).resolve().parents[1] / 'deploy/tailscale/nginx.conf.template'
-    return template.read_text().replace('__API_ORIGIN__', api_origin.rstrip('/')).replace(
+    content = template.read_text().replace('__API_ORIGIN__', api_origin.rstrip('/')).replace(
         '__LISTEN_PORT__', str(listen_port))
+    if reports:
+        # An explicit read-only mount, never a path supplied by a browser or an API caller.
+        marker = '        location / {'
+        assert content.count(marker) == 1
+        content = content.replace(marker, """        location ^~ /reports/ {
+            alias /srv/reports/;
+            index index.html;
+            autoindex off;
+            add_header Cache-Control "no-store" always;
+        }
+""" + marker)
+    return content
 
 
 def main():
@@ -28,8 +40,9 @@ def main():
     p.add_argument('--api-origin', required=True)
     p.add_argument('--listen-port', type=int, default=19197)
     p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--reports', action='store_true', help='Serve an explicit read-only /srv/reports mount under /reports/')
     a = p.parse_args()
-    content = render(a.api_origin, a.listen_port)
+    content = render(a.api_origin, a.listen_port, reports=a.reports)
     a.output.parent.mkdir(parents=True, exist_ok=True)
     a.output.write_text(content)
 

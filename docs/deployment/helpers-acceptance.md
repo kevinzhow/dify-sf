@@ -47,3 +47,7 @@
 `app/test/dify_spec/features/text_to_speech` 与 `annotation_reply`；
 真实服务 `e2e/helpers/acceptance.py`、`e2e/helpers/index_boundaries.py`。
 这些端到端脚本只接受指定的独立测试环境，不接受实际试用地址。
+
+全新空数据库启动时，`/healthz` 仅表示进程存活；自动安装脚本应继续等待 `GET /v1/setup` 能返回 200，
+再提交初始账号。此次独立视觉环境的第一次脚本在迁移前过早调用 setup，返回暂时不可用；
+保留失败后等待 schema 就绪，使用同一个实例完成初始化，未重置数据或绕过接口。

@@ -28,6 +28,16 @@ class GatewayTests(unittest.TestCase):
         self.assertNotIn('__API_ORIGIN__', value)
         self.assertNotIn('__LISTEN_PORT__', value)
 
+    def test_report_mount_is_opt_in_and_has_no_spa_fallback(self):
+        self.assertNotIn('/srv/reports', gateway.render('http://127.0.0.1:19097', 19197))
+        enabled = gateway.render('http://127.0.0.1:19097', 19197, reports=True)
+        report = enabled.split('location ^~ /reports/ {', 1)[1].split('}', 1)[0]
+        self.assertIn('alias /srv/reports/;', report)
+        self.assertIn('autoindex off;', report)
+        self.assertNotIn('proxy_pass', report)
+        self.assertNotIn('try_files', report)
+        self.assertIn('location ~ ^/(v1|files)/ {', enabled)
+
     def test_only_unprivileged_ports(self):
         for port in (0, 443, 65536):
             with self.assertRaises(ValueError):
