@@ -77,6 +77,13 @@ export async function start(loader, {
   if (compatibility) config.renderer = 'canvaskit';
   const state = env.__difyWebRuntime = {
     policy: 'ios-26.6-wasm',
+    // These describe the document, not WebKit's JIT tier. In particular, a
+    // script navigation from HTTP can retain Enhanced Security on HTTPS.
+    browserContext: {
+      protocol: url.protocol,
+      secureContext: env.isSecureContext ?? null,
+      crossOriginIsolated: env.crossOriginIsolated ?? null,
+    },
     isIOS: candidate.isIOS,
     iosWasmEnabled: iosWasm,
     reason: compatibility ? 'compatibility-url' : !candidate.isIOS ? 'sdk-default' :
