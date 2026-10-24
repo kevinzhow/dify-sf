@@ -2,6 +2,7 @@
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/workflow_editor/features/features.dart';
 import 'package:flutter/services.dart';
+import 'package:dify_sf_app/src/design/dify_icon.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../harness.dart';
@@ -92,6 +93,28 @@ void main() {
         expect(find.bySemanticsLabel('Play'), findsWidgets);
       });
 
+      testWidgets('live audition renders a bundled stop icon and stops playback', (t) async {
+        var stops = 0;
+        await render(
+          t,
+          ParamConfigContent(onClose: () {}),
+          features: withTts(defaultTts),
+          services: FeaturesServices(
+            languages: mockLanguages,
+            voices: (_) async => mockVoiceItems!,
+            playAudition: (_, _) async {},
+            stopAudition: () => stops++,
+          ),
+        );
+        await settle(t);
+        final icon = find.byWidgetPredicate((w) => w is RemixIcon && w.name.startsWith('stop'));
+        expect(icon, findsOneWidget);
+        final data = await rootBundle.loadString('assets/remix_icons/${t.widget<RemixIcon>(icon).name}.svg');
+        expect(data, contains('<svg'));
+        await t.tap(find.ancestor(of: icon, matching: find.byType(DifyIconButton)).first);
+        await t.pump();
+        expect(stops, 1);
+      });
       testWidgets('should not render audition button when language has no example', (t) async {
         mockLanguages = const [
           (value: 'en-US', name: 'English', example: ''),

@@ -53,6 +53,7 @@ Future<void> render(
   final s = FeaturesServices(
     voices: services.voices,
     playAudition: services.playAudition,
+    stopAudition: services.stopAudition,
     codeBasedExtensions: services.codeBasedExtensions,
     apiBasedExtensions: services.apiBasedExtensions,
     addApiBasedExtension: services.addApiBasedExtension,

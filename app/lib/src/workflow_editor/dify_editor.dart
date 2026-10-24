@@ -10,7 +10,6 @@ import 'dart:convert';
 import '../audio/audio_player.dart';
 import '../workflow_helpers/generator_dialog.dart';
 import '../workflow/dify_json.dart' show difyDataOf, plainOf;
-import '../workflow/model_catalog.dart' show ModelTypeEnum;
 import 'node_panel/bodies/core/core_kit.dart' show CorePanelHost, CorePanelHostData;
 import 'panel_fields/controls.dart' show GeneratorButton;
 
@@ -787,7 +786,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     final result = await showHelperGenerator(
       context,
       api: widget.helpers!,
-      models: widget.models?.modelList(ModelTypeEnum.textGeneration) ?? const [],
+      workspace: widget.models,
+      modelServices: _modelServices(),
       kind: 'instruction-generate',
       modelLabel: _modelLabel(selected),
       parameters: {
@@ -823,7 +823,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
           final result = await showHelperGenerator(
             ctx,
             api: widget.helpers!,
-            models: widget.models?.modelList(ModelTypeEnum.textGeneration) ?? const [],
+            workspace: widget.models,
+            modelServices: _modelServices(),
             kind: 'rule-code-generate',
             modelLabel: _modelLabel(_defaultGeneratorModel()),
             parameters: {
@@ -871,7 +872,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     await showHelperGenerator(
       context,
       api: widget.helpers!,
-      models: widget.models?.modelList(ModelTypeEnum.textGeneration) ?? const [],
+      workspace: widget.models,
+      modelServices: _modelServices(),
       kind: 'workflow-generate',
       modelLabel: _modelLabel(_defaultGeneratorModel()),
       warning: DifyI18n.tr('workflow', 'workflowGenerator.overwriteMessage'),
@@ -900,23 +902,29 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     );
   }
 
-  /// The model-node panels' services from the workspace's models (rebuilt when they change).
+  LlmGroupServices _modelServices() {
+    final models = widget.models;
+    if (models == null) return LlmGroupServices.empty;
+    return LlmGroupServices(
+      models: models.catalog,
+      modelProviderEnv: widget.modelProviderEnv,
+      defaultModels: models.defaultModelsMap,
+      parameterRules: models.parameterRules,
+      openModelProviderSettings: widget.openModelProviderSettings,
+      refreshModels: () => unawaited(models.refreshModelLists()),
+      generatePrompt: widget.helpers == null || !widget.access.canEdit ? null : _generatePrompt,
+      generateJsonSchema: widget.helpers == null || !widget.access.canEdit ? null : _generateSchema,
+    );
+  }
+
+  /// Keep model selectors in the editor and root-navigator generator dialogs on the same workspace services.
   Widget _withModels(Widget child) {
     final models = widget.models;
     if (models == null) return child;
     return ListenableBuilder(
       listenable: models,
       builder: (context, child) => LlmGroupScope(
-        services: LlmGroupServices(
-          models: models.catalog,
-          modelProviderEnv: widget.modelProviderEnv,
-          defaultModels: models.defaultModelsMap,
-          parameterRules: models.parameterRules,
-          openModelProviderSettings: widget.openModelProviderSettings,
-          refreshModels: () => unawaited(models.refreshModelLists()),
-          generatePrompt: widget.helpers == null || !widget.access.canEdit ? null : _generatePrompt,
-          generateJsonSchema: widget.helpers == null || !widget.access.canEdit ? null : _generateSchema,
-        ),
+        services: _modelServices(),
         child: ProviderIconScope(source: models.icons, child: child!),
       ),
       child: child,

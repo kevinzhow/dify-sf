@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
@@ -7,6 +8,8 @@ import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/dify_i18n.dart';
 import '../workflow/model_catalog.dart';
+import '../workflow/workspace_models.dart';
+import '../workflow_editor/node_panel/bodies/llm/group_host.dart';
 import '../cards/provider_icon_image.dart';
 import '../workflow_editor/node_panel/bodies/llm/model_selector.dart';
 
@@ -19,25 +22,45 @@ Future<HelperJson?> showHelperGenerator(
   required HelperJson parameters,
   String? modelLabel,
   List<ProviderWithModels> models = const [],
+  WorkspaceModels? workspace,
+  LlmGroupServices? modelServices,
   bool Function()? unchanged,
   String? warning,
   Future<void> Function(HelperJson proposal)? apply,
-}) => showDifyDialog<HelperJson>(
-  context,
-  builder: (_) => ProviderIconScope(
-    source: ProviderIconScope.of(context),
-    child: HelperGeneratorDialog(
-      api: api,
-      kind: kind,
-      parameters: parameters,
-      modelLabel: modelLabel,
-      models: models,
-      unchanged: unchanged,
-      warning: warning,
-      apply: apply,
+}) {
+  // Dialogs use the root navigator: explicitly carry the workspace's model/credential/icon services.
+  final inherited = modelServices ?? LlmGroupScope.of(context);
+  final icons = ProviderIconScope.of(context);
+  Widget dialog() => LlmGroupScope(
+    services: workspace == null
+        ? inherited
+        : LlmGroupServices(
+            models: workspace.catalog,
+            modelProviderEnv: inherited.modelProviderEnv,
+            parameterRules: workspace.parameterRules,
+            openModelProviderSettings: inherited.openModelProviderSettings,
+            refreshModels: () => unawaited(workspace.refreshModelLists()),
+          ),
+    child: ProviderIconScope(
+      source: workspace?.icons ?? icons,
+      child: HelperGeneratorDialog(
+        api: api,
+        kind: kind,
+        parameters: parameters,
+        modelLabel: modelLabel,
+        models: workspace?.modelList(ModelTypeEnum.textGeneration) ?? models,
+        unchanged: unchanged,
+        warning: warning,
+        apply: apply,
+      ),
     ),
-  ),
-);
+  );
+  return showDifyDialog<HelperJson>(
+    context,
+    builder: (_) =>
+        workspace == null ? dialog() : ListenableBuilder(listenable: workspace, builder: (_, _) => dialog()),
+  );
+}
 
 /// Shared proposal dialog: instructions and failures survive retries, a proposal never edits until Apply.
 class HelperGeneratorDialog extends StatefulWidget {

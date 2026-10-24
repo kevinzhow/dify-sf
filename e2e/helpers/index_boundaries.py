@@ -1,6 +1,6 @@
 """Real SQL/vector CRUD and SIGKILL/reclaim contract on OWN isolated fixture only."""
 import argparse,fcntl,hashlib,json,os,pathlib,ssl,subprocess,sys,time,urllib.request
-p=argparse.ArgumentParser();p.add_argument('--out',type=pathlib.Path,required=True);a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
+p=argparse.ArgumentParser();p.add_argument('--out',type=pathlib.Path,required=True);p.add_argument('--restart-suffix',default='index-restart');a=p.parse_args();assert a.restart_suffix.replace('-','').isalnum();a.out.mkdir(parents=True,exist_ok=True)
 f=pathlib.Path('/var/tmp/Winnie/five-steps-cb9fa7f3');private=f/'private-fixture';info=json.loads((f/'d/fixture.json').read_text());data=json.loads((private/'helper-fixture.json').read_text())
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]));sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'lib'))
 from lib.e2ehttp import Session,HTTPError
@@ -79,7 +79,7 @@ while time.monotonic()<end:
 else:raise AssertionError('Did not enter delayed real embedding request')
 old=inspect();assert old['Config']['Labels']['raft.fixture']=='five-helper';start=time.monotonic()
 with open('/home/kevinzhow/.slock/machine-cleanup.lock','a')as lock:
- fcntl.flock(lock,fcntl.LOCK_EX);command(['docker','kill','--signal','KILL',name]);command(['docker','rename',name,name+'-before-index-restart']);origin.post('/stub/modes',{});newid=command(info['apiArgs'])
+ fcntl.flock(lock,fcntl.LOCK_EX);command(['docker','kill','--signal','KILL',name]);command(['docker','rename',name,name+'-before-'+a.restart_suffix]);origin.post('/stub/modes',{});newid=command(info['apiArgs'])
 for _ in range(200):
  try:urllib.request.urlopen('http://127.0.0.1:19128/healthz',timeout=2);break
  except OSError:time.sleep(.25)

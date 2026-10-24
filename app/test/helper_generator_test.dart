@@ -5,6 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'dify_spec/base_form/_harness.dart';
 
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
+
+import 'dify_spec/workflow/nodes_panel/llm/model_fixtures.dart' show makeModel, catalogOf, summaryOf;
+
 class _FixtureHelpersApi extends HelpersApi {
   _FixtureHelpersApi(this.answer) : super(Uri.parse('https://fixture.invalid'));
   final Future<HelperJson> Function(HelperJson body) answer;
@@ -51,6 +56,38 @@ void main() {
     await tester.pump();
     expect(applies, 1);
     expect(calls, 2);
+  });
+  testWidgets('opening a helper dialog preserves the installed model catalog', (tester) async {
+    final provider = makeModel();
+    final catalog = catalogOf([provider], providers: [summaryOf(provider, credentialName: 'Local key')]);
+    final api = _FixtureHelpersApi((_) async => {});
+    addTearDown(api.close);
+    await renderForm(
+      tester,
+      LlmGroupScope(
+        services: LlmGroupServices(models: catalog),
+        child: Builder(
+          builder: (context) => DifyButton(
+            onPressed: () => showHelperGenerator(
+              context,
+              api: api,
+              kind: 'rule-generate',
+              parameters: {
+                'model_config': {'provider': 'openai', 'name': 'gpt-4'},
+              },
+              models: [provider],
+            ),
+            child: const Text('Open helper'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open helper'));
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+    expect(find.text('GPT-4'), findsOneWidget);
+    expect(find.text('Incompatible'), findsNothing);
   });
   testWidgets('a concurrent edit prevents applying an old generated proposal', (tester) async {
     var applies = 0;

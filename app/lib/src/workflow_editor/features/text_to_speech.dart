@@ -335,7 +335,7 @@ class _ParamConfigContentState extends State<ParamConfigContent> {
                 if (services.stopAudition case final stop?)
                   DifyIconButton(
                     label: DifyI18n.tr('workflow', 'workflowGenerator.cancel'),
-                    icon: const RemixIcon('stop-line', size: 16),
+                    icon: const RemixIcon('stop-circle-line', size: 16),
                     onPressed: stop,
                   ),
               ],
