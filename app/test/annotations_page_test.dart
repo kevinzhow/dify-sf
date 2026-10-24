@@ -258,6 +258,41 @@ void main() {
     expect((await w.api.setting(w.appId)).enabled, isFalse);
   });
 
+  testWidgets('annotation setup uses the configured embedding catalog outside the workflow editor', (t) async {
+    final w = await _World.create();
+    final api = RecordingModelsApi()
+      ..summaryData = [
+        summaryJson(provider: _openai, supportedModelTypes: [ModelTypeEnum.textEmbedding]),
+      ]
+      ..modelsByType[ModelTypeEnum.textEmbedding] = [
+        providerWithModels(_openai, [
+          'text-embedding-3-small',
+          'text-embedding-3-large',
+        ], modelType: ModelTypeEnum.textEmbedding),
+      ]
+      ..defaults[ModelTypeEnum.textEmbedding] = defaultModelJson(
+        _openai,
+        'text-embedding-3-small',
+        modelType: ModelTypeEnum.textEmbedding,
+      );
+    final models = WorkspaceModels(api, fixedLanguage: 'en_US');
+    addTearDown(models.dispose);
+    await models.refreshSummary();
+    await _render(t, w, models: models);
+    await settle(t);
+    await t.tap(find.byType(DifySwitch));
+    await settle(t);
+    expect(find.text('Incompatible'), findsNothing);
+    expect(find.text('text-embedding-3-small'), findsOneWidget);
+    await t.tap(find.text('text-embedding-3-small'));
+    await settle(t);
+    await t.tap(find.text('text-embedding-3-large'));
+    await settle(t);
+    expect(find.text('Incompatible'), findsNothing);
+    await tapButton(t, 'appAnnotation.initSetup.confirmBtn');
+    expect((await w.api.setting(w.appId)).embeddingModelName, 'text-embedding-3-large');
+  });
+
   testWidgets('a failed or legacy index explicitly rebuilds even with the same model and score', (t) async {
     final apps = FakeAppsApi();
     final app = await apps.create(name: 'Needs rebuild', mode: AppModes.advancedChat);

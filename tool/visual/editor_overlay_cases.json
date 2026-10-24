@@ -320,7 +320,7 @@
           "name": "Comment Mode"
         },
         "oursClick": {
-          "role": "button",
+          "role": "switch",
           "name": "Comment Mode"
         }
       },
@@ -814,7 +814,11 @@
         "at": [
           16,
           16
-        ]
+        ],
+        "oursClick": {
+          "role": "button",
+          "name": "End, end node, succeeded"
+        }
       },
       {
         "park": true
@@ -827,6 +831,10 @@
           "role": "tab",
           "name": "Last Run",
           "exact": false
+        },
+        "oursClick": {
+          "role": "tab",
+          "name": "LAST RUN"
         }
       },
       {

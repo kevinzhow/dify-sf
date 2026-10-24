@@ -15,6 +15,8 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/model_catalog.dart';
 import '../../workflow/workspace_models.dart';
+import '../../workflow_editor/node_panel/bodies/llm/group_host.dart';
+import '../../settings/model_provider/model_provider_env.dart';
 import '../../auth/account_time.dart';
 import '../access/access_point_utils.dart' show difyDocLink;
 import '../detail_page_slot.dart';
@@ -180,6 +182,7 @@ class AnnotationsPageState extends State<AnnotationsPage> {
     unawaited(_fetchList(1));
     final models = widget.models;
     if (models != null) {
+      if (models.summary == null) unawaited(models.refreshSummary());
       unawaited(models.ensureModelList(ModelTypeEnum.textEmbedding));
       if (models.defaultModel(ModelTypeEnum.textEmbedding) == null) {
         unawaited(models.invalidateDefaultModel(ModelTypeEnum.textEmbedding));
@@ -404,12 +407,12 @@ class AnnotationsPageState extends State<AnnotationsPage> {
     );
   }
 
-  AnnotationConfigParamModal _configModal() {
+  Widget _configModal() {
     final models = widget.models;
     final list = models?.modelList(ModelTypeEnum.textEmbedding) ?? const <ProviderWithModels>[];
     final d = models?.defaultModelsMap[ModelTypeEnum.textEmbedding];
     final DefaultModel? defaultModel = d == null ? null : (provider: d.provider, model: d.model);
-    return AnnotationConfigParamModal(
+    final modal = AnnotationConfigParamModal(
       isShow: true,
       isInit: !(annotationConfig?.enabled ?? false),
       onHide: () => _setShowEdit(false),
@@ -419,6 +422,19 @@ class AnnotationsPageState extends State<AnnotationsPage> {
       defaultEmbeddingModel: defaultModel,
       isDefaultModelValid: getCurrentProviderAndModel(list, defaultModel).currentModel != null,
       toast: widget.toast,
+    );
+    final child = widget.configParamModal?.call(modal) ?? modal;
+    if (models == null) return child;
+    final inherited = LlmGroupScope.of(context);
+    return LlmGroupScope(
+      services: LlmGroupServices(
+        models: models.catalog,
+        defaultModels: models.defaultModelsMap,
+        modelProviderEnv: inherited.modelProviderEnv ?? ModelProviderScope.maybeOf(context),
+        openModelProviderSettings: inherited.openModelProviderSettings,
+        refreshModels: () => unawaited(models.refreshModelLists()),
+      ),
+      child: child,
     );
   }
 
@@ -511,7 +527,7 @@ class AnnotationsPageState extends State<AnnotationsPage> {
         if (s != null && _isShowEdit)
           ListenableBuilder(
             listenable: widget.models ?? Listenable.merge(const []),
-            builder: (context, _) => widget.configParamModal?.call(_configModal()) ?? _configModal(),
+            builder: (context, _) => _configModal(),
           ),
       ],
     );
