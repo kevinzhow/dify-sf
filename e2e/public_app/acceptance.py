@@ -102,7 +102,7 @@ reject(lambda:fc.get('/v1/files/'+upload['id']+'/preview?user=bob'),404)
 reject(lambda:run(fc,{'inputs':{'attachment':file},'user':'bob'}),400)
 mark('uploaded file references and text preview are scoped to the public end user')
 hdoc=workflow([node('start','start',variables=[]),llm('before public pause'),node('human','human-input',form_content='Please approve {{#$output.reply#}}',inputs=[{'type':'paragraph','output_variable_name':'reply'}],user_actions=[{'id':'approve','title':'Approve it','button_style':'primary'}],delivery_methods=[{'type':'webapp','enabled':True}]),node('end','end',outputs=[{'variable':'reply','value_selector':['human','reply']}])],edges=[('start','source','llm'),('llm','source','human'),('human','approve','end')],name='Published approval fixture')
-happ,hkey,hcode=create(hdoc,'human');hc=session(hkey);stub.post('/stub/reset',{})
+happ,hkey,hcode=create(hdoc,'human');hc=session(hkey);stub.post('/stub/script',{'rules':[{'match':'','reply':'before public approval'}]});stub.post('/stub/reset',{})
 paused=run(hc,{'user':'alice'});assert paused['data']['status']=='paused',paused
 hrun=paused['workflow_run_id'];replay=events(hc,f'/v1/workflow/{hrun}/events?user=alice&include_state_snapshot=true')
 form=next(f['data']for f in replay if f['event']=='human_input_required');ft=form['form_token'];assert form['display_in_ui']is True
