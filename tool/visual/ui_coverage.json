@@ -1239,6 +1239,20 @@
         "StudioPage",
         "StudioPageState"
       ]
+    },
+    {
+      "source": "app/lib/src/public_app/public_app_page.dart",
+      "visual": true,
+      "cases": [
+        "pages.public-workflow.light.en-US",
+        "pages.public-workflow.dark.en-US",
+        "pages.public-chat.light.en-US",
+        "pages.public-chat.dark.en-US"
+      ],
+      "publicClasses": [
+        "PublicAppPage"
+      ],
+      "scope": "Published workflow and chat initial pages, light/dark; functional failure/retry/files/restart are separate real browser acceptance evidence."
     }
   ],
   "nodeBodies": [

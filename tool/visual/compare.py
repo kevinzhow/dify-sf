@@ -206,8 +206,13 @@ def drop_invites(s):
                 s.delete(f'{DIFY}/console/api/workspaces/current/members/{m["id"]}')
 
 
-def serve(directory):
+def serve(directory, *, spa=False):
     class Quiet(http.server.SimpleHTTPRequestHandler):
+        def send_head(self):
+            # The production nginx gateway serves the same unchanged index for public client routes.
+            if spa and re.match(r"^/(?:workflow|chat|form)/", self.path):
+                self.path = "/index.html"
+            return super().send_head()
         def log_message(self, *a):
             pass
 

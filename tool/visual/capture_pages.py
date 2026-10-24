@@ -39,15 +39,23 @@ def main():
     session=requests.Session()
     session.headers.update(auth['dify'].get('headers',{}))
     for c in auth['dify']['cookies']:session.cookies.set(c['name'],c['value'])
-    server,base=compare.serve(args.flutter_build);compiled=hashlib.sha256((args.flutter_build/'main.dart.wasm').read_bytes()).hexdigest();rows=[];owned=[]
+    server,base=compare.serve(args.flutter_build,spa=any(row.get('publicMode') for row in json.loads(args.catalog.read_text())));compiled=hashlib.sha256((args.flutter_build/'main.dart.wasm').read_bytes()).hexdigest();rows=[];owned=[]
     with sync_playwright() as pw:
         browser=pw.chromium.launch(headless=True,args=['--no-sandbox'])
         try:
             for raw in json.loads(args.catalog.read_text()):
-                row={**raw,'captures':{},'captureErrors':[]};d=sf=None
+                row={**raw,'captures':{},'captureErrors':[]};d=sf=None;site_codes={}
                 try:
                     if raw.get('fixture'):
                         text=(compare.ROOT/raw['fixture']).read_text();d=compare.dify_import(session,text);sf=compare.sf_import(text);owned.append({'dify':d,'sf':sf});(args.out/'owned-resources.json').write_text(json.dumps(owned))
+                    if raw.get('publicMode'):
+                        # Publish only these newly imported, model-free fixtures; never invoke either workflow.
+                        assert d and sf and raw.get('fixture','').startswith('tool/visual/fixtures/public_')
+                        published=session.post(compare.DIFY+'/console/api/apps/'+d+'/workflows/publish',json={'marked_name':'Visual fixture','marked_comment':'No execution'},timeout=30)
+                        published.raise_for_status()
+                        site=session.get(compare.DIFY+'/console/api/apps/'+d,timeout=15);site.raise_for_status();site_codes['dify']=site.json()['site']['code']
+                        compare.sf_api('POST','/v1/apps/'+sf+'/workflows/publish',{})
+                        site_codes['ours']=compare.sf_api('GET','/v1/apps/'+sf)['site']['code']
                     for side,provider in [('dify','react'),('ours','flutter-web')]:
                         compare.THEME=raw['theme'];ctx=browser.new_context(viewport={'width':1440,'height':900},device_scale_factor=2,locale='en-US',color_scheme=raw['theme'],timezone_id='America/New_York');page=ctx.new_page();errors=[];blocked=[];page.on('pageerror',lambda e:errors.append(str(e)))
                         try:
@@ -74,8 +82,9 @@ def main():
                                 page.route(fixture['url'],answer)
                             if raw.get('emptyStudio'):
                                 page.route('**/console/api/apps?*' if side=='dify' else '**/v1/apps?*',lambda r:r.fulfill(status=200,json={'data':[],'page':1,'limit':30,'total':0,'has_more':False}) if r.request.method=='GET' else r.fallback())
-                            path=raw[side].replace('{app}',d if side=='dify' and d else sf or '')
+                            path=raw[side].replace('{app}',d if side=='dify' and d else sf or '').replace('{site}',site_codes.get(side,''))
                             if side=='dify':url=compare.DIFY+path
+                            elif raw.get('publicMode'):url=base+path+'?'+urlencode({'server':compare.SF,'lang':raw['locale'],'theme':raw['theme'],'visual':'1'})
                             else:url=base+'/?'+urlencode({'server':compare.SF,'lang':raw['locale'],'theme':raw['theme'],'visual':'1'})+('&'+path if path and not path.startswith('#') else path)
                             page.goto(url,wait_until='networkidle',timeout=60000)
                             if side=='ours':

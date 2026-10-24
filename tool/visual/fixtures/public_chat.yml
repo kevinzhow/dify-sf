@@ -1,0 +1,55 @@
+{
+  "kind": "app",
+  "version": "0.7.0",
+  "dependencies": [],
+  "app": {
+    "name": "Visual public chat",
+    "mode": "advanced-chat",
+    "icon": "🤖",
+    "icon_background": "#FFEAD5"
+  },
+  "workflow": {
+    "features": {
+      "opening_statement": "Ready to help"
+    },
+    "environment_variables": [],
+    "conversation_variables": [],
+    "graph": {
+      "nodes": [
+        {
+          "id": "start",
+          "position": {
+            "x": 80,
+            "y": 160
+          },
+          "data": {
+            "type": "start",
+            "title": "Start",
+            "variables": []
+          }
+        },
+        {
+          "id": "finish",
+          "position": {
+            "x": 400,
+            "y": 160
+          },
+          "data": {
+            "type": "answer",
+            "title": "Answer",
+            "answer": "Ready"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "start-finish",
+          "source": "start",
+          "target": "finish",
+          "sourceHandle": "source",
+          "targetHandle": "target"
+        }
+      ]
+    }
+  }
+}

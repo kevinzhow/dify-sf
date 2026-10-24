@@ -6520,5 +6520,81 @@
       }
     ],
     "dataMode": "actual page with declared disposable-account/network fixtures; not a backend integration verdict"
+  },
+  {
+    "kind": "public-workflow",
+    "publicMode": "workflow",
+    "fixture": "tool/visual/fixtures/public_workflow.yml",
+    "dify": "/workflow/{site}",
+    "ours": "/workflow/{site}",
+    "signedIn": false,
+    "expected": {
+      "dify": "Visual public workflow",
+      "ours": "Visual public workflow"
+    },
+    "actions": {},
+    "id": "pages.public-workflow.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "initial",
+    "dataMode": "actual published model-free disposable apps; no execution; minimal public UI differences intentionally measured"
+  },
+  {
+    "kind": "public-workflow",
+    "publicMode": "workflow",
+    "fixture": "tool/visual/fixtures/public_workflow.yml",
+    "dify": "/workflow/{site}",
+    "ours": "/workflow/{site}",
+    "signedIn": false,
+    "expected": {
+      "dify": "Visual public workflow",
+      "ours": "Visual public workflow"
+    },
+    "actions": {},
+    "id": "pages.public-workflow.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "initial",
+    "dataMode": "actual published model-free disposable apps; no execution; minimal public UI differences intentionally measured"
+  },
+  {
+    "kind": "public-chat",
+    "publicMode": "advanced-chat",
+    "fixture": "tool/visual/fixtures/public_chat.yml",
+    "dify": "/chat/{site}",
+    "ours": "/chat/{site}",
+    "signedIn": false,
+    "expected": {
+      "dify": "Visual public chat",
+      "ours": "Visual public chat"
+    },
+    "actions": {},
+    "id": "pages.public-chat.light.en-US",
+    "theme": "light",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "initial",
+    "dataMode": "actual published model-free disposable apps; no execution; minimal public UI differences intentionally measured"
+  },
+  {
+    "kind": "public-chat",
+    "publicMode": "advanced-chat",
+    "fixture": "tool/visual/fixtures/public_chat.yml",
+    "dify": "/chat/{site}",
+    "ours": "/chat/{site}",
+    "signedIn": false,
+    "expected": {
+      "dify": "Visual public chat",
+      "ours": "Visual public chat"
+    },
+    "actions": {},
+    "id": "pages.public-chat.dark.en-US",
+    "theme": "dark",
+    "locale": "en-US",
+    "captureType": "real-screen",
+    "state": "initial",
+    "dataMode": "actual published model-free disposable apps; no execution; minimal public UI differences intentionally measured"
   }
 ]
