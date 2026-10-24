@@ -22,7 +22,7 @@ import 'src/settings.dart';
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDifyPlatformInput();
-  final settings = await AppSettings.load();
+  final settings = await AppSettings.load(defaultServerUrl: kIsWeb ? Uri.base.origin : null);
   final options =
       (kIsWeb
             ? LaunchOptions.fromQuery(Uri.base.queryParameters, path: Uri.base.path, fragment: Uri.base.fragment)

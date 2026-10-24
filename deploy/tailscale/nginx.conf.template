@@ -1,0 +1,54 @@
+# Render the two explicit placeholders with tool/tailscale_gateway.py.
+# Bind only loopback; Tailscale Serve terminates HTTPS for tailnet devices.
+worker_processes 1;
+pid /tmp/nginx.pid;
+error_log /dev/stderr warn;
+events { worker_connections 512; }
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    # Avoid recording signed file queries and anonymous form tokens.
+    access_log off;
+    sendfile on;
+    server_tokens off;
+    client_body_temp_path /tmp/client_body;
+    proxy_temp_path /tmp/proxy;
+    fastcgi_temp_path /tmp/fastcgi;
+    uwsgi_temp_path /tmp/uwsgi;
+    scgi_temp_path /tmp/scgi;
+    server {
+        listen 127.0.0.1:__LISTEN_PORT__;
+        server_name _;
+        root /srv/web;
+        # The application enforces file limits; do not introduce a smaller
+        # proxy limit or spool uploads and event streams to disk.
+        client_max_body_size 0;
+        location /v1/ {
+            proxy_pass __API_ORIGIN__;
+            proxy_http_version 1.1;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header X-Forwarded-Host $http_host;
+            proxy_set_header Connection "";
+            proxy_buffering off;
+            proxy_request_buffering off;
+            proxy_cache off;
+            proxy_read_timeout 1h;
+            proxy_send_timeout 1h;
+        }
+        location = /healthz {
+            proxy_pass __API_ORIGIN__;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+        location = /index.html {
+            add_header Cache-Control "no-store" always;
+        }
+        location ~ ^/(flutter_bootstrap\.js|wasm_policy\.mjs|main\.dart\.(js|mjs|wasm))$ {
+            add_header Cache-Control "no-cache" always;
+        }
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+}

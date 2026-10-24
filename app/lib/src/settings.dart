@@ -11,10 +11,13 @@ class AppSettings {
   bool journaled;
   String lastDoc;
 
-  static Future<AppSettings> load() async {
+  /// A Web deployment supplies its own origin so a fresh browser uses the
+  /// same HTTPS gateway as the app. Remembered and explicit server choices
+  /// remain available for development and connections to other servers.
+  static Future<AppSettings> load({String? defaultServerUrl}) async {
     final p = await SharedPreferences.getInstance();
     return AppSettings(
-      serverUrl: p.getString('serverUrl') ?? 'http://localhost:8080',
+      serverUrl: p.getString('serverUrl') ?? defaultServerUrl ?? 'http://localhost:8080',
       journaled: p.getBool('journaled') ?? true,
       lastDoc: p.getString('lastDoc') ?? '',
     );
