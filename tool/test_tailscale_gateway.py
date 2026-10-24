@@ -21,6 +21,7 @@ class GatewayTests(unittest.TestCase):
         self.assertIn('listen 127.0.0.1:19197;', value)
         self.assertIn('proxy_pass http://127.0.0.1:19097;', value)
         self.assertIn('types { application/javascript mjs; }', value)
+        self.assertIn('location ~ ^/(v1|files)/ {', value)
         self.assertIn('proxy_buffering off;', value)
         self.assertIn('proxy_request_buffering off;', value)
         self.assertIn('proxy_set_header X-Forwarded-Proto https;', value)

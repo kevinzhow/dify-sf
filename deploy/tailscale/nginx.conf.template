@@ -25,7 +25,7 @@ http {
         # The application enforces file limits; do not introduce a smaller
         # proxy limit or spool uploads and event streams to disk.
         client_max_body_size 0;
-        location /v1/ {
+        location ~ ^/(v1|files)/ {
             proxy_pass __API_ORIGIN__;
             proxy_http_version 1.1;
             proxy_set_header Host $http_host;

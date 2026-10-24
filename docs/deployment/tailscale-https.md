@@ -1,6 +1,6 @@
 # Tailnet HTTPS trial
 
-Trial devices connect to Tailscale first, then open the machine's `https://<machine>.<tailnet>.ts.net/` directly in the browser. Tailscale Serve terminates HTTPS and forwards to a loopback-only nginx gateway. The gateway serves a frozen Web build and proxies `/v1/` to the existing API, including event streams and signed file downloads. Fresh Web clients use that same origin by default; a saved server or explicit `server` query still takes precedence. Native clients keep their existing default.
+Trial devices connect to Tailscale first, then open the machine's `https://<machine>.<tailnet>.ts.net/` directly in the browser. Tailscale Serve terminates HTTPS and forwards to a loopback-only nginx gateway. The gateway serves a frozen Web build and proxies `/v1/` and `/files/` to the existing API, including event streams and signed file downloads. Fresh Web clients use that same origin by default; a saved server or explicit `server` query still takes precedence. Native clients keep their existing default.
 
 This is Serve within the tailnet. Do not enable Funnel. Access from devices outside the tailnet requires a separate explicit decision.
 
@@ -23,7 +23,8 @@ This is Serve within the tailnet. Do not enable Funnel. Access from devices outs
    ```
 
    Read `tailscale serve status --json` and confirm port 443 forwards to the intended loopback port. Confirm no `AllowFunnel` entry is enabled. HTTPS issuance may take a short time; verify without bypassing certificate validation.
-5. Open the HTTPS address directly, without the old `server=http://...` query. A fresh origin should use HTTPS for `/v1/` requests, streams, and files. If this device deliberately saved an old HTTP backend, change its server setting to the HTTPS origin.
+5. Set the API's `COLLAB_FILES_URL` to the HTTPS origin so newly issued signed downloads and avatar URLs use HTTPS too. If plugins or server-side consumers need a separate internal route, keep it explicit in `COLLAB_FILES_INTERNAL_URL`. Preserve both existing encryption/signing keys and the existing database/upload volumes. Apply this configuration only after checking active runs and retaining a verified backup plus the previous container.
+6. Open the HTTPS address directly, without the old `server=http://...` query. A fresh origin should use HTTPS for `/v1/` requests, streams, and files. If this device deliberately saved an old HTTP backend, change its server setting to the HTTPS origin.
 
 ## Acceptance and recovery
 
