@@ -85,7 +85,7 @@ The complete, digest-pinned runtime profile and its readiness/resource checks ar
 `docker-compose.runtime.yml`; the base stack leaves runtime dependencies unconfigured.
 
 [Persistent console Chatflow](docs/chatflow-runtime.md) documents protocol 1.18, durable parent-thread memory,
-conversation isolation, reconnect and restart behavior. [Published Web/API](docs/protocol.md#published-web-and-service-api-120) adds immutable published revisions, independent visitors/API callers, files/forms, recovery and real monitoring; it shares the existing engine.
+conversation isolation, reconnect and restart behavior. [Published Web/API](docs/protocol.md#published-web-and-service-api-120) adds immutable published revisions, independent visitors/API callers, files/forms, recovery and real monitoring; it shares the existing engine. [Published runtime acceptance](docs/runtime-public-acceptance.md) records real service/browser checks and their limits.
 
 ## Test
 

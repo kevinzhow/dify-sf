@@ -76,4 +76,26 @@ for _ in range(100):
 assert result['status']=='succeeded',result
 assert hc.get('/v1/messages?user=alice&conversation_id='+paused['conversation_id'])['data'][0]['answer']=='public chat approved'
 mark('blocking Chatflow pause preserves the original message envelope and resumes its durable public answer')
+
+# Ownership is checked again on stop; the owner can interrupt an actual in-flight plugin invocation.
+import threading
+slow=create(workflow([node('start','start',variables=[]),node('plugin','tool',provider_type='builtin',provider_id=provider,tool_name='echo',credential_id=credential,tool_parameters={'prompt':{'type':'mixed','value':'controlled public stop'}},tool_configurations={'mode':{'type':'constant','value':'slow'}}),node('end','end',outputs=[{'variable':'result','value_selector':['plugin','text']}])],name='Published cancellation fixture'))
+sk=s.post(f'/v1/apps/{slow}/api-keys',{})['token'];sc=session(sk);failures=[];stopper=None;frames=[]
+def stop_public(run):
+ try:
+  time.sleep(.25);other=session(sk)
+  reject(lambda:other.post('/v1/workflows/tasks/'+run+'/stop',{'user':'bob'}),404)
+  other.post('/v1/workflows/tasks/'+run+'/stop',{'user':'alice'})
+ except BaseException as e:failures.append(str(e))
+began=time.monotonic()
+for line in sc.stream('POST','/v1/workflows/run',{'user':'alice','inputs':{},'response_mode':'streaming'},timeout=15):
+ frame=json.loads(line);frames.append(frame)
+ if frame.get('event')=='node_started'and frame.get('data',{}).get('node_id')=='plugin':
+  stopper=threading.Thread(target=stop_public,args=(frame['task_id'],));stopper.start()
+ if frame.get('event')=='workflow_finished':break
+if stopper:stopper.join(timeout=5)
+assert not failures,failures
+assert frames[-1]['data']['status']=='stopped'and time.monotonic()-began<4,frames
+assert sc.get('/v1/workflows/run/'+frames[-1]['workflow_run_id']+'?user=alice')['status']=='stopped'
+mark('the owning public user cancels a real in-flight plugin call; a foreign user cannot stop it and stopped state persists')
 (a.out/'result.json').write_text(json.dumps({'checks':checks,'actualTrialUsed':False,'paidModelCalls':False,'realDaemon':True},indent=2))
