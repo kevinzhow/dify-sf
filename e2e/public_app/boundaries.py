@@ -1,6 +1,8 @@
 """Revocation and nested-tool files through the isolated HTTPS public fixture."""
-import argparse,json,pathlib,ssl,sys,urllib.request,uuid
-p=argparse.ArgumentParser();p.add_argument('--base',required=True);p.add_argument('--private',type=pathlib.Path,required=True);p.add_argument('--out',type=pathlib.Path,required=True);a=p.parse_args();assert a.base=='https://127.0.0.1:19208';a.out.mkdir(exist_ok=True,parents=True)
+import argparse,json,pathlib,ssl,sys,urllib.request,uuid,subprocess
+p=argparse.ArgumentParser();p.add_argument('--base',required=True);p.add_argument('--private',type=pathlib.Path,required=True);p.add_argument('--out',type=pathlib.Path,required=True);p.add_argument('--fixture-container',default='winnie-five-public-api');a=p.parse_args();a.out.mkdir(exist_ok=True,parents=True)
+info=json.loads(subprocess.check_output(['docker','inspect',a.fixture_container],text=True))[0]
+assert (a.base,a.fixture_container,info['Config']['Labels'].get('raft.fixture'))in {('https://127.0.0.1:19208','winnie-five-public-api','five-public'),('http://127.0.0.1:19138','winnie-five-upgrade-api','five-final'),('http://127.0.0.1:19148','winnie-five-clean-api','five-final')}
 sys.path[:0]=[str(pathlib.Path(__file__).resolve().parents[1]),str(pathlib.Path(__file__).resolve().parents[1]/'lib')]
 from e2ehttp import Session,HTTPError
 from runtime_files.acceptance_support import node,workflow

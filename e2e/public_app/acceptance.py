@@ -3,10 +3,9 @@
 Only the named throwaway fixture is accepted. No user deployment or paid model is used.
 """
 import argparse,copy,json,os,pathlib,ssl,subprocess,sys,time,urllib.request,uuid
-p=argparse.ArgumentParser();p.add_argument('--base',required=True);p.add_argument('--out',type=pathlib.Path,required=True);p.add_argument('--private',type=pathlib.Path,required=True);a=p.parse_args()
-assert a.base=='https://127.0.0.1:19208'
-info=json.loads(subprocess.check_output(['docker','inspect','winnie-five-public-api'],text=True))[0]
-assert info['Config']['Labels'].get('raft.fixture')=='five-public'
+p=argparse.ArgumentParser();p.add_argument('--base',required=True);p.add_argument('--out',type=pathlib.Path,required=True);p.add_argument('--private',type=pathlib.Path,required=True);p.add_argument('--auth-file',type=pathlib.Path);p.add_argument('--fixture-container',default='winnie-five-public-api');a=p.parse_args()
+info=json.loads(subprocess.check_output(['docker','inspect',a.fixture_container],text=True))[0]
+assert (a.base,a.fixture_container,info['Config']['Labels'].get('raft.fixture'))in {('https://127.0.0.1:19208','winnie-five-public-api','five-public'),('http://127.0.0.1:19138','winnie-five-upgrade-api','five-final'),('http://127.0.0.1:19148','winnie-five-clean-api','five-final')}
 a.out.mkdir(parents=True,exist_ok=True);a.private.mkdir(parents=True,exist_ok=True,mode=0o700)
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]));sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'lib'))
 from lib.e2ehttp import Session,HTTPError
@@ -18,7 +17,7 @@ def session(token=None,code=None):
  if token:s.headers['Authorization']='Bearer '+token
  if code:s.headers['X-App-Code']=code
  return s
-s=session();auth={'email':'public-five@example.com','password':'PublicFiveFixture#2026'}
+s=session();auth=json.loads(a.auth_file.read_text())if a.auth_file else{'email':'public-five@example.com','password':'PublicFiveFixture#2026'}
 if s.get('/v1/setup').get('step')!='finished':s.post('/v1/setup',{**auth,'name':'Public fixture owner'})
 with (a.private/'public-auth.json').open('w')as f:os.chmod(f.fileno(),0o600);json.dump(auth,f)
 s.headers['Authorization']='Bearer '+s.post('/v1/auth/login',auth)['access_token']
@@ -117,4 +116,4 @@ logs=s.get(f'/v1/apps/{app}/workflow-app-logs?limit=2');assert logs['total']==5,
 stats=s.get(f'/v1/apps/{app}/workflow/statistics/token-costs');assert sum(x['token_count']for x in stats['data'])>0
 assert all(x['workflow_run']['total_tokens']>0 for x in logs['data']);save('logs',logs);save('token-statistics',stats)
 mark('monitoring reads real persisted published runs and signed-plugin token usage')
-save('result',{'checks':checks,'realDaemon':True,'HTTPS':'self-signed isolated localhost fixture','actualTrialUsed':False,'paidModelCalls':False})
+save('result',{'checks':checks,'realDaemon':True,'transport':'self-signed isolated HTTPS'if a.base.startswith('https:')else'isolated loopback HTTP (API acceptance only)','actualTrialUsed':False,'paidModelCalls':False})

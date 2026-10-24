@@ -17,6 +17,7 @@ def stub_credentials(endpoint="http://llmstub:8000/v1"):
         "mode": "chat",
         "context_size": "4096",
         "max_tokens_to_sample": "4096",
+        "max_chunks": "16",
     }
 
 

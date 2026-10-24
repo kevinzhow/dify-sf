@@ -8,9 +8,11 @@ parser.add_argument('--fixture-container', required=True)
 parser.add_argument('--out', type=pathlib.Path, required=True)
 a = parser.parse_args()
 assert a.fixture_container.startswith('winnie-five-')
-assert a.base in ('http://127.0.0.1:19098', 'http://127.0.0.1:19198')
+assert a.base in ('http://127.0.0.1:19098', 'http://127.0.0.1:19198','http://127.0.0.1:19138','http://127.0.0.1:19148')
 info=json.loads(subprocess.check_output(['docker','inspect',a.fixture_container],text=True))[0]
-assert info['Config']['Labels'].get('raft.fixture')=='five-steps'
+assert (a.base,a.fixture_container,info['Config']['Labels'].get('raft.fixture')) in {
+ ('http://127.0.0.1:19098','winnie-five-api','five-steps'),('http://127.0.0.1:19198','winnie-five-api','five-steps'),
+ ('http://127.0.0.1:19138','winnie-five-upgrade-api','five-final'),('http://127.0.0.1:19148','winnie-five-clean-api','five-final')}
 a.out.mkdir(parents=True,exist_ok=True)
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'lib'))
 from e2ehttp import Session, HTTPError
