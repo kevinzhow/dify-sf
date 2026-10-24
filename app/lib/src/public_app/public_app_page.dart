@@ -265,9 +265,13 @@ class _PublicAppPageState extends State<PublicAppPage> {
           unawaited(_prefs?.setString('$_key:conversation', conversation));
         }
         final message = frame['message_id'] as String?;
-        if (message != null) _parentMessageId = message;
+        if (message != null && !(_terminal && const {'failed', 'stopped'}.contains(_result['status']))) {
+          _parentMessageId = message;
+        }
         setState(() {
-          _error = null;
+          // message_end follows workflow_finished, including a failed run. Its
+          // final files/metadata must not erase the error or select the failed parent.
+          if (!_terminal || event == 'workflow_started') _error = null;
           if (event == 'workflow_started' && _chat) _query = '';
           if (event == 'message') _answer += frame['answer'] as String? ?? '';
           if (event == 'message_replace') {

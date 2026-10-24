@@ -284,6 +284,7 @@ void main() {
                 'outputs': {},
               },
             },
+            {'event': 'message_end', 'message_id': attempts == 1 ? 'failed' : 'recovered', 'files': []},
           ];
           return http.Response(
             frames.map((frame) => 'data: ${jsonEncode(frame)}\n\n').join(),
