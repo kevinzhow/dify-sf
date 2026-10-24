@@ -29,6 +29,34 @@ struct PluginDaemonClient: Sendable {
     /// Lines longer than this end the stream (a daemon never sends one; a broken peer must not grow memory).
     static let maxLine = 16 << 20
 
+    /// Installed tool declarations, using the same authenticated daemon boundary as model invocations.
+    func management(_ path: String, query: [URLQueryItem] = []) async throws -> JSONValue {
+        var url = URLComponents(string: "\(baseURL)/plugin/\(tenant)/management/\(path)")!
+        if !query.isEmpty { url.queryItems = query }
+        var req = HTTPClientRequest(url: url.url!.absoluteString)
+        req.headers.add(name: "X-Api-Key", value: key)
+        let response = try await client.execute(req, timeout: timeout)
+        guard response.status.code == 200 else { throw NodeError("PluginDaemonError", "Plugin catalog request failed") }
+        let buffer = try await response.body.collect(upTo: Self.maxLine)
+        let value = try JSONValue.parse(Array(buffer.readableBytesView))
+        guard value["code"]?.int == 0, let data = value["data"] else {
+            throw NodeError("PluginDaemonError", value["message"]?.string ?? "Invalid plugin catalog response")
+        }
+        return data
+    }
+
+    /// Installed plugin icons are bounded public assets; never accepts an arbitrary upstream URL.
+    func asset(_ id: String) async throws -> [UInt8] {
+        guard id.utf8.count <= 160, !id.isEmpty,
+              id.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "_" || $0 == "-") }),
+              !id.contains("..") else { throw NodeError("PluginAssetError", "Invalid plugin asset identifier") }
+        var req = HTTPClientRequest(url: "\(baseURL)/plugin/\(tenant)/asset/\(id)")
+        req.headers.add(name: "X-Api-Key", value: key)
+        let response = try await client.execute(req, timeout: timeout)
+        guard response.status.code == 200 else { throw NodeError("PluginAssetError", "Plugin icon is unavailable") }
+        return Array(try await response.body.collect(upTo: 2 << 20).readableBytesView)
+    }
+
     /// `POST /plugin/{tenant}/dispatch/{path}` with `X-Plugin-ID`: each `data` of the answer's stream, as it comes.
     func dispatch(_ path: String, pluginId: String, body: JSONValue) -> AsyncThrowingStream<JSONValue, any Error> {
         let (stream, continuation) = AsyncThrowingStream<JSONValue, any Error>.makeStream()
@@ -41,6 +69,7 @@ struct PluginDaemonClient: Sendable {
                 req.headers.add(name: "Content-Type", value: "application/json")
                 req.body = .bytes(ByteBuffer(string: body.compactJSON()))
                 let res = try await client.execute(req, timeout: timeout)
+                guard res.status.code == 200 else { throw PluginDaemonWire.DaemonError(errorType: "PluginDaemonError", message: "Plugin dispatch HTTP \(res.status.code)") }
                 var pending: [UInt8] = []
                 for try await chunk in res.body {
                     pending.append(contentsOf: chunk.readableBytesView)

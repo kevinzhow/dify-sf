@@ -40,3 +40,5 @@ export 'src/store/platform_store.dart';
 export 'src/versions_api.dart';
 export 'src/workflow_run_api.dart';
 export 'src/files_api.dart';
+
+export 'src/tools_api.dart';

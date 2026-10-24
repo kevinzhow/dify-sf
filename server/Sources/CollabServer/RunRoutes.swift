@@ -34,6 +34,12 @@ extension Routes {
                 try await routes.currentCredentials(provider: provider, model: model, modelType: type)
             }, appId: appId)
         }
+        if let userId {
+            let plugin: PluginDaemonToolRuntime? = runtimeConfigured ? PluginDaemonToolRuntime(daemon: toolDaemon(), credential: { tool in
+                try await self.toolCredentials(tool, userId: userId)
+            }) : nil
+            services.tools = ServerToolRuntime(routes: self, userId: userId, plugin: plugin, callStack: [appId])
+        }
         return services
     }
 

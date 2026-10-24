@@ -445,7 +445,7 @@ features:
   title: 'Block selector: Tools tab (providers, list / tree, A-Z index, featured tools)'
   dify: [web/app/components/workflow/block-selector/tool-panel.tsx, web/app/components/workflow/block-selector/tool-browser.tsx, web/app/components/workflow/block-selector/tool]
   status: partial
-  reason: The UI is ported, but dify-sf has no tool provider / plugin service, so the app's tool list is empty (only tools already in an imported workflow exist).
+  reason: Installed built-in tools and published workflow tools now populate the editor from the real server catalog. Custom API and MCP provider catalogs, OAuth authorization and plugin marketplace installation remain outside this slice.
   evidence: ['spec:web/app/components/workflow/block-selector/tool', 'spec:web/app/components/workflow/block-selector/tool/tool-list-flat-view', 'spec:web/app/components/workflow/block-selector/tool/tool-list-tree-view']
   ours: [app/lib/src/workflow_editor/block_selector/tools_panel.dart]
 - id: block-selector.start-tab
@@ -723,7 +723,7 @@ features:
   title: 'Publish panel actions: Open web app, Access Point, Embed, API, Workflow as Tool, Publish to Marketplace'
   dify: [web/app/components/app/app-publisher]
   status: partial
-  reason: Open web app and Access Point work (the Access Point action opens the app's Access Point page); Workflow as Tool and Publish to Marketplace are not part of dify-sf, and the web app has no runtime yet (its URL leads nowhere).
+  reason: Access Point navigation and Workflow as Tool configuration now use real server APIs and published snapshots. Public Web/API execution is the next stage; Marketplace remains outside scope. Workflow-tool configuration currently covers name, description and input method/description; the full upstream icon/tag/privacy-policy editor is not ported.
   evidence: ['spec:web/app/components/app/app-publisher', app/test/editor_versions_test.dart]
   ours: [app/lib/src/workflow_editor/header/publisher/actions_section.dart, app/lib/src/editor/editor_versions.dart]
 - id: header.multi-env
@@ -1082,7 +1082,7 @@ features:
   title: 'Tool card: provider icon and configured parameters'
   dify: [web/app/components/workflow/nodes/tool/node.tsx]
   status: partial
-  reason: The card has no tool collections, so it cannot tell that a provider needs authorization (no tool service).
+  reason: Server tool definitions, icons and authorization state now reach the selector and panel. The canvas card still lacks the live provider-icon/authorization projection; its existing parameter rows remain. Custom/MCP provider services and OAuth also remain unsupported.
   evidence: ['spec:web/app/components/workflow/nodes/tool', visual:canvas-tool-template]
   ours: [app/lib/src/cards/bodies/data_bodies.dart]
 - id: node-tool.panel
@@ -1090,7 +1090,7 @@ features:
   title: 'Tool panel: input form from the tool schema (mixed variable text, constants), settings, output schema'
   dify: [web/app/components/workflow/nodes/tool/panel.tsx, web/app/components/workflow/nodes/tool/components]
   status: partial
-  reason: The form is ported and works from the node's own data, but tool definitions, dynamic options and authorization come from Dify's tool / plugin services, which dify-sf does not have.
+  reason: Real installed declarations, selected private/shared API-key credentials, runtime parameters, dynamic options and published workflow tools are wired to the existing panel. OAuth and custom/MCP provider services remain unsupported; a legacy runtime-parameter endpoint that returns no declaration fails explicitly rather than using a fake schema.
   evidence: ['spec:web/app/components/workflow/nodes/tool/components', 'spec:web/app/components/workflow/nodes/tool/components/mixed-variable-text-input', 'spec:web/app/components/workflow/nodes/tool/components/tool-form', 'spec:web/app/components/workflow/nodes/tool/hooks', 'spec:web/app/components/workflow/hooks/__tests__/use-tool-icon.spec.ts', 'spec:web/app/components/workflow/utils/__tests__/tool.spec.ts', visual:panel-tool]
   ours: [app/lib/src/workflow_editor/node_panel/bodies/data/tool/tool_panel.dart, app/lib/src/workflow_editor/node_panel/bodies/data/tool/tool_form.dart]
 - id: node-tool.mcp-copy-id
@@ -1402,7 +1402,7 @@ features:
   title: 'Run a workflow on a real runtime (LLM calls, tools, HTTP, code execution)'
   dify: [api/core/workflow, web/service/workflow.ts]
   status: partial
-  reason: 'Runtime in progress (Swift port of graphon 0.7.0, server target CollabRuntime; protocols 1.13–1.16): whole draft runs (Dify''s SSE events, stop, run history and records), human input (a run pauses at a human-input node, the form is answered through the console form API, and a reconnect rebuilds the paused run''s state from its records — the panel and chat follow the resumed run on the same stream) and single runs of start/end/answer, LLM, IF/ELSE, variable aggregator and assigner, template, code (Dify''s sandbox), HTTP request (SSRF proxy), list operator, parameter extractor, question classifier, iteration (sequential/parallel, flattening and error modes) and loop (variables and break conditions) run on the server (models through Dify''s plugin daemon; verified against a live Dify 1.17.1, 23 supported workflow cases equal, with nested iteration and container single-run outcomes also compared). Iteration/loop single runs use their dedicated SSE endpoints; Dify''s existing nested-container filtering and nested-selector restrictions are preserved. Not yet: files (P5), chatflow debug runs, tools and published runs (P6); knowledge retrieval is deferred separately. Graphs with unsupported node types, and chat, are served by the deterministic MockWorkflowRunService.'
+  reason: 'Real Swift graph execution now includes persisted draft workflow and Chatflow runs, files, models through the plugin daemon, HTTP through the strict proxy, sandbox code/templates, containers and built-in/published workflow tools. Tool invocations retain text/JSON/file outputs, selected credentials, retry/failure/stop semantics and nested run records. Public Web/API and end-user execution are the next stage; knowledge retrieval, Agent v2, custom/MCP tool services and OAuth remain outside the current runtime slice. Deterministic mocks are restricted to explicit demo/test mode, never a fallback for unsupported production nodes.'
   deviation: "A graph runs on the real server when all node types are advertised. Unsupported remote graphs and absent capabilities report an error, never local simulated success. Only the explicit local demo uses MockWorkflowRunService."
   evidence: [app/test/workflow_editor/run, app/test/workflow_editor/run/server_run_service_test.dart, app/test/workflow_editor/run/server_runtime_e2e_test.dart, packages/collab_client/test/runtime_e2e_test.dart]
   ours: [app/lib/src/workflow_editor/run/run_service.dart, app/lib/src/workflow_editor/run/server_run_service.dart, app/lib/src/workflow_editor/run/mock_run_service.dart]
@@ -1486,7 +1486,7 @@ features:
   title: 'Run logs special result panel (logs page)'
   dify: [web/app/components/workflow/run/special-result-panel.tsx]
   status: partial
-  reason: 'SpecialResultPanel and RunLogs are wired into the node and tracing panels. Draft workflow runs and node executions are persisted on the server (protocols 1.13–1.16). Real Agent/tool-specific traces still depend on the unported runtime; app-level published logs await public Web/API execution. This row does not describe missing draft-run storage.'
+  reason: 'SpecialResultPanel and RunLogs are wired into the node and tracing panels. Draft workflow runs and node executions are persisted on the server (protocols 1.13–1.16). Workflow-tool child runs and node executions are now persisted with the caller link; specialized Agent traces remain deferred; app-level published logs await public Web/API execution. This row does not describe missing draft-run storage.'
   evidence: ['spec:web/app/components/workflow/run/__tests__/special-result-panel.spec.tsx', app/test/dify_spec/workflow/run/panels_test.dart, app/test/dify_spec/workflow/run/tracing_test.dart]
   ours: [app/lib/src/workflow_editor/run/ui/run_logs.dart, app/lib/src/workflow_editor/run/ui/log_widgets.dart]
 

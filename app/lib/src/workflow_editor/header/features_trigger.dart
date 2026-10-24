@@ -48,11 +48,13 @@ class FeaturesTrigger extends StatelessWidget {
     this.onOpenLink,
     this.onOpenRunConfig,
     this.onConfigureWorkflowTool,
+    this.workflowToolPublished,
     this.onPublishToMarketplace,
     this.onUpdateVersionInfo,
   });
 
   final WorkflowPublishHooks hooks;
+  final bool? workflowToolPublished;
 
   /// Passed to [AppPublisher].
   final PublisherAppInfo? app;
@@ -151,7 +153,7 @@ class FeaturesTrigger extends StatelessWidget {
               draftUpdatedAt: draftUpdatedAt == 0 ? null : draftUpdatedAt,
               disabled: readOnly || !hasNodes || !data.canReleaseAndVersion,
               publishDisabled: !hasNodes || !data.canReleaseAndVersion,
-              toolPublished: store.toolPublished.value,
+              toolPublished: workflowToolPublished ?? store.toolPublished.value,
               workflowToolAvailable: store.lastPublishedHasUserInput.value,
               crossAxisOffset: 4,
               missingStartNode: !nodes.any((n) => n.type == 'start'),

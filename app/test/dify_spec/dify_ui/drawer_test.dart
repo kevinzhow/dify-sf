@@ -1,5 +1,6 @@
 // dify-spec: packages/dify-ui/src/drawer/__tests__/index.spec.tsx
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +8,40 @@ import 'package:flutter_test/flutter_test.dart';
 import 'harness.dart';
 
 void main() {
+  testWidgets('a portalled drawer supplies Dify typography without a Material page ancestor', (t) async {
+    await t.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Center(
+            child: DifyButton(
+              onPressed: () => showDifyDrawer<void>(
+                context,
+                builder: (_, close) => DifyDrawerPopup(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const DifyTextLine('Plain output'),
+                      DifyDrawerCloseButton(onPressed: close),
+                    ],
+                  ),
+                ),
+              ),
+              child: const DifyTextLine('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.tap(find.text('Open'));
+    await t.pumpAndSettle();
+    final context = t.element(find.widgetWithText(DifyTextLine, 'Plain output'));
+    final style = DefaultTextStyle.of(context).style;
+    expect(style.fontSize, DifyType.systemSmRegular.style.fontSize);
+    expect(style.color, DifyColors.textPrimary);
+    expect(style.decoration, TextDecoration.none);
+    await t.tap(find.bySemanticsLabel('Close drawer'));
+    await t.pumpAndSettle();
+  });
   group('Drawer wrapper', () {
     group('User Interactions', () {
       testWidgets('should open a portalled drawer and close it with the default close button', (t) async {

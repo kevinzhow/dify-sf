@@ -46,7 +46,7 @@ The sandbox is only on the internal proxy network. The server and Squid bridge i
 
 Check PostgreSQL with `pg_isready`, Redis with authenticated `PING`, daemon `/health/check`, sandbox `/health`, and Squid's process/configuration check. A complete readiness check also performs a real local model invocation, code execution and HTTP request through the proxy; a listening port cannot prove those paths work.
 
-Provider credentials remain in the server's encrypted store. The daemon key, sandbox key and model-provider key serve different purposes. Missing configuration, rejected credentials, unavailable dependencies and unsupported operations must show a real error. The remote client never substitutes a successful local run or simulated history; only the explicitly selected local demo uses mocks. Persistent Chatflow and unimplemented triggers/tools remain later phases.
+Provider credentials remain in the server's encrypted store. The daemon key, sandbox key and model-provider key serve different purposes. Missing configuration, rejected credentials, unavailable dependencies and unsupported operations must show a real error. The remote client never substitutes a successful local run or simulated history; only the explicitly selected local demo uses mocks. Persistent Chatflow and installed/published workflow tools are now supported; see [runtime-tools.md](runtime-tools.md). Trigger execution remains deferred.
 
 ## Provider plugin installation
 

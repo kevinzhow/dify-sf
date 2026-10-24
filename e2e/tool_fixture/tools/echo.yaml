@@ -1,0 +1,32 @@
+description:
+  human:
+    en_US: Controlled response
+  llm: Controlled response
+extra:
+  python:
+    source: tools/echo.py
+has_runtime_parameters: true
+identity:
+  author: winniefixture
+  label:
+    en_US: Echo
+  name: echo
+parameters:
+- form: llm
+  human_description:
+    en_US: Text to return
+  label:
+    en_US: Prompt
+  llm_description: Text to return
+  name: prompt
+  required: true
+  type: string
+- default: normal
+  form: form
+  human_description:
+    en_US: Choose result
+  label:
+    en_US: Mode
+  name: mode
+  required: false
+  type: dynamic-select

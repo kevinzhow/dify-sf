@@ -3,6 +3,8 @@
 /// (preview-card.tsx with dify-ui PreviewCard), the collapsible section header and the empty states.
 library;
 
+import '../../cards/provider_icon_image.dart';
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -167,7 +169,7 @@ Widget _defaultProviderIcon(ProviderIcon icon, double size) {
     );
   }
   if (icon is String && (icon.startsWith('http://') || icon.startsWith('https://'))) {
-    return Image.network(icon, width: size, height: size, fit: BoxFit.cover, errorBuilder: (_, _, _) => _blank);
+    return ProviderIconImage(icon, width: size, height: size);
   }
   return _blank;
 }

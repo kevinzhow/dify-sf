@@ -19,6 +19,8 @@ import '../editor/editor_versions.dart';
 import '../editor/undo_manager.dart';
 import '../editor/notice_overlay.dart';
 import '../workflow/workspace_models.dart';
+import '../workflow/workspace_tools.dart';
+import '../workflow/workflow_tool_publisher.dart';
 import '../settings/model_provider/model_provider_env.dart';
 import 'context_menu/context_menu.dart';
 import 'features/features_services.dart' show FeaturesServices;
@@ -136,6 +138,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.variableInspectServices = VariableInspectServices.none,
     this.runService,
     this.serverRuntime,
+    this.tools,
     this.allowMockRuns = false,
     this.commentsStore,
     this.access = WorkflowAccessControl.full,
@@ -210,6 +213,7 @@ class DifyWorkflowEditor extends StatefulWidget {
   /// [EditorController.docId]; with 1.14 also whole draft runs of graphs it runs, the run history and records, and the
   /// variable inspect panel (its draft variables). Unsupported operations are refused outside the explicit local demo (ServerRunService).
   final ServerWorkflowRuntime? serverRuntime;
+  final ToolsApi? tools;
 
   /// The document's canvas comments. Null: the editor keeps its own for the controller's session (created with it,
   /// disposed with it). Either way the comments UI finds it with [CommentsScope.of].
@@ -583,49 +587,53 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                     // Editor-wide: the variable inspect data (its trigger and panel; "View log" opens a node's panel on
                     // its Last Run tab; Stop is EVENT_WORKFLOW_STOP) and the run host (runs, single runs, the chatflow
                     // preview; run state is local view state).
-                    scope: (context, canvas, child) => HumanInputHostScope(
-                      store: _comments,
-                      userId: widget.user?.id,
-                      userName: widget.user?.name ?? '',
-                      // The panel's test mail: a delivery-test form of its own on the server, mailed to this account when
-                      // the method is in debug mode (`.../delivery-test`).
-                      sendTestEmail:
-                          widget.serverRuntime?.humanInput == true && widget.serverRuntime?.humanInputEmail == true
-                          ? _sendTestEmail
-                          : null,
-                      fetchGeneratedForm: widget.serverRuntime?.humanInput == true
-                          ? _fetchGeneratedForm
-                          : widget.allowMockRuns
-                          ? null
-                          : (_, _) async => throw const RunServiceException(
-                              'Human input is not available on this server yet.',
-                              code: 'runtime_not_supported',
+                    scope: (context, canvas, child) => WorkflowToolsBinding(
+                      api: widget.tools,
+                      store: WorkflowStoreScope.of(context),
+                      child: HumanInputHostScope(
+                        store: _comments,
+                        userId: widget.user?.id,
+                        userName: widget.user?.name ?? '',
+                        // The panel's test mail: a delivery-test form of its own on the server, mailed to this account when
+                        // the method is in debug mode (`.../delivery-test`).
+                        sendTestEmail:
+                            widget.serverRuntime?.humanInput == true && widget.serverRuntime?.humanInputEmail == true
+                            ? _sendTestEmail
+                            : null,
+                        fetchGeneratedForm: widget.serverRuntime?.humanInput == true
+                            ? _fetchGeneratedForm
+                            : widget.allowMockRuns
+                            ? null
+                            : (_, _) async => throw const RunServiceException(
+                                'Human input is not available on this server yet.',
+                                code: 'runtime_not_supported',
+                              ),
+                        submitGeneratedForm: widget.serverRuntime?.humanInput == true
+                            ? _submitGeneratedForm
+                            : widget.allowMockRuns
+                            ? null
+                            : (_, _) async => throw const RunServiceException(
+                                'Human input is not available on this server yet.',
+                                code: 'runtime_not_supported',
+                              ),
+                        child: VariableInspectHost(
+                          services: _inspectServices(context, canvas),
+                          nodes: () => controller.doc.nodes.values,
+                          onViewNode: (nodeId) {
+                            WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
+                            controller.selectNode(nodeId);
+                          },
+                          onStop: () => _runHost.currentState?.emitWorkflowStop(),
+                          child: Builder(
+                            builder: (context) => WorkflowRunHost(
+                              key: _runHost,
+                              controller: controller,
+                              canvas: canvas,
+                              service: _runService(context, canvas),
+                              isChatMode: () => widget.meta.isChatflow,
+                              fetchInspectVars: VariableInspectScope.of(context).crud.fetchInspectVars,
+                              child: RunFilePickerScope(pickFile: widget.pickRunFile, child: child),
                             ),
-                      submitGeneratedForm: widget.serverRuntime?.humanInput == true
-                          ? _submitGeneratedForm
-                          : widget.allowMockRuns
-                          ? null
-                          : (_, _) async => throw const RunServiceException(
-                              'Human input is not available on this server yet.',
-                              code: 'runtime_not_supported',
-                            ),
-                      child: VariableInspectHost(
-                        services: _inspectServices(context, canvas),
-                        nodes: () => controller.doc.nodes.values,
-                        onViewNode: (nodeId) {
-                          WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
-                          controller.selectNode(nodeId);
-                        },
-                        onStop: () => _runHost.currentState?.emitWorkflowStop(),
-                        child: Builder(
-                          builder: (context) => WorkflowRunHost(
-                            key: _runHost,
-                            controller: controller,
-                            canvas: canvas,
-                            service: _runService(context, canvas),
-                            isChatMode: () => widget.meta.isChatflow,
-                            fetchInspectVars: VariableInspectScope.of(context).crud.fetchInspectVars,
-                            child: RunFilePickerScope(pickFile: widget.pickRunFile, child: child),
                           ),
                         ),
                       ),
@@ -939,6 +947,9 @@ class _BoundHeaderState extends State<_BoundHeader> {
   /// The Features and Publish buttons, publishing through [versions] (null: publishing has no effect).
   Widget _featuresTrigger(EditorHeaderBinding b, EditorVersions? versions) {
     final host = widget.publisher;
+    final tools = WorkflowToolsScope.of(context);
+    final tool = tools?.workflows.where((t) => t['workflow_app_id'] == widget.controller.docId).firstOrNull;
+    final toolVersion = tool?['version_id'];
     return FeaturesTrigger(
       // The document as the publisher's app (its mode: a workflow or a chatflow, both Dify's workflow apps).
       app: PublisherAppInfo(
@@ -957,7 +968,24 @@ class _BoundHeaderState extends State<_BoundHeader> {
         onPublished: host.onPublished,
       ),
       publishedWorkflow: versions?.publishedInfo,
-      capabilities: PublisherCapabilities(canViewAccessPoint: host.canViewAccessPoint),
+      capabilities: PublisherCapabilities(
+        canViewAccessPoint: host.canViewAccessPoint,
+        canManageTools: tools != null && widget.access.canEdit,
+        workflowToolOutdated: tool != null && toolVersion != versions?.publishedInfo?.id,
+      ),
+      workflowToolPublished: tool != null,
+      onConfigureWorkflowTool: tools == null || !widget.access.canEdit
+          ? null
+          : (_, _) async {
+              final changed = await showWorkflowToolPublisher(
+                context,
+                api: tools.api,
+                appId: widget.controller.docId,
+                appName: widget.meta.appName,
+                existing: tool,
+              );
+              if (changed == true) await tools.reload();
+            },
       onOpenLink: host.onOpenLink,
       onUpdateVersionInfo: versions == null
           ? null

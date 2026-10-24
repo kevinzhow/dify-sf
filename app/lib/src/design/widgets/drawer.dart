@@ -120,7 +120,15 @@ class DifyDrawerPopup extends StatelessWidget {
         borderRadius: borderRadius,
         boxShadow: boxShadow ?? DifyShadows.xl,
       ),
-      child: child,
+      // A drawer is a separate route: it does not inherit the page's typography boundary.
+      // Establish the Dify body style here so plain labels cannot receive WidgetsApp's debug text style.
+      child: DefaultTextStyle(
+        style: difyTextStyle(
+          DifyType.systemSmRegular,
+          DifyColors.textPrimary,
+        ).copyWith(decoration: TextDecoration.none),
+        child: child,
+      ),
     );
     if (material) box = Material(type: MaterialType.transparency, child: box);
     return Semantics(

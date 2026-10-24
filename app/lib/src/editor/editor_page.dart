@@ -4,7 +4,7 @@ import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart'
-    show AppEvent, AppInfoAccess, DocMeta, LinkState, ReplaceResult, TransportException, VersionsApi;
+    show AppEvent, AppInfoAccess, DocMeta, LinkState, ReplaceResult, TransportException, VersionsApi, ToolsApi;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -114,6 +114,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   EditorController? _controller;
   OpenedSession? _opened;
   Object? _error;
+  ToolsApi? _tools;
 
   /// The document's Dify app metadata; the defaults (a workflow, no variables) until it arrives or if it cannot be read.
   DocMeta _meta = const DocMeta();
@@ -132,6 +133,9 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _account = widget.account;
+    if (widget.backend case HttpBackend(:final baseUrl, :final auth)) {
+      _tools = ToolsApi(baseUrl, auth: auth?.session);
+    }
     WidgetsBinding.instance.addObserver(this);
     _stopOnlineListener = listenForOnline(() => _controller?.reconnectNow());
     unawaited(_open());
@@ -296,6 +300,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _tools?.close();
     unawaited(_appEvents?.cancel());
     widget.onImportAvailable?.call(null);
     WidgetsBinding.instance.removeObserver(this);
@@ -470,6 +475,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       );
     }
     return DifyWorkflowEditor(
+      tools: _tools,
       controller: c,
       serverLabel: widget.backend.label,
       allowMockRuns: widget.backend is DemoRunBackend,

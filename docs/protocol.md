@@ -2225,3 +2225,18 @@ existing bounded-backoff run follower; an EOF without a terminal event does not 
 Reference provenance and a database-free parent-thread oracle are in `e2e/chatflow/reference/`. Real signed-plugin/local-model
 boundary checks and formal-Wasm UI checks live in `e2e/chatflow/acceptance.py` and `e2e/chatflow/browser.py`. They require an
 existing isolated fixture account and explicitly refuse the user trial endpoint. They make no paid model calls.
+
+### Installed tools and workflow tools (2026-10-24)
+
+`workflow_runtime.single_node_run` and `draft_run` now include `tool`. Nodes use `provider_type: builtin|workflow`, `provider_id`, `tool_name`, optional `credential_id`, `tool_parameters` and `tool_configurations`. Both kinds use the existing node/run stream, failure strategies, retries, cancellation, persisted history and file storage. Missing providers or credentials fail explicitly.
+
+The console authenticates these routes with its account bearer token:
+
+- `GET /v1/workspaces/current/tool-providers` and `/tools/builtin`: all installed daemon tool declarations, flattened for the existing editor selector. `credentials_schema` is normalized from the daemon's array. `icon`/`icon_dark` point to bounded, public installed-icon routes; arbitrary URLs or file paths are not accepted.
+- `GET /v1/workspaces/current/tool-provider/builtin/{org}/{plugin}/{provider}/credentials`: visible private/shared credentials. Secret fields return `[__HIDDEN__]` only to their creator; other users receive no credential values. `can_manage` identifies creator-owned records. `POST .../add|update|delete` requires an editor; only administrators can share authorization with the workspace. Secrets are sealed with the existing server key. Updating a secret with `[__HIDDEN__]` restores its existing value before real plugin validation.
+- `POST .../tools/{tool}/parameters` with optional `credential_id`: runtime parameter declarations for that selected authorization. `POST .../dynamic-options` additionally takes `tool` and `parameter`. Both call the real daemon. The deprecated runtime-parameter feature requires support in the plugin's SDK; an empty daemon stream is an error, not success or a static substitution.
+- `GET /v1/workspaces/current/tools/workflow`: registered workflow tools. `GET /tool-provider/workflow/preview?workflow_app_id={app}` under the same workspace prefix derives inputs and outputs from the current **published** snapshot. `POST .../create|update|delete` registers, repins or removes the tool; update/delete take `workflow_tool_id`. Create/update accept `name`, `label`, `description`, `icon` and input `{name, description, form: llm|form}` overrides. Types, requiredness, defaults and output schema come from the published graph. Unknown/duplicate inputs, reserved/duplicate output names and trigger/human-input workflows are rejected.
+
+Workflow tools retain their immutable published version until explicitly reconfigured. The call chain is limited to five workflows including the root and rejects recursion. Child runs and node records are persisted as `workflow-tool`; the parent tool execution records the child's `workflow_run_id` and version. Cancellation reaches the child engine; already accepted remote side effects cannot be undone. Pausing inside a workflow tool is disabled, matching upstream.
+
+This slice supports credential-free and API-key tools; OAuth, custom API/MCP provider services, plugin marketplace and plugin callbacks into Dify's inner model/app/file APIs remain unsupported. Tools requiring those callbacks fail explicitly. Model invocations within a published workflow tool use the existing configured model runtime.

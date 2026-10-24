@@ -31,6 +31,20 @@
 public enum Schema {
     public static let statements: [String] = [
         """
+        CREATE TABLE IF NOT EXISTS workflow_tool_providers (
+            id text PRIMARY KEY, app_id text NOT NULL UNIQUE, version_id text NOT NULL,
+            name text NOT NULL, definition jsonb NOT NULL, created_by text NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS tool_provider_credentials (
+            id text PRIMARY KEY, provider text NOT NULL, name text NOT NULL,
+            encrypted_config text NOT NULL, created_by text NOT NULL,
+            shared boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now()
+        )
+        """,
+        """
         CREATE TABLE IF NOT EXISTS documents (
             id          text        PRIMARY KEY,
             rev         bigint      NOT NULL DEFAULT 0,

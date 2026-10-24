@@ -5,8 +5,14 @@
 /// parameters / settings get their schema defaults.
 library;
 
+import 'dart:async';
+
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
+
+import '../../../../../workflow/workspace_tools.dart';
+import '../../../../../design/widgets/widgets.dart';
+import '../../../../../i18n/dify_i18n.dart';
 
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
@@ -38,18 +44,82 @@ class ToolPanel extends StatefulWidget {
 class _ToolPanelState extends State<ToolPanel> {
   bool _notSetDefaultValue = false;
   bool _syncScheduled = false;
+  JsonMap? _runtimeTool;
+  String? _runtimeKey;
+  Object? _runtimeError;
+  int _runtimeGeneration = 0;
+  Map<String, Object?>? _optionsParams;
+  String? _optionsKey;
+  Map<String, Object?> get _dynamicOptionsParams {
+    final revision = WorkflowToolsScope.of(context)?.revision ?? 0;
+    final key = '${props.data['credential_id']}|$revision';
+    if (_optionsKey != key || _optionsParams == null) {
+      _optionsKey = key;
+      _optionsParams = Map.unmodifiable({
+        'credential_id': props.data['credential_id'],
+        'authorization_revision': revision,
+      });
+    }
+    return _optionsParams!;
+  }
+
+  String get _parameterKey =>
+      '${props.data['provider_id']}|${props.data['tool_name']}|${props.data['credential_id']}|${WorkflowToolsScope.of(context)?.revision ?? 0}';
+
+  void _loadRuntimeParameters(ToolConfig config) {
+    final api = WorkflowToolsScope.of(context)?.api;
+    if (api == null || config.currTool?['has_runtime_parameters'] != true || _runtimeKey == _parameterKey) return;
+    _runtimeKey = _parameterKey;
+    _runtimeTool = null;
+    final generation = ++_runtimeGeneration;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || generation != _runtimeGeneration) return;
+      unawaited(() async {
+        try {
+          final parameters = await api.runtimeParameters(
+            '${props.data['provider_id']}',
+            '${props.data['tool_name']}',
+            credentialId: props.data['credential_id'] as String?,
+          );
+          if (mounted && generation == _runtimeGeneration) {
+            setState(() {
+              _runtimeTool = {...?config.currTool, 'parameters': parameters};
+              _runtimeError = null;
+            });
+          }
+        } on Object catch (error) {
+          if (mounted && generation == _runtimeGeneration) setState(() => _runtimeError = error);
+        }
+      }());
+    });
+  }
 
   NodePanelProps get props => widget.props;
 
   ToolCollections _tools(BuildContext context) {
     final host = ToolPanelHost.of(context).tools;
-    if (host != null) return host;
     final s = props.actions.store;
+    final builtIn = host?.builtIn ?? s.buildInTools.value;
+    final runtime = _runtimeKey == _parameterKey ? _runtimeTool : null;
     return ToolCollections(
-      builtIn: s.buildInTools.value,
-      custom: s.customTools.value,
-      workflow: s.workflowTools.value,
-      mcp: s.mcpTools.value,
+      builtIn: runtime == null
+          ? builtIn
+          : [
+              for (final provider in builtIn ?? const <JsonMap>[])
+                if (provider['id'] == props.data['provider_id'])
+                  {
+                    ...provider,
+                    'tools': [
+                      for (final tool in (provider['tools'] as List?) ?? const [])
+                        if (tool is Map && tool['name'] == runtime['name']) runtime else tool,
+                    ],
+                  }
+                else
+                  provider,
+            ],
+      custom: host?.custom ?? s.customTools.value,
+      workflow: host?.workflow ?? s.workflowTools.value,
+      mcp: host?.mcp ?? s.mcpTools.value,
     );
   }
 
@@ -103,6 +173,7 @@ class _ToolPanelState extends State<ToolPanel> {
       listenable: Listenable.merge([store.buildInTools, store.customTools, store.workflowTools, store.mcpTools]),
       builder: (context, _) {
         final config = ToolConfig.of(props.data, _tools(context));
+        _loadRuntimeParameters(config);
         _syncDefaults(config);
         final host = ToolPanelHost.of(context);
         final scope = NodeVars.of(props).scope;
@@ -113,19 +184,47 @@ class _ToolPanelState extends State<ToolPanel> {
           version: versionOf(props),
           currentTool: config.currTool,
           currentProvider: config.currCollection,
+          extraParams: _dynamicOptionsParams,
         );
-        return ToolPanelView(
-          config: config,
-          readOnly: props.readOnly,
-          env: env,
-          toolSettingValue: config.toolSettingValue(notSetDefaultValue: _notSetDefaultValue),
-          onInputVarChange: (value, [base]) => _write(config.coerce({...props.data, 'tool_parameters': value}), base),
-          onSettingChange: (value, [base]) {
-            if (!_notSetDefaultValue) setState(() => _notSetDefaultValue = true);
-            _write(config.coerce({...props.data, 'tool_configurations': value}), base);
-          },
-          onManageInputField: host.onManageInputField,
-          matchSchemaType: (s) => getMatchedSchemaType(s, host.schemaTypeDefinitions),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (props.data['provider_type'] == 'builtin')
+              ToolCredentialControl(
+                provider: config.currCollection,
+                providerId: '${props.data['provider_id'] ?? ''}',
+                selectedId: props.data['credential_id'] as String?,
+                readOnly: props.readOnly,
+                onSelected: (value) => _write({...props.data, 'credential_id': value}),
+              ),
+            if (_runtimeError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: [
+                    DifyTextLine('$_runtimeError'),
+                    DifyButton(
+                      onPressed: () => setState(() => _runtimeKey = null),
+                      child: DifyTextLine(DifyI18n.tr('common', 'operation.retry')),
+                    ),
+                  ],
+                ),
+              ),
+            ToolPanelView(
+              config: config,
+              readOnly: props.readOnly,
+              env: env,
+              toolSettingValue: config.toolSettingValue(notSetDefaultValue: _notSetDefaultValue),
+              onInputVarChange: (value, [base]) =>
+                  _write(config.coerce({...props.data, 'tool_parameters': value}), base),
+              onSettingChange: (value, [base]) {
+                if (!_notSetDefaultValue) setState(() => _notSetDefaultValue = true);
+                _write(config.coerce({...props.data, 'tool_configurations': value}), base);
+              },
+              onManageInputField: host.onManageInputField,
+              matchSchemaType: (s) => getMatchedSchemaType(s, host.schemaTypeDefinitions),
+            ),
+          ],
         );
       },
     );

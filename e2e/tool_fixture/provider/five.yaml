@@ -1,0 +1,19 @@
+credentials_for_provider:
+  api_key:
+    label:
+      en_US: Fixture key
+    required: true
+    type: secret-input
+extra:
+  python:
+    source: provider/five.py
+identity:
+  author: winniefixture
+  description:
+    en_US: Deterministic local tool
+  icon: icon.svg
+  label:
+    en_US: Five-step fixture
+  name: five
+tools:
+- tools/echo.yaml

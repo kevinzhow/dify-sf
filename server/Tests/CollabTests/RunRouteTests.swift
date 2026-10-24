@@ -222,7 +222,7 @@ struct RunRouteTests {
         config.modelsValidate = false
         try await withServer(config: config) { api, _, _ in
             let owner = try await api.setupOwner()
-            let yaml = Self.appYAML().replacingOccurrences(of: "type: llm", with: "type: tool")
+            let yaml = Self.appYAML().replacingOccurrences(of: "type: llm", with: "type: knowledge-retrieval")
             let imported = try await api.post("/v1/apps/imports", JSONValue.object(["mode": "yaml-content", "yaml_content": .string(yaml)])
                 .compactJSON(), token: owner)
             let app = imported.str("app_id")

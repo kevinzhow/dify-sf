@@ -120,9 +120,10 @@ public struct RuntimeServices: Sendable {
     public var humanInput: (any HumanInputRuntime)?
     public var memory: (any ConversationMemory)?
     public var files: (any RuntimeFiles)?
+    public var tools: (any ToolRuntime)?
 
     public init(models: (any ModelRuntime)? = nil, jinja2: (any Jinja2TemplateRenderer)? = nil, codeExecutor: (any CodeExecutor)? = nil,
-                http: (any RuntimeHTTPClient)? = nil, humanInput: (any HumanInputRuntime)? = nil, files: (any RuntimeFiles)? = nil, memory: (any ConversationMemory)? = nil) {
+                http: (any RuntimeHTTPClient)? = nil, humanInput: (any HumanInputRuntime)? = nil, files: (any RuntimeFiles)? = nil, memory: (any ConversationMemory)? = nil, tools: (any ToolRuntime)? = nil) {
         self.models = models
         self.jinja2 = jinja2
         self.codeExecutor = codeExecutor
@@ -130,6 +131,7 @@ public struct RuntimeServices: Sendable {
         self.humanInput = humanInput
         self.files = files
         self.memory = memory
+        self.tools = tools
     }
 
     public func requireModels() throws -> any ModelRuntime {
@@ -140,7 +142,7 @@ public struct RuntimeServices: Sendable {
 
 /// A node needs a service the server was not configured with (creating the node fails).
 public struct ServiceNotConfigured: Error, CustomStringConvertible, Sendable {
-    public enum Service: String, Sendable { case models = "model runtime", codeSandbox = "code sandbox", http = "HTTP client", humanInput = "human input" }
+    public enum Service: String, Sendable { case tools = "tool runtime", models = "model runtime", codeSandbox = "code sandbox", http = "HTTP client", humanInput = "human input" }
     public var service: Service
     public init(service: Service) { self.service = service }
     public var description: String { "This server has no \(service.rawValue) configured" }
@@ -163,7 +165,7 @@ public struct BuiltinNodeFactory: NodeFactory {
     public var jinja2: (any Jinja2TemplateRenderer)? { services.jinja2 }
 
     public static let supportedTypes: [String] = [
-        NodeType.start, NodeType.end, NodeType.answer, NodeType.llm, NodeType.ifElse, NodeType.variableAggregator,
+        NodeType.tool, NodeType.start, NodeType.end, NodeType.answer, NodeType.llm, NodeType.ifElse, NodeType.variableAggregator,
         NodeType.legacyVariableAggregator, NodeType.variableAssigner, NodeType.templateTransform, NodeType.code,
         NodeType.httpRequest, NodeType.listOperator, NodeType.parameterExtractor, NodeType.questionClassifier,
         NodeType.iteration, NodeType.iterationStart, NodeType.loop, NodeType.loopStart, NodeType.loopEnd,
@@ -171,6 +173,9 @@ public struct BuiltinNodeFactory: NodeFactory {
 
     public func createNode(_ config: NodeConfig, graph: GraphConfig) async throws -> any RuntimeNode {
         switch config.type {
+        case NodeType.tool:
+            guard let runtime = services.tools else { throw ServiceNotConfigured(service: .tools) }
+            return try ToolNode(id: config.id, data: config.data, runtime: runtime, files: services.files)
         case NodeType.humanInput:
             guard let runtime = services.humanInput else { throw ServiceNotConfigured(service: .humanInput) }
             return try HumanInputNode(id: config.id, data: config.data, runtime: runtime)
