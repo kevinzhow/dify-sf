@@ -327,7 +327,8 @@ class AnnotationsPageState extends State<AnnotationsPage> {
   Future<void> _onSaveConfig(EmbeddingModelConfig embeddingModel, double score) async {
     final old = annotationConfig;
     final oldModel = old == null ? null : embeddingModelOf(old);
-    if (embeddingModel.embeddingModelName != oldModel?.embeddingModelName ||
+    if (old?.enabled != true ||
+        embeddingModel.embeddingModelName != oldModel?.embeddingModelName ||
         embeddingModel.embeddingProviderName != oldModel?.embeddingProviderName) {
       final job = await _s!.updateStatus(AnnotationEnableStatus.enable, embeddingModel, score);
       await _ensureJobCompleted(job.jobId ?? '', AnnotationEnableStatus.enable);

@@ -39,6 +39,42 @@ class _World {
   AnnotationServices get services => AnnotationsApiServices(api, appId);
 }
 
+class _FailedIndexApi extends FakeAnnotationsApi {
+  _FailedIndexApi(super.apps);
+  bool needsRebuild = false;
+  int rebuilds = 0;
+  @override
+  Future<AnnotationSetting> setting(String appId) async {
+    final current = await super.setting(appId);
+    return needsRebuild
+        ? AnnotationSetting(
+            enabled: false,
+            id: current.id,
+            scoreThreshold: current.scoreThreshold,
+            embeddingProviderName: current.embeddingProviderName,
+            embeddingModelName: current.embeddingModelName,
+          )
+        : current;
+  }
+
+  @override
+  Future<AnnotationJob> enableReply(
+    String appId, {
+    required double scoreThreshold,
+    required String embeddingProviderName,
+    required String embeddingModelName,
+  }) async {
+    rebuilds++;
+    needsRebuild = false;
+    return super.enableReply(
+      appId,
+      scoreThreshold: scoreThreshold,
+      embeddingProviderName: embeddingProviderName,
+      embeddingModelName: embeddingModelName,
+    );
+  }
+}
+
 WorkspaceModels _models() => WorkspaceModels(
   RecordingModelsApi()
     ..modelsByType[ModelTypeEnum.textEmbedding] = [
@@ -220,6 +256,30 @@ void main() {
     await t.tap(find.byType(DifySwitch));
     await settle(t);
     expect((await w.api.setting(w.appId)).enabled, isFalse);
+  });
+
+  testWidgets('a failed or legacy index explicitly rebuilds even with the same model and score', (t) async {
+    final apps = FakeAppsApi();
+    final app = await apps.create(name: 'Needs rebuild', mode: AppModes.advancedChat);
+    final api = _FailedIndexApi(apps);
+    await api.enableReply(
+      app.id,
+      scoreThreshold: annotationDefaultScoreThreshold,
+      embeddingProviderName: _openai,
+      embeddingModelName: 'text-embedding-3-small',
+    );
+    api.needsRebuild = true;
+    api.rebuilds = 0;
+    final w = _World._(apps, api, app.id);
+    final models = _models();
+    addTearDown(models.dispose);
+    await _render(t, w, models: models);
+    await settle(t);
+    await t.tap(find.byType(DifySwitch));
+    await settle(t);
+    await tapButton(t, 'appAnnotation.initSetup.confirmBtn');
+    expect(api.rebuilds, 1);
+    expect((await api.setting(app.id)).enabled, isTrue);
   });
 
   testWidgets('workflow apps have no annotations: the server answers Dify\'s wrong-mode error', (t) async {
