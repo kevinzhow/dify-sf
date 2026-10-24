@@ -69,6 +69,7 @@ struct Routes: Sendable {
         registerComments(on: r)
         registerModels(on: r)
         registerTools(on: r)
+        registerHelpers(on: r)
         registerApps(on: r)
         registerAppDetail(on: r)
         registerRuntime(on: r)

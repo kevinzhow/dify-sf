@@ -84,6 +84,7 @@ public enum CollabServerMain {
                     .init(service: Named(name: "human-input-timeouts",
                                          base: HumanInputTimeouts(routes: routes, intervalSeconds: config.humanInputScanSeconds, logger: logger, readiness: databaseReady),
                                          logger: logger)),
+                    .init(service: Named(name: "annotation-index", base: AnnotationIndexWorker(routes: routes, readiness: databaseReady), logger: logger)),
                     .init(service: Named(name: "http", base: app, logger: logger)),
                 ],
                 gracefulShutdownSignals: [.sigterm, .sigint],

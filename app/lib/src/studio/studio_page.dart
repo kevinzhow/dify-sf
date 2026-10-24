@@ -20,8 +20,7 @@ import '../settings/workspace_members.dart';
 import 'app_card.dart';
 import 'app_list_controller.dart';
 import 'create_app_modal.dart';
-import 'create_from_dsl_modal.dart' as dsl;
-import 'create_from_dsl_modal.dart' hide fetchDslUrl;
+import 'create_from_dsl_modal.dart';
 import 'dsl_drop.dart';
 import 'filters.dart';
 import 'infinite_scroll_sentinel.dart';
@@ -43,7 +42,7 @@ class StudioPage extends StatefulWidget {
     this.debounce = appListSearchDebounce,
     this.saveDsl = saveDslFile,
     this.pickDslFile = pickDslFileData,
-    this.fetchDslUrl = dsl.fetchDslUrl,
+    this.fetchDslUrl,
     this.uploadIcon,
   });
 
@@ -61,7 +60,7 @@ class StudioPage extends StatefulWidget {
   final Duration debounce;
   final SaveDslFile saveDsl;
   final Future<DslFileData?> Function() pickDslFile;
-  final Future<String> Function(String url) fetchDslUrl;
+  final Future<String> Function(String url)? fetchDslUrl;
   final UploadAppIcon? uploadIcon;
 
   @override
@@ -184,6 +183,7 @@ class StudioPageState extends State<StudioPage> {
           droppedFile: droppedFile,
           pickFile: widget.pickDslFile,
           fetchUrl: widget.fetchDslUrl,
+          importUrl: widget.fetchDslUrl == null ? widget.api.importDslUrl : null,
           importDsl: widget.api.importDsl,
           confirmImport: widget.api.confirmImport,
           onSuccess: () => unawaited(list.refresh()),

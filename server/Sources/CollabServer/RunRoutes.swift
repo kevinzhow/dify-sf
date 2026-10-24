@@ -702,6 +702,11 @@ final class RunExecution: Sendable {
             let defaults = JSONObject((initial.variables["conversation"] ?? []).map { ($0.name, $0.segment.value) })
             await saveConversationVariables(defaults.merging(values))
         }
+        if snapshot == nil, let message = encoderBox.withLock({ $0.chat }),
+           let match = await routes.matchedAnnotation(message) {
+            await completeFromAnnotation(message, annotation:match.annotation, score:match.score)
+            return
+        }
         let started = ContinuousClock.now
         // The round continues the run's numbering: a resumed round's executions follow the ones already stored, so the
         // history keeps its order and no index repeats. A failure to read it starts at the run's own count (0).

@@ -94,6 +94,8 @@ public struct ServerConfig: Sendable {
     public var runtimeMaxTimeSeconds: Double
     /// Protocol 1.14: the code sandbox (`COLLAB_SANDBOX_URL` / `_KEY`), the SSRF proxy (`COLLAB_SSRF_PROXY_URL`) and Dify's
     /// code / template / HTTP request limits (RuntimeServiceClients.swift).
+    public var annotationWeaviateURL: String
+    public var annotationWeaviateKey: String
     public var runtimeServices: RuntimeServicesConfig
 
     /// The tenant id when `COLLAB_PLUGIN_DAEMON_TENANT` is unset (one workspace per server).
@@ -147,6 +149,8 @@ public struct ServerConfig: Sendable {
         runtimeMaxWorkers = max(1, reader.int(forKey: "collab.runtime.maxWorkers", default: 10))
         runtimeMaxSteps = max(1, reader.int(forKey: "collab.runtime.maxSteps", default: 500))
         runtimeMaxTimeSeconds = Double(max(1, reader.int(forKey: "collab.runtime.maxTimeSeconds", default: 3600)))
+        annotationWeaviateURL = reader.string(forKey: "collab.annotation.weaviateURL", default: "")
+        annotationWeaviateKey = reader.string(forKey: "collab.annotation.weaviateKey", isSecret: true, default: "")
         runtimeServices = RuntimeServicesConfig(reader: reader)
     }
 }

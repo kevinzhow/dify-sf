@@ -599,6 +599,9 @@ abstract interface class AppsApi {
     String? iconBackground,
   });
 
+  /// Server-side URL download through configured SSRF protection, followed by the same version confirmation.
+  Future<AppImport> importDslUrl(String url);
+
   /// `POST /v1/apps/imports/{importId}/confirm`: completes a `pending` import (same caller only; `404 not_found` once
   /// it expired or was used).
   Future<AppImport> confirmImport(String importId);

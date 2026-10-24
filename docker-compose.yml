@@ -60,6 +60,9 @@ services:
       COLLAB_SANDBOX_URL: ${COLLAB_SANDBOX_URL:-}
       COLLAB_SANDBOX_KEY: ${COLLAB_SANDBOX_KEY:-dify-sf-local-sandbox-key}
       COLLAB_SSRF_PROXY_URL: ${COLLAB_SSRF_PROXY_URL:-}
+      # Optional annotation-only vector service; see docker-compose.annotations.yml.
+      COLLAB_ANNOTATION_WEAVIATE_URL: ${COLLAB_ANNOTATION_WEAVIATE_URL:-}
+      COLLAB_ANNOTATION_WEAVIATE_KEY: ${COLLAB_ANNOTATION_WEAVIATE_KEY:-}
     volumes:
       - file_uploads:/var/lib/collab/uploads
     # Lets the server reach a service on the host (e.g. the client conformance test's stub model provider, served by

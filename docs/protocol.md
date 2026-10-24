@@ -2304,3 +2304,32 @@ This is the workflow/Chatflow public runtime, not the complete Dify chat product
 public registration/SSO, enterprise environments, the Chrome extension itself and paid hosted services remain out of
 scope. The minimal public page reuses established controls; no claim of whole-page pixel parity is implied. Email
 human-input delivery remains a separately gated feature and is not enabled by public web delivery.
+
+## Helper services and semantic annotations (1.21)
+
+`workflow_runtime.protocol_version=1.21` adds `helper_generation`, `helper_tts` and
+`annotation_semantic_index` availability flags. Generation/TTS require a configured model runtime;
+semantic indexing also requires a configured Weaviate URL. Model credentials, the selected model
+and service readiness are still validated per call; an availability flag does not promise a model response.
+
+Authenticated edit-role POST endpoints `/v1/{rule-generate,rule-code-generate,rule-structured-output-generate,instruction-generate,workflow-generate}`
+accept `instruction`, optional `model_config` and optional authorized `flow_id` plus the endpoint's original parameters.
+They return the original prompt/code/output/modified fields or a validated `graph` proposal; model/format failures carry
+`error` with no usable proposal. Suggestions never write drafts. Workflow generation validates up to 50 nodes,
+known installed tools, node configs and references; it does not reproduce the full upstream repair/router loop.
+
+`POST /v1/apps/imports` accepts `mode=yaml-url` plus `yaml_url`, using the same parse/confirmation pipeline as
+`yaml-content`; the server requires the configured SSRF proxy and caps URL/content/type/UTF-8/download time.
+Errors create neither an app nor a document replacement.
+
+`GET /v1/apps/{app}/text-to-audio/voices?language=...` returns the original root voice array (language required).
+`POST /v1/apps/{app}/text-to-audio` accepts text/voice or an owned console message ID and returns binary audio with
+its actual MIME, `no-store`, and `nosniff`. It buffers at most 16 MiB; it is not a progressive public-chat audio stream.
+
+Annotation reply enable/status routes now report durable real indexing jobs. A SQL generation/lease fences each
+Weaviate collection; CRUD and model changes invalidate old generations atomically. A failed/waiting index reports
+`enabled=false`. Existing pre-index settings migrate to `needs_rebuild` and never start model calls automatically.
+An explicit enable is required. Disable closes matching immediately and completes its SQL job; physical cleanup is
+separately durable/retried. The match is top1 cosine, `score=1-distance`, strictly greater than the configured threshold
+(with original feature-level zero mapped to one). Hits persist their actual SQL answer and source; deleting an annotation
+also removes its history. See [implementation and configuration](runtime-helpers.md) for exact limits and dependencies.

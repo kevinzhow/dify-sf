@@ -287,35 +287,21 @@ struct AppDetailRouteTests {
         }
     }
 
-    @Test func annotationReplySettingIsStoredAndJobsCompleteAtOnce() async throws {
+    @Test func annotationReplyRequiresRealIndexConfigurationAndDisableIsImmediate() async throws {
         try await withServer { api, _, _ in
             let owner = try await api.setupOwner()
-            let chat = try await create(api, owner, name: "Chat", mode: "advanced-chat")
-            #expect(try await api.get("/v1/apps/\(chat)/annotation-setting", token: owner).j == .object(["enabled": false]))
-            #expect(try await api.post("/v1/apps/\(chat)/annotation-reply/enable", #"{"score_threshold":0.9}"#, token: owner).status == 400)
-            #expect(try await api.post("/v1/apps/\(chat)/annotation-reply/sideways", "{}", token: owner).status == 404)
-            let enable = try await api.post("/v1/apps/\(chat)/annotation-reply/enable",
-                                            #"{"score_threshold":0.9,"embedding_provider_name":"openai","embedding_model_name":"text-embedding-3-small"}"#,
-                                            token: owner)
-            #expect(enable.j["job_status"] == "waiting")
-            let job = enable.j["job_id"]?.string ?? ""
-            #expect(try await api.get("/v1/apps/\(chat)/annotation-reply/enable/status/\(job)", token: owner).j["job_status"] == "completed")
-            #expect(try await api.get("/v1/apps/\(chat)/annotation-reply/disable/status/\(job)", token: owner).status == 400)
-            let setting = try await api.get("/v1/apps/\(chat)/annotation-setting", token: owner).j
-            #expect(setting["enabled"] == true && setting["score_threshold"]?.double == 0.9)
-            #expect(setting["embedding_model"] == .object(["embedding_provider_name": "openai", "embedding_model_name": "text-embedding-3-small"]))
-            let sid = setting["id"]?.string ?? ""
-            #expect(try await api.post("/v1/apps/\(chat)/annotation-settings/\(sid)", #"{"score_threshold":0.95}"#, token: owner)
-                        .j["score_threshold"]?.double == 0.95)
-            #expect(try await api.post("/v1/apps/\(chat)/annotation-settings/other", #"{"score_threshold":0.95}"#, token: owner).status == 404)
-            // Enabling again keeps the setting's id.
-            _ = try await api.post("/v1/apps/\(chat)/annotation-reply/enable",
-                                   #"{"score_threshold":0.8,"embedding_provider_name":"openai","embedding_model_name":"m2"}"#, token: owner)
-            #expect(try await api.get("/v1/apps/\(chat)/annotation-setting", token: owner).j["id"]?.string == sid)
-            let disable = try await api.post("/v1/apps/\(chat)/annotation-reply/disable", "{}", token: owner)
-            let djob = disable.j["job_id"]?.string ?? ""
-            #expect(try await api.get("/v1/apps/\(chat)/annotation-reply/disable/status/\(djob)", token: owner).j["job_status"] == "completed")
-            #expect(try await api.get("/v1/apps/\(chat)/annotation-setting", token: owner).j == .object(["enabled": false]))
+            let chat = try await create(api, owner, name:"Chat",mode:"advanced-chat")
+            let base = "/v1/apps/\(chat)"
+            #expect(try await api.get("\(base)/annotation-setting",token:owner).j == .object(["enabled":false]))
+            #expect(try await api.post("\(base)/annotation-reply/enable",#"{"score_threshold":0.9}"#,token:owner).status == 400)
+            let rejected = try await api.post("\(base)/annotation-reply/enable",
+                #"{"score_threshold":0.9,"embedding_provider_name":"openai","embedding_model_name":"text-embedding-3-small"}"#,token:owner)
+            #expect(rejected.status == 503 && rejected.errorCode == "annotation_index_not_configured")
+            #expect(try await api.get("\(base)/annotation-setting",token:owner).j == .object(["enabled":false]))
+            let disabled = try await api.post("\(base)/annotation-reply/disable","{}",token:owner)
+            let job = try #require(disabled.j["job_id"]?.string)
+            #expect(try await api.get("\(base)/annotation-reply/disable/status/\(job)",token:owner).j["job_status"] == "completed")
+            #expect(try await api.get("\(base)/annotation-reply/enable/status/\(job)",token:owner).status == 400)
         }
     }
 

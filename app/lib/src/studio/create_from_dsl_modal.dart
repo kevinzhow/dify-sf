@@ -12,7 +12,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:http/http.dart' as http;
 
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
@@ -50,14 +49,6 @@ Future<DslFileData?> pickDslFileData() async {
   return (name: file.name, size: bytes.length, read: () async => utf8.decode(bytes, allowMalformed: true));
 }
 
-/// `yaml-url` imports: Dify's server fetches the URL; dify-sf's server takes file content only, so the client
-/// fetches it (subject to the browser's CORS rules on the web).
-Future<String> fetchDslUrl(String url) async {
-  final res = await http.get(Uri.parse(url));
-  if (res.statusCode >= 400) throw TransportException('HTTP ${res.statusCode}', statusCode: res.statusCode);
-  return utf8.decode(res.bodyBytes, allowMalformed: true);
-}
-
 /// DSLImportWarningDescription: the distinct warning messages, one per row, at most three and then "…"; [fallback]
 /// without any.
 List<String> dslImportWarningLines(List<Map<String, Object?>> warnings) {
@@ -82,7 +73,8 @@ class CreateFromDSLModal extends StatefulWidget {
     this.dslUrl = '',
     this.droppedFile,
     this.pickFile = pickDslFileData,
-    this.fetchUrl = fetchDslUrl,
+    this.fetchUrl,
+    this.importUrl,
   });
 
   final VoidCallback onClose;
@@ -94,7 +86,8 @@ class CreateFromDSLModal extends StatefulWidget {
   final String dslUrl;
   final DslFileData? droppedFile;
   final Future<DslFileData?> Function() pickFile;
-  final Future<String> Function(String url) fetchUrl;
+  final Future<String> Function(String url)? fetchUrl;
+  final Future<AppImport> Function(String url)? importUrl;
 
   @override
   State<CreateFromDSLModal> createState() => _CreateFromDSLModalState();
@@ -194,7 +187,14 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
       } else {
         final url = _url.trim();
         if (url.isEmpty) return;
-        yaml = await widget.fetchUrl(url);
+        if (widget.importUrl case final importUrl?) {
+          final response = await importUrl(url);
+          if (mounted) await _handleResponse(response);
+          return;
+        }
+        final fetch = widget.fetchUrl;
+        if (fetch == null) throw StateError('URL import is not connected');
+        yaml = await fetch(url);
       }
       final response = await widget.importDsl(yaml);
       if (!mounted) return;

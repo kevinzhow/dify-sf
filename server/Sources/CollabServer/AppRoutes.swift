@@ -1,5 +1,6 @@
 import CollabCore
 import CollabDSL
+import CollabRuntime
 import CollabModels
 import CollabStore
 import Foundation
@@ -408,13 +409,18 @@ extension Routes {
         if let a = b["app_id"], !a.isNull {
             return try failed("dify-sf overwrites an existing app from its editor (POST /v1/docs/{id}/replace), not with app_id")
         }
+        let yaml: String
         switch mode {
-        case "yaml-content": break
-        case "yaml-url": return try failed("yaml-url is not supported: dify-sf does not fetch files from URLs, upload the file instead")
+        case "yaml-content":
+            guard let content = b["yaml_content"]?.string, !content.isEmpty else {
+                return try failed("yaml_content is required when import_mode is yaml-content")
+            }
+            yaml = content
+        case "yaml-url":
+            do {
+                yaml = try await DSLURLImport.load(b["yaml_url"]?.string ?? "", proxy: config.runtimeServices.ssrfProxyURL)
+            } catch { return try failed("Could not import URL: \(error)") }
         default: return try failed("Invalid import_mode: \(mode)")
-        }
-        guard let yaml = b["yaml_content"]?.string, !yaml.isEmpty else {
-            return try failed("yaml_content is required when import_mode is yaml-content")
         }
         if yaml.utf8.count > Self.dslMaxBytes { return try failed("File size exceeds the limit of 10MB") }
         var overrides: [String: JSON] = [:]

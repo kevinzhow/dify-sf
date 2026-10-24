@@ -71,6 +71,9 @@ class ControlledAppsApi implements AppsApi {
     iconBackground: iconBackground,
   );
   @override
+  Future<AppImport> importDslUrl(String url) async => throw StateError('No URL fixture');
+
+  @override
   Future<AppImport> confirmImport(String importId) => inner.confirmImport(importId);
   @override
   Future<AppInfo> update(

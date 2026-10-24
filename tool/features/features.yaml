@@ -238,10 +238,10 @@ features:
   area: canvas
   title: 'Workflow generator (generate a graph from a prompt)'
   dify: [web/app/components/workflow/workflow-generator]
-  status: not_ported
-  reason: "LLM invocation is available to workflow nodes, but the prompt-to-workflow generation service is not implemented."
-  evidence: ['spec:web/app/components/workflow/workflow-generator']
-  ours: []
+  status: partial
+  reason: "Installed-model planner and per-node builders produce a validated proposal; explicit Apply uses collaborative DSL replacement. The original tool-routing/repair loop, streaming progress and rich graph preview remain absent."
+  evidence: ['spec:web/app/components/workflow/workflow-generator', app/test/helper_generator_test.dart, server/Tests/CollabTests/HelperGeneratorTests.swift, e2e/helpers/acceptance.py]
+  ours: [app/lib/src/workflow_helpers/generator_dialog.dart, server/Sources/CollabServer/WorkflowHelper.swift]
 - id: canvas.performance
   area: canvas
   title: 'Canvas: large graphs (2000 nodes at 120 fps, zoomed-out overview tier)'
@@ -863,9 +863,9 @@ features:
   area: editors
   title: 'Prompt / code / JSON schema generator (AI generate)'
   dify: [web/app/components/workflow/nodes/llm/components/prompt-generator-btn.tsx, web/app/components/workflow/nodes/_base/components/code-generator-button.tsx]
-  status: not_ported
-  reason: "LLM invocation is available to workflow nodes, but the prompt/code/schema generation service is not implemented. The generator buttons are drawn but disabled because no generator service is passed."
-  evidence: []
+  status: partial
+  reason: "Real installed-model generation is connected with proposal/apply, retry, model selection and concurrent-edit guards. Schema validation covers the UI-supported object/array subset; original Cmd-K streaming suggestions and full JSON Schema dialect support remain absent."
+  evidence: [app/test/helper_generator_test.dart, server/Tests/CollabTests/HelperGeneratorTests.swift, e2e/helpers/acceptance.py]
   ours: [app/lib/src/workflow_editor/node_panel/bodies/llm/llm_panel.dart]
 - id: editors.code-editor
   area: editors
@@ -1359,7 +1359,7 @@ features:
   title: 'Text to speech: language, voice, autoplay, audition'
   dify: [web/app/components/base/features/new-feature-panel/text-to-speech]
   status: partial
-  reason: "Settings are ported; the voices and the audition call the app's TTS model (TTS invocation is not implemented; LLM invocation is separate): later phase: runtime (owner agreed 2026-10-18; plan: evaluate reusing Dify's plugin daemon)."
+  reason: "Settings, actual model voice lists and browser audition/play/stop/cancel are connected through the installed TTS plugin. Audio is bounded-buffered; automatic progressive public-chat playback is not implemented. Native iOS is unchanged."
   evidence: ['spec:web/app/components/base/features/new-feature-panel/text-to-speech']
   ours: [app/lib/src/workflow_editor/features/text_to_speech.dart]
 - id: features.moderation
@@ -1951,7 +1951,7 @@ features:
   title: 'Import DSL: file or URL, drag and drop onto the page, DSL version confirmation'
   dify: [web/app/components/app/create-from-dsl-modal, web/app/components/apps/hooks/use-dsl-drag-drop.ts]
   status: ported
-  deviation: A URL is fetched by the client (dify-sf's import takes file content), so on the web it is subject to the site's CORS rules.
+  deviation: URL imports are downloaded by the server through the configured SSRF proxy, with strict TLS, redirect policy, UTF-8/type and 10 MiB bounds; there is no direct-network fallback. File imports reuse the existing picker/drop and version confirmation.
   evidence: ['spec:web/app/components/app/create-from-dsl-modal', 'spec:web/app/components/apps/hooks', visual:studio-import-dsl, visual:studio-import-dsl-dark, visual:studio-import-dsl-dialog, visual:studio-import-dsl-dialog-dark, app/test/studio_test.dart]
   ours: [app/lib/src/studio/create_from_dsl_modal.dart, app/lib/src/studio/dsl_drop.dart]
 - id: app-pages.studio-card-actions
@@ -2070,7 +2070,7 @@ features:
   title: 'Chatflow logs: filters, conversation table, pagination, conversation drawer (transcript, variables, feedback)'
   dify: [web/app/components/app/log]
   status: partial
-  reason: "Published Chatflow conversations, message transcripts, real admin feedback and database statistics now populate the page. Debug conversations remain account-scoped. The transcript still lacks add/edit annotation controls; semantic annotation matching is the separate next stage."
+  reason: "Published Chatflow conversations, message transcripts, real admin feedback and database statistics now populate the page. Debug conversations remain account-scoped. The transcript still lacks add/edit annotation controls; annotation-only semantic matching is connected; transcript add/edit controls remain absent."
   evidence: ['spec:web/app/components/app/log', app/test/app_detail_logs_test.dart, visual:app-logs-empty]
   ours: [app/lib/src/app_detail/logs/chat_log.dart, app/lib/src/app_detail/logs/list_utils.dart, app/lib/src/app_detail/logs/logs_data.dart, app/lib/src/app_detail/logs/log_widgets.dart]
 - id: app-pages.deploy
@@ -2165,16 +2165,16 @@ features:
   area: app-pages
   title: 'Annotation Reply: switch and settings (embedding model, score threshold)'
   dify: [web/app/components/app/annotation/index.tsx, web/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal.tsx, web/app/components/base/features/new-feature-panel/annotation-reply/score-slider]
-  status: partial
-  reason: The setting is stored (the enable / disable jobs complete at once), but annotation embedding, matching and automatic replies are not implemented.
+  status: ported
+  deviation: Real embeddings and pinned Weaviate drive annotation-only top1 matching and durable enable jobs. SQL disable is immediate; vector cleanup is separately durable/retried. Legacy flags require explicit re-enable, so an upgrade never starts paid embedding calls.
   evidence: ['spec:web/app/components/base/features/new-feature-panel/annotation-reply/__tests__/config-param-modal.spec.tsx', 'spec:web/app/components/base/features/new-feature-panel/annotation-reply/score-slider', app/test/annotations_page_test.dart]
   ours: [app/lib/src/app_detail/annotations/config_param_modal.dart, app/lib/src/app_detail/annotations/annotations_page.dart]
 - id: app-pages.annotation-hit-history
   area: app-pages
   title: 'Annotation hit history (the view dialog''s second tab)'
   dify: [web/app/components/app/annotation/view-annotation-modal]
-  status: partial
-  reason: Annotation reply matching is not implemented, so hit history stays empty; the tab, table and paging are ported.
+  status: ported
+  deviation: Hits persist the actual matched SQL answer, query, source and score; deleting an annotation clears its hit history. Matching short-circuits graph nodes while retaining the local durable run ledger.
   evidence: ['spec:web/app/components/app/annotation/view-annotation-modal']
   ours: [app/lib/src/app_detail/annotations/annotation_modals.dart]
 - id: app-pages.knowledge

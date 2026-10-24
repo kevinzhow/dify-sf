@@ -1,0 +1,35 @@
+# Optional annotation-only semantic index. Requires the runtime overlay and an explicit private key.
+# export COLLAB_ANNOTATION_WEAVIATE_KEY=$(openssl rand -hex 32)
+# docker compose -f docker-compose.yml -f docker-compose.runtime.yml -f docker-compose.annotations.yml --profile runtime up -d
+# Preserve this key and the annotation_vectors volume across upgrades. No host port is published.
+services:
+  server:
+    environment:
+      COLLAB_ANNOTATION_WEAVIATE_URL: http://annotation_weaviate:8080
+      COLLAB_ANNOTATION_WEAVIATE_KEY: ${COLLAB_ANNOTATION_WEAVIATE_KEY:?Set a private annotation vector service key}
+    depends_on:
+      annotation_weaviate:
+        condition: service_started
+  annotation_weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.39.2@sha256:5c62e5cbce4c48fc770abcee71099d9de32aad3b44d12299611f8135ee412362
+    mem_limit: 640m
+    memswap_limit: 640m
+    cpus: 1
+    restart: unless-stopped
+    environment:
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      DEFAULT_VECTORIZER_MODULE: none
+      ENABLE_MODULES: ''
+      QUERY_DEFAULTS_LIMIT: '20'
+      CLUSTER_HOSTNAME: annotation-index
+      GOMEMLIMIT: 480MiB
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${COLLAB_ANNOTATION_WEAVIATE_KEY:?Set a private annotation vector service key}
+      AUTHENTICATION_APIKEY_USERS: dify-sf
+      AUTHORIZATION_RBAC_ENABLED: 'true'
+      AUTHORIZATION_RBAC_ROOT_USERS: dify-sf
+    volumes:
+      - annotation_vectors:/var/lib/weaviate
+volumes:
+  annotation_vectors:

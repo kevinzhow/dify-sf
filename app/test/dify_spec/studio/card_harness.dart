@@ -76,6 +76,9 @@ class ScriptedAppsApi implements AppsApi {
     String? iconBackground,
   }) => _call('importDsl', {'yaml': yamlContent}, () => inner.importDsl(yamlContent));
   @override
+  Future<AppImport> importDslUrl(String url) async => throw StateError('No URL fixture');
+
+  @override
   Future<AppImport> confirmImport(String importId) =>
       _call('confirmImport', {'id': importId}, () => inner.confirmImport(importId));
   @override

@@ -63,6 +63,7 @@ class FeaturesServices {
   const FeaturesServices({
     this.voices,
     this.playAudition,
+    this.stopAudition,
     this.codeBasedExtensions = const [],
     this.apiBasedExtensions = const [],
     this.addApiBasedExtension,
@@ -84,6 +85,7 @@ class FeaturesServices {
 
   /// Plays the audition [text] with [voice] (AudioBtn); no audition button without it.
   final Future<void> Function(String text, String? voice)? playAudition;
+  final VoidCallback? stopAudition;
 
   /// `useCodeBasedExtensions('moderation')`: Dify's CodeBasedExtensionItem JSON (`name`, `label`, `form_schema`).
   final List<Json> codeBasedExtensions;

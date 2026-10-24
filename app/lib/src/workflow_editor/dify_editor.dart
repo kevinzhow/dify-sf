@@ -1,9 +1,18 @@
+import '../i18n/dify_i18n.dart';
 import 'header/format.dart';
 import 'run/ui/before_run_form.dart' show RunFilePicker, RunFilePickerScope;
 
 import 'package:dify_sf_app/src/design/dify_icon.dart';
 
 import 'dart:async';
+import 'dart:convert';
+
+import '../audio/audio_player.dart';
+import '../workflow_helpers/generator_dialog.dart';
+import '../workflow/dify_json.dart' show difyDataOf, plainOf;
+import '../workflow/model_catalog.dart' show ModelTypeEnum;
+import 'node_panel/bodies/core/core_kit.dart' show CorePanelHost, CorePanelHostData;
+import 'panel_fields/controls.dart' show GeneratorButton;
 
 import '../auth/account_time.dart';
 
@@ -139,6 +148,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.runService,
     this.serverRuntime,
     this.tools,
+    this.helpers,
     this.allowMockRuns = false,
     this.commentsStore,
     this.access = WorkflowAccessControl.full,
@@ -214,6 +224,7 @@ class DifyWorkflowEditor extends StatefulWidget {
   /// variable inspect panel (its draft variables). Unsupported operations are refused outside the explicit local demo (ServerRunService).
   final ServerWorkflowRuntime? serverRuntime;
   final ToolsApi? tools;
+  final HelpersApi? helpers;
 
   /// The document's canvas comments. Null: the editor keeps its own for the controller's session (created with it,
   /// disposed with it). Either way the comments UI finds it with [CommentsScope.of].
@@ -356,6 +367,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
 
   @override
   void dispose() {
+    _stopAudition();
+    _audioPlayer.dispose();
     _ownComments?.dispose();
     _versions?.dispose();
     super.dispose();
@@ -515,180 +528,192 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     // Dify's UI is styled by its own tokens: nothing inherited from the app's Material text theme (whose letter
     // spacing would widen every label).
     return _withModels(
-      CommentsScope(
-        store: _comments,
-        child: DefaultTextStyle(
-          style: DifyType.systemMdRegular.style.copyWith(
-            fontFamily: cardFontFamily,
-            wordSpacing: 0,
-            color: DifyColors.textPrimary,
-          ),
-          // The block selector reads the app mode and what is on the canvas (singletons, the Start tab's conflicts).
-          child: ListenableBuilder(
-            listenable: controller,
-            builder: (context, child) => BlockSelectorScope(
-              data: BlockSelectorData(
-                chatMode: meta.isChatflow,
-                nodes: [for (final n in controller.doc.nodes.values) (id: n.id, type: n.type)],
-              ),
-              child: child!,
+      CorePanelHost(
+        data: CorePanelHostData(
+          codeGenerator: widget.helpers == null || !widget.access.canEdit ? null : _codeGenerator,
+        ),
+        child: CommentsScope(
+          store: _comments,
+          child: DefaultTextStyle(
+            style: DifyType.systemMdRegular.style.copyWith(
+              fontFamily: cardFontFamily,
+              wordSpacing: 0,
+              color: DifyColors.textPrimary,
             ),
-            child: OperatorShortcuts(
-              history: controller.undo,
-              options: options,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  WorkflowEditor(
-                    controller: controller,
-                    menuOptions: menuOptions,
-                    canEdit: widget.access.canEdit,
-                    header: (context, canvas) => _BoundHeader(
+            // The block selector reads the app mode and what is on the canvas (singletons, the Start tab's conflicts).
+            child: ListenableBuilder(
+              listenable: controller,
+              builder: (context, child) => BlockSelectorScope(
+                data: BlockSelectorData(
+                  chatMode: meta.isChatflow,
+                  nodes: [for (final n in controller.doc.nodes.values) (id: n.id, type: n.type)],
+                ),
+                child: child!,
+              ),
+              child: OperatorShortcuts(
+                history: controller.undo,
+                options: options,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    WorkflowEditor(
                       controller: controller,
-                      models: widget.models,
-                      canvas: canvas,
-                      meta: meta,
-                      access: widget.access,
-                      user: widget.user,
-                      versions: _versions,
-                      publisher: widget.publisher,
-                      session: (anchor) => SessionBadge(
+                      menuOptions: menuOptions,
+                      canEdit: widget.access.canEdit,
+                      header: (context, canvas) => _BoundHeader(
                         controller: controller,
-                        serverLabel: serverLabel,
-                        actions: actions,
-                        anchor: anchor,
-                        pill: false,
+                        models: widget.models,
+                        canvas: canvas,
+                        meta: meta,
+                        access: widget.access,
+                        user: widget.user,
+                        versions: _versions,
+                        publisher: widget.publisher,
+                        session: (anchor) => SessionBadge(
+                          controller: controller,
+                          serverLabel: serverLabel,
+                          actions: actions,
+                          anchor: anchor,
+                          pill: false,
+                        ),
+                        left: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _OfflinePill(controller: controller),
+                            if (widget.helpers != null && widget.access.canEdit && widget.onImportDsl != null)
+                              GeneratorButton(onPressed: _generateWorkflow),
+                          ],
+                        ),
                       ),
-                      left: _OfflinePill(controller: controller),
-                    ),
-                    // A block picked from Add Node follows the pointer until a click places it (candidate-node.tsx).
-                    overlay: (context, canvas) {
-                      _inner = context;
-                      _canvas = canvas;
-                      return Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CanvasPlusButtons(controller: controller, canvas: canvas, options: menuOptions),
-                          // Iteration, loop and note resize controls (node-resizer.tsx).
-                          NodeResizers(controller: controller, canvas: canvas, options: menuOptions),
-                          // Selected container children grow their container (useNodeResizeObserver).
-                          ContainerChildSizeObserver(controller: controller, canvas: canvas, options: menuOptions),
-                          // The selected note, edited in place (drawn by the canvas in the notes' layer).
-                          LiveNoteBinding(controller: controller, canvas: canvas, options: menuOptions),
-                          // Canvas comments: the pins, comment mode's clicks, the new comment's box and the thread.
-                          CommentLayer(canvas: canvas),
-                          CandidateNode(canvas: canvas, onPlace: _place),
-                          if (widget.locateNodeId != null)
-                            LocateNodeOnOpen(controller: controller, canvas: canvas, nodeId: widget.locateNodeId),
-                        ],
-                      );
-                    },
-                    control: workflowControlBuilder(options),
-                    // Editor-wide: the variable inspect data (its trigger and panel; "View log" opens a node's panel on
-                    // its Last Run tab; Stop is EVENT_WORKFLOW_STOP) and the run host (runs, single runs, the chatflow
-                    // preview; run state is local view state).
-                    scope: (context, canvas, child) => WorkflowToolsBinding(
-                      api: widget.tools,
-                      store: WorkflowStoreScope.of(context),
-                      child: HumanInputHostScope(
-                        store: _comments,
-                        userId: widget.user?.id,
-                        userName: widget.user?.name ?? '',
-                        // The panel's test mail: a delivery-test form of its own on the server, mailed to this account when
-                        // the method is in debug mode (`.../delivery-test`).
-                        sendTestEmail:
-                            widget.serverRuntime?.humanInput == true && widget.serverRuntime?.humanInputEmail == true
-                            ? _sendTestEmail
-                            : null,
-                        fetchGeneratedForm: widget.serverRuntime?.humanInput == true
-                            ? _fetchGeneratedForm
-                            : widget.allowMockRuns
-                            ? null
-                            : (_, _) async => throw const RunServiceException(
-                                'Human input is not available on this server yet.',
-                                code: 'runtime_not_supported',
+                      // A block picked from Add Node follows the pointer until a click places it (candidate-node.tsx).
+                      overlay: (context, canvas) {
+                        _inner = context;
+                        _canvas = canvas;
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CanvasPlusButtons(controller: controller, canvas: canvas, options: menuOptions),
+                            // Iteration, loop and note resize controls (node-resizer.tsx).
+                            NodeResizers(controller: controller, canvas: canvas, options: menuOptions),
+                            // Selected container children grow their container (useNodeResizeObserver).
+                            ContainerChildSizeObserver(controller: controller, canvas: canvas, options: menuOptions),
+                            // The selected note, edited in place (drawn by the canvas in the notes' layer).
+                            LiveNoteBinding(controller: controller, canvas: canvas, options: menuOptions),
+                            // Canvas comments: the pins, comment mode's clicks, the new comment's box and the thread.
+                            CommentLayer(canvas: canvas),
+                            CandidateNode(canvas: canvas, onPlace: _place),
+                            if (widget.locateNodeId != null)
+                              LocateNodeOnOpen(controller: controller, canvas: canvas, nodeId: widget.locateNodeId),
+                          ],
+                        );
+                      },
+                      control: workflowControlBuilder(options),
+                      // Editor-wide: the variable inspect data (its trigger and panel; "View log" opens a node's panel on
+                      // its Last Run tab; Stop is EVENT_WORKFLOW_STOP) and the run host (runs, single runs, the chatflow
+                      // preview; run state is local view state).
+                      scope: (context, canvas, child) => WorkflowToolsBinding(
+                        api: widget.tools,
+                        store: WorkflowStoreScope.of(context),
+                        child: HumanInputHostScope(
+                          store: _comments,
+                          userId: widget.user?.id,
+                          userName: widget.user?.name ?? '',
+                          // The panel's test mail: a delivery-test form of its own on the server, mailed to this account when
+                          // the method is in debug mode (`.../delivery-test`).
+                          sendTestEmail:
+                              widget.serverRuntime?.humanInput == true && widget.serverRuntime?.humanInputEmail == true
+                              ? _sendTestEmail
+                              : null,
+                          fetchGeneratedForm: widget.serverRuntime?.humanInput == true
+                              ? _fetchGeneratedForm
+                              : widget.allowMockRuns
+                              ? null
+                              : (_, _) async => throw const RunServiceException(
+                                  'Human input is not available on this server yet.',
+                                  code: 'runtime_not_supported',
+                                ),
+                          submitGeneratedForm: widget.serverRuntime?.humanInput == true
+                              ? _submitGeneratedForm
+                              : widget.allowMockRuns
+                              ? null
+                              : (_, _) async => throw const RunServiceException(
+                                  'Human input is not available on this server yet.',
+                                  code: 'runtime_not_supported',
+                                ),
+                          child: VariableInspectHost(
+                            services: _inspectServices(context, canvas),
+                            nodes: () => controller.doc.nodes.values,
+                            onViewNode: (nodeId) {
+                              WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
+                              controller.selectNode(nodeId);
+                            },
+                            onStop: () => _runHost.currentState?.emitWorkflowStop(),
+                            child: Builder(
+                              builder: (context) => WorkflowRunHost(
+                                key: _runHost,
+                                controller: controller,
+                                canvas: canvas,
+                                service: _runService(context, canvas),
+                                isChatMode: () => widget.meta.isChatflow,
+                                fetchInspectVars: VariableInspectScope.of(context).crud.fetchInspectVars,
+                                child: RunFilePickerScope(pickFile: widget.pickRunFile, child: child),
                               ),
-                        submitGeneratedForm: widget.serverRuntime?.humanInput == true
-                            ? _submitGeneratedForm
-                            : widget.allowMockRuns
-                            ? null
-                            : (_, _) async => throw const RunServiceException(
-                                'Human input is not available on this server yet.',
-                                code: 'runtime_not_supported',
-                              ),
-                        child: VariableInspectHost(
-                          services: _inspectServices(context, canvas),
-                          nodes: () => controller.doc.nodes.values,
-                          onViewNode: (nodeId) {
-                            WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
-                            controller.selectNode(nodeId);
-                          },
-                          onStop: () => _runHost.currentState?.emitWorkflowStop(),
-                          child: Builder(
-                            builder: (context) => WorkflowRunHost(
-                              key: _runHost,
-                              controller: controller,
-                              canvas: canvas,
-                              service: _runService(context, canvas),
-                              isChatMode: () => widget.meta.isChatflow,
-                              fetchInspectVars: VariableInspectScope.of(context).crud.fetchInspectVars,
-                              child: RunFilePickerScope(pickFile: widget.pickRunFile, child: child),
                             ),
                           ),
                         ),
                       ),
+                      operator: workflowOperatorBuilder(
+                        controller,
+                        options,
+                        const VariableInspectTrigger(),
+                        const VariableInspectPanel(),
+                      ),
+                      // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify), then the
+                      // variable panels.
+                      panels: (context, canvas) => WorkflowPanels(
+                        controller: controller,
+                        canvas: canvas,
+                        options: menuOptions,
+                        others: [
+                          // The viewed history run and the Test Run / Debug & Preview panel (workflow-panel.tsx).
+                          RunPanels(controller: controller, isChatMode: meta.isChatflow, canRun: widget.access.canRun),
+                          VariablePanels(
+                            controller: controller,
+                            isChatMode: meta.isChatflow,
+                            storeSecret: controller.storeSecret,
+                          ),
+                          // The comment list, in comment mode.
+                          CommentsPanel(canvas: canvas),
+                          // While browsing versions (without a version service: the current draft alone).
+                          _versionHistoryPanel(),
+                        ],
+                      ),
+                      // The Features drawer (chatflows open it from the header), over everything with its backdrop.
+                      modal: (context, canvas) => Stack(
+                        children: [
+                          if (widget.models case final models?)
+                            ListenableBuilder(
+                              listenable: models,
+                              builder: (context, _) => WorkflowFeatures(
+                                controller: controller,
+                                isChatMode: meta.isChatflow,
+                                services: _featuresServices(),
+                              ),
+                            )
+                          else
+                            WorkflowFeatures(controller: controller, isChatMode: meta.isChatflow),
+                          ImportDslHost(
+                            appMode: meta.appMode,
+                            onImport: widget.onImportDsl,
+                            pickFile: widget.pickDslFile,
+                            onBackup: widget.onExportDsl == null ? null : _exportDsl,
+                          ),
+                        ],
+                      ),
                     ),
-                    operator: workflowOperatorBuilder(
-                      controller,
-                      options,
-                      const VariableInspectTrigger(),
-                      const VariableInspectPanel(),
-                    ),
-                    // Dify's right panels: the selected node's panel (a selected edge has none, as in Dify), then the
-                    // variable panels.
-                    panels: (context, canvas) => WorkflowPanels(
-                      controller: controller,
-                      canvas: canvas,
-                      options: menuOptions,
-                      others: [
-                        // The viewed history run and the Test Run / Debug & Preview panel (workflow-panel.tsx).
-                        RunPanels(controller: controller, isChatMode: meta.isChatflow, canRun: widget.access.canRun),
-                        VariablePanels(
-                          controller: controller,
-                          isChatMode: meta.isChatflow,
-                          storeSecret: controller.storeSecret,
-                        ),
-                        // The comment list, in comment mode.
-                        CommentsPanel(canvas: canvas),
-                        // While browsing versions (without a version service: the current draft alone).
-                        _versionHistoryPanel(),
-                      ],
-                    ),
-                    // The Features drawer (chatflows open it from the header), over everything with its backdrop.
-                    modal: (context, canvas) => Stack(
-                      children: [
-                        if (widget.models case final models?)
-                          ListenableBuilder(
-                            listenable: models,
-                            builder: (context, _) => WorkflowFeatures(
-                              controller: controller,
-                              isChatMode: meta.isChatflow,
-                              services: _featuresServices(),
-                            ),
-                          )
-                        else
-                          WorkflowFeatures(controller: controller, isChatMode: meta.isChatflow),
-                        ImportDslHost(
-                          appMode: meta.appMode,
-                          onImport: widget.onImportDsl,
-                          pickFile: widget.pickDslFile,
-                          onBackup: widget.onExportDsl == null ? null : _exportDsl,
-                        ),
-                      ],
-                    ),
-                  ),
-                  NoticeOverlay(controller: controller),
-                ],
+                    NoticeOverlay(controller: controller),
+                  ],
+                ),
               ),
             ),
           ),
@@ -721,6 +746,160 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     );
   }
 
+  final _audioPlayer = HelperAudioPlayer();
+  HelperCancellation? _audioRequest;
+  void _stopAudition() {
+    _audioRequest?.cancel();
+    _audioRequest = null;
+    _audioPlayer.stop();
+  }
+
+  Future<void> _audition(String text, String? voice) async {
+    _stopAudition();
+    final request = _audioRequest = HelperCancellation();
+    try {
+      final audio = await widget.helpers!.audio(
+        widget.controller.docId,
+        text: text,
+        voice: voice,
+        cancellation: request,
+      );
+      if (!mounted || _audioRequest != request) return;
+      await _audioPlayer.play(audio.bytes, audio.mimeType);
+    } on Object catch (e) {
+      if (mounted && _audioRequest == request) toast.error('$e');
+    }
+  }
+
+  Map<String, Object?>? _defaultGeneratorModel() {
+    final selected = widget.models?.defaultModelsMap['llm'];
+    return selected == null
+        ? null
+        : {'provider': selected.provider, 'name': selected.model, 'mode': selected.mode ?? 'chat'};
+  }
+
+  String? _modelLabel(Map<String, Object?>? model) => model == null ? null : '${model['provider']} / ${model['name']}';
+  Future<String?> _generatePrompt(String nodeId, String current) async {
+    final node = widget.controller.doc.nodes[nodeId];
+    if (node == null) return null;
+    final original = jsonEncode(difyDataOf(node));
+    final selected = plainOf(node.config['model']) as Map<String, Object?>? ?? _defaultGeneratorModel();
+    final result = await showHelperGenerator(
+      context,
+      api: widget.helpers!,
+      models: widget.models?.modelList(ModelTypeEnum.textGeneration) ?? const [],
+      kind: 'instruction-generate',
+      modelLabel: _modelLabel(selected),
+      parameters: {
+        'flow_id': widget.controller.docId,
+        'node_id': nodeId,
+        'current': current,
+        'model_config': ?selected,
+      },
+      unchanged: () {
+        final n = widget.controller.doc.nodes[nodeId];
+        return n != null && jsonEncode(difyDataOf(n)) == original;
+      },
+    );
+    return result?['modified'] as String?;
+  }
+
+  Future<Map<String, Object?>?> _generateSchema(String instruction) async {
+    final response = await widget.helpers!.generate('rule-structured-output-generate', {
+      'instruction': instruction,
+      'model_config': ?_defaultGeneratorModel(),
+    });
+    final decoded = jsonDecode(response['output'] as String);
+    if (decoded is! Map<String, Object?>) throw const TransportException('Invalid JSON Schema');
+    return decoded;
+  }
+
+  Widget _codeGenerator(BuildContext ctx, String nodeId, String language, ValueChanged<String> apply) =>
+      GeneratorButton(
+        onPressed: () async {
+          final node = widget.controller.doc.nodes[nodeId];
+          if (node == null) return;
+          final original = jsonEncode(difyDataOf(node));
+          final result = await showHelperGenerator(
+            ctx,
+            api: widget.helpers!,
+            models: widget.models?.modelList(ModelTypeEnum.textGeneration) ?? const [],
+            kind: 'rule-code-generate',
+            modelLabel: _modelLabel(_defaultGeneratorModel()),
+            parameters: {
+              'flow_id': widget.controller.docId,
+              'code_language': language,
+              'model_config': ?_defaultGeneratorModel(),
+            },
+            unchanged: () {
+              final n = widget.controller.doc.nodes[nodeId];
+              return n != null && jsonEncode(difyDataOf(n)) == original;
+            },
+          );
+          if (mounted) {
+            if (result?['code'] case final String code) apply(code);
+          }
+        },
+      );
+  Future<void> _generateWorkflow() async {
+    final original = jsonEncode(widget.controller.doc.toJson());
+    final graph = EditorRunGraph(widget.controller);
+    final current = <String, Object?>{
+      'nodes': [
+        for (final n in graph.nodes)
+          {
+            'id': n.id,
+            'type': n.rfType,
+            'data': n.data,
+            'position': {'x': n.x, 'y': n.y},
+            'parentId': ?n.parentId,
+          },
+      ],
+      'edges': [
+        for (final e in graph.edges)
+          {
+            'id': e.id,
+            'source': e.source,
+            'target': e.target,
+            'sourceHandle': e.sourceHandle,
+            'targetHandle': e.targetHandle,
+            'type': 'custom',
+          },
+      ],
+      'viewport': {'x': 0, 'y': 0, 'zoom': 1},
+    };
+    await showHelperGenerator(
+      context,
+      api: widget.helpers!,
+      models: widget.models?.modelList(ModelTypeEnum.textGeneration) ?? const [],
+      kind: 'workflow-generate',
+      modelLabel: _modelLabel(_defaultGeneratorModel()),
+      warning: DifyI18n.tr('workflow', 'workflowGenerator.overwriteMessage'),
+      parameters: {
+        'flow_id': widget.controller.docId,
+        'mode': widget.meta.appMode,
+        'current_graph': current,
+        'model_config': ?_defaultGeneratorModel(),
+      },
+      unchanged: () => jsonEncode(widget.controller.doc.toJson()) == original,
+      apply: (proposal) async {
+        final yaml = jsonEncode({
+          'kind': 'app',
+          'version': '0.7.0',
+          'app': widget.meta.raw['app'] ?? {'name': widget.meta.appName, 'mode': widget.meta.appMode},
+          'dependencies': widget.meta.raw['dependencies'] ?? [],
+          'workflow': {
+            'environment_variables': widget.meta.environmentVariables,
+            'conversation_variables': widget.meta.conversationVariables,
+            'features': widget.meta.raw['features'] ?? {},
+            'graph': proposal['graph'],
+          },
+        });
+        await widget.onImportDsl!(yaml);
+      },
+    );
+  }
+
   /// The model-node panels' services from the workspace's models (rebuilt when they change).
   Widget _withModels(Widget child) {
     final models = widget.models;
@@ -735,6 +914,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
           parameterRules: models.parameterRules,
           openModelProviderSettings: widget.openModelProviderSettings,
           refreshModels: () => unawaited(models.refreshModelLists()),
+          generatePrompt: widget.helpers == null || !widget.access.canEdit ? null : _generatePrompt,
+          generateJsonSchema: widget.helpers == null || !widget.access.canEdit ? null : _generateSchema,
         ),
         child: ProviderIconScope(source: models.icons, child: child!),
       ),
@@ -748,6 +929,9 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     if (models == null) return FeaturesServices.empty;
     final open = widget.openModelProviderSettings;
     return FeaturesServices(
+      voices: widget.helpers == null ? null : (language) => widget.helpers!.voices(widget.controller.docId, language),
+      playAudition: widget.helpers == null || !widget.access.canEdit ? null : _audition,
+      stopAudition: widget.helpers == null ? null : _stopAudition,
       modelProviders: models.providerDetails ?? const [],
       modelProvidersLoading: models.providerDetails == null,
       openAccountSettings: open == null ? null : (destination) => destination == 'provider' ? open() : null,

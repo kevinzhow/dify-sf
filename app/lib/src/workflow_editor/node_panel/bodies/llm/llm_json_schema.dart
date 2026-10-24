@@ -792,18 +792,24 @@ class _JsonSchemaGeneratorState extends State<JsonSchemaGenerator> {
   final _popup = DifyFloatingController();
   String _instruction = '';
   bool _generating = false;
+  String? _generationError;
   Json? _result;
 
-  Future<void> _generate(StateSetter setLocal) async {
+  Future<void> _generate(StateSetter setLocal, BuildContext popupContext) async {
     final gen = LlmGroupScope.of(context).generateJsonSchema;
-    if (gen == null || _instruction.trim().isEmpty) return;
-    setLocal(() => _generating = true);
-    final res = await gen(_instruction);
-    if (!mounted) return;
+    if (_generating || gen == null || _instruction.trim().isEmpty) return;
     setLocal(() {
-      _generating = false;
-      _result = res;
+      _generating = true;
+      _generationError = null;
     });
+    try {
+      _result = await gen(_instruction);
+    } on Object catch (e) {
+      _generationError = '$e';
+    } finally {
+      _generating = false;
+      if (mounted && popupContext.mounted) setLocal(() {});
+    }
   }
 
   @override
@@ -869,7 +875,7 @@ class _JsonSchemaGeneratorState extends State<JsonSchemaGenerator> {
                     const Spacer(),
                     DifyButton(
                       leading: const RemixIcon('sparkling-line', size: 16),
-                      onPressed: () => _generate(setLocal),
+                      onPressed: () => _generate(setLocal, context),
                       child: DifyTextLine(_w('nodes.llm.jsonSchema.regenerate')),
                     ),
                     DifyButton(
@@ -891,6 +897,8 @@ class _JsonSchemaGeneratorState extends State<JsonSchemaGenerator> {
             spacing: 8,
             children: [
               DifyText(_w('nodes.llm.jsonSchema.generateJsonSchema'), DifyType.systemXlSemibold),
+              if (_generationError case final error?)
+                DifyText(error, DifyType.systemSmRegular, color: DifyColors.textDestructive),
               DifyText(
                 _w('nodes.llm.jsonSchema.generationTip'),
                 DifyType.systemXsRegular,
@@ -918,7 +926,7 @@ class _JsonSchemaGeneratorState extends State<JsonSchemaGenerator> {
                   DifyButton(
                     variant: DifyButtonVariant.primary,
                     leading: const RemixIcon('sparkling-fill', size: 16),
-                    onPressed: () => _generate(setLocal),
+                    onPressed: () => _generate(setLocal, context),
                     child: DifyTextLine(_w('nodes.llm.jsonSchema.generate')),
                   ),
                 ],

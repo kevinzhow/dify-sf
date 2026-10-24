@@ -146,10 +146,14 @@ extension Routes {
             var workflow_runtime: WorkflowRuntime?
         }
         struct WorkflowRuntime: Encodable {
-            var protocol_version = "1.20"
+            var protocol_version = "1.21"
             /// Durable, creator-scoped console Chatflow conversations (published/end-user runs remain separate).
             var chatflow = true
             var published_run = true
+            /// 1.21: helpers use installed models; semantic replies additionally need Weaviate.
+            var helper_generation: Bool
+            var helper_tts: Bool
+            var annotation_semantic_index: Bool
             /// The node types `POST .../workflows/draft/nodes/{node}/run` runs.
             var single_node_run: [String]
             /// 1.14: the node types a draft run (`POST .../workflows/draft/run`) runs; a graph with others is refused.
@@ -168,7 +172,9 @@ extension Routes {
             (config.humanInputWebEnabled || $0 != NodeType.humanInput) && (runtimeConfigured || $0 != NodeType.llm)
         }
         let runtime = runtimeConfigured || config.humanInputWebEnabled
-            ? WorkflowRuntime(single_node_run: singleTypes, draft_run: draftTypes,
+            ? WorkflowRuntime(helper_generation: runtimeConfigured, helper_tts: runtimeConfigured,
+                              annotation_semantic_index: runtimeConfigured && !config.annotationWeaviateURL.isEmpty,
+                              single_node_run: singleTypes, draft_run: draftTypes,
                               human_input: config.humanInputWebEnabled,
                               human_input_email: config.humanInputWebEnabled && config.humanInputEmailEnabled && mail) : nil
         return try json(Features(is_email_setup: mail, enable_file_upload: config.files.isConfigured, enable_change_email: mail, workflow_runtime: runtime))

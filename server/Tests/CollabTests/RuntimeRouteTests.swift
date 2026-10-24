@@ -168,7 +168,7 @@ struct RuntimeRouteTests {
             try await withServer(config: runtimeConfig(daemon: daemon)) { api, store, _ in
                 let features = try await api.get("/v1/system-features")
                 let runtime = try JSONValue.parse(features.text)["workflow_runtime"]
-                #expect(runtime?["protocol_version"] == "1.20" && runtime?["chatflow"] == true && runtime?["single_node_run"]?.array?.contains("llm") == true)
+                #expect(runtime?["protocol_version"] == "1.21" && runtime?["chatflow"] == true && runtime?["single_node_run"]?.array?.contains("llm") == true)
                 #expect(runtime?["draft_run"]?.array?.contains("start") == true)
                 let (owner, ownerId, app) = try await runtimeFixture(api)
                 let head = try await store.documentHead(app)

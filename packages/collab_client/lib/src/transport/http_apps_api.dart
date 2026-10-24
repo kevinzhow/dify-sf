@@ -97,6 +97,9 @@ class HttpAppsApi implements AppsApi {
   });
 
   @override
+  Future<AppImport> importDslUrl(String url) => _import('/v1/apps/imports', {'mode': 'yaml-url', 'yaml_url': url});
+
+  @override
   Future<AppImport> confirmImport(String importId) =>
       _import('/v1/apps/imports/${Uri.encodeComponent(importId)}/confirm', null);
 

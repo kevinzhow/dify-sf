@@ -118,6 +118,15 @@ extension PostgresStore {
             return nil
         }
     }
+    public func chatMessage(id: String) async throws -> StoredChatMessage? {
+        guard let uuid = UUID(uuidString: id) else { return nil }
+        return try await bounded {
+            for try await row in try await self.client.query("""
+                SELECT \(unescaped: Self.chatMessageColumns) FROM app_messages WHERE id = \(uuid)
+                """, logger: self.logger) { return try Self.decodeChatMessage(row) }
+            return nil
+        }
+    }
     public func chatMessage(runId: String) async throws -> StoredChatMessage? {
         try await bounded {
             for try await row in try await self.client.query("""

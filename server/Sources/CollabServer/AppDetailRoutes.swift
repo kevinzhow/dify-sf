@@ -446,7 +446,10 @@ extension Routes {
         let (_, a) = try await chatflow(req)
         let id = try pathId(req, "job", "Job")
         let job: (status: String, error: String)?
-        do { job = try await store.job(id, doc: a.id, kind: kind) } catch { throw ServerError.unavailable("\(error)") }
+        do {
+            if kind == "enable" || kind == "disable" { job = try await store.annotationIndexJob(id, doc: a.id, action: kind) }
+            else { job = try await store.job(id, doc: a.id, kind: kind) }
+        } catch { throw ServerError.unavailable("\(error)") }
         guard let job else { throw ServerError.badRequest("The job does not exist.") }
         return try json(JSON.object(["job_id": .string(id), "job_status": .string(job.status), "error_msg": .string(job.error)]))
     }
@@ -461,36 +464,39 @@ extension Routes {
     /// `GET /v1/apps/{app}/annotation-setting`.
     private func annotationSetting(_ req: Request) async throws -> Response {
         let (_, a) = try await chatflow(req)
-        do { return try json(settingJSON(try await store.annotationSetting(a.id))) } catch let e as ServerError { throw e } catch {
+        do {
+            let setting = try await store.annotationSetting(a.id)
+            var answer = settingJSON(setting).object ?? [:]
+            let index = try await store.annotationIndex(a.id)
+            answer["enabled"] = .bool(setting != nil && index?.status == "completed" && index?.action == "enable")
+            return try json(JSON.object(answer))
+        } catch let e as ServerError { throw e } catch {
             throw ServerError.unavailable("\(error)")
         }
     }
 
-    /// `POST /v1/apps/{app}/annotation-reply/{enable|disable}`: the setting is stored at once (no embeddings: no runtime);
-    /// Dify's job answer (`waiting`; `completed` when polled).
+    /// Queue real durable indexing; a waiting/failed index never advertises an enabled matcher.
     private func annotationReply(_ req: Request) async throws -> Response {
         let (p, a) = try await chatflow(req)
         let action = try replyAction(req)
         let data = try await body(req)
         let b = data.isEmpty ? [:] : ((try? JSONCoding.decode(data))?.object ?? [:])
         let job = UUID().uuidString.lowercased()
-        do {
-            if action == "enable" {
-                guard let score = b["score_threshold"]?.double else { throw ServerError.badRequest("score_threshold is required (a number)") }
-                guard let provider = b["embedding_provider_name"]?.string, !provider.isEmpty else {
-                    throw ServerError.badRequest("embedding_provider_name is required")
-                }
-                guard let model = b["embedding_model_name"]?.string, !model.isEmpty else {
-                    throw ServerError.badRequest("embedding_model_name is required")
-                }
-                try await store.enableAnnotationReply(a.id, newId: UUID().uuidString.lowercased(), scoreThreshold: score, provider: provider,
-                                                      model: model, by: p.id)
-            } else {
-                try await store.disableAnnotationReply(a.id)
+        let enable = action == "enable"
+        var score = 1.0, provider = "", model = ""
+        if enable {
+            guard let value = b["score_threshold"]?.double, value.isFinite, (0...1).contains(value) else {
+                throw ServerError.badRequest("score_threshold must be between 0 and 1")
             }
-            try await store.recordJob(job, doc: a.id, kind: action, status: "completed")
-        } catch let e as ServerError { throw e } catch { throw ServerError.unavailable("\(error)") }
-        return try json(JSON.object(["job_id": .string(job), "job_status": "waiting"]))
+            score = value
+            guard let p = b["embedding_provider_name"]?.string, !p.isEmpty,
+                  let m = b["embedding_model_name"]?.string, !m.isEmpty else { throw ServerError.badRequest("An embedding provider and model are required") }
+            provider = p; model = m
+            guard annotationVectors != nil else { throw ServerError.http(status:503,code:"annotation_index_not_configured",message:"Configure Weaviate before enabling annotation replies") }
+            _ = try await helperRuntime(app:a.id).credentials(provider:provider,model:model,modelType:"text-embedding")
+        }
+        try await store.configureAnnotationIndex(doc:a.id,job:job,enable:enable,score:score,provider:provider,model:model,by:p.id)
+        return try json(JSON.object(["job_id":.string(job),"job_status":"waiting"]))
     }
 
     /// `POST /v1/apps/{app}/annotation-settings/{setting}` `{score_threshold}`.
@@ -498,13 +504,16 @@ extension Routes {
         let (p, a) = try await chatflow(req)
         let id = try pathId(req, "setting", "App annotation")
         let b = try await jsonBody(req)
-        guard let score = b["score_threshold"]?.double else { throw ServerError.badRequest("score_threshold is required (a number)") }
+        guard let score = b["score_threshold"]?.double, score.isFinite, (0...1).contains(score) else { throw ServerError.badRequest("score_threshold must be between 0 and 1") }
         let s: StoredAnnotationSetting?
         do { s = try await store.updateAnnotationScore(a.id, settingId: id, scoreThreshold: score, by: p.id) } catch {
             throw ServerError.unavailable("\(error)")
         }
         guard let s else { throw ServerError.missing("App annotation not found") }
-        return try json(settingJSON(s))
+        var answer = settingJSON(s).object ?? [:]
+        let index = try await store.annotationIndex(a.id)
+        answer["enabled"] = .bool(index?.status == "completed" && index?.action == "enable")
+        return try json(JSON.object(answer))
     }
 
     /// `GET /v1/apps/{app}/annotations/{annotation}/hit-histories`: always empty (hits come from a runtime).
@@ -516,7 +525,14 @@ extension Routes {
         let existing: StoredAnnotation?
         do { existing = try await store.annotation(a.id, id: id) } catch { throw ServerError.unavailable("\(error)") }
         guard existing != nil else { throw ServerError.missing("Annotation not found") }
-        return try json(JSON.object(["data": .array([]), "has_more": .bool(limit == 0), "limit": .int(limit), "total": 0, "page": .int(page)]))
+        guard page >= 1, (1...100).contains(limit), page <= 100000 else { throw ServerError.badRequest("Invalid history page or limit") }
+        let result = try await store.annotationHits(doc:a.id,annotation:id,page:page,limit:limit)
+        let data:[JSON] = result.items.map { hit in
+            .object(["id":.string(hit.id),"source":.string(hit.source),"score":.double(hit.score),
+                "question":.string(hit.query),"match":.string(hit.question),"response":.string(hit.answer),
+                "created_at":.int(Self.seconds(hit.createdAt))])
+        }
+        return try json(JSON.object(["data":.array(data),"has_more":.bool(page*limit < result.total),"limit":.int(limit),"total":.int(result.total),"page":.int(page)]))
     }
 
     // MARK: - Publish and versions

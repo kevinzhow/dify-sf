@@ -1,6 +1,8 @@
 /// Text to speech (text-to-speech/index.tsx, voice-settings.tsx, param-config-content.tsx).
 library;
 
+import '../../i18n/dify_i18n.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../design/css_metrics.dart';
@@ -201,17 +203,32 @@ class ParamConfigContent extends StatefulWidget {
 }
 
 class _ParamConfigContentState extends State<ParamConfigContent> {
+  FeaturesServices? _lastServices;
+  @override
+  void dispose() {
+    _lastServices?.stopAudition?.call();
+    super.dispose();
+  }
+
   String? _voicesFor;
   List<({String value, String name})>? _voices;
+  String? _voicesError;
 
   void _loadVoices(FeaturesServices services, String language) {
     if (_voicesFor == language) return;
     _voicesFor = language;
+    _voices = null;
+    _voicesError = null;
     final load = services.voices;
     if (load == null) return;
-    load(language).then((v) {
-      if (mounted && _voicesFor == language) setState(() => _voices = v);
-    });
+    load(language).then<void>(
+      (v) {
+        if (mounted && _voicesFor == language) setState(() => _voices = v);
+      },
+      onError: (Object e, StackTrace _) {
+        if (mounted && _voicesFor == language) setState(() => _voicesError = '$e');
+      },
+    );
   }
 
   void _change(Map<String, Object?> value) {
@@ -230,6 +247,7 @@ class _ParamConfigContentState extends State<ParamConfigContent> {
   @override
   Widget build(BuildContext context) {
     final services = FeaturesServicesScope.of(context);
+    _lastServices = services;
     return FeaturesBuilder(
       builder: (context, features) {
         final tts = featureMap(features, FeatureEnum.text2speech);
@@ -314,8 +332,22 @@ class _ParamConfigContentState extends State<ParamConfigContent> {
                       ),
                     ),
                   ),
+                if (services.stopAudition case final stop?)
+                  DifyIconButton(
+                    label: DifyI18n.tr('workflow', 'workflowGenerator.cancel'),
+                    icon: const RemixIcon('stop-line', size: 16),
+                    onPressed: stop,
+                  ),
               ],
             ),
+            if (_voicesError case final error?) ...[
+              DifyText(error, DifyType.systemSmRegular, color: DifyColors.textDestructive),
+              DifyButton(
+                variant: DifyButtonVariant.ghost,
+                onPressed: () => setState(() => _voicesFor = null),
+                child: DifyTextLine(DifyI18n.tr('common', 'operation.retry')),
+              ),
+            ],
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.only(top: 4, bottom: 8),

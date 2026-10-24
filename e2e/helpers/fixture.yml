@@ -1,0 +1,10 @@
+kind: app
+version: 0.7.0
+app: {name: Helper URL fixture, mode: workflow}
+workflow:
+  features: {}
+  graph:
+    nodes:
+    - {id: start, data: {type: start, title: Start, variables: []}}
+    - {id: end, data: {type: end, title: End, outputs: []}}
+    edges: [{id: se, source: start, target: end, sourceHandle: source, targetHandle: target}]

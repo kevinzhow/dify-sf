@@ -304,6 +304,10 @@ class FakeAppsApi implements AppsApi {
   }
 
   @override
+  Future<AppImport> importDslUrl(String url) async =>
+      throw const TransportException('URL imports require an HTTP server');
+
+  @override
   Future<AppImport> confirmImport(String importId) async {
     _count('confirmImport');
     _edit();

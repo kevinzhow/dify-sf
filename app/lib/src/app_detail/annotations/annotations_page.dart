@@ -205,11 +205,13 @@ class AnnotationsPageState extends State<AnnotationsPage> {
   }
 
   Future<void> _ensureJobCompleted(String jobId, AnnotationEnableStatus status) async {
-    while (true) {
+    while (mounted) {
       final res = await _s!.jobStatus(status, jobId);
-      if (res.jobStatus == AnnotationJobStatus.completed) break;
+      if (res.failed) throw AnnotationImportRefused(res.errorMsg);
+      if (res.jobStatus == AnnotationJobStatus.completed) return;
       await Future<void>.delayed(widget.jobPollInterval);
     }
+    throw const AnnotationImportRefused('The annotation page was closed');
   }
 
   Future<void> _fetchList([int page = 1]) async {

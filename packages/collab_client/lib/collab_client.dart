@@ -42,3 +42,5 @@ export 'src/workflow_run_api.dart';
 export 'src/files_api.dart';
 
 export 'src/tools_api.dart';
+
+export 'src/helpers_api.dart';

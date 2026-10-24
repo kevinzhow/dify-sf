@@ -24,9 +24,9 @@ storage. Built-in and published workflow tools, durable Chatflow and published w
 
 | Status | Features |
 |---|---|
-| ported | 180 |
+| ported | 182 |
 | partial | 51 |
-| not ported | 32 |
+| not ported | 30 |
 | n/a | 17 |
 | dify-sf only | 14 |
 
