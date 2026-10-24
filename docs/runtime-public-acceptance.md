@@ -82,8 +82,13 @@ services and real annotation matching are the next grouped stage. Email remains 
 
 ## Fixed trial deployment
 
-Pending the data-preserving cutover from the prior tool release. The fixed address remains
-**https://k17.tail4653d.ts.net/**, inside the existing Tailscale network, with no Funnel. The cutover preserves the
-original database, uploads, encryption/signing keys and configuration; verified backups and previous containers are
-retained. No old database dump is restored over newer user writes. Final online asset hashes, browser/runtime and
-protected-data receipts are added after that cutover completes.
+The fixed trial has been updated at **https://k17.tail4653d.ts.net/**, inside the existing Tailscale network,
+with no Funnel. All 1,598 HTTPS resources match the frozen build. A fresh browser loaded the actual Wasm renderer,
+used same-origin API discovery and reported no page errors. This read-only online check used no real account or paid
+model; execution acceptance used the separate fixtures described above.
+
+The upgrade preserved the original database and upload volume, all environment settings, both encryption/signing keys,
+and the old-column fingerprints of 30 protected tables. Verified private database/upload backups and the previous API
+and gateway containers remain available. No database dump was restored over newer writes. Online receipts are
+`actual-backend-upgrade.json`, `gateway-deployment.json`, `actual-assets.json` and `https-browser.json` in the K17 evidence
+directory. The production image uses the server tree recorded above; subsequent documentation changes do not rebuild it.
