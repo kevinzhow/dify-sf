@@ -6,7 +6,7 @@
 
 ## 下一步整体完善计划（2026-10-24）
 
-依据 #dify:b521f2fc 中 Kevin 的 b5ed356c：后续试用链接统一采用 Tailscale HTTPS。 Kevin 随后在 4ea30060 明确：测试设备都有 Tailscale，本阶段只使用 Serve；Funnel 不在当前计划内，待其明确提出需要后再纳入。本节更新既有计划的实施顺序，不另建一套功能完成率。源码 main 已到 `bfecf3a`（含画布隔离与 Safari 环境记录／HTTPS 验收），实际试用仍运行冻结 `478ff69` 前端；后端和数据保持原状。K17 当前 Tailscale 1.104.2，Serve 与 Funnel 配置均为空，HTTPS 入口尚待实施。
+依据 #dify:b521f2fc 中 Kevin 的 b5ed356c：后续试用链接统一采用 Tailscale HTTPS。 Kevin 随后在 4ea30060 明确：测试设备都有 Tailscale，本阶段只使用 Serve；Funnel 不在当前计划内，待其明确提出需要后再纳入。本节更新既有计划的实施顺序，不另建一套功能完成率。固定 HTTPS 入口已交付，Tailscale Serve 443 指向受管本机网关，未启用 Funnel。工具执行已交付并更新试用：客户端 `e452352`、相同服务端 tree 的 `654b7bd` release 镜像；原有数据与密钥保留。[工具验收说明](runtime-tools-acceptance.md) 记录检查和未覆盖范围。当前正在推进 C（公开运行与日志），之后继续 D 与 F；邮件 E 独立关闭。
 
 ### 固定试用入口
 
