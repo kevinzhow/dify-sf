@@ -124,7 +124,7 @@ class _DifyPublicChatLayoutState extends State<DifyPublicChatLayout> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
             child: Row(
               spacing: 12,
               children: [
@@ -133,7 +133,8 @@ class _DifyPublicChatLayoutState extends State<DifyPublicChatLayout> {
                   DifyIconButton(
                     label: DifyI18n.tr('layout', 'sidebar.collapseSidebar'),
                     onPressed: () => setState(() => collapsed = true),
-                    icon: const RemixIcon('layout-left-2-line'),
+                    size: DifyIconButtonSize.lg,
+                    icon: const RemixIcon('layout-left-2-line', size: 18),
                   ),
               ],
             ),
@@ -160,7 +161,8 @@ class _DifyPublicChatLayoutState extends State<DifyPublicChatLayout> {
                             child: DifyIconButton(
                               label: DifyI18n.tr('layout', 'sidebar.expandSidebar'),
                               onPressed: () => setState(() => collapsed = false),
-                              icon: const RemixIcon('layout-left-2-line'),
+                              size: DifyIconButtonSize.lg,
+                              icon: const RemixIcon('expand-right-line', size: 18),
                             ),
                           )
                         : null,
@@ -170,7 +172,7 @@ class _DifyPublicChatLayoutState extends State<DifyPublicChatLayout> {
                   alignment: Alignment.bottomCenter,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 768),
-                    child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), child: widget.composer),
+                    child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), child: widget.composer),
                   ),
                 ),
               ],
@@ -238,9 +240,10 @@ class _DifyPublicChatComposerState extends State<DifyPublicChatComposer>
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(8),
+    padding: const EdgeInsets.all(9),
     decoration: BoxDecoration(
-      color: DifyColors.componentsPanelBg,
+      color: DifyColors.componentsPanelBgBlur,
+      border: Border.all(color: DifyColors.componentsChatInputBorder),
       borderRadius: BorderRadius.circular(12),
       boxShadow: DifyShadows.md,
     ),
@@ -252,8 +255,9 @@ class _DifyPublicChatComposerState extends State<DifyPublicChatComposer>
             context: context,
             controller: controller,
             focusNode: focus,
-            style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textPrimary),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            style: difyTextStyle(DifyType.bodyLgRegular, DifyColors.textPrimary),
+            padding: const EdgeInsets.all(4),
+            centerCap: false,
             placeholder: widget.placeholder,
             disabled: widget.disabled,
             onChanged: widget.onChanged,
@@ -267,4 +271,11 @@ class _DifyPublicChatComposerState extends State<DifyPublicChatComposer>
       ],
     ),
   );
+}
+
+/// The public chat theme default from chat/embedded-chatbot/theme/theme.ts.
+/// Invalid site values fall back to that source default, never to a sampled pixel.
+Color difyPublicChatPrimary(String? value) {
+  final hex = value != null && RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value) ? value.substring(1) : '1C64F2';
+  return Color(0xFF000000 | int.parse(hex, radix: 16));
 }

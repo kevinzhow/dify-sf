@@ -9,7 +9,7 @@ from urllib.parse import urlencode,urlsplit
 import requests
 from playwright.sync_api import sync_playwright
 import compare
-from capture_contract import assert_final_state, prepare_final_state, install_display_fixtures, FIXED_TIME_ISO
+from capture_contract import assert_final_state, prepare_final_state, install_display_fixtures, FIXED_TIME_ISO, observe_capture_health, assert_capture_health
 
 
 def assert_navigation_labels(page, side, language):
@@ -58,7 +58,7 @@ def main():
                         compare.sf_api('POST','/v1/apps/'+sf+'/workflows/publish',{})
                         site_codes['ours']=compare.sf_api('GET','/v1/apps/'+sf)['site']['code']
                     for side,provider in [('dify','react'),('ours','flutter-web')]:
-                        compare.THEME=raw['theme'];ctx=browser.new_context(viewport={'width':1440,'height':900},device_scale_factor=2,locale='en-US',color_scheme=raw['theme'],timezone_id='America/New_York');page=ctx.new_page();errors=[];blocked=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                        compare.THEME=raw['theme'];ctx=browser.new_context(viewport={'width':1440,'height':900},device_scale_factor=2,locale='en-US',color_scheme=raw['theme'],timezone_id='America/New_York');page=ctx.new_page();errors=[];blocked=[];page.on('pageerror',lambda e:errors.append(str(e)));health=observe_capture_health(page)
                         try:
                             def guard(r):
                                 path=urlsplit(r.request.url).path
@@ -113,8 +113,8 @@ def main():
                             if blocked:raise RuntimeError('Unexpected write was blocked: '+json.dumps(blocked))
                             wasm=page.evaluate("performance.getEntriesByType('resource').map(e=>e.name.split('/').pop().split('?')[0]).filter(n=>n.endsWith('.wasm'))") if side=='ours' else []
                             if side=='ours':assert 'main.dart.wasm' in wasm and any(n.startswith('skwasm') for n in wasm), 'Actual Dart/Skia Wasm was not loaded'
-                            dest=args.out/provider/(raw['id']+'.png');dest.parent.mkdir(exist_ok=True);page.screenshot(path=str(dest));assert_final_state(page, raw, side, compare.locate)
-                            row['captures'][provider]={'image':str(dest.resolve()),'source':'actual Dify 1.17.1 page' if side=='dify' else 'actual Flutter Web Wasm page','sourceCommit':json.loads(Path(__file__).with_name('ui_reference.json').read_text())['commit'] if side=='dify' else args.product_commit,'compiledSha256':compiled if side=='ours' else None,'viewport':{'width':1440,'height':900,'dpr':2},'browserVersion':browser.version,'theme':raw['theme'],'locale':raw['locale'],'state':raw['state'],'admission':{'fixedBrowserClock':FIXED_TIME_ISO,'timezone':'America/New_York','finalStateVerifiedBeforeAndAfterScreenshot':True,'expected':expected,'navigationLabels':navigation_labels,'loadedWasm':wasm,'pageErrors':errors,'blockedRequests':blocked,'networkFixtureCount':len(raw.get('network',[]))+len(raw.get('page',{}).get('routes',[]))}}
+                            dest=args.out/provider/(raw['id']+'.png');dest.parent.mkdir(exist_ok=True);assert_capture_health(health);page.screenshot(path=str(dest));assert_final_state(page, raw, side, compare.locate);assert_capture_health(health)
+                            row['captures'][provider]={'image':str(dest.resolve()),'source':'actual Dify 1.17.1 page' if side=='dify' else 'actual Flutter Web Wasm page','sourceCommit':json.loads(Path(__file__).with_name('ui_reference.json').read_text())['commit'] if side=='dify' else args.product_commit,'compiledSha256':compiled if side=='ours' else None,'viewport':{'width':1440,'height':900,'dpr':2},'browserVersion':browser.version,'theme':raw['theme'],'locale':raw['locale'],'state':raw['state'],'admission':{'fixedBrowserClock':FIXED_TIME_ISO,'timezone':'America/New_York','finalStateVerifiedBeforeAndAfterScreenshot':True,'expected':expected,'navigationLabels':navigation_labels,'loadedWasm':wasm,'pageErrors':errors,'assetErrors':list(health),'blockedRequests':blocked,'networkFixtureCount':len(raw.get('network',[]))+len(raw.get('page',{}).get('routes',[]))}}
                         except Exception as e:
                             row['captureErrors'].append({'provider':provider,'error':str(e)});fd=args.out/'failures'/provider;fd.mkdir(parents=True,exist_ok=True)
                             try:page.screenshot(path=str(fd/(raw['id']+'.png')));(fd/(raw['id']+'.txt')).write_text(page.locator('body').inner_text())

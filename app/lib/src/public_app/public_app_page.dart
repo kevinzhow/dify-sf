@@ -425,6 +425,8 @@ class _PublicAppPageState extends State<PublicAppPage> {
     final picker = api == null ? null : runtimeFilePickerWithApi(context, () => api);
     final title = '${_definition?['title'] ?? _definition?['name'] ?? ''}';
     final site = _map(_definition?['site']);
+    final description = '${site['description'] ?? _definition?['description'] ?? ''}';
+    final customPlaceholder = site['input_placeholder'] as String?;
     final unavailable = _busy || _loading || _loadFailed || _followDenied;
     Widget icon(DifyAppIconSize size) => DifyAppIcon(
       size: size,
@@ -498,15 +500,23 @@ class _PublicAppPageState extends State<PublicAppPage> {
             spacing: 16,
             children: [
               header,
-              if ('${_definition!['description'] ?? ''}'.isNotEmpty)
-                DifyMarkdown(content: '${_definition!['description']}'),
+              if (description.isNotEmpty) DifyMarkdown(content: description),
             ],
           ),
           tabs: DifyTabsList(
-            children: [DifyTab(label: _share('generation.tabs.create'), active: true, onPressed: () {})],
+            children: [
+              // Text-generation sidebar wraps the label in ml-2 (Dify 1.17.1).
+              DifyTab(
+                label: _share('generation.tabs.create'),
+                padding: const EdgeInsets.fromLTRB(8, 10, 0, 8),
+                active: true,
+                onPressed: () {},
+              ),
+            ],
           ),
           inputs: Padding(
-            padding: const EdgeInsets.only(top: 16),
+            // Upstream puts mt-4 on actual fields, not on an empty form.
+            padding: EdgeInsets.only(top: _fields.any((f) => f['hide'] != true) || errors.isNotEmpty ? 16 : 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [...errors, form]),
           ),
           actions: DifyJustifiedRow(
@@ -537,19 +547,22 @@ class _PublicAppPageState extends State<PublicAppPage> {
           ),
           hasResult: hasResult,
           result: hasResult
-              ? SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 56, vertical: 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: 16,
-                    children: [
-                      ...humanForms,
-                      OutputPanel(
-                        outputs: _result['outputs'],
-                        error: _result['error'] as String?,
-                        isRunning: _busy && _forms.isEmpty,
-                      ),
-                    ],
+              ? LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 56, vertical: 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      spacing: 16,
+                      children: [
+                        ...humanForms,
+                        OutputPanel(
+                          height: constraints.maxHeight,
+                          outputs: _result['outputs'],
+                          error: _result['error'] as String?,
+                          isRunning: _busy && _forms.isEmpty,
+                        ),
+                      ],
+                    ),
                   ),
                 )
               : Center(
@@ -578,7 +591,9 @@ class _PublicAppPageState extends State<PublicAppPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 768),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+            // The welcome node precedes the message container (whose pt-6
+            // applies only to messages) in the original Chat component.
+            padding: EdgeInsets.fromLTRB(16, empty && opening.isNotEmpty ? 0 : 24, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: 16,
@@ -639,15 +654,18 @@ class _PublicAppPageState extends State<PublicAppPage> {
           disabled: unavailable,
           onChanged: (v) => setState(() => _query = v),
           onSubmitted: () => unawaited(_start()),
-          placeholder:
-              '${site['input_placeholder'] ?? DifyI18n.tr('common', 'chat.inputPlaceholder', {'botName': title})}',
+          placeholder: customPlaceholder != null && customPlaceholder.isNotEmpty
+              ? customPlaceholder
+              : DifyI18n.tr('common', 'chat.inputPlaceholder', {'botName': title}),
           action: DifyIconButton(
             label: _share(_busy ? 'generation.stopRun' : 'generation.run'),
             variant: DifyButtonVariant.primary,
+            restyle: (look, hovered) =>
+                look.copyWith(background: difyPublicChatPrimary(site['chat_color_theme'] as String?)),
             size: DifyIconButtonSize.lg,
             disabled: _loading || _loadFailed || _followDenied,
             onPressed: () => unawaited(_busy ? _stop() : _start()),
-            icon: RemixIcon(_busy ? 'stop-fill' : 'send-plane-2-fill', size: 16),
+            icon: RemixIcon(_busy ? 'stop-circle-fill' : 'send-plane-2-fill', size: 16),
           ),
         ),
         footer: footer,

@@ -106,11 +106,13 @@ class _FixtureState extends State<_Fixture> {
     if (k == 'textarea') {
       return SizedBox(
         width: 300,
-        child: DifyTextarea(
-          value: input,
-          placeholder: label,
-          semanticLabel: 'Textarea',
-          onChanged: (x) => setState(() => input = x),
+        child: DifyInlineReplacedBox(
+          child: DifyTextarea(
+            value: input,
+            placeholder: label,
+            semanticLabel: 'Textarea',
+            onChanged: (x) => setState(() => input = x),
+          ),
         ),
       );
     }

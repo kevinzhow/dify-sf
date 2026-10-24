@@ -27,6 +27,12 @@ bool _runDisabled(WidgetTester t, Finder finder) => switch (t.widget(finder)) {
 };
 
 void main() {
+  test('public chat theme uses the upstream default and saved custom color', () {
+    expect(difyPublicChatPrimary(null), const Color(0xFF1C64F2));
+    expect(difyPublicChatPrimary('#A12b3C'), const Color(0xFFA12B3C));
+    expect(difyPublicChatPrimary('invalid'), const Color(0xFF1C64F2));
+  });
+
   for (final mode in ['workflow', 'advanced-chat']) {
     for (final width in [320.0, 390.0, 1440.0]) {
       testWidgets('published $mode layout stays usable at $width and with a keyboard', (t) async {
@@ -63,9 +69,12 @@ void main() {
         if (mode == 'workflow' && width == 1440) {
           expect(t.getSize(find.byKey(const Key('public-workflow-inputs'))).width, 600);
           expect(t.getRect(find.byKey(const Key('public-workflow-result'))).left, 600);
+          // Original RunOnce has mt-6 after the empty form, below the 1px sidebar divider.
+          expect(t.getRect(_runButton()).top - t.getRect(find.byType(DifyTabsList)).bottom, closeTo(25, .01));
         }
         if (mode == 'advanced-chat') {
           expect(find.byType(DifyPublicChatComposer), findsOneWidget);
+          expect(t.getSize(find.byType(DifyPublicChatComposer)).height, 52);
           t.view.viewInsets = const FakeViewPadding(bottom: 300);
           await t.pumpAndSettle();
           expect(t.getRect(find.byType(DifyPublicChatComposer)).bottom, lessThanOrEqualTo(600));
@@ -76,6 +85,40 @@ void main() {
     }
   }
 
+  testWidgets('public workflow renders structured outputs with more than one key', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    useDifyTestTranslator();
+    final api = HttpPublicAppApi(
+      Uri.parse('https://fixture.invalid'),
+      code: 'structured',
+      client: MockClient((request) async {
+        if (request.url.path == '/v1/passport') return http.Response('{"access_token":"visitor"}', 200);
+        if (request.url.path == '/v1/site') {
+          return http.Response('{"title":"Structured","mode":"workflow","parameters":{"user_input_form":[]}}', 200);
+        }
+        if (request.url.path == '/v1/workflows/run') {
+          return http.Response(
+            'data: {"event":"workflow_finished","data":{"status":"succeeded","outputs":{"name":"Result","count":3}}}\n\n',
+            200,
+            headers: {'content-type': 'text/event-stream'},
+          );
+        }
+        throw StateError('Unexpected ${request.url}');
+      }),
+    );
+    await t.pumpWidget(
+      MaterialApp(
+        home: PublicAppPage(code: 'structured', server: Uri.parse('https://fixture.invalid'), apiFor: (_, _, _) => api),
+      ),
+    );
+    await t.pumpAndSettle();
+    await t.tap(_runButton());
+    await t.pumpAndSettle();
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(t.widget<EditableText>(find.byType(EditableText)).controller.text, contains('"count": 3'));
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+  });
   test('published paths remain distinct from console app and mail form routes', () {
     expect(LaunchOptions.fromQuery({}, path: '/workflow/code').publicAppCode, 'code');
     expect(LaunchOptions.fromQuery({}, path: '/chat/another').publicAppCode, 'another');

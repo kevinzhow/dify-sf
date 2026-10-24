@@ -7,7 +7,7 @@ from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlencode
 from playwright.sync_api import sync_playwright
-from capture_contract import install_display_fixtures, FIXED_TIME_ISO
+from capture_contract import install_display_fixtures, FIXED_TIME_ISO, observe_capture_health, assert_capture_health
 
 class Quiet(SimpleHTTPRequestHandler):
     def log_message(self,*args): pass
@@ -43,7 +43,7 @@ def main():
                 row={**case,'captures':{},'captureErrors':[]}
                 for provider in bases:
                     ctx=browser.new_context(viewport={'width':640,'height':480},device_scale_factor=2,locale='en-US',color_scheme=case['theme'],timezone_id='America/New_York')
-                    page=ctx.new_page();install_display_fixtures(page, 'dify' if provider=='react' else 'ours');errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                    page=ctx.new_page();install_display_fixtures(page, 'dify' if provider=='react' else 'ours');errors=[];page.on('pageerror',lambda e:errors.append(str(e)));health=observe_capture_health(page)
                     try:
                         ctx.route('**/*',lambda r:r.abort('blockedbyclient') if r.request.method not in ['GET','HEAD'] else r.continue_())
                         page.goto(bases[provider]+'/?'+urlencode({'case':case['kind'],'theme':case['theme'],'lang':case['locale']}),wait_until='networkidle',timeout=45000)
@@ -70,13 +70,15 @@ def main():
                         env=page.evaluate('({width:innerWidth,height:innerHeight,dpr:devicePixelRatio,scale:visualViewport.scale})')
                         assert env=={'width':640,'height':480,'dpr':2,'scale':1},env
                         dest=args.out/provider/(case['id']+'.png');dest.parent.mkdir(exist_ok=True)
+                        assert_capture_health(health)
                         page.screenshot(path=str(dest))
+                        assert_capture_health(health)
                         with Image.open(dest) as raster:
                             colors=raster.convert('RGB').getcolors(raster.width*raster.height)
                             ink=raster.width*raster.height-max(n for n,_ in colors)
                         if ink<12:raise RuntimeError('Expected actual control ink; the frame is blank')
                         overlays=page.locator('[role=dialog],[role=alertdialog],[role=menu],[role=listbox],[role=tooltip]').evaluate_all('(es)=>es.map(e=>({role:e.getAttribute("role"),rect:e.getBoundingClientRect().toJSON()}))')
-                        row['captures'][provider]={'image':str(dest.resolve()),'source':case['sources'][provider],'sourceCommit':case['commits']['react'] if provider=='react' else args.product_commit,'sourceInputHash':hashlib.sha256(((args.reference_build if provider=='react' else args.flutter_build)/'source-binding.json').read_bytes()).hexdigest() if ((args.reference_build if provider=='react' else args.flutter_build)/'source-binding.json').exists() else probe_hash if provider=='flutter-web' else None,'compiledSha256':compiled if provider=='flutter-web' else None,'viewport':env,'theme':case['theme'],'locale':case['locale'],'state':case['state'],'browserVersion':browser.version,'admission':{'fixedBrowserClock':FIXED_TIME_ISO,'timezone':'America/New_York','expectedCase':case['kind'],'htmlLang':page.locator('html').get_attribute('lang'),'htmlColorScheme':page.evaluate('getComputedStyle(document.documentElement).colorScheme'),'loadedWasm':loaded,'componentBounds':bounds,'flutterWidgetTypes':fixture_facts.get('widgetTypes',[]) if provider=='flutter-web' else None,'overlayRoleBounds':overlays,'boundsMethod':'React direct fixture child / Flutter GlobalKey; overlay role rectangles recorded separately','inkPixels':ink,'pageErrors':errors,'waitAfterStateMs':1500 if provider=='flutter-web' else 500}}
+                        row['captures'][provider]={'image':str(dest.resolve()),'source':case['sources'][provider],'sourceCommit':case['commits']['react'] if provider=='react' else args.product_commit,'sourceInputHash':hashlib.sha256(((args.reference_build if provider=='react' else args.flutter_build)/'source-binding.json').read_bytes()).hexdigest() if ((args.reference_build if provider=='react' else args.flutter_build)/'source-binding.json').exists() else probe_hash if provider=='flutter-web' else None,'compiledSha256':compiled if provider=='flutter-web' else None,'viewport':env,'theme':case['theme'],'locale':case['locale'],'state':case['state'],'browserVersion':browser.version,'admission':{'fixedBrowserClock':FIXED_TIME_ISO,'timezone':'America/New_York','expectedCase':case['kind'],'htmlLang':page.locator('html').get_attribute('lang'),'htmlColorScheme':page.evaluate('getComputedStyle(document.documentElement).colorScheme'),'loadedWasm':loaded,'componentBounds':bounds,'flutterWidgetTypes':fixture_facts.get('widgetTypes',[]) if provider=='flutter-web' else None,'overlayRoleBounds':overlays,'boundsMethod':'React direct fixture child / Flutter GlobalKey; overlay role rectangles recorded separately','inkPixels':ink,'pageErrors':errors,'assetErrors':list(health),'waitAfterStateMs':1500 if provider=='flutter-web' else 500}}
                     except Exception as e:
                         row['captureErrors'].append({'provider':provider,'error':str(e),'pageErrors':list(errors)})
                         failed=args.out/'failures'/provider;failed.mkdir(parents=True,exist_ok=True)

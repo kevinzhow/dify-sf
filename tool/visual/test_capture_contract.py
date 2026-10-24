@@ -68,6 +68,7 @@ class FinalStateTests(unittest.TestCase):
         base = f'http://127.0.0.1:{server.server_port}'
         try:
             page.goto(base)
+            self.assertGreater(page.evaluate("performance.getEntriesByType('navigation').length"), 0, 'A fixed Date must retain native Performance/resource admission')
             self.assertEqual(page.evaluate('Date.now()'), FIXED_SECONDS * 1000)
             profile = page.evaluate('(url)=>fetch(url).then(r=>r.json())', base+'/console/api/account/profile')
             self.assertEqual(profile['timezone'], 'America/New_York')
@@ -81,6 +82,45 @@ class FinalStateTests(unittest.TestCase):
             self.assertEqual(writes, [])
         finally:
             context.close(); server.shutdown(); server.server_close()
+
+
+
+
+class BundledAssetTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.p = sync_playwright().start()
+        cls.browser = cls.p.chromium.launch(headless=True, args=['--no-sandbox'])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close(); cls.p.stop()
+
+    def test_failed_bundled_icon_is_rejected_without_pageerror(self):
+        from capture_contract import observe_capture_health, assert_capture_health
+        page = self.browser.new_page(); errors = []; page.on('pageerror', lambda e: errors.append(str(e)))
+        page.route('**/*', lambda r: r.fulfill(status=404, body='missing') if '/assets/' in r.request.url else r.fulfill(status=200, content_type='text/html', body='<img src="/assets/icon.svg">'))
+        failures = observe_capture_health(page)
+        try:
+            page.goto('http://asset.test/', wait_until='networkidle')
+            self.assertEqual(errors, [])
+            self.assertEqual(failures[0]['path'], '/assets/icon.svg')
+            with self.assertRaisesRegex(AssertionError, 'failed assets'):
+                assert_capture_health(failures)
+        finally: page.close()
+
+    def test_expected_unconfigured_api_is_not_an_asset_error(self):
+        from capture_contract import observe_capture_health, assert_capture_health
+        page = self.browser.new_page()
+        page.route('**/*', lambda r: r.fulfill(status=404, body='not configured') if '/v1/' in r.request.url else r.fulfill(status=200, content_type='text/html', body='<script>fetch("/v1/default-model")</script>'))
+        failures = observe_capture_health(page)
+        try:
+            page.goto('http://asset.test/', wait_until='networkidle'); assert_capture_health(failures)
+            page.evaluate('console.error("Unable to load asset: do not publish URL or account data")')
+            page.wait_for_timeout(50)
+            self.assertEqual(failures, [{'kind':'flutter-exception','category':'Unable to load asset'}])
+            with self.assertRaises(AssertionError): assert_capture_health(failures)
+        finally: page.close()
 
 
 if __name__ == '__main__':

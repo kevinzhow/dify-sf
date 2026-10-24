@@ -39,8 +39,22 @@ def install_display_fixtures(page, side):
     Only root metadata on the named GET endpoints is normalized. Workflow
     variables, graph content, outputs, statuses and streaming frames are untouched.
     """
-    import datetime
-    page.clock.set_fixed_time(datetime.datetime.fromisoformat(FIXED_TIME_ISO))
+    # Playwright Clock also replaces Performance with an empty fake, which
+    # would erase the native Wasm/resource evidence. Freeze Date alone: retain
+    # native timers, animation frames, Performance and network observation.
+    page.add_init_script("""(() => {
+      const NativeDate = globalThis.Date;
+      const fixed = """ + str(FIXED_SECONDS * 1000) + """;
+      globalThis.Date = new Proxy(NativeDate, {
+        construct(target, args, newTarget) {
+          return Reflect.construct(target, args.length ? args : [fixed], newTarget);
+        },
+        apply() { return new NativeDate(fixed).toString(); },
+        get(target, key, receiver) {
+          return key === 'now' ? () => fixed : Reflect.get(target, key, receiver);
+        },
+      });
+    })()""")
 
     def profile(route):
         if route.request.method != 'GET':
@@ -70,3 +84,51 @@ def install_display_fixtures(page, side):
 
     page.route('**/console/api/account/profile' if side == 'dify' else '**/v1/account', profile)
     page.route('**/console/api/apps/*/workflows/draft' if side == 'dify' else '**/v1/apps/*/workflows/draft', draft)
+
+
+def observe_capture_health(page):
+    """Record failed bundled assets and Flutter runtime errors, not expected API errors.
+
+    The screenshot must not be admitted with a missing font/icon/engine even if
+    Playwright emitted no pageerror (Flutter catches many exceptions itself).
+    Only paths/statuses are retained; request headers and query values are not.
+    """
+    from urllib.parse import urlsplit
+    failures = []
+
+    def asset_path(url):
+        path = urlsplit(url).path
+        return path if (path.startswith(('/assets/', '/_next/static/', '/canvaskit/'))
+                        or path.rsplit('/', 1)[-1] in {
+                            'flutter_bootstrap.js', 'flutter.js', 'main.dart.js',
+                            'main.dart.wasm', 'main.dart.mjs', 'skwasm.wasm',
+                            'skwasm_heavy.wasm', 'canvaskit.wasm'}) else None
+
+    def response(resp):
+        path = asset_path(resp.url)
+        if path and resp.status >= 400:
+            failures.append({'kind':'asset-response', 'path':path, 'status':resp.status})
+
+    def request_failed(request):
+        path = asset_path(request.url)
+        if path:
+            failures.append({'kind':'asset-request', 'path':path, 'failure':request.failure})
+
+    def console(message):
+        import re
+        if re.search(r'Unable to load asset|EXCEPTION CAUGHT BY|RenderFlex overflowed|Unhandled Exception', message.text, re.I):
+            # The exception category is enough for the public receipt. Flutter's
+            # full log may contain URLs or request data and stays in private logs.
+            failures.append({'kind':'flutter-exception', 'category':re.search(
+                r'Unable to load asset|EXCEPTION CAUGHT BY|RenderFlex overflowed|Unhandled Exception',
+                message.text, re.I).group(0)})
+
+    page.on('response', response)
+    page.on('requestfailed', request_failed)
+    page.on('console', console)
+    return failures
+
+
+def assert_capture_health(failures):
+    if failures:
+        raise AssertionError('Capture contains failed assets or Flutter exceptions: ' + str(failures))

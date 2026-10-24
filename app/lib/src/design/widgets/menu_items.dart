@@ -108,7 +108,9 @@ class _MenuRowState extends State<_MenuRow> {
         child: row,
       );
     }
-    if (widget.disabled) row = Opacity(opacity: 0.3, child: row);
+    if (widget.disabled) {
+      row = Opacity(opacity: _popup?.widget.style == DifyMenuPopupStyle.select ? 0.5 : 0.3, child: row);
+    }
     // An accessible name replaces the visible text, like aria-label.
     if (widget.semanticLabel != null) row = ExcludeSemantics(child: row);
     return MergeSemantics(
