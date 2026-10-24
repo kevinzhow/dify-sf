@@ -78,7 +78,7 @@ not falsely enabled for Chatflow. Missing price data remains null.
 
 The public page is a minimal shared-control runner. Full chat-page pixel parity, complete branding/customization,
 rich historical failure presentation, extension messaging, Agent v2 and knowledge/OCR are not claimed. Helper
-services and real annotation matching are the next grouped stage. Email remains independently disabled.
+services and real annotation matching have since been delivered within [their documented limits](deployment/helpers-acceptance.md). Email remains independently disabled.
 
 ## Fixed trial deployment
 

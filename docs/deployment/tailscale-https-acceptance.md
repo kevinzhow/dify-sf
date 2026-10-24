@@ -2,7 +2,7 @@
 
 The fixed trial address is **https://k17.tail4653d.ts.net/**. Devices must be connected to the existing tailnet. Tailscale Serve forwards HTTPS to a loopback-only nginx gateway; Funnel is not enabled.
 
-The current frontend is the complete Flutter 3.47.6 Wasm release from `e0b84fd` (same application tree as `f167fb4`), frozen in `helpers-e0b84fd`. The current API image is `f6d9c59902d92fd82cfc422509bbdf94a41660c9552364895d9d12ed939e8509`, built from a clean source context with the repository Dockerfile. The HTTPS gateway retains JavaScript MIME for `.mjs`, signed `/files/`, `/v1/`, original query strings and streaming behavior. First-visit clients use the same HTTPS origin; saved server choices and explicit overrides retain precedence.
+The current frontend is the complete Flutter 3.47.6 Wasm release from `bf53ed1`, frozen in `helpers-bf53ed1`. The current API image is `f6d9c59902d92fd82cfc422509bbdf94a41660c9552364895d9d12ed939e8509`, built from a clean source context with the repository Dockerfile. The HTTPS gateway retains JavaScript MIME for `.mjs`, signed `/files/`, `/v1/`, original query strings and streaming behavior. First-visit clients use the same HTTPS origin; saved server choices and explicit overrides retain precedence.
 
 A/B/C/D updates preserved the original PostgreSQL container/volume, upload volume and encryption/file-signing keys. The D update matched fingerprints of all existing columns in **30** protected tables, retaining private database/upload backups and previous API/gateway containers. It adds only an internal authenticated annotation vector service URL/key: fixed Weaviate 1.39.2, independent persistent volume, 640 MiB / 1 CPU, no anonymous access or host port. Legacy annotation settings require explicit rebuilding and do not cause automatic model calls. Details: [helper acceptance](helpers-acceptance.md), [public runtime acceptance](../runtime-public-acceptance.md), [tools](../runtime-tools-acceptance.md).
 
@@ -25,3 +25,9 @@ Browser execution used Chromium, including a narrow viewport; it is not physical
 Real user accounts were not used for tests. No paid model invocation, plugin installation in the live daemon, database reset or key rotation was performed. Published end-user Web/API execution, tools and the agreed auxiliary scope have subsequently been delivered with separate acceptance records above. Email remains disabled.
 
 Operational configuration and rollback instructions are in [tailscale-https.md](tailscale-https.md). Resource ownership and the maintenance review are recorded in Raft task #27. The review date is a maintenance follow-up, not an automatic shutdown of the trial.
+
+## Final delivery report and retained state
+
+The optional read-only `/reports/` route now serves the [complete 450-case report](https://k17.tail4653d.ts.net/reports/five-step-final-20261024/). All 5,416 generated static-file SHA-256 hashes match actual HTTPS; missing report paths return 404, and six critical product assets still match. The API, PostgreSQL and vector container IDs/images/mounts/configuration hashes are unchanged by this gateway update. Actual desktop and 390-width browsers verified the report filter, difference/split overlay/reset and no failed resource or page error. No Funnel or extra port was added.
+
+The result is 171 pass, 66 basic-pass and 213 different, zero missing. This report preserves the Web5 visual baseline and separately identifies the final Web6 annotation-modal change. Retired fixtures and merged branches are recorded in [the final delivery](../five-step-delivery-20261024.md); trial resources, all data volumes, private backups and failure evidence remain.

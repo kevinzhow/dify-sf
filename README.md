@@ -13,6 +13,7 @@ storage. Built-in and published workflow tools, durable Chatflow and published w
 * `docs/protocol.md` - the wire protocol (HTTP `POST` for ops, SSE for updates). Clients are written from this.
 * `docs/architecture.md` - how the server works and why.
 * [`docs/migration-plan.md`](docs/migration-plan.md) - remaining delivery sequence, dependencies and acceptance criteria.
+* [`docs/five-step-delivery-20261024.md`](docs/five-step-delivery-20261024.md) - delivered HTTPS/tools/public runtime/helpers, clean-install and upgrade checks, complete 450-case visual results and remaining gaps.
 * `docs/step1-report.md` - what was built, results, failures found, known limits.
 * `server/` - the SwiftPM package (`CollabCore`, `CollabServer`, `CollabStore`, simulator, harness).
 * `bench/` - chaos and storm runners.
