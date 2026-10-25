@@ -1,0 +1,14 @@
+{
+  "commit": "7fb64298a4c30879cd3869f36cdd549a72ae4969",
+  "serverUnchangedSinceMain": true,
+  "builds": {
+    "web2": {
+      "mainWasmSha256": "5fa1df1d811d098d6cdc5c66b45b75cf9cf0a5ae4eb156c25032109c05964171",
+      "files": 1603
+    },
+    "probe3": {
+      "mainWasmSha256": "7ded0c6950e7690b4edb9870a7ad314a33dc079c120f13621884191f6d92b2aa",
+      "files": 1603
+    }
+  }
+}

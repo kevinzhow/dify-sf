@@ -1,0 +1,33 @@
+{
+  "scenarios": 450,
+  "before": {
+    "different": 213,
+    "pass": 171,
+    "basic-pass": 66
+  },
+  "after": {
+    "different": 211,
+    "pass": 171,
+    "basic-pass": 68
+  },
+  "byArea": {
+    "controls": {
+      "different": 36,
+      "pass": 171,
+      "basic-pass": 41
+    },
+    "pages": {
+      "different": 48,
+      "basic-pass": 22
+    },
+    "editors": {
+      "different": 127,
+      "basic-pass": 5
+    }
+  },
+  "productCommit": "7fb64298a4c30879cd3869f36cdd549a72ae4969",
+  "frameworkCommit": "26f77ef97c40d3d91aa2c5e42b0fd66b8bf39fe6",
+  "pixelAcceptanceUnchanged": true,
+  "measurementChangesAreNotProductOnlyGains": true,
+  "unknownCausesNotCalledFontNoise": true
+}
