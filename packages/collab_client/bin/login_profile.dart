@@ -65,7 +65,14 @@ Future<int> loginProfile(List<String> argv) async {
     if (profile.isEmpty) throw const FormatException();
     final type = await FileSystemEntity.type(profile, followLinks: false);
     if (type == FileSystemEntityType.notFound) {
-      await Directory(profile).create(recursive: true);
+      // Contain the mkdir/chmod window inside an already-private directory.
+      // Do not recursively create public intermediate directories using umask.
+      final parent = Directory(profile).parent;
+      if (await FileSystemEntity.type(parent.path, followLinks: false) != FileSystemEntityType.directory ||
+          (await parent.stat()).mode & 0x1ff != 0x1c0) {
+        throw const FormatException();
+      }
+      await Directory(profile).create();
       final chmod = await Process.run('chmod', ['700', profile]);
       if (chmod.exitCode != 0) throw const FormatException();
     } else if (type != FileSystemEntityType.directory) {
@@ -73,7 +80,9 @@ Future<int> loginProfile(List<String> argv) async {
     }
     if ((await Directory(profile).stat()).mode & 0x1ff != 0x1c0) throw const FormatException();
   } on Object {
-    stderr.writeln('Login configuration invalid. Use a 0600 credentials file and a private 0700 profile directory.');
+    stderr.writeln(
+      'Login configuration invalid. Use a 0600 credentials file and a 0700 profile or existing parent directory.',
+    );
     return 78;
   }
 

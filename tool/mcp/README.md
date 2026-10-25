@@ -35,7 +35,11 @@ dart run bin/login_profile.dart --server URL \
 
 The input is an owner-only **0600** regular JSON file with exactly `email` and
 `password` fields. The helper reuses `AuthSession.login`, creates a **0700** profile
-and writes the existing **0600** token-store format, then exits. It prints a
+and writes the existing **0600** token-store format, then exits. A new profile's
+immediate parent must already exist as a **0700** directory (not a symlink);
+intermediate directories are never recursively created. This keeps the brief
+mkdir/chmod window inside a private parent. An existing profile must itself be
+**0700**. It prints a
 constant success/failure message; passwords, tokens, account data and remote error
 payloads are never printed. Invalid configuration exits 78; failed sign-in exits
 1 and leaves an existing valid profile unchanged. Use the **same server URL** and

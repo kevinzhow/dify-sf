@@ -51,6 +51,7 @@ void main() {
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('login-profile-');
+    await mode(root.path, '700');
     final accounts = FakeAccounts()..addMember(email: _email, password: _password);
     server = await HttpFakeServer.start(accounts: accounts);
     credentials = File('${root.path}/credentials.json');
@@ -131,6 +132,22 @@ void main() {
     final result = await login(arguments: ['--password=$_password']);
     expect(result.exitCode, 64);
     noCredentials(result);
+  });
+
+  test('new profiles require an existing private parent rather than recursive public mkdir', () async {
+    final public = Directory('${root.path}/public');
+    await public.create();
+    await mode(public.path, '755');
+    final link = Link('${root.path}/parent-link');
+    await link.create(root.path);
+    for (final target in ['${public.path}/profile', '${root.path}/missing/profile', '${link.path}/profile']) {
+      final result = await login(target: target, url: 'http://127.0.0.1:1');
+      expect(result.exitCode, 78);
+      expect(await Directory(target).exists(), isFalse);
+      noCredentials(result);
+    }
+    expect((await public.stat()).mode & 0x1ff, 0x1ed);
+    expect(await Directory('${root.path}/missing').exists(), isFalse);
   });
 
   test('reflected server password is not included in a failed sign-in message', () async {

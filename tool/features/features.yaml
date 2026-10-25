@@ -1454,7 +1454,7 @@ features:
   title: 'Run: human input forms (pause, fill, submit, timeout) in the run panel and chat'
   dify: [web/app/components/base/chat/chat/answer/human-input-content, web/app/components/workflow/panel/human-input-form-list.tsx, web/app/components/workflow/panel/debug-and-preview/hooks.ts]
   status: ported
-  deviation: 'Web forms are gated by COLLAB_HUMAN_INPUT_WEB_ENABLED (default false), independently of outbound email. A run the server runs pauses there (protocol 1.16): the form is answered through the console form API, and on `workflow_paused` the panel reconnects to `GET /workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true` and follows the resumed run — including a second pause — on that one stream. Lost connections re-subscribe with backoff without failing the run; a rejected form submission preserves its input and can be retried. Server recovery retries accepted answers after transient claim failures. Only the explicit local demo answers simulated forms locally; unsupported remote forms report an error.'
+  deviation: "Web forms are gated by COLLAB_HUMAN_INPUT_WEB_ENABLED (default false), independently of outbound email. A run the server runs pauses there (protocol 1.16): the form is answered through the console form API, and on `workflow_paused` the panel reconnects to `GET /workflow/{run_id}/events?include_state_snapshot=true&continue_on_pause=true` and follows the resumed run — including a second pause — on that one stream. Lost connections re-subscribe with backoff without failing the run; a rejected form submission preserves its input and can be retried. Server recovery retries accepted answers after transient claim failures. Only the explicit local demo answers simulated forms locally; unsupported remote forms report an error. Intentional dify-sf deviation: pending runtime forms re-render DB-backed file variables on authorized reads and paused-state replay so reopened links are fresh; Dify 1.17.1 returns its stored rendered definition. Signature and approval lifetimes remain unchanged."
   evidence: ['spec:web/app/components/base/chat/chat/answer/human-input-content', 'spec:web/app/components/base/chat/chat/answer', 'spec:web/app/components/workflow/run/utils/format-log/human-input', 'app/test/workflow_editor/run/server_run_service_test.dart', app/test/human_input/m1_follow_review_test.dart, app/test/human_input/m1_second_review_test.dart, app/integration_test/human_input_flow_test.dart]
   ours: [app/lib/src/workflow_editor/run/ui/human_input_content.dart, app/lib/src/workflow_editor/run/server_run_service.dart, packages/collab_client/lib/src/workflow_run_api.dart]
 - id: run.history-record
@@ -2150,7 +2150,7 @@ features:
   title: 'MCP server and Trigger access points'
   dify: [web/app/components/app/access-point/built-in-access-points/mcp-card.tsx, web/app/components/app/access-point/built-in-access-points/trigger-card.tsx]
   status: partial
-  reason: dify-sf has no MCP server or trigger runtime - the MCP card is shown unavailable and the Trigger card with Dify's empty content (no triggers to switch).
+  reason: Published-app MCP serving and trigger runtime are not implemented - the MCP card is unavailable and the Trigger card has Dify's empty content (no triggers to switch). The opt-in native read-only workflow-checklist MCP is a separate dify-sf extension, not this upstream access point.
   evidence: ['spec:web/app/components/app/access-point/__tests__/mcp-card.spec.tsx', 'spec:web/app/components/app/access-point/__tests__/trigger-card.spec.tsx']
   ours: [app/lib/src/app_detail/access/mcp_trigger_cards.dart]
 - id: app-pages.annotations
@@ -2198,11 +2198,19 @@ features:
   title: 'Published web app (share pages, chat / workflow runner, human input form pages)'
   dify: [web/app/(shareLayout), web/app/(humanInputLayout), web/app/components/share]
   status: partial
-  reason: "Workflow/Chatflow public execution, separate visitor passports, typed inputs/files, human-input forms, history and reconnect/restart are implemented. The minimal public Flutter runner reuses shared controls; the full original chat-page layout, all branding options and extension messaging are not reproduced. Email form delivery remains the separate gated line."
+  reason: "Workflow/Chatflow public execution, separate visitor passports, typed inputs/files, human-input forms, history and reconnect/restart are implemented. The public Flutter page now uses shared responsive workflow columns and chat sidebar/conversation/composer layouts, including working new-chat and sidebar collapse. Full conversation management, public batch execution, all branding options and extension messaging are not reproduced; actual strict visual differences remain recorded. Email form delivery remains the separate gated line."
   evidence: [app/test/public_app_page_test.dart, app/test/public_inputs_test.dart, server/Tests/CollabTests/PublicBoundaryTests.swift, e2e/public_app/acceptance.py]
   ours: [app/lib/src/public_app/public_app_page.dart, app/lib/src/public_app/public_inputs.dart]
 
 # ---------------------------------------------------------------- collaboration (dify-sf's own)
+- id: collaboration.native-readonly-mcp
+  area: collaboration
+  title: 'Native client: read-only MCP (read_workflow / check_workflow) and one-time headless login'
+  dify: []
+  status: dify_sf_only
+  reason: 'dify-sf extension with no upstream Dify counterpart for this native-client checklist interface. The full Flutter Linux client reuses editor rules on an atomic server draft; unknown or unsupported context fails the gate with an unknown warning total. Only two read-only tools are exposed over authenticated loopback HTTP. A pure Dart helper reads a 0600 credentials file and writes a private native profile without a display; Weston headless runs the client. No import, mutation, execution, publication or approval tools are included.'
+  evidence: [app/test/mcp/workflow_reader_test.dart, app/test/mcp/server_snapshot_differential_test.dart, packages/collab_client/test/login_profile_cli_test.dart, tool/mcp/test_startup.py, tool/mcp/README.md]
+  ours: [app/lib/src/mcp/host_io.dart, app/lib/src/mcp/workflow_reader.dart, packages/collab_client/bin/login_profile.dart, tool/mcp/run_headless.sh, tool/mcp/check_workflow.py]
 - id: collaboration.live-sync
   area: collaboration
   title: 'Live multi-user editing: every edit is an op (HTTP POST) confirmed by the server, updates over SSE'
@@ -2387,6 +2395,6 @@ features:
   title: 'Published workflow/Chatflow service API: blocking, streaming, end users, files and durable recovery'
   dify: [api/controllers/service_api/app, api/controllers/web, web/app/components/share]
   status: ported
-  deviation: "The public Flutter page reuses the existing design-system inputs, Markdown, output and human-input controls; it is a minimal runner rather than full Dify chat-page pixel parity. Opaque browser passports never borrow console login. API end users are namespaced by key ID: replacing a key starts a new history namespace. Only workflow/advanced-chat modes are supported. Email delivery remains independently gated."
+  deviation: "The public Flutter page reuses the existing design-system inputs, Markdown, output and human-input controls inside responsive workflow input/result columns and a chat sidebar/conversation/composer shell. Public batch execution, full conversation management and settings remain unavailable; full page pixel parity is not claimed. Opaque browser passports never borrow console login. API end users are namespaced by key ID: replacing a key starts a new history namespace. Only workflow/advanced-chat modes are supported. Email delivery remains independently gated."
   evidence: [server/Tests/CollabTests/PublicIdentityTests.swift, server/Tests/CollabTests/PublicRunTests.swift, server/Tests/CollabTests/PublicBoundaryTests.swift, app/test/public_app_page_test.dart, app/test/public_inputs_test.dart, packages/collab_client/test/public_app_api_test.dart, e2e/public_app/acceptance.py, e2e/public_app/boundaries.py]
   ours: [app/lib/src/public_app/public_app_page.dart, app/lib/src/public_app/public_inputs.dart, server/Sources/CollabServer/PublicRuntimeRoutes.swift, server/Sources/CollabStore/PublicRuntime.swift, server/Sources/CollabStore/PublishedMonitoring.swift]
