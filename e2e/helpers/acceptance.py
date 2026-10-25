@@ -1,7 +1,7 @@
 """Real helper HTTP/PG/signed-plugin/Weaviate checks. Refuses every non-fixture endpoint."""
 import argparse,copy,hashlib,json,os,pathlib,ssl,subprocess,sys,time,urllib.request,uuid
-p=argparse.ArgumentParser();p.add_argument('--out',type=pathlib.Path,required=True);a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
-f=pathlib.Path('/var/tmp/Winnie/five-steps-cb9fa7f3');private=f/'private-fixture'
+p=argparse.ArgumentParser();p.add_argument('--fixture-root',type=pathlib.Path,default=os.environ.get('DIFY_E2E_FIXTURE_ROOT'),required='DIFY_E2E_FIXTURE_ROOT' not in os.environ);p.add_argument('--out',type=pathlib.Path,required=True);a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
+f=a.fixture_root.resolve();private=f/'private-fixture'
 info=json.loads(subprocess.check_output(['docker','inspect','winnie-five-helper-api'],text=True))[0];assert info['Config']['Labels'].get('raft.fixture')=='five-helper'
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]));sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'lib'))
 from lib.e2ehttp import Session,HTTPError

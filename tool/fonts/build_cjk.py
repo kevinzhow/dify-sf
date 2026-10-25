@@ -1,6 +1,6 @@
 """Losslessly compress pinned upstream regional Noto Sans 2.004 faces.
 Build only: fonttools[woff]==4.59.0, brotli==1.1.0. No runtime dependency.
-Usage: python tool/fonts/build_cjk.py --cache /var/tmp/Winnie/<task>/upstream
+Usage: python tool/fonts/build_cjk.py --cache /path/to/font-cache
 """
 from pathlib import Path
 import argparse,hashlib,json,gc,urllib.request

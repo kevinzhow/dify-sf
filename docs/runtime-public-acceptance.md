@@ -6,7 +6,7 @@ records are implemented. The final frontend source is `c4f19278c239a366a2dc93d1f
 trees. The server image is `sha256:c37f1f5e64b72062ed91d47fc8535b3f5c0b014fac3df8e5946fe11e356b03a9`.
 
 The final standalone WebAssembly build took 247.0 seconds with Flutter 3.47.6. Its 1,598 files are frozen at
-`/var/tmp/Winnie/previews/public-c4f1927`; main Wasm SHA-256 is
+`<frozen-web-build>`; main Wasm SHA-256 is
 `983ecbeb921ba9c29fd19ca9dd398a673f6f0fa4f8221ce99e6b45ca69a165e5`.
 Implementation and isolated acceptance are complete; the fixed trial's deployment result is recorded separately below.
 
@@ -36,7 +36,7 @@ fixture**. This does not establish trusted TLS or physical-device performance; t
 Reproducible HTTP checks are [acceptance.py](../e2e/public_app/acceptance.py) and
 [boundaries.py](../e2e/public_app/boundaries.py). They refuse non-local fixture endpoints and use supplied private
 fixture authentication. The K17 receipts and raw failures are retained in
-`/var/tmp/Winnie/five-steps-cb9fa7f3/c/`; browser traces contain fixture bearer headers and are not public attachments.
+`<private-acceptance-evidence>/`; browser traces contain fixture bearer headers and are not public attachments.
 Final receipts are `image-e2e4/result.json`, `image-boundaries3/result.json`, `browser4/result.json`,
 `production-image.json`, `source-release.json` and `web-sha256.json`.
 
@@ -82,7 +82,7 @@ services and real annotation matching have since been delivered within [their do
 
 ## Fixed trial deployment
 
-The fixed trial has been updated at **https://k17.tail4653d.ts.net/**, inside the existing Tailscale network,
+The fixed trial has been updated at **https://trial.example/**, inside the existing Tailscale network,
 with no Funnel. All 1,598 HTTPS resources match the frozen build. A fresh browser loaded the actual Wasm renderer,
 used same-origin API discovery and reported no page errors. This read-only online check used no real account or paid
 model; execution acceptance used the separate fixtures described above.

@@ -2,12 +2,12 @@
 
 2026-10-24（JST），Winnie。完成了用户 19cd785c 要求的测试方法固定和声明清单的整轮运行；**没有通过整体视觉验收**。总报告有 214 项 `different`，不能用抓图完成、编译成功或平均 RGB 高来宣布界面一致。
 
-- [446 项总报告](http://100.109.55.105:18998/raft-ui-19cd785c/)
-- [248 项控件补充视图](http://100.109.55.105:18998/raft-ui-19cd785c-controls-reviewed/)
-- [来源、覆盖、首轮修正记录和校验](http://100.109.55.105:18998/raft-ui-19cd785c/evidence/)
+- [446 项总报告](http://trial.example:18998/raft-ui-19cd785c/)
+- [248 项控件补充视图](http://trial.example:18998/raft-ui-19cd785c-controls-reviewed/)
+- [来源、覆盖、首轮修正记录和校验](http://trial.example:18998/raft-ui-19cd785c/evidence/)
 - [测试与复现约定](../tool/visual/UI_TESTING.md)
 
-地址经 Tailscale 访问。报告保留原版用例树、Matrix、Pixel/RGB、React、flutter-web 和左右对照；没有另写一套报告界面。之前的[思考区 12 项报告](http://100.109.55.105:18998/raft-c072d49/)继续保留，未混入本轮计数。
+地址经 Tailscale 访问。报告保留原版用例树、Matrix、Pixel/RGB、React、flutter-web 和左右对照；没有另写一套报告界面。之前的[思考区 12 项报告](http://trial.example:18998/raft-c072d49/)继续保留，未混入本轮计数。
 
 ## 实际范围和结果
 
@@ -44,7 +44,7 @@
 
 QR 图案像素不同不能直接证明编码错误，需要独立解码验证。中文在这台 Linux Chromium 上，实际原版和 React 宿主均选择 Noto Sans CJK JP，Flutter 加载打包 SC；这里没有替换字体或用文字偏移抬高分数。动画只抓取实际一帧，不证明动画时序一致。其余所有场景和指标都在 Matrix 中，不以这张重点表替代完整结果。
 
-首版控件局部报告裁掉了这 8 项没有语义矩形的实际浮层，已纠正；[旧报告](http://100.109.55.105:18998/raft-ui-19cd785c-controls-final/)留档。局部分数从 1／31／216 变为 7／33／208（pass／basic-pass／different），原因是这 8 项恢复了完整范围，**不是产品修复或视觉质量提高**。446 项总报告原图和分数不变。
+首版控件局部报告裁掉了这 8 项没有语义矩形的实际浮层，已纠正；[旧报告](http://trial.example:18998/raft-ui-19cd785c-controls-final/)留档。局部分数从 1／31／216 变为 7／33／208（pass／basic-pass／different），原因是这 8 项恢复了完整范围，**不是产品修复或视觉质量提高**。446 项总报告原图和分数不变。
 
 ## 固定的方法和证据
 

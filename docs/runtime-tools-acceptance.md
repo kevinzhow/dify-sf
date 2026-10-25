@@ -4,7 +4,7 @@
 
 ## 已交付
 
-安装到插件进程中的凭据无关／API-key 工具，以及基于固定发布快照的 Workflow-as-Tool，现已接通目录、授权、动态参数、执行、结果、文件与历史。功能范围和协议偏差见 [工具执行](runtime-tools.md)。实际试用入口为 https://k17.tail4653d.ts.net/ ，仅使用 Tailscale Serve，没有启用 Funnel。
+安装到插件进程中的凭据无关／API-key 工具，以及基于固定发布快照的 Workflow-as-Tool，现已接通目录、授权、动态参数、执行、结果、文件与历史。功能范围和协议偏差见 [工具执行](runtime-tools.md)。实际试用入口为 https://trial.example/ ，仅使用 Tailscale Serve，没有启用 Funnel。
 
 产品客户端提交为 `e452352168c06c9e18fbee37f795cf9a87e1acd1`；服务端镜像来自 `654b7bdbff9d3919cd02361182d06f791d2a759e`。两者的 `server` Git tree 均为 `a535f90f7c022b9126d7850080ac6d19cb5c1d65`，后一个提交只修复客户端删除凭据后的选择状态。部署镜像为 `sha256:6079e1244f79896abdd739e64c325cad46c7ebe6e2e5356056f8ac7df620588c`。服务端按 release 优化编译，并保留测试可见性；最终干净镜像构建另随整体交付验收执行。
 
