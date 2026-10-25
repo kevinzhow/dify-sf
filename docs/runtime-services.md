@@ -125,3 +125,6 @@ Sandboxes are kept while their execution is paused and removed by `DELETE /v1/ex
 supervisor start-up sweep (labelled containers missing from its state volume, and their networks). `docker compose down`
 does not remove running sandboxes or their networks; they are labelled `dify-sf.agent-sandbox=<project>`. After the
 agent service or proxy container is recreated, the next use of a sandbox attaches the new container again.
+
+`agent_service/tool/compose_smoke.sh SUBNET [POOL]` runs this profile end to end under its own project name (see
+`agent_service/README.md`).

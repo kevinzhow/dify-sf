@@ -99,6 +99,27 @@ is labelled `dify-sf.test=<random>` and removed at the end:
 AGENT_SANDBOX_IT=1 dart test -j 1 test/sandbox_integration_test.dart
 ```
 
+## Compose smoke test
+
+`tool/compose_smoke.sh` brings up `agent_service`, `sandbox_supervisor` and `agent_sandbox_proxy` from the root
+`docker-compose.yml` under a random project name, with a scripted fake inner gateway compiled into a throwaway image,
+and drives one operation through the HTTP API: the model runs `shell_run` (a workspace file, direct egress, `curl` and
+`pip download` through the proxy, a refused domain) and `final_output`; then events, status, ack and
+`DELETE /v1/executions/{id}`. It checks the sandbox network (internal, `inhibit_ipv4`, exactly the sandbox, the agent
+service and the proxy), the owner of `/data`, and that the sandbox container and network are gone afterwards.
+
+```sh
+# SUBNET: a free private /28 for the project's default network (Docker's default pools may be exhausted);
+# SANDBOX_POOL (optional, default 10.213.0.0/16): the supervisor's pool.
+agent_service/tool/compose_smoke.sh 10.212.7.0/28 [10.213.0.0/16]
+```
+
+It needs the local images `dify-sf-agent-service:dev` (`docker build -t dify-sf-agent-service:dev agent_service`; or
+`SMOKE_IMAGE`), the sandbox image, `ubuntu/squid:latest`, `dart:3.13` and `debian:bookworm-slim`, and network access for
+the proxy checks (pypi.org). Everything it creates (containers, networks, volumes, the gateway image, sandboxes) carries
+`dify-sf.test=<random>` and is removed on exit, also on failure; the last lines list what is left (must be none).
+`SMOKE_KEEP_LOGS=DIR` keeps the compose logs.
+
 ## Running locally with the fake gateway
 
 `bin/fake_gateway.dart` serves a scripted inner gateway (the script format is documented in
@@ -146,4 +167,5 @@ bind-mounted host directory must be writable by uid 10001.
 | `lib/src/sandbox/` | Supervisor client, per-execution sandboxes (probes, reaper, files), shellctl client, shell tools |
 | `lib/src/supervisor/` | The sandbox supervisor and its Docker Engine client |
 | `lib/src/testing/` | Scripted inner gateway, fake supervisor and shellctl, shared by tests and `bin/fake_gateway.dart` |
+| `tool/compose_smoke.sh` | The compose smoke test |
 | `test/it_relay.dart` | The integration test's relay into sandbox networks |
