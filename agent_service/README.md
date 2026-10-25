@@ -66,6 +66,9 @@ The supervisor (`sandbox_supervisor`) reads:
 
 `SIGTERM` stops the service: running operations end `failed` (`internal`) and their results are stored.
 
+Both binaries accept `--healthcheck`: `GET /v1/health` on their own port with their own key, exit 0 on HTTP 200 (the
+compose health checks; the image has no curl). The supervisor answers 200 only while the Docker socket answers.
+
 ## Development
 
 ```sh
@@ -98,7 +101,7 @@ AGENT_SANDBOX_IT=1 dart test -j 1 test/sandbox_integration_test.dart
 
 ```sh
 export AGENT_SERVICE_KEY=dev-key
-dart run bin/fake_gateway.dart answer.json 5051 &
+dart run bin/fake_gateway.dart answer.json 5051 &   # [PORT [ADDRESS]], ADDRESS defaults to 127.0.0.1
 AGENT_DATA_DIR=./.dart_tool/dev-data AGENT_INNER_URL=http://127.0.0.1:5051 dart run bin/agent_service.dart &
 
 curl -s -H "Authorization: Bearer $AGENT_SERVICE_KEY" -H 'X-Agent-Run-Token: dev' \
@@ -113,7 +116,8 @@ curl -N -H "Authorization: Bearer $AGENT_SERVICE_KEY" localhost:5050/v1/runs/<ru
 `Dockerfile` builds both AOT binaries with `dart:3.13` and runs them as a non-root user on `debian:bookworm-slim` with
 CA certificates; mount a volume at `/data`. The default entrypoint is the agent service; the supervisor uses
 `--entrypoint /usr/local/bin/sandbox_supervisor`, the Docker socket and the socket's group (see the root
-`docker-compose.yml`, profile `agent`).
+`docker-compose.yml`, profile `agent`). The user and group are both 10001; `/data` is `0700` and owned by them, so a
+bind-mounted host directory must be writable by uid 10001.
 
 ## Layout
 

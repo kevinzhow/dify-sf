@@ -17,9 +17,11 @@ FROM debian:bookworm-slim
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
- && useradd --system --uid 10001 --home-dir /nonexistent --shell /usr/sbin/nologin agent \
+ && groupadd --system --gid 10001 agent \
+ && useradd --system --uid 10001 --gid 10001 --home-dir /nonexistent --shell /usr/sbin/nologin agent \
  && mkdir -p /data \
- && chown agent:agent /data
+ && chown 10001:10001 /data \
+ && chmod 0700 /data
 COPY --from=build /out/agent_service /usr/local/bin/agent_service
 COPY --from=build /out/sandbox_supervisor /usr/local/bin/sandbox_supervisor
 USER 10001:10001

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:agent_service/agent_service.dart';
@@ -11,7 +12,10 @@ import 'package:agent_service/agent_service.dart';
 ///   AGENT_LOG_LEVEL    debug | info | warning | error (default info)
 ///   AGENT_SANDBOX_SUPERVISOR_URL / AGENT_SANDBOX_SUPERVISOR_KEY
 ///                      the sandbox supervisor; unset = no shell
-Future<void> main() async {
+Future<void> main(List<String> args) async {
+  if (args.contains('--healthcheck')) {
+    await healthcheck('AGENT_SERVICE_KEY', 'AGENT_SERVICE_PORT', 5050);
+  }
   final env = Platform.environment;
   String? required(String name) {
     final v = env[name];
@@ -76,4 +80,27 @@ Future<void> main() async {
 
   ProcessSignal.sigterm.watch().listen(shutdown);
   ProcessSignal.sigint.watch().listen(shutdown);
+}
+
+/// `--healthcheck`: GET /v1/health on this container's own port with its own
+/// key (for the compose health check; the image has no curl). Exit 0 on 200.
+Future<Never> healthcheck(
+  String keyVariable,
+  String portVariable,
+  int port,
+) async {
+  final env = Platform.environment;
+  final p = int.tryParse(env[portVariable] ?? '') ?? port;
+  final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+  try {
+    final request = await client.get('127.0.0.1', p, '/v1/health');
+    request.headers.set('Authorization', 'Bearer ${env[keyVariable] ?? ''}');
+    final response = await request.close().timeout(const Duration(seconds: 5));
+    final body = await utf8.decodeStream(response);
+    stdout.writeln('${response.statusCode} $body');
+    exit(response.statusCode == 200 ? 0 : 1);
+  } catch (e) {
+    stdout.writeln('unhealthy: $e');
+    exit(1);
+  }
 }

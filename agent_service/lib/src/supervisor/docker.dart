@@ -83,7 +83,12 @@ class DockerClient {
     } on TimeoutException {
       throw DockerException(0, 'docker $method $path timed out');
     } on SocketException catch (e) {
-      throw DockerException(0, 'docker socket: ${e.message}');
+      final os = e.osError?.message;
+      throw DockerException(
+        0,
+        'docker socket $socketPath: ${e.message}'
+        '${os == null || os.isEmpty ? '' : ' ($os)'}',
+      );
     } on HttpException catch (e) {
       throw DockerException(0, 'docker $method $path: ${e.message}');
     }

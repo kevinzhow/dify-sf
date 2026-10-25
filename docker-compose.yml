@@ -221,9 +221,16 @@ services:
       AGENT_SANDBOX_SUPERVISOR_KEY: ${AGENT_SANDBOX_SUPERVISOR_KEY:-dify-sf-local-sandbox-supervisor-key}
     volumes:
       - agent_service_data:/data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/agent_service", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+      start_interval: 1s
     depends_on:
       sandbox_supervisor:
-        condition: service_started
+        condition: service_healthy
     networks:
       - default
       - agent_sandbox_network
@@ -258,6 +265,14 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - sandbox_supervisor_state:/data
+    healthcheck:
+      # 200 only when the Docker socket answers (e.g. not with a wrong DOCKER_GID).
+      test: ["CMD", "/usr/local/bin/sandbox_supervisor", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+      start_interval: 1s
     networks:
       - default
 
