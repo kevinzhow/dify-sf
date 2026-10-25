@@ -179,7 +179,9 @@ extension Routes {
         if paused, let pause = (try? await store.openPauses(workflowRunId: run.id))?.first ?? nil {
             pauseGeneration = pause.generation
             let forms = (try? await store.humanInputForms(workflowRunId: run.id)) ?? []
-            waiting = forms.filter { $0.status == .waiting && pause.executionIds.contains($0.executionId) }
+            for form in forms where form.status == .waiting && pause.executionIds.contains(form.executionId) {
+                waiting.append(await refreshedHumanInputForm(form, pause: pause, run: run))
+            }
             for form in waiting {
                 frames.append(RunExecution.sse(["event": "human_input_required", "workflow_run_id": .string(run.id),
                                         "task_id": .string(run.id),

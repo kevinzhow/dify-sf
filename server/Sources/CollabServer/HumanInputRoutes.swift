@@ -51,6 +51,43 @@ extension Routes {
         return config.inputsResolved(pool: pool)
     }
 
+    /// Intentional dify-sf presentation extension: a long-lived approval must not keep expired storage links.
+    /// Only the authorized run's own durable files are projected; no arbitrary URL is fetched or rewritten. The form,
+    /// pause, answer and saved pool remain untouched. Both GET and pause replay use this same presentation copy.
+    func refreshedHumanInputForm(_ form: StoredHumanInputForm, pause: StoredWorkflowPause?,
+                                 run: StoredWorkflowRun?) async -> StoredHumanInputForm {
+        guard form.kind == .runtime, form.status == .waiting,
+              let run, run.id == form.workflowRunId, run.docId == form.docId, run.status == "paused",
+              let pause, pause.workflowRunId == run.id, pause.executionIds.contains(form.executionId),
+              let snapshot = try? GraphEngineSnapshot(data: Data(pause.snapshot.utf8)),
+              var pool = snapshot.variablePool(forExecution: form.executionId),
+              let definition = try? Self.formConfig(form) else { return form }
+        var changed = false
+        for node in pool.nodeOrder {
+            for (name, segment) in pool.variables[node] ?? [] {
+                let projected = await projectRuntimeFiles(segment.value,
+                    userId: run.executionAccountId ?? run.createdBy ?? "", endUserId: run.endUserId)
+                if projected != segment.value {
+                    changed = true
+                    // The selector comes from this pool, so it always has the required two components.
+                    try? pool.add([node, name], Segment(segment.valueType, projected))
+                }
+            }
+        }
+        guard changed else { return form }
+        var presentation = form
+        presentation.renderedContent = definition.renderedContent(pool: pool)
+        if let raw = form.defaultValues, let values = try? JSONValue.parse(raw) {
+            presentation.defaultValues = await projectRuntimeFiles(values,
+                userId: run.executionAccountId ?? run.createdBy ?? "", endUserId: run.endUserId).compactJSON()
+        }
+        if let raw = form.resolvedDefaultValues, let values = try? JSONValue.parse(raw) {
+            presentation.resolvedDefaultValues = await projectRuntimeFiles(values,
+                userId: run.executionAccountId ?? run.createdBy ?? "", endUserId: run.endUserId).compactJSON()
+        }
+        return presentation
+    }
+
     /// The engine's form config, rebuilt from what was persisted: the field types, their option sources and defaults and
     /// the action list must be the ones the node will enforce on resume, so nothing is reconstructed from guesses.
     static func formConfig(_ f: StoredHumanInputForm) throws -> HumanInputFormConfig {
@@ -155,7 +192,10 @@ extension Routes {
         if recipient != nil || form.recipientType == .webapp {
             try Self.ensureFormActive(form, now: Date(), globalTimeoutSeconds: config.humanInputGlobalTimeoutSeconds)
         }
-        return try json(Self.formDefinitionJSON(form, inputs: Self.resolvedInputs(form, pauseSnapshot: pause?.snapshot)))
+        let run = if let id = form.workflowRunId { try? await store.workflowRun(id: id) } else { nil }
+            as StoredWorkflowRun?
+        let presentation = await refreshedHumanInputForm(form, pause: pause, run: run)
+        return try json(Self.formDefinitionJSON(presentation, inputs: Self.resolvedInputs(form, pauseSnapshot: pause?.snapshot)))
     }
 
     static func invalidFormData(_ message: String) -> ServerError {
