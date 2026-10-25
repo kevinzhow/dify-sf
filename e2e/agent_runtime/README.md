@@ -24,7 +24,7 @@ python3 e2e/agent_runtime/restart.py
 ```
 
 The tools directory supplies `agent-service-core-2395331` and `agent-supervisor-2395331` (the immutable recursive-output
-protocol candidate used for this acceptance). The build directory contains `release/collab-server`. The script defaults
+protocol candidate used for the initial acceptance). Set `AGENT_E2E_CORE_BIN` and `AGENT_E2E_SUPERVISOR_BIN` to test newly built filenames without replacing executables used by another fixture. The build directory contains `release/collab-server` and its adjacent `DifySF_CollabModels.bundle` model definitions. The script defaults
 to a prepared development image and the matching immutable Dart image; `AGENT_E2E_IMAGE`, `AGENT_E2E_DART_IMAGE` and
 `AGENT_E2E_PORT` override them. The signed plugin fixture is named `winnie-agent-plugin-daemon` in the current harness,
 with the synthetic daemon key/tenant shown in the script. Adapt those fixture constants together when running elsewhere.
@@ -34,3 +34,9 @@ The shell has a separate bounded workspace and no egress proxy. The script refus
 its own containers and saves logs/inspection records on exit, preserving database/files for a failed-run investigation.
 Remove only this invocation's confirmed-idle labelled resources under the host's shared cleanup lock. This script does
 not alter a deployment or enable the default-disabled Agent capability there.
+
+The harness also asserts that live logs before the first question survive the process restart in the same order,
+with a recoverable node identity, and that all final logs appear unchanged in completed node metadata with unique IDs.
+
+Completed events queries intentionally return only the terminal workflow frame, matching Dify. The harness reads
+finished node logs through the ordinary authenticated node-executions endpoint and compares them with the durable ledger.

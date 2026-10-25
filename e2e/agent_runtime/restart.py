@@ -24,6 +24,9 @@ NETWORK = os.environ.get('AGENT_E2E_NETWORK', 'winnie-agent-inline-tests')
 IMAGE = os.environ.get('AGENT_E2E_IMAGE', 'winnie-runtime-dev:local')
 DART_IMAGE = os.environ.get('AGENT_E2E_DART_IMAGE', 'sha256:52e3b8dd5c1ece67fa823a469500a424abfc411d9c7dbf2123899477b8685984')
 PORT = int(os.environ.get('AGENT_E2E_PORT', '21406'))
+CORE_BIN = os.environ.get('AGENT_E2E_CORE_BIN', 'agent-service-core-2395331')
+SUPERVISOR_BIN = os.environ.get('AGENT_E2E_SUPERVISOR_BIN', 'agent-supervisor-2395331')
+assert all(pathlib.PurePath(name).name == name and name not in ['', '.', '..'] for name in [CORE_BIN, SUPERVISOR_BIN])
 LABEL = 'raft.fixture=agent-restart-20261025'
 PG, ALIAS, SERVICE, SUPERVISOR, PROVIDER = [PREFIX + '-' + suffix for suffix in ['pg', 'api', 'runtime', 'supervisor', 'provider']]
 BASE = f'http://127.0.0.1:{PORT}'
@@ -112,10 +115,10 @@ try:
         '-e', 'SANDBOX_SUPERVISOR_KEY=fixture-supervisor-key', '-e', 'SANDBOX_AGENT_PEERS=' + SERVICE,
         '-e', 'SANDBOX_LABEL=winnie.agent-restart=20261025', '-e', 'SANDBOX_NAME_PREFIX=' + PREFIX + '-sandbox-',
         '-e', 'SANDBOX_SUBNET_POOL=10.219.240.0/20', '-e', 'SANDBOX_STATE_FILE=/tmp/state.json',
-        '-e', 'SANDBOX_MEMORY_MB=384', '-e', 'SANDBOX_CPUS=.5', '-e', 'SANDBOX_HOME_MB=64', '-e', 'SANDBOX_WORKSPACE_MB=128'], ['/tools/agent-supervisor-2395331'])
+        '-e', 'SANDBOX_MEMORY_MB=384', '-e', 'SANDBOX_CPUS=.5', '-e', 'SANDBOX_HOME_MB=64', '-e', 'SANDBOX_WORKSPACE_MB=128'], ['/tools/' + SUPERVISOR_BIN])
     create(SERVICE, DART_IMAGE, '384m', '.5', common + ['-e', 'AGENT_SERVICE_KEY=fixture-agent-service-key', '-e', 'AGENT_DATA_DIR=/tmp/state',
         '-e', 'AGENT_INNER_URL=http://' + ALIAS + ':8080', '-e', 'AGENT_SANDBOX_SUPERVISOR_URL=http://' + SUPERVISOR + ':5060',
-        '-e', 'AGENT_SANDBOX_SUPERVISOR_KEY=fixture-supervisor-key'], ['/tools/agent-service-core-2395331'])
+        '-e', 'AGENT_SANDBOX_SUPERVISOR_KEY=fixture-supervisor-key'], ['/tools/' + CORE_BIN])
     api(PREFIX + '-a')
     TOKEN = request('/v1/setup', {'email': 'agent-restart@example.test', 'name': 'Agent restart fixture', 'password': 'fixture-password-1234'}, token=False)['access_token']
     request('/v1/workspace/model-providers/langgenius/openai_api_compatible/openai_api_compatible/models/credentials',
@@ -153,6 +156,8 @@ workflow:
             {'name': 'bundle', 'type': 'object', 'children': [{'name': 'artifacts', 'type': 'array', 'array_item': {'type': 'file'}}]}]}}, method='PUT')
     wire = request(f'/v1/apps/{app}/workflows/draft/run', {'inputs': {}}, raw=True)
     (OUT / 'first.sse').write_text(wire)
+    initial_logs = [frame['data'] for frame in frames(wire) if frame['event'] == 'agent_log']
+    assert initial_logs, 'Live tool/thought logs must arrive before the first pause'
     first = next(frame['data'] for frame in frames(wire) if frame['event'] == 'human_input_required')
     run = sql('SELECT workflow_run_id FROM human_input_forms WHERE token = ' + "'" + first['form_token'] + "'")
     execution = sql("SELECT execution_id FROM agent_node_sessions WHERE workflow_run_id='" + run + "'")
@@ -167,6 +172,13 @@ workflow:
     assert container_a['State']['Pid'] != container_b['State']['Pid']
     wait_until(lambda: sql("SELECT generation FROM agent_node_sessions WHERE execution_id='" + execution + "'") == '2')
     assert sql("SELECT owner_id FROM agent_node_sessions WHERE execution_id='" + execution + "'") != owner
+    replay_wire = request(f'/v1/workflow/{run}/events?include_state_snapshot=true', raw=True)
+    (OUT / 'restarted-paused.sse').write_text(replay_wire)
+    replay = frames(replay_wire)
+    replay_logs = [frame['data'] for frame in replay if frame['event'] == 'agent_log']
+    assert replay_logs == initial_logs, 'A new process must recover every committed log in the same order'
+    assert any(frame['event'] == 'node_started' and frame['data']['id'] == execution for frame in replay)
+
     print('New process adopted unanswered pause. Waiting beyond remote lease TTL.', flush=True)
     waited = time.monotonic()
     while time.monotonic() - waited < 130:
@@ -180,6 +192,20 @@ workflow:
     (OUT / 'run.json').write_text(state)
     result = json.loads(state)
     assert result['status'] == 'succeeded', state
+    terminal_wire = request(f'/v1/workflow/{run}/events?include_state_snapshot=true', raw=True)
+    (OUT / 'completed-replay.sse').write_text(terminal_wire)
+    terminal = frames(terminal_wire)
+    # Completed events queries intentionally return only the terminal frame (Dify 1.16).
+    assert [frame['event'] for frame in terminal] == ['workflow_finished']
+    assert terminal[-1]['data']['status'] == 'succeeded'
+    detail = request(f'/v1/apps/{app}/workflow-runs/{run}/node-executions')
+    (OUT / 'node-executions.json').write_text(json.dumps(detail))
+    trace = next(item for item in detail['data'] if item['id'] == execution)
+    final_logs = trace['execution_metadata']['agent_log']
+    assert final_logs[:len(initial_logs)] == initial_logs and len(final_logs) > len(initial_logs)
+    assert len({log['message_id'] for log in final_logs}) == len(final_logs), 'Persisted log IDs must be unique'
+    archived_logs = json.loads(sql("SELECT usage->'agent_log' FROM agent_node_sessions WHERE execution_id='" + execution + "'"))
+    assert final_logs == archived_logs, 'Finished node detail must retain the same durable logs'
     outputs = result['outputs']
     if isinstance(outputs, str): outputs = json.loads(outputs)
     assert outputs['score'] == 7
@@ -194,7 +220,8 @@ workflow:
     wait_until(lambda: sql("SELECT count(*) FROM agent_runtime_outbox WHERE done_at IS NULL") == '0')
     (OUT / 'result.json').write_text(json.dumps({'passed': True, 'app': app, 'run': run, 'execution': execution,
         'process_a': container_a['Id'], 'process_b': container_b['Id'], 'generation': 2, 'unanswered_wait_seconds': time.monotonic() - waited,
-        'model_calls': 5, 'shell_side_effect_count': 1, 'nested_file_sha256': hashlib.sha256(downloaded).hexdigest()}, indent=2))
+        'model_calls': 5, 'shell_side_effect_count': 1, 'initial_log_count': len(initial_logs),
+        'recovered_log_count': len(replay_logs), 'completed_log_count': len(final_logs), 'unique_log_ids': True, 'nested_file_sha256': hashlib.sha256(downloaded).hexdigest()}, indent=2))
     print('PASS: real process restart; lease renewal beyond TTL; two questions; shell side effect once; nested uploaded file; ACK and cleanup.', flush=True)
 finally:
     for name in names:

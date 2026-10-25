@@ -1,6 +1,7 @@
 import CollabRuntime
 import Foundation
-import NIOConcurrencyHelpers
+import HTTPTypes
+import Synchronization
 import Testing
 import Vapor
 import VaporTesting
@@ -9,7 +10,7 @@ import VaporTesting
 @Suite("Agent event and capability transport")
 struct AgentEventTransportTests {
     @Test func shellRequiresExplicitOptInAndAnIsolatedHealthProbe() async throws {
-        let health = NIOLockedValueBox("isolated")
+        let health = Mutex("isolated")
         try await withApp(configure: { app in
             app.routes.get("v1", "health") { _ in
                 Response(status: .ok, body: .init(string: JSONValue.object(["protocol": .string(AgentServiceClient.protocolName), "sandbox": .string(health.withLock { $0 })]).compactJSON()))
@@ -30,10 +31,10 @@ struct AgentEventTransportTests {
     }
 
     @Test func aDroppedEventStreamResumesFromItsCommittedCursorAnd410CannotBecomeSuccess() async throws {
-        let requests = NIOLockedValueBox<[String]>([])
-        let lost = NIOLockedValueBox(false)
-        let delivered = NIOLockedValueBox(false)
-        let seen = NIOLockedValueBox<[Int]>([])
+        let requests = Mutex<[String]>([])
+        let lost = Mutex(false)
+        let delivered = Mutex(false)
+        let seen = Mutex<[Int]>([])
         try await withApp(configure: { app in
             app.routes.get("v1", "runs", "remote", "events") { req in
                 if lost.withLock({ $0 }) {
@@ -44,7 +45,7 @@ struct AgentEventTransportTests {
                 let wire: String
                 if after == 0 { wire = "id: 1\r\nevent: thought\r\ndata: {\"text\":\"retained\"}\r\n\r\n" }
                 else { delivered.withLock { $0 = true }; wire = "id: 2\nevent: succeeded\ndata: {\"status\":\"succeeded\"}\n\n" }
-                return Response(status: .ok, headers: ["Content-Type": "text/event-stream"], body: .init(string: wire))
+                return Response(status: .ok, headers: [.contentType: "text/event-stream"], body: .init(string: wire))
             }
             app.routes.get("v1", "runs", "remote") { _ in
                 let done = delivered.withLock { $0 }

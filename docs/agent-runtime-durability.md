@@ -14,7 +14,8 @@ written into the operation ledger.
 
 1. Before starting a remote operation, persist its identity and request digest. Retrying an uncertain POST retains that
    identity; a new human answer or output retry gets its own identity.
-2. Poll the durable result independently from UI connections. Receiving a result is not a committed workflow pause.
+2. Consume durable service events and confirm the terminal result independently from UI connections. Receiving a result
+   is not a committed workflow pause.
 3. For a question, commit the original execution's continuation, question identity, native form, pause snapshot and usage
    in one transaction. A later question is a new form on the same execution. Answering an older form cannot answer it.
 4. For a final result, commit the node trace, accepted outputs and private outcome before returning completion to the
@@ -26,7 +27,8 @@ written into the operation ledger.
 The database lease, remote control lease, recovery scan and outbox have independent loops, so a slow HTTP call cannot
 block lease renewal. Paused sessions can be adopted after the previous lease expires. A worker lost during active work
 fails the execution and schedules cancellation/cleanup; it does not replay commands with uncertain side effects.
-Admission counts paused sessions as well as active ones. A terminal workflow transaction prevents late callback writes.
+Admission limits running operations and rechecks that limit on resume. A terminal workflow transaction prevents late
+callback writes.
 
 Native forms keep the original provider tool-call identity in the agent continuation. A question timeout becomes that
 call's timeout result. It does not invent a workflow `__timeout` edge for an Agent node. Long native action identifiers
@@ -37,23 +39,23 @@ received upload receipts belonging to that execution. Nested objects and arrays 
 file object or another execution's upload cannot become a native file. File persistence precedes the receipt, and the
 receipt precedes result acknowledgement and sandbox cleanup.
 
-## Evidence and remaining acceptance
+## Regression coverage
 
 `AgentRuntimeIntegrationTests` uses a real PostgreSQL database, Swift HTTP server, Dart agent service and signed official
 model provider plugin with a synthetic model endpoint. It follows two consecutive native questions through the final
-workflow event, checks one node-execution identity, preserved pinned configuration after a draft edit, and cumulative
-usage of 8/16/24 tokens. It does not exercise a shell command in that scenario.
+workflow event, checks one node-execution identity, preserved pinned configuration after a draft edit, cumulative
+usage of 8/16/24 tokens, active elapsed time and durable tool logs in live, paused-reconnect and completed-node views.
+It does not exercise a shell command in that scenario; the process restart harness below does.
 
 `AgentExecutionStoreTests` exercises transaction rollback, ownership fencing, generation adoption and upload receipts.
 `AgentOutboxTests` makes a real HTTP endpoint refuse acknowledgement once and verifies persistent retry and cleanup
-ordering. `AgentQuestionTests` checks action mapping and defaults. Ordinary human-input, event and chat-store regressions
-run alongside the adapter tests.
+ordering. `AgentEventTransportTests` covers shell health gating, interrupted SSE cursor recovery and explicit lost
+history. `AgentQuestionTests` checks action mapping, labels and defaults. Ordinary human-input, event and chat-store
+regressions run alongside the adapter tests.
 
-These tests do not yet establish a full independent-process restart, actual shell side-effect counting, all nested file
-round trips or production readiness. Client configuration/checklist integration and private-resource import/copy/export
-are separate delivery work. Keep the public run capability off until those acceptance steps are complete. Merging this
-adapter does not deploy or enable it.
-
+Client configuration/checklist and resource portability are covered by the related client change; see
+[client configuration](agent-inline-client.md) and [resource portability](agent-resource-portability.md). These isolated
+checks do not establish production readiness. Merging this adapter does not deploy or enable it.
 
 ## Restart acceptance
 
@@ -65,8 +67,8 @@ failed without replaying shell effects. Cleanup has a persistent retry queue and
 waiting longer than the remote lease before answering, two native questions, a shell side effect occurring once and
 a nested file output uploaded through the real receipt endpoint and downloaded byte-for-byte. The model is a local
 scripted fixture behind the signed provider plugin. This is isolated process evidence, not a deployed feature or a
-physical-device performance claim. The preceding whole-server regression covered 520 tests; the additional recovery,
-default-output and attribution changes passed 149 related tests.
+physical-device performance claim. It also compares logs received before the restart with the new process's paused
+reconnect snapshot, then verifies the complete log remains in the finished node metadata with unique event IDs.
 
 Output defaults are type-checked before model execution. Configured canonical file defaults resolve through the
 ordinary scoped file runtime and pass the same declared file constraints; model candidates still require received
