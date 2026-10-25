@@ -56,6 +56,10 @@ extension Routes {
                                                       // Draft runs are Dify's debugger; published runs come with M5.
                                                       isDebugger: endUserId == nil, files: services.files)
         }
+        if config.agentService.inlineEnabled && config.agentService.isConfigured {
+            services.agent = ServerAgentRuntime(routes: self, appID: appId, runID: runId, userID: userId, endUserID: endUserId,
+                pending: pending, decisions: Dictionary(uniqueKeysWithValues: decisions.values.map { ($0.id, $0) }))
+        }
         return services
     }
 
@@ -221,6 +225,7 @@ extension Routes {
     func resumeRun(appId: String, runId: String) async -> Bool {
         // TEST ONLY (`testDefect: slowClaim`): widen the window between an accepted answer and the claim that consumes it,
         // so a test can kill the process there — the state a crash leaves behind (answer waiting, pause untouched).
+        if (try? await store.canResumeAgentQuestions(run: runId, owner: agentOwner)) != true { return false }
         if config.testDefect == "slowClaim" { try? await Task.sleep(for: .milliseconds(1500)) }
         // A claim that **fails** (a lock timeout, a connection reset) leaves the run paused with its answer waiting: not
         // a "nothing to claim". The attempt is kept, so the periodic scan takes it again instead of the answer sitting
@@ -682,6 +687,15 @@ final class RunExecution: Sendable {
     /// resume took, published as `human_input_form_filled` right after the engine's `workflow_started(reason=resumption)`.
     func run(engine: GraphEngine, pool: VariablePool, snapshot: GraphEngineSnapshot? = nil,
              filled: [StoredHumanInputForm] = []) async {
+        await pendingForms.agentCommits.install { execution, trace, result in
+            let status = result.status == .succeeded ? "succeeded" : (result.errorType == "output_type_check_failed_fail_branch" ? "exception" : "failed")
+            let start = Running(nodeId: trace.nodeID, nodeType: "agent", title: trace.title, startAt: trace.startedAt, index: trace.index, scope: trace.scope)
+            guard await self.persist(execution, trace.nodeID, start, status, result, error: result.error, finishedAt: Date()) else {
+                engine.commands.abort(reason: "The agent result could not be committed")
+                throw NodeError("AgentPersistenceFailed", "The agent node result could not be committed")
+            }
+        }
+        defer { Task { await pendingForms.agentCommits.clear() } }
         let heartbeat: Task<Void, Never>? = encoderBox.withLock { $0.chat != nil } ? Task {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(5)) } catch { return }
@@ -743,6 +757,14 @@ final class RunExecution: Sendable {
                 frames += encoderBox.withLock { enc in
                     decisions.filter { $0.status == .timedOut }.map { enc.humanInputFormTimeout($0) }
                 }
+                for form in decisions where !form.questionID.isEmpty && form.status == .submitted {
+                    let inputs = (try? JSONValue.parse(form.submittedInputs ?? "{}"))?.object ?? [:]
+                    let actions = (try? JSONValue.parse(form.actions))?.array ?? []
+                    frames.append(encoderBox.withLock { enc in enc.humanInputFormFilled(nodeId: form.nodeId, nodeTitle: form.nodeTitle,
+                        renderedContent: form.renderedContent, actionId: form.submittedAction ?? "",
+                        actionText: actions.first { $0["id"] == .string(form.submittedAction ?? "") }?["title"]?.string ?? "", submittedData: inputs) })
+                    filledPublished.insert(form.executionId)
+                }
                 for f in frames { await publish(f) }
                 continue
             }
@@ -779,6 +801,7 @@ final class RunExecution: Sendable {
             case .node(.started(let x, let nodeId, let type, let title, let startAt, let scope)):
                 index += 1
                 running[x] = Running(nodeId: nodeId, nodeType: type, title: title, startAt: startAt, index: index, scope: scope)
+                if type == "agent" { await pendingForms.agentCommits.started(x, trace: .init(nodeID: nodeId, title: title, startedAt: startAt, index: index, scope: scope)) }
             case .node(.retry(let x, let nodeId, let startAt, let r, let error, let retryIndex)):
                 let now = Date()
                 let type = running[x]?.nodeType ?? ""
@@ -851,7 +874,7 @@ final class RunExecution: Sendable {
                 workflowRunId: runId, docId: appId, nodeId: forms.first?.nodeId ?? "", snapshot: encoded,
                 totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
                 elapsedTime: encoderBox.withLock { at.timeIntervalSince($0.roundStartedAt) },
-                outputs: JSONValue.object(stats.outputs).compactJSON(), forms: forms, at: at)
+                outputs: JSONValue.object(stats.outputs).compactJSON(), forms: forms, at: at, agentOutcomes: pendingForms.agentOutcomes(forms: forms))
         } catch {
             // A pause for a deleted app is a stop, not a failure: the user deleted the app, nothing broke.
             let appDeleted = (error as? PostgresStore.PauseRefused) == .appDeleted
@@ -958,8 +981,9 @@ final class RunExecution: Sendable {
     /// A node execution as Dify's persistence layer stores it (start node outputs = its inputs; failed attempts before a
     /// retry in `process_data.__dify_retry_history`). Nodes inside an iteration or loop save no draft variables (but the
     /// variable assigner's conversation variables).
+    @discardableResult
     func persist(_ executionId: String, _ nodeId: String, _ start: Running?, _ status: String, _ r: NodeRunResult, error: String?,
-                 finishedAt: Date, retries: [JSONValue]? = nil) async {
+                 finishedAt: Date, retries: [JSONValue]? = nil) async -> Bool {
         let startAt = start?.startAt ?? finishedAt
         let nodeType = start?.nodeType ?? ""
         let outputs = nodeType == NodeType.start ? r.inputs : r.outputs
@@ -972,13 +996,19 @@ final class RunExecution: Sendable {
             outputs: JSONValue.object(outputs).compactJSON(), status: status, error: error.flatMap { $0.isEmpty ? nil : $0 },
             elapsedTime: max(finishedAt.timeIntervalSince(startAt), 0), executionMetadata: JSONValue.object(r.metadata).compactJSON(),
             createdBy: createdBy, createdAt: startAt, finishedAt: finishedAt)
-        do { try await routes.store.upsertNodeExecution(e) } catch {
+        let agentChange = pendingForms.agentOutcome(executionId)
+        do {
+            try await routes.store.upsertNodeExecution(e, agentOutcome: agentChange)
+            if let agentChange { pendingForms.committedAgentOutcome(agentChange) }
+        } catch {
             routes.logger.error("run \(runId): storing node execution \(executionId) failed: \(error)")
+            if nodeType == "agent" { return false }
         }
         let enclosing = (start?.scope ?? NodeScope(metadata: r.metadata)).containerId
-        if enclosing != nil && nodeType != NodeType.variableAssigner { return }
+        if enclosing != nil && nodeType != NodeType.variableAssigner { return true }
         if !isPublished { await routes.saveRunDraftVariables(appId: appId, userId: createdBy, docSeq: docSeq, nodeId: nodeId, nodeType: nodeType, executionId: executionId,
                                            status: status, result: r) }
+        return true
     }
 
     func finish(status: String, error: String?, stats: GraphRunStats, started: ContinuousClock.Instant,
@@ -996,10 +1026,11 @@ final class RunExecution: Sendable {
         }
         let elapsed = SingleStepRunSeconds.of(ContinuousClock.now - started)
         do {
-            try await routes.store.finishWorkflowRun(id: runId, status: status, outputs: JSONValue.object(stats.outputs).compactJSON(), error: error,
+            let committed = try await routes.store.finishWorkflowRun(id: runId, status: status, outputs: JSONValue.object(stats.outputs).compactJSON(), error: error,
                                                      elapsedTime: elapsed, totalTokens: stats.totalTokens, totalSteps: stats.totalSteps,
                                                      exceptionsCount: status == "stopped" ? 0 : stats.exceptionsCount, finishedAt: now,
                                                      chatLease: encoderBox.withLock { $0.chat == nil ? nil : lease })
+            if !committed { await routes.finishRunWithoutEngine(runId); return false }
         } catch {
             routes.logger.error("run \(runId): storing the result failed: \(error)")
             return false
@@ -1131,6 +1162,7 @@ struct RunStreamEncoder: Sendable {
                                                   "created_at": Self.ts(roundStartedAt), "reason": .string(reason)])]
         case .node(let e):
             switch e {
+            case .usageDelta: return []
             case .pauseRequested: return [] // The async form adapter enriches these after a durable pause.
             case .started(let x, let nodeId, let type, let title, let startAt, let scope):
                 if isContainer(nodeId) { return [] }

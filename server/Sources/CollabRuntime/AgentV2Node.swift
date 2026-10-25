@@ -81,7 +81,7 @@ public struct AgentNodeData: Sendable {
 public enum AgentNodeDecision: Sendable {
     case completed(NodeRunResult)
     /// The server has prepared one durable pending question; the engine must commit the whole pause before ACK.
-    case pause(formID: String)
+    case pause(formID: String, usage: LLMUsage = .empty)
 }
 
 public protocol AgentRuntime: Sendable {
@@ -104,7 +104,9 @@ public struct AgentV2Node: RuntimeNode {
     public func run(_ context: NodeRunContext, emit: @Sendable (NodeEvent) async -> Void) async throws {
         switch try await runtime.run(nodeID: id, data: data, context: context) {
         case .completed(let result): await emit(.completed(result))
-        case .pause(let form): await emit(.pauseRequested(.hitlRequired(sessionId: form, nodeId: id, nodeTitle: base.title)))
+        case .pause(let form, let usage):
+            if usage.totalTokens > 0 { await emit(.usageDelta(usage)) }
+            await emit(.pauseRequested(.hitlRequired(sessionId: form, nodeId: id, nodeTitle: base.title)))
         }
     }
 

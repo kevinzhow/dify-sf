@@ -619,6 +619,8 @@ struct Dispatcher {
     mutating func dispatch(_ frameId: String, _ event: GraphNodeEvent, _ post: AsyncStream<DispatchMessage>.Continuation) {
         let key = FrameNode(frameId: frameId, nodeId: event.nodeId)
         switch event {
+        case .usageDelta(_, _, let usage):
+            frames[frameId]!.addUsage(usage)
         case .pauseRequested(_, let nodeId, let reason):
             pauseReasons.append(reason)
             frames[frameId]!.nodeStates[nodeId] = .unknown

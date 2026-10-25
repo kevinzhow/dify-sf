@@ -127,7 +127,7 @@ public enum RunTrace {
                          "value": norm(value.value)])
                 case .pauseRequested(_, let nodeId, _):
                     add(["event": "engine:NodeRunPauseRequestedEvent", "node_id": .string(nodeId)])
-                case .reasoningChunk, .retrieverResource: break
+                case .usageDelta, .reasoningChunk, .retrieverResource: break
                 }
             case .runPaused(_, _, let stats):
                 add(["event": "workflow_paused", "status": "paused", "outputs": norm(.object(stats.outputs)),

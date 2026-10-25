@@ -176,6 +176,10 @@ public enum AgentOutputPolicy {
     public static func decide(fields: [AgentDeclaredOutput], candidate: JSONValue, attempt: Int,
                               fileValid: @Sendable (JSONValue) async -> Bool) async -> AgentOutputDecision {
         let payload = candidate.object
+        guard payload != nil || !fields.isEmpty else {
+            let checks = fields.map { AgentOutputCheck(field: $0.name, status: .failed, value: candidate, reason: "Backend output is not a JSON object.") }
+            return .init(action: .failNode, outputs: [:], checks: checks, nextAttempt: attempt, retryIntervalMs: 0)
+        }
         var checks: [AgentOutputCheck] = []
         for field in fields {
             guard let payload else {
@@ -187,7 +191,7 @@ public enum AgentOutputPolicy {
                                     reason: field.required ? "Required output \(field.name) is missing from backend payload." : nil))
                 continue
             }
-            let error = await reason(kind: field.kind, itemKind: field.itemKind, value: value, fileValid: fileValid)
+            let error = await reason(definition: field.json, value: value, fileValid: fileValid)
             checks.append(.init(field: field.name, status: error == nil ? .ready : .failed, value: value, reason: error))
         }
         var outputs: JSONObject = ["text": .string(payload?["text"]?.string ?? candidate.string ?? "")]
@@ -213,7 +217,7 @@ public enum AgentOutputPolicy {
         }
         for field in failedFields {
             guard let value = field.defaultValue,
-                  await reason(kind: field.kind, itemKind: field.itemKind, value: value, fileValid: fileValid) == nil else {
+                  await reason(definition: field.json, value: value, fileValid: fileValid) == nil else {
                 return .init(action: .failNode, outputs: outputs, checks: checks, nextAttempt: attempt, retryIntervalMs: 0)
             }
             outputs[field.name] = value
@@ -221,19 +225,41 @@ public enum AgentOutputPolicy {
         return .init(action: .succeeded, outputs: outputs, checks: checks, nextAttempt: attempt, retryIntervalMs: 0)
     }
 
-    static func reason(kind: AgentDeclaredOutput.Kind, itemKind: AgentDeclaredOutput.Kind?, value: JSONValue,
+    static func reason(definition: JSONObject, value: JSONValue,
                        fileValid: @Sendable (JSONValue) async -> Bool) async -> String? {
+        guard let kind = definition["type"]?.string.flatMap(AgentDeclaredOutput.Kind.init(rawValue:)) else { return "Invalid declared output type." }
         switch (kind, value) {
-        case (.string, .string), (.number, .int), (.boolean, .bool), (.object, .object): return nil
-        case (.number, .double(let number)) where number.isFinite: return nil
-        case (.array, .array(let values)):
-            for (index, item) in values.enumerated() {
-                if let error = await reason(kind: itemKind ?? .object, itemKind: nil, value: item, fileValid: fileValid) {
-                    return "items[\(index)]: \(error)"
+        case (.string, .string), (.number, .int), (.boolean, .bool): return nil
+        case (.object, .object(let object)):
+            for field in definition["children"]?.array ?? [] {
+                guard let child = field.object, let name = child["name"]?.string else { return "Invalid child definition." }
+                guard let value = object[name] else {
+                    if child["required"] != false { return "Required child \(name) is missing." }
+                    continue
                 }
+                if let error = await reason(definition: child, value: value, fileValid: fileValid) { return name + ": " + error }
             }
             return nil
-        case (.file, .object): return await fileValid(value) ? nil : "The file is unavailable or belongs to another execution."
+        case (.number, .double(let number)) where number.isFinite: return nil
+        case (.array, .array(let values)):
+            let spec = definition["array_item"]?.object ?? ["type": "object"]
+            for (index, item) in values.enumerated() {
+                if let error = await reason(definition: spec, value: item, fileValid: fileValid) { return "items[\(index)]: \(error)" }
+            }
+            return nil
+        case (.file, .object):
+            guard await fileValid(value) else { return "The file is unavailable or belongs to another execution." }
+            let constraints = definition["file"]
+            let extensions = constraints?["extensions"]?.array?.compactMap(\.string) ?? []
+            let ext = (value["extension"]?.string ?? "").trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+            if !extensions.isEmpty && !extensions.contains(where: { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased() == ext }) { return "The output file extension is not allowed." }
+            let mimes = constraints?["mime_types"]?.array?.compactMap(\.string) ?? []
+            let mime = value["mime_type"]?.string?.lowercased() ?? ""
+            if !mimes.isEmpty && !mimes.contains(where: { rule in
+                let rule = rule.lowercased()
+                return rule == mime || (rule.hasSuffix("/*") && mime.hasPrefix(String(rule.dropLast())))
+            }) { return "The output file MIME type is not allowed." }
+            return nil
         default: return "Expected \(kind.rawValue), got \(valueType(value))."
         }
     }

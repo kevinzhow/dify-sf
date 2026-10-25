@@ -23,6 +23,7 @@ struct Routes: Sendable {
     let blobs: any BlobStore
     let uploadBudget = UploadBudget()
     let agentModelScopes = AgentModelScopes()
+    let agentOwner = UUID().uuidString.lowercased()
 
     static let maxBodyBytes = 1 << 20
     static let maxOpsPerRequest = 100
@@ -71,6 +72,7 @@ struct Routes: Sendable {
         registerModels(on: r)
         registerAgentComposer(on: r)
         registerAgentModels(on: r)
+        registerAgentUploads(on: r)
         registerTools(on: r)
         registerHelpers(on: r)
         registerApps(on: r)

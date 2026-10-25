@@ -100,6 +100,8 @@ public struct StoredHumanInputForm: Sendable, Equatable {
     public var createdAt: Date
     public var recipientType: HumanInputRecipient
     public var kind: HumanInputFormKind
+    /// Private question identity; the public execution ID remains the actual engine execution.
+    public var questionID: String
 
     public init(id: String, workflowRunId: String?, generation: Int = 1, executionId: String, docId: String, nodeId: String,
                 nodeTitle: String, token: String, formContent: String, inputs: String, userActions: String,
@@ -107,7 +109,7 @@ public struct StoredHumanInputForm: Sendable, Equatable {
                 actions: String, displayInUi: Bool, expirationTime: Int? = nil, status: HumanInputFormStatus = .waiting,
                 submittedInputs: String? = nil, submittedAction: String? = nil, submittedBy: String? = nil,
                 submittedAt: Date? = nil, consumedAt: Date? = nil, createdAt: Date,
-                recipientType: HumanInputRecipient = .console, kind: HumanInputFormKind = .runtime) {
+                recipientType: HumanInputRecipient = .console, kind: HumanInputFormKind = .runtime, questionID: String = "") {
         self.id = id
         self.workflowRunId = workflowRunId
         self.generation = generation
@@ -134,6 +136,7 @@ public struct StoredHumanInputForm: Sendable, Equatable {
         self.createdAt = createdAt
         self.recipientType = recipientType
         self.kind = kind
+        self.questionID = questionID
     }
 }
 
@@ -174,7 +177,7 @@ extension PostgresStore {
         id, workflow_run_id, generation, execution_id, doc_id, node_id, node_title, token, form_content, inputs,
         user_actions, rendered_content, default_values, resolved_default_values, actions, display_in_ui, expiration_time,
         status, submitted_inputs, submitted_action, submitted_by, submitted_at, consumed_at, created_at, recipient_type,
-        form_kind
+        form_kind, question_id
         """
 
     /// `formColumns` qualified for a join (`human_input_forms` shares `workflow_run_id` and others with its neighbours).
@@ -182,7 +185,7 @@ extension PostgresStore {
         f.id, f.workflow_run_id, f.generation, f.execution_id, f.doc_id, f.node_id, f.node_title, f.token, f.form_content,
         f.inputs, f.user_actions, f.rendered_content, f.default_values, f.resolved_default_values, f.actions,
         f.display_in_ui, f.expiration_time, f.status, f.submitted_inputs, f.submitted_action, f.submitted_by,
-        f.submitted_at, f.consumed_at, f.created_at, f.recipient_type, f.form_kind
+        f.submitted_at, f.consumed_at, f.created_at, f.recipient_type, f.form_kind, f.question_id
         """
 
     static func decodeForm(_ row: PostgresRow, offset: Int = 0) throws -> StoredHumanInputForm {
@@ -206,7 +209,8 @@ extension PostgresStore {
             submittedBy: try r[20 + offset].decode(String?.self), submittedAt: try r[21 + offset].decode(Date?.self),
             consumedAt: try r[22 + offset].decode(Date?.self), createdAt: try r[23 + offset].decode(Date.self),
             recipientType: try Self.decodeRecipient(try r[24 + offset].decode(String.self)),
-            kind: HumanInputFormKind(rawValue: try r[25 + offset].decode(String.self)) ?? .runtime)
+            kind: HumanInputFormKind(rawValue: try r[25 + offset].decode(String.self)) ?? .runtime,
+            questionID: try r[26 + offset].decode(String.self))
     }
 
     static let pauseColumns = """
@@ -273,7 +277,7 @@ extension PostgresStore {
     @discardableResult
     public func createPause(workflowRunId: String, docId: String, nodeId: String = "", snapshot: String, totalTokens: Int = 0,
                             totalSteps: Int = 0, elapsedTime: Double = 0, outputs: String = "{}",
-                            forms: [StoredHumanInputForm], at: Date) async throws -> Int {
+                            forms: [StoredHumanInputForm], at: Date, agentOutcomes: [AgentOutcomeCommit] = []) async throws -> Int {
         try await bounded {
             try await self.client.withTransaction(logger: self.logger) { c in
                 try await self.lockRun(workflowRunId, c)
@@ -331,15 +335,21 @@ extension PostgresStore {
                     _ = try await c.query("""
                         INSERT INTO human_input_forms (id, workflow_run_id, generation, execution_id, doc_id, node_id,
                             node_title, token, form_content, inputs, user_actions, rendered_content, default_values,
-                            resolved_default_values, actions, display_in_ui, expiration_time, status, created_at, recipient_type)
+                            resolved_default_values, actions, display_in_ui, expiration_time, status, created_at, recipient_type, question_id)
                         VALUES (\(f.id), \(workflowRunId), \(generation), \(f.executionId), \(docId), \(f.nodeId),
                             \(f.nodeTitle), \(f.token), \(f.formContent), \(f.inputs), \(f.userActions), \(f.renderedContent),
                             \(f.defaultValues), \(f.resolvedDefaultValues), \(f.actions), \(f.displayInUi),
-                            \(f.expirationTime.map { Int64($0) }), \(f.status.rawValue), \(f.createdAt), \(f.recipientType.rawValue))
-                        ON CONFLICT (workflow_run_id, execution_id) DO UPDATE
+                            \(f.expirationTime.map { Int64($0) }), \(f.status.rawValue), \(f.createdAt), \(f.recipientType.rawValue), \(f.questionID))
+                        ON CONFLICT (workflow_run_id, execution_id, question_id) DO UPDATE
                             SET generation = EXCLUDED.generation
                             WHERE human_input_forms.status = 'waiting'
                         """, logger: self.logger)
+                }
+                for change in agentOutcomes {
+                    guard forms.contains(where: { $0.id == change.formID && $0.executionId == change.executionID && $0.questionID == change.questionID }) else {
+                        throw StoreError.notCommitted("Agent outcome is not part of this pause")
+                    }
+                    try await self.commitAgentOutcome(change, tx: c)
                 }
                 try await self.refreshWake(workflowRunId, c)
                 return generation
@@ -462,11 +472,11 @@ extension PostgresStore {
     }
 
     /// The form of one node execution (the pair a resume or a re-decision asks about), nil when it does not exist.
-    public func humanInputForm(workflowRunId: String, executionId: String) async throws -> StoredHumanInputForm? {
+    public func humanInputForm(workflowRunId: String, executionId: String, questionID: String = "") async throws -> StoredHumanInputForm? {
         try await bounded {
             let rows = try await self.client.query("""
                 SELECT \(unescaped: Self.formColumns) FROM human_input_forms
-                WHERE workflow_run_id = \(workflowRunId) AND execution_id = \(executionId)
+                WHERE workflow_run_id = \(workflowRunId) AND execution_id = \(executionId) AND question_id = \(questionID)
                 """, logger: self.logger)
             for try await row in rows { return try Self.decodeForm(row) }
             return nil

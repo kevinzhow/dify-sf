@@ -73,17 +73,18 @@ extension PostgresStore {
     }
 
     /// The end of a run: status, outputs, error and totals.
+    @discardableResult
     public func finishWorkflowRun(id: String, status: String, outputs: String?, error: String?, elapsedTime: Double, totalTokens: Int,
-                                  totalSteps: Int, exceptionsCount: Int, finishedAt: Date, chatLease: String? = nil) async throws {
+                                  totalSteps: Int, exceptionsCount: Int, finishedAt: Date, chatLease: String? = nil) async throws -> Bool {
         try await bounded {
             try await self.client.withTransaction(logger: self.logger) { c in
                 try await self.lockRun(id, c)
                 for try await _ in try await c.query("""
-                    SELECT 1 FROM workflow_runs WHERE id = \(id) AND type = 'chat'
+                    SELECT 1 FROM workflow_runs WHERE id = \(id)
                         AND status IN ('succeeded', 'partial-succeeded', 'failed', 'stopped')
                     """, logger: self.logger) {
                     if chatLease != nil { throw ChatStoreError.leaseLost }
-                    return // e.g. resume preparation failed after a stop already committed: keep the existing terminal.
+                    return false // Keep the first terminal for workflows as well as chat turns.
                 }
                 // Same lock order as turn creation/progress. An obsolete engine cannot overwrite a fenced turn.
                 var owned = chatLease == nil
@@ -98,6 +99,7 @@ extension PostgresStore {
                         total_tokens = \(totalTokens), total_steps = \(totalSteps), exceptions_count = \(exceptionsCount), finished_at = \(finishedAt)
                     WHERE id = \(id)
                     """, logger: self.logger)
+                try await self.terminateAgentSessions(run: id, tx: c)
                 _ = try await c.query("""
                     UPDATE app_messages SET status = CASE WHEN \(status)::text IN ('failed', 'stopped') THEN 'error' ELSE 'normal' END,
                         error = \(error), updated_at = \(finishedAt) WHERE workflow_run_id = \(id)
@@ -106,6 +108,7 @@ extension PostgresStore {
                     UPDATE app_chat_conversations SET active_run_id = NULL, lease_id = NULL, lease_until = NULL, updated_at = \(finishedAt)
                     WHERE active_run_id = \(id)
                     """, logger: self.logger)
+                return true
             }
         }
     }
@@ -202,9 +205,9 @@ extension PostgresStore {
     }
 
     /// A node execution as it ends (insert, or replace the row of the same id).
-    public func upsertNodeExecution(_ e: StoredNodeExecution) async throws {
+    public func upsertNodeExecution(_ e: StoredNodeExecution, agentOutcome: AgentOutcomeCommit? = nil) async throws {
         try await bounded {
-            _ = try await self.client.query("""
+            let query: PostgresQuery = """
                 INSERT INTO workflow_node_executions (id, doc_id, workflow_run_id, triggered_from, doc_seq, run_index, predecessor_node_id,
                     node_id, node_type, title, inputs, process_data, outputs, status, error, elapsed_time, execution_metadata, created_by,
                     created_at, finished_at)
@@ -214,7 +217,24 @@ extension PostgresStore {
                 ON CONFLICT (id) DO UPDATE SET run_index = EXCLUDED.run_index, inputs = EXCLUDED.inputs, process_data = EXCLUDED.process_data,
                     outputs = EXCLUDED.outputs, status = EXCLUDED.status, error = EXCLUDED.error, elapsed_time = EXCLUDED.elapsed_time,
                     execution_metadata = EXCLUDED.execution_metadata, finished_at = EXCLUDED.finished_at
-                """, logger: self.logger)
+                """
+            if let change = agentOutcome {
+                guard let run = e.workflowRunId else { throw StoreError.notCommitted("Agent result requires a workflow run") }
+                try await self.client.withTransaction(logger: self.logger) { tx in
+                    try await self.lockRun(run, tx)
+                    guard change.executionID == e.id, change.status == "completed" || change.status == "failed" else {
+                        throw StoreError.notCommitted("Agent outcome does not belong to this node result")
+                    }
+                    var sameIdentity = false
+                    for try await _ in try await tx.query("""
+                        SELECT 1 FROM agent_node_sessions WHERE execution_id = \(e.id) AND workflow_run_id = \(run)
+                          AND doc_id = \(e.docId) AND node_id = \(e.nodeId)
+                        """, logger: self.logger) { sameIdentity = true }
+                    guard sameIdentity else { throw StoreError.notCommitted("Agent result identity changed") }
+                    _ = try await tx.query(query, logger: self.logger)
+                    try await self.commitAgentOutcome(change, tx: tx)
+                }
+            } else { _ = try await self.client.query(query, logger: self.logger) }
         }
     }
 

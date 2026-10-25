@@ -118,6 +118,7 @@ public struct RuntimeServices: Sendable {
     /// HTTP for the HTTP request node (Dify: through `ssrf_proxy`).
     public var http: (any RuntimeHTTPClient)?
     public var humanInput: (any HumanInputRuntime)?
+    public var agent: (any AgentRuntime)?
     public var memory: (any ConversationMemory)?
     public var files: (any RuntimeFiles)?
     public var tools: (any ToolRuntime)?
@@ -176,6 +177,11 @@ public struct BuiltinNodeFactory: NodeFactory {
         case NodeType.tool:
             guard let runtime = services.tools else { throw ServiceNotConfigured(service: .tools) }
             return try ToolNode(id: config.id, data: config.data, runtime: runtime, files: services.files)
+        case "agent":
+            guard let runtime = services.agent else { throw UnsupportedNodeType(nodeType: config.type) }
+            let data = try AgentNodeData(config.data)
+            try await runtime.prepare(nodeID: config.id, data: data)
+            return AgentV2Node(id: config.id, data: data, runtime: runtime)
         case NodeType.humanInput:
             guard let runtime = services.humanInput else { throw ServiceNotConfigured(service: .humanInput) }
             return try HumanInputNode(id: config.id, data: config.data, runtime: runtime)
@@ -284,6 +290,8 @@ public enum NodeRunner {
                                       errorType: "RuntimeError")
                 await emit(.failed(executionId: executionId, nodeId: node.id, startAt: startAt, finishedAt: Date(), result: r, error: r.error))
             }
+        case .usageDelta(let usage):
+            await emit(.usageDelta(executionId: executionId, nodeId: node.id, usage: usage))
         case .pauseRequested(let reason):
             state.suspend()
             await emit(.pauseRequested(executionId: executionId, nodeId: node.id, reason: reason))

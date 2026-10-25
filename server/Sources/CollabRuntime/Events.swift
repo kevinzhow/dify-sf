@@ -141,6 +141,8 @@ public struct NodeRunResult: Sendable, Codable {
 
 /// What a node's `_run` yields (`graphon/node_events`).
 public enum NodeEvent: Sendable {
+    /// Usage spent before a node pauses; counted once in its frame and retained by the snapshot.
+    case usageDelta(LLMUsage)
     /// `StreamChunkEvent`: a piece of a streamed output (`selector` = `[node, "text"]`).
     case streamChunk(selector: [String], chunk: String, isFinal: Bool)
     /// `StreamReasoningEvent`: a piece of streamed reasoning (`[node, "reasoning_content"]`).
@@ -258,6 +260,7 @@ public enum ContainerResult: Sendable, Codable {
 
 /// What the engine sees of a running node (`graphon/graph_events/node.py`), with the node execution id.
 public enum GraphNodeEvent: Sendable {
+    case usageDelta(executionId: String, nodeId: String, usage: LLMUsage)
     case pauseRequested(executionId: String, nodeId: String, reason: PauseReason)
     /// `scope`: the iteration / loop the node runs in (set by the engine).
     case started(executionId: String, nodeId: String, nodeType: String, title: String, startAt: Date, scope: NodeScope)
@@ -290,7 +293,7 @@ public enum GraphNodeEvent: Sendable {
 
     public var nodeId: String {
         switch self {
-        case .pauseRequested(_, let n, _), .started(_, let n, _, _, _, _), .streamChunk(_, let n, _, _, _), .reasoningChunk(_, let n, _, _, _),
+        case .usageDelta(_, let n, _), .pauseRequested(_, let n, _), .started(_, let n, _, _, _, _), .streamChunk(_, let n, _, _, _), .reasoningChunk(_, let n, _, _, _),
              .retrieverResource(_, let n, _, _), .variableUpdated(_, let n, _, _), .succeeded(_, let n, _, _, _),
              .failed(_, let n, _, _, _, _), .exception(_, let n, _, _, _, _), .retry(_, let n, _, _, _, _),
              .containerStarted(_, let n, _, _, _, _), .containerNext(_, let n, _, _, _), .containerCompleted(_, let n, _, _, _, _, _, _, _):
@@ -300,7 +303,7 @@ public enum GraphNodeEvent: Sendable {
 
     public var executionId: String {
         switch self {
-        case .pauseRequested(let x, _, _), .started(let x, _, _, _, _, _), .streamChunk(let x, _, _, _, _), .reasoningChunk(let x, _, _, _, _),
+        case .usageDelta(let x, _, _), .pauseRequested(let x, _, _), .started(let x, _, _, _, _, _), .streamChunk(let x, _, _, _, _), .reasoningChunk(let x, _, _, _, _),
              .retrieverResource(let x, _, _, _), .variableUpdated(let x, _, _, _), .succeeded(let x, _, _, _, _),
              .failed(let x, _, _, _, _, _), .exception(let x, _, _, _, _, _), .retry(let x, _, _, _, _, _),
              .containerStarted(let x, _, _, _, _, _), .containerNext(let x, _, _, _, _), .containerCompleted(let x, _, _, _, _, _, _, _, _):
