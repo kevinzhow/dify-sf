@@ -430,6 +430,76 @@ struct RuntimeFileRouteTests {
 
 @Suite("Human input runtime files", .enabled(if: testDbHost != nil))
 struct HumanInputRuntimeFileRouteTests {
+    @Test func reopeningAFormAndReplayingAPauseRefreshesOnlyItsBackedFileLinks() async throws {
+        var config = fileConfig()
+        config.humanInputWebEnabled = true
+        config.files.accessSeconds = 1
+        defer { try? FileManager.default.removeItem(atPath: config.files.directory) }
+        let frozen = config
+        try await withFiles(config: frozen) { api, store, routes in
+            let owner = try await api.setupOwner()
+            let uploaded = try await upload(api, owner)
+            let yaml = HumanInputRunTests.appYAML()
+                .replacingOccurrences(of: #"(?m)^(\s*)variables: \[\]$"#, with: "$1variables: [{variable: picture, label: Picture, type: file, required: true, allowed_file_types: [document], allowed_file_upload_methods: [local_file]}]", options: .regularExpression)
+                .replacingOccurrences(of: "Please approve {{#$output.reply#}}", with: "Please approve {{#start.picture#}} {{#$output.reply#}} [literal](https://untrusted.example/literal.png)")
+            let imported = try await api.post("/v1/docs/import", yaml, token: owner)
+            let app = imported.str("id")
+            let file: JSONValue = ["transfer_method": "local_file", "upload_file_id": .string(uploaded.str("id")), "type": "document"]
+            let started = try await api.post("/v1/apps/\(app)/workflows/draft/run",
+                JSONValue.object(["inputs": ["picture": file]]).compactJSON(), token: owner)
+            #expect(imported.status == 201 && !app.isEmpty, "\(imported.text)")
+            #expect(started.status == 200, "\(started.text)")
+            let frames = HumanInputRunTests.frames(started.text)
+            let required = try #require(frames.first { $0["event"] == "human_input_required" }, "\(started.text)")
+            let run = try #require(required["workflow_run_id"]?.string)
+            let token = try #require(required["data"]?["form_token"]?.string)
+            func firstLink(_ text: String) throws -> String {
+                let regex = try NSRegularExpression(pattern: #"https?://[^)\s]+"#)
+                let match = try #require(regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)))
+                return String(text[try #require(Range(match.range, in: text))])
+            }
+            let original = try #require(try await store.humanInputForm(token: token))
+            let originalPause = try #require(try await store.openPauses(workflowRunId: run).first)
+            let originalRun = try #require(try await store.workflowRun(id: run))
+            let oldLink = try firstLink(original.renderedContent)
+            #expect(try await api.get(localPath(oldLink)).status == 200)
+            try await Task.sleep(for: .seconds(2))
+            #expect(try await api.get(localPath(oldLink)).status == 404, "old signatures must still expire")
+            print("OLD_FILE_LINK_EXPIRED_BEFORE_REOPEN")
+            let definition = try await api.get("/v1/form/human_input/\(token)", token: owner)
+            #expect(definition.status == 200)
+            let freshLink = try firstLink(definition.str("rendered_content"))
+            #expect(freshLink != oldLink, "fresh definition must renew the stored file signature")
+            #expect(try await api.get(localPath(freshLink)).text == "hello")
+            #expect(definition.str("form_content") == original.formContent, "the saved template is not rewritten")
+            let snapshot = try await api.get("/v1/workflow/\(run)/events?include_state_snapshot=true", token: owner)
+            let replay = HumanInputRunTests.frames(snapshot.text)
+            let replayForm = try #require(replay.first { $0["event"] == "human_input_required" })
+            let replayLink = try firstLink(replayForm["data"]?["form_content"]?.string ?? "")
+            #expect(try await api.get(localPath(replayLink)).text == "hello")
+            let pausedFrame = try #require(replay.first { $0["event"] == "workflow_paused" })
+            let reason = try #require(pausedFrame["data"]?["reasons"]?.array?.first)
+            let reasonLink = try firstLink(reason["form_content"]?.string ?? "")
+            #expect(try await api.get(localPath(reasonLink)).text == "hello")
+            #expect(definition.str("rendered_content").contains("https://untrusted.example/literal.png"), "literal URLs are not rewritten or fetched")
+            #expect(try await store.openPauses(workflowRunId: run).first == originalPause, "reading must not mutate the saved engine pool")
+            #expect(await routes.refreshedHumanInputForm(original, pause: nil, run: originalRun) == original)
+            var closed = original; closed.status = .expired
+            #expect(await routes.refreshedHumanInputForm(closed, pause: originalPause, run: originalRun) == closed)
+            var foreign = originalRun; foreign.endUserId = "another-public-visitor"
+            let denied = await routes.refreshedHumanInputForm(original, pause: originalPause, run: foreign)
+            #expect(!denied.renderedContent.contains("/files/"), "a console upload cannot gain a public visitor link")
+            let persisted = try #require(try await store.humanInputForm(token: token))
+            #expect(persisted == original, "reading a form must not change its decision, identity, deadlines or saved text")
+            #expect(try await api.get("/v1/form/human_input/\(token)").status == 404, "renewing does not open console tokens anonymously")
+            let storedFile = try #require(try await store.uploadFile(id: uploaded.str("id"), workspace: uploadWorkspaceId))
+            try await routes.blobs.delete(key: storedFile.key)
+            let missing = try await api.get("/v1/form/human_input/\(token)", token: owner)
+            #expect(missing.status == 200 && !missing.str("rendered_content").contains("/files/"), "missing files do not keep or gain bearer links")
+            #expect(missing.str("rendered_content").contains("https://untrusted.example/literal.png"))
+        }
+    }
+
     @Test func fileAnswerIsValidatedBeforePersistingAndIsRestoredIntoTheActualRun() async throws {
         var c = fileConfig(); c.humanInputWebEnabled = true; c.humanInputEmailEnabled = false
         defer { try? FileManager.default.removeItem(atPath: c.files.directory) }

@@ -2333,3 +2333,15 @@ An explicit enable is required. Disable closes matching immediately and complete
 separately durable/retried. The match is top1 cosine, `score=1-distance`, strictly greater than the configured threshold
 (with original feature-level zero mapped to one). Hits persist their actual SQL answer and source; deleting an annotation
 also removes its history. See [implementation and configuration](runtime-helpers.md) for exact limits and dependencies.
+
+
+### Human-input file presentation extension
+
+These are intentional dify-sf extensions, not claims of Dify 1.17.1 wire parity. The fixed upstream source renders a form
+once on creation (`api/core/workflow/nodes/human_input/callback.py`), serializes its definition (`core/repositories/human_input_repository.py`),
+and returns that persisted definition on reads (`services/human_input_service.py`, `controllers/console/human_input_form.py`).
+
+A pending runtime form with a durable pause may re-render its original template using the **same execution's** saved pool
+and existing scoped DB-backed file projection on GET and state replay. This refreshes storage links, not the original
+record, decision, pool, expiration or output. Literal arbitrary URLs and forms without a saved runtime pool are not
+rewritten. Deleted or out-of-scope files cannot gain a new link, and reading never downloads a remote URL or re-executes a node.
