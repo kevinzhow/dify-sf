@@ -50,6 +50,10 @@ class RunRecord {
     required this.generation,
     required this.digest,
     required this.createdAt,
+    this.tenantId,
+    this.appId,
+    this.workflowRunId,
+    this.nodeId,
     this.status = 'running',
     this.endedAt,
     this.acknowledged = false,
@@ -62,6 +66,13 @@ class RunRecord {
   int generation;
   final String digest;
   final DateTime createdAt;
+
+  /// Who the run works for, from the operation's `execution` (null in records
+  /// written before these were kept).
+  final String? tenantId;
+  final String? appId;
+  final String? workflowRunId;
+  final String? nodeId;
   String status;
   DateTime? endedAt;
   bool acknowledged;
@@ -81,6 +92,10 @@ class RunRecord {
     'generation': generation,
     'digest': digest,
     'created_at': createdAt.toIso8601String(),
+    'tenant_id': tenantId,
+    'app_id': appId,
+    'workflow_run_id': workflowRunId,
+    'node_id': nodeId,
     'status': status,
     'ended_at': endedAt?.toIso8601String(),
     'acknowledged': acknowledged,
@@ -95,6 +110,10 @@ class RunRecord {
     generation: j['generation'] as int,
     digest: j['digest'] as String,
     createdAt: DateTime.parse(j['created_at'] as String),
+    tenantId: j['tenant_id'] as String?,
+    appId: j['app_id'] as String?,
+    workflowRunId: j['workflow_run_id'] as String?,
+    nodeId: j['node_id'] as String?,
     status: j['status'] as String,
     endedAt: j['ended_at'] == null
         ? null
@@ -294,6 +313,10 @@ class RunStore {
       generation: request.generation,
       digest: digest,
       createdAt: clock(),
+      tenantId: request.execution.tenantId,
+      appId: request.execution.appId,
+      workflowRunId: request.execution.workflowRunId,
+      nodeId: request.execution.nodeId,
     )..events = [];
     Directory(_runDir(run.runId)).createSync(recursive: true);
     _writeMeta(run);

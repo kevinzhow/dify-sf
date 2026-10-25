@@ -129,14 +129,15 @@ void main() {
       final name = fixture['fixture'] as String;
       test(name, () async {
         final steps = (fixture['steps'] as List).cast<Map>();
-        // Runs that the real service ended from outside are held.
+        // Runs that the real service ended from outside are held after
+        // `run_started`; the reasoning buffered so far is written at the end.
         final held = {'cancel_mid_stream', 'lease_expiry_cancel_lost'};
         final operations = <String, Object?>{
           for (final s in steps)
             if ((s['request'] as Map)['path'] == '/v1/operations' &&
                 (s['response'] as Map)['status'] == 202)
               ((s['request'] as Map)['body'] as Map)['operation_id'] as String:
-                  {'fixture': name, if (held.contains(name)) 'hold': true},
+                  {'fixture': name, if (held.contains(name)) 'hold_after': 1},
         };
         final c = await startFake({
           'operations': operations,

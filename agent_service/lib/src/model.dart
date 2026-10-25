@@ -15,6 +15,9 @@ import 'protocol.dart';
 /// stable `file_id` only and model requests carry the same reference.
 const fileUrlScheme = 'dify-sf-file:';
 
+/// Largest `thought` event: longer reasoning of one model call is split.
+const thoughtPieceChars = 16 * 1024;
+
 /// Metadata key on a [ReasoningPart] recording how the reasoning arrived.
 const reasoningFormKey = 'dify_sf_reasoning_form';
 
@@ -120,11 +123,21 @@ Future<ModelResponse> _call(
   };
 
   final acc = LlmAccumulator();
+  // Reasoning streams in many tiny pieces. The run record gets one `thought`
+  // per model call (split only above [thoughtPieceChars]), not one per chunk.
+  final thought = StringBuffer();
+  void flushThought() {
+    if (thought.isEmpty) return;
+    c.onReasoning(thought.toString());
+    thought.clear();
+  }
+
   void forward(List<LlmDelta> deltas) {
     for (final d in deltas) {
       switch (d) {
         case ReasoningDelta():
-          c.onReasoning(d.text);
+          thought.write(d.text);
+          if (thought.length >= thoughtPieceChars) flushThought();
           ctx.sendChunk(
             ModelResponseChunk(
               index: 0,
@@ -139,10 +152,14 @@ Future<ModelResponse> _call(
     }
   }
 
-  await for (final chunk in c.inner.invokeLlm(body)) {
-    forward(acc.add(chunk));
+  try {
+    await for (final chunk in c.inner.invokeLlm(body)) {
+      forward(acc.add(chunk));
+    }
+    forward(acc.flush());
+  } finally {
+    flushThought();
   }
-  forward(acc.flush());
   acc.assignMissingIds();
 
   final usage = Usage.fromDify(acc.usage ?? const {});

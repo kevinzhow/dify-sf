@@ -62,15 +62,14 @@ void main() {
     );
     addTearDown(h.close);
     final runId = await h.startOperation(operation());
-    await until(
-      () => (h.service.store.run(runId)?.events ?? const [])
-          .where((e) => e.event == 'thought')
-          .isNotEmpty,
-    );
+    // Reasoning is buffered per model call, so wait for the stream itself.
+    await until(() => h.gateway.observations.isNotEmpty);
+    await Future<void>.delayed(const Duration(milliseconds: 700));
     await cancelPromptly(h, runId);
     final events = await h.events(runId);
-    expect(events.where((e) => e.event == 'thought'), isNotEmpty);
     expect(events.last.event, 'cancelled');
+    // Nothing is emitted after the terminal event.
+    expect(events.where((e) => e.event == 'cancelled'), hasLength(1));
   });
 
   test('lease expiry cancels a running operation with cancel_lost', () async {

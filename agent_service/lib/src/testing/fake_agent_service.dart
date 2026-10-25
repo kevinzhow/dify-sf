@@ -25,6 +25,9 @@
 ///   "start_delay_ms": 0, "event_delay_ms": 0,
 ///   "hold": false,            // stay running after the events (until cancel,
 ///                             //   DELETE or lease expiry)
+///   "hold_after": 1,          // hold after this many events; the rest are
+///                             //   written when the run ends (buffered
+///                             //   reasoning flushed at cancel)
 ///   "on_cancel": {"event": "succeeded", "data": {…}, "delay_ms": 200},
 ///                             // a late result after cancel; {"result": true}
 ///                             //   uses the scripted terminal event; default
@@ -261,6 +264,7 @@ class FakeAgentService {
                     'run_id': r.runId,
                     'operation_id': r.operationId,
                     'execution_id': r.executionId,
+                    ...r.identity,
                     'generation': r.generation,
                     'status': r.status,
                     'acknowledged': r.acknowledged,
@@ -533,6 +537,12 @@ class FakeAgentService {
       runId: runId,
       operationId: op.operationId,
       executionId: op.execution.executionId,
+      identity: {
+        'tenant_id': op.execution.tenantId,
+        'app_id': op.execution.appId,
+        'workflow_run_id': op.execution.workflowRunId,
+        'node_id': op.execution.nodeId,
+      },
       generation: op.generation,
       script: script,
       steps: terminalAt < 0 ? events : events.sublist(0, terminalAt),
@@ -657,13 +667,19 @@ class FakeAgentService {
     final script = run.script;
     await _sleep(script['start_delay_ms'] as int? ?? 0);
     final gap = script['event_delay_ms'] as int? ?? 0;
-    for (var i = 0; i < run.steps.length; i++) {
+    final holdAfter = script['hold_after'] as int?;
+    final playing = holdAfter == null
+        ? run.steps.length
+        : holdAfter.clamp(0, run.steps.length);
+    for (var i = 0; i < playing; i++) {
       if (run.isEnded || run.stopping) return;
       if (i > 0) await _sleep(gap);
       if (run.isEnded || run.stopping) return;
-      run.append(run.steps[i]['event'] as String, _map(run.steps[i]['data']));
+      run.playNext();
     }
-    if (script['hold'] == true || run.terminal == null) return;
+    if (script['hold'] == true || holdAfter != null || run.terminal == null) {
+      return;
+    }
     if (run.steps.isNotEmpty) await _sleep(gap);
     if (run.isEnded || run.stopping) return;
     run.finish(run.terminal!['event'] as String, _map(run.terminal!['data']));
@@ -987,6 +1003,7 @@ class _Run {
     required this.runId,
     required this.operationId,
     required this.executionId,
+    required this.identity,
     required this.generation,
     required this.script,
     required this.steps,
@@ -996,6 +1013,9 @@ class _Run {
   final String runId;
   final String operationId;
   final String executionId;
+
+  /// `tenant_id`, `app_id`, `workflow_run_id` and `node_id` of the execution.
+  final Map<String, Object?> identity;
   final int generation;
   final Map<String, Object?> script;
 
@@ -1012,8 +1032,20 @@ class _Run {
   bool stopping = false;
   int dropsLeft;
 
+  /// How many of [steps] are written.
+  int played = 0;
+
   bool get isEnded => status != 'running';
   int get lastEventId => events.isEmpty ? 0 : events.last.id;
+
+  void playNext() {
+    final step = steps[played++];
+    final data = step['data'];
+    append(
+      step['event'] as String,
+      data is Map ? data.cast<String, Object?>() : const {},
+    );
+  }
 
   void append(String event, Map<String, Object?> data) {
     if (isEnded) return;
@@ -1024,6 +1056,11 @@ class _Run {
 
   void finish(String event, Map<String, Object?> data) {
     if (isEnded) return;
+    if (script['hold_after'] != null) {
+      while (played < steps.length) {
+        playNext();
+      }
+    }
     final e = _Event(lastEventId + 1, event, data);
     events.add(e);
     result = e;
