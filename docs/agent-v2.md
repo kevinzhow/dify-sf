@@ -86,6 +86,7 @@ Dify's `agent_backend` (`create run`, event stream, cancel, session snapshot), b
 Dify's wire format.
 
 Authentication: `Authorization: Bearer <COLLAB_AGENT_SERVICE_KEY>`. JSON, UTF-8. Request bodies are at most 8 MiB.
+Errors answer `{"protocol", "error": "<code>", "message", …}` with the status and code named below.
 
 ### `POST /v1/operations`
 
@@ -113,6 +114,12 @@ Starts one operation. Every operation is a separate request; there is no separat
 ```
 
 - `output_schema`: JSON Schema of the declared outputs plus `text`, or `null` when none are declared.
+- `tools.ask_human` is derived by the Swift server from the inline agent's `human.contacts` (Dify's Soul config:
+  questions are enabled only when contacts are configured). The agent service treats it as a plain flag; form
+  delivery and recipients stay entirely in the Swift server. `tools.shell: true` fails the run with
+  `sandbox_unavailable` until the sandbox exists (phase 3).
+- The `X-Agent-Run-Token` header is required for a new operation (`400 invalid_request` otherwise). The service keeps
+  it in memory only.
 - Files are referenced by stable `file_id`. The agent service asks the Swift server for a fresh signed URL each time it
   needs the bytes; snapshots never store URLs.
 - `env` reaches only the sandbox environment and never a prompt. Reserved names (`HOME`, `PATH`, `TMPDIR`, `TMP`,
@@ -121,6 +128,9 @@ Starts one operation. Every operation is a separate request; there is no separat
   - `{"kind": "answer", "snapshot": <envelope>, "question_id": "…", "result": <ask_human result>}` after a question.
   - `{"kind": "output_retry", "snapshot": <envelope>, "feedback": [{"field": "score", "error": "…"}]}` after the Swift
     server decided to retry declared outputs.
+  - `continuation` is `null` exactly when `operation_id` ends in `:0:0`. An answer's snapshot has the previous
+    `resume_sequence` and the same `output_attempt`; an output retry's snapshot has the previous `output_attempt`, the
+    same `resume_sequence` and no `pending`. Anything else is `422 snapshot_incompatible`.
 
 Responses:
 
@@ -131,6 +141,7 @@ Responses:
 | Same `operation_id`, different digest | `409 operation_conflict` | `{"run_id"}` |
 | `generation` older than one already seen for the execution | `409 stale_generation` | |
 | Snapshot of an unknown envelope version or a different config snapshot | `422 snapshot_incompatible` | |
+| Execution already deleted (`DELETE /v1/executions/{id}`) | `410 execution_deleted` | |
 
 The request digest is SHA-256 of the canonical JSON request without `generation`.
 
@@ -176,7 +187,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 
 | `event` | `data` |
 |---|---|
-| `run_started` | `{"model", "call_index_base"}` |
+| `run_started` | `{"model", "call_index_base"}`; `call_index_base` is 0 (call indexes of the run start at 1) |
 | `thought` | `{"text"}`: reasoning of the model; never part of the answer |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
 | `model_call` | `{"invocation_id", "usage"}` after each model call |
@@ -189,20 +200,26 @@ Exactly one terminal event (`succeeded`, `paused`, `failed`, `cancelled`) per ru
 data is also stored as the run's `result`. A terminal result is written to the service's run store before it is
 streamed.
 
-- `candidate` is the model's final output as parsed JSON (with `text`). `candidate_errors` lists JSON Schema violations
-  per field. The agent service does not retry, default or branch on declared outputs; the Swift server decides
+- `candidate` is the model's final output as parsed JSON (with `text`); without declared outputs it is `{"text"}`.
+  `candidate_errors` lists JSON Schema violations per field as `{"field", "error"}` (`field` is the top-level property;
+  `""` for the whole output). A final answer that is not JSON gives `candidate: null` and one error with `field: ""`. The agent service does not retry, default or branch on declared outputs; the Swift server decides
   (see [Declared outputs](#declared-outputs)).
 - `usage` is summed over the run's model calls: `{"prompt_tokens", "completion_tokens", "total_tokens",
   "reasoning_tokens"}`. `reasoning_tokens` is `null` when the provider does not report it; it is a detail of
   `completion_tokens` when the provider counts it there, never added a second time.
 - `error_type`: `model_error`, `model_quota`, `max_turns`, `timeout`, `ask_human_invalid`, `sandbox_unavailable`,
   `sandbox_error`, `file_error`, `cancel_lost`, `internal`.
+- `paused`: `question_id` is `<execution_id>:q<resume_sequence + 1>`; `question` is the normalized ask_human arguments
+  (Dify's default `Submit` action added when the model gave none).
+- A run that was in flight when the service process ended is recorded as `failed` (`internal`), on a graceful stop or
+  at the next start; it is never replayed.
 
 ### `POST /v1/runs/{run_id}/ack`
 
 `{"protocol", "generation", "result_event_id"}`. The Swift server calls it after it has committed the terminal result
 (and, for `paused`, the snapshot, form and workflow pause) in one transaction. Until then the run keeps its workspace
-and result. Idempotent.
+and result. Idempotent. An acknowledged run's events are no longer kept (its status and result are). A run that has
+not ended answers `409 run_active`; a `result_event_id` that is not the terminal event answers `409 result_mismatch`.
 
 ### `POST /v1/runs/{run_id}/cancel`
 
@@ -220,7 +237,9 @@ lease.
 ### `DELETE /v1/executions/{execution_id}`
 
 `{"protocol", "generation"}`. Removes everything kept for the execution: workspaces, homes and run records. The service
-derives every path from its own records; nothing in the request is used as a path. Idempotent. The Swift server calls
+derives every path from its own records; nothing in the request is used as a path. Idempotent. Running operations of
+the execution are cancelled first. A tombstone remains, so a late operation or lease for it answers
+`410 execution_deleted`. The Swift server calls
 it once the execution's node reaches a final state, after output files were received.
 
 ### `GET /v1/runs?state=active`
@@ -267,9 +286,9 @@ Genkit Dart supplies the tool loop, streaming, interrupts and image input. The s
 | Concern | Behaviour |
 |---|---|
 | Model | A Genkit model that calls the inner gateway `POST /inner/agent/llm/invoke` with the run's execution and a fresh `invocation_id`. It holds a per-run HTTP client. |
-| Reasoning | Model text inside `<think>…</think>` (Dify's convention for model plugins) becomes `thought`; it is removed from the answer and from the history sent back. |
+| Reasoning | Reasoning arrives as `<think>…</think>` inside the content (Dify's convention for model plugins) or as `delta.message.reasoning_content`. It becomes `thought` events and is kept out of the answer text and the candidate. It stays in the session history as reasoning and is sent back on later calls and resumes the way it arrived for that call: `<think>\n…\n</think>` before the assistant content, or the assistant message's `reasoning_content`. |
 | Declared outputs | The schema goes to the model as structured output. The final answer is parsed and checked against the schema; the result is a candidate with per-field errors. No retries here. |
-| Human question | Tool `ask_human` (Dify's arguments: `title`, `question`, `markdown`, `fields`, `actions`, `urgency`, with Dify's limits) returns a Genkit interrupt. The run ends `paused`. A resume answers the same tool call with Dify's tool result (`status`, `action`, `values`, `rendered_content`). As in Dify, a model turn with more than one `ask_human` call fails with `ask_human_invalid`. |
+| Human question | Tool `ask_human` (Dify's arguments: `title`, `question`, `markdown`, `fields`, `actions`, `urgency`, with Dify's limits) returns a Genkit interrupt. Arguments outside the schema or limits go back to the model as a tool error, as Dify's `ModelRetry` does. The run ends `paused`. A resume answers the same tool call with Dify's tool result (`status`, `action`, `values`, `rendered_content`). As in Dify, a model turn with more than one `ask_human` call fails with `ask_human_invalid`. |
 | Cancel | Closes the run's HTTP client (the Swift server cancels the plugin call on its side), interrupts tools and stops sandbox jobs. Whether the vendor stopped generating cannot be observed and is not claimed. |
 | Usage | Taken from each model call's final usage chunk, counted once per `invocation_id`. |
 | Events | Tool starts and ends become `tool_call`. |
@@ -295,9 +314,12 @@ Mirrors Dify's `AgentLLMInvokeRequest`:
 ```
 
 Response: `text/event-stream`, one event per chunk, `data: {"code": 0, "message": "", "data": <Dify LLMResultChunk>}`.
-Tool call deltas follow Dify's chunk shape (`delta.message.tool_calls[]` with `id`, `type`, `function.name`,
-`function.arguments`); deltas of several tool calls may interleave and are merged by `id`, arguments concatenated in
-order. The last chunk carries `delta.usage` and `delta.finish_reason`. Errors end the stream with
+Tool call deltas follow Dify's chunk shape (`delta.message.tool_calls[]` with `index`, `id`, `type`, `function.name`,
+`function.arguments`); deltas of several tool calls may interleave. A delta with `index` belongs to that index's call
+(later deltas may carry only `index`); the first delta with an `id` sets the id; name and arguments concatenate in
+arrival order per call; a delta with an id but no index matches by id. Reasoning may arrive as
+`delta.message.reasoning_content` (string, streamed in pieces) or as `<think>…</think>` in `delta.message.content`;
+an assistant history message carries prior reasoning back the same way (`reasoning_content` or the think tag). The last chunk carries `delta.usage` and `delta.finish_reason`. Errors end the stream with
 `{"code": -429 | -500, "message": "{\"error_type\":…,\"message\":…}", "data": null}`, as in Dify. A repeated
 `invocation_id` is rejected, so usage is recorded once. Closing the connection cancels the plugin call.
 

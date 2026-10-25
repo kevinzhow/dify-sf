@@ -1,0 +1,19 @@
+name: agent_service
+description: >-
+  dify-sf agent service: runs Agent v2 operations with Genkit Dart over the
+  Swift server's inner model gateway (protocol dify-sf-agent/1).
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  crypto: ^3.0.7
+  genkit: 1.0.1
+  http: ^1.6.0
+  schemantic: 1.0.0
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.31.1

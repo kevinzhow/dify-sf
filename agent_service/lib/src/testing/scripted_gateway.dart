@@ -1,0 +1,428 @@
+/// A scripted stand-in for the Swift server's inner endpoints, speaking the
+/// contract's `POST /inner/agent/llm/invoke` (SSE of
+/// `{"code":0,"message":"","data":<LLMResultChunk>}`, error envelopes `-429`
+/// and `-500`) and the file requests. Used by the tests (in-process) and by
+/// `bin/fake_gateway.dart` (local manual runs).
+///
+/// Script JSON:
+///
+/// ```jsonc
+/// {"calls": [                       // consumed in order, one per model call
+///   {"delay_ms": 0,                 // before the first chunk (pings sent)
+///    "chunk_delay_ms": 0,           // between chunks
+///    "http_status": 200,            // non-200: a JSON error body instead
+///    "chunks": [{"text": "…", "reasoning": "…", "tool_calls": […],
+///                "usage": {…}, "finish_reason": "stop", "delay_ms": 0}
+///               /* or {"raw": <LLMResultChunk>} */],
+///    "error": {"code": -429, "message": "…"},   // after the chunks
+///    "hang": false}],               // keep the stream open after the chunks
+///  "files": {"<file_id>": {"mime_type": "image/png", "size": 3}}}
+/// ```
+library;
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+class ScriptedChunk {
+  ScriptedChunk({
+    this.text,
+    this.reasoning,
+    this.toolCalls,
+    this.usage,
+    this.finishReason,
+    this.delayMs = 0,
+    this.raw,
+  });
+
+  final String? text;
+  final String? reasoning;
+  final List<Map<String, Object?>>? toolCalls;
+  final Map<String, Object?>? usage;
+  final String? finishReason;
+  final int delayMs;
+  final Map<String, Object?>? raw;
+
+  static ScriptedChunk fromJson(Map<String, Object?> j) => ScriptedChunk(
+    text: j['text'] as String?,
+    reasoning: j['reasoning'] as String?,
+    toolCalls: (j['tool_calls'] as List?)
+        ?.map((e) => (e as Map).cast<String, Object?>())
+        .toList(),
+    usage: (j['usage'] as Map?)?.cast<String, Object?>(),
+    finishReason: j['finish_reason'] as String?,
+    delayMs: j['delay_ms'] as int? ?? 0,
+    raw: (j['raw'] as Map?)?.cast<String, Object?>(),
+  );
+
+  Map<String, Object?> toChunk(String model, int index) =>
+      raw ??
+      {
+        'model': model,
+        'prompt_messages': <Object?>[],
+        'system_fingerprint': null,
+        'delta': {
+          'index': index,
+          'message': {
+            'role': 'assistant',
+            'content': text ?? '',
+            'name': null,
+            'tool_calls': toolCalls ?? const <Object?>[],
+            'reasoning_content': ?reasoning,
+          },
+          'usage': usage,
+          'finish_reason': finishReason,
+        },
+      };
+}
+
+class ScriptedCall {
+  ScriptedCall({
+    this.chunks = const [],
+    this.delayMs = 0,
+    this.chunkDelayMs = 0,
+    this.httpStatus = 200,
+    this.error,
+    this.hang = false,
+  });
+
+  final List<ScriptedChunk> chunks;
+  final int delayMs;
+  final int chunkDelayMs;
+  final int httpStatus;
+  final Map<String, Object?>? error;
+  final bool hang;
+
+  /// A plain text answer with usage.
+  factory ScriptedCall.text(
+    String text, {
+    Map<String, Object?>? usage,
+    int delayMs = 0,
+  }) => ScriptedCall(
+    delayMs: delayMs,
+    chunks: [
+      ScriptedChunk(text: text),
+      ScriptedChunk(usage: usage ?? defaultUsage(), finishReason: 'stop'),
+    ],
+  );
+
+  /// One complete tool call (single delta) with usage.
+  factory ScriptedCall.toolCall(
+    String id,
+    String name,
+    Map<String, Object?> arguments, {
+    String? text,
+  }) => ScriptedCall(
+    chunks: [
+      ScriptedChunk(
+        text: text,
+        toolCalls: [
+          toolCallDelta(id: id, name: name, arguments: jsonEncode(arguments)),
+        ],
+      ),
+      ScriptedChunk(usage: defaultUsage(), finishReason: 'tool_calls'),
+    ],
+  );
+
+  static ScriptedCall fromJson(Map<String, Object?> j) => ScriptedCall(
+    chunks: [
+      for (final c in (j['chunks'] as List?) ?? const [])
+        ScriptedChunk.fromJson((c as Map).cast<String, Object?>()),
+    ],
+    delayMs: j['delay_ms'] as int? ?? 0,
+    chunkDelayMs: j['chunk_delay_ms'] as int? ?? 0,
+    httpStatus: j['http_status'] as int? ?? 200,
+    error: (j['error'] as Map?)?.cast<String, Object?>(),
+    hang: j['hang'] as bool? ?? false,
+  );
+}
+
+Map<String, Object?> defaultUsage({
+  int prompt = 10,
+  int completion = 5,
+  int? reasoning,
+}) => {
+  'prompt_tokens': prompt,
+  'completion_tokens': completion,
+  'total_tokens': prompt + completion,
+  'reasoning_tokens': ?reasoning,
+  'currency': 'USD',
+  'latency': 0.1,
+};
+
+Map<String, Object?> toolCallDelta({
+  String? id,
+  int? index,
+  String? name,
+  String? arguments,
+}) => {
+  'id': ?id,
+  'index': ?index,
+  'type': 'function',
+  'function': {'name': name ?? '', 'arguments': arguments ?? ''},
+};
+
+/// One request seen by the gateway.
+class RecordedRequest {
+  RecordedRequest(this.path, this.headers, this.body);
+  final String path;
+  final Map<String, String> headers;
+  final Map<String, Object?> body;
+}
+
+/// What happened to one model call's connection.
+class CallObservation {
+  CallObservation(this.invocationId);
+  final String invocationId;
+
+  /// Completes when the agent service closed the connection early.
+  final Completer<void> closedByClient = Completer();
+  bool completed = false;
+}
+
+class ScriptedGateway {
+  ScriptedGateway({
+    List<ScriptedCall> calls = const [],
+    Map<String, Map<String, Object?>> files = const {},
+    this.serviceKey,
+    this.log,
+  }) : _calls = List.of(calls),
+       files = Map.of(files);
+
+  factory ScriptedGateway.fromJson(
+    Map<String, Object?> script, {
+    String? serviceKey,
+    void Function(String)? log,
+  }) => ScriptedGateway(
+    calls: [
+      for (final c in (script['calls'] as List?) ?? const [])
+        ScriptedCall.fromJson((c as Map).cast<String, Object?>()),
+    ],
+    files: {
+      for (final e in ((script['files'] as Map?) ?? const {}).entries)
+        e.key as String: (e.value as Map).cast<String, Object?>(),
+    },
+    serviceKey: serviceKey,
+    log: log,
+  );
+
+  final List<ScriptedCall> _calls;
+  final Map<String, Map<String, Object?>> files;
+  final String? serviceKey;
+  final void Function(String)? log;
+
+  final List<RecordedRequest> requests = [];
+  final List<CallObservation> observations = [];
+  final Set<String> _invocationIds = {};
+  final Map<String, List<int>> uploads = {};
+  HttpServer? _server;
+
+  Uri get url => Uri.parse('http://127.0.0.1:${_server!.port}');
+
+  /// Model calls (`llm/invoke` bodies) in arrival order.
+  List<Map<String, Object?>> get llmRequests => [
+    for (final r in requests)
+      if (r.path == '/inner/agent/llm/invoke') r.body,
+  ];
+
+  void enqueue(ScriptedCall call) => _calls.add(call);
+
+  Future<Uri> start({Object address = '127.0.0.1', int port = 0}) async {
+    final server = _server = await HttpServer.bind(address, port);
+    server.listen((r) => unawaited(_handle(r)));
+    return url;
+  }
+
+  Future<void> close() async => _server?.close(force: true);
+
+  Future<void> _handle(HttpRequest request) async {
+    final res = request.response;
+    try {
+      final path = request.uri.path;
+      if (request.method == 'GET' && path.startsWith('/files/')) {
+        res.headers.contentType = ContentType.binary;
+        res.add(utf8.encode('fake-bytes'));
+        return await res.close();
+      }
+      if (request.method == 'PUT' && path.startsWith('/uploads/')) {
+        final bytes = await request.fold<List<int>>([], (a, b) => a..addAll(b));
+        uploads[path.substring('/uploads/'.length)] = bytes;
+        res.statusCode = 200;
+        return await res.close();
+      }
+      final text = await utf8.decodeStream(request);
+      final body = text.isEmpty
+          ? <String, Object?>{}
+          : (jsonDecode(text) as Map).cast<String, Object?>();
+      final headers = <String, String>{};
+      request.headers.forEach((k, v) => headers[k] = v.join(','));
+      requests.add(RecordedRequest(path, headers, body));
+      log?.call('${request.method} $path');
+      if (serviceKey != null &&
+          request.headers.value('authorization') != 'Bearer $serviceKey') {
+        return await _jsonResponse(res, 401, {'error': 'unauthorized'});
+      }
+      switch (path) {
+        case '/inner/agent/llm/invoke':
+          return await _invoke(res, body);
+        case '/inner/agent/files/download-request':
+          final id = body['file_id'];
+          final f = files[id];
+          if (f == null) {
+            return await _jsonResponse(res, 404, {'error': 'file_not_found'});
+          }
+          return await _jsonResponse(res, 200, {
+            'url': '$url/files/$id?sig=${requests.length}',
+            'expires_at': DateTime.now()
+                .toUtc()
+                .add(const Duration(minutes: 5))
+                .toIso8601String(),
+            'mime_type': f['mime_type'] ?? 'application/octet-stream',
+            'size': f['size'] ?? 0,
+          });
+        case '/inner/agent/files/upload-request':
+          final id = 'up${requests.length}';
+          return await _jsonResponse(res, 200, {
+            'url': '$url/uploads/$id',
+            'upload_id': id,
+          });
+        default:
+          return await _jsonResponse(res, 404, {'error': 'not_found'});
+      }
+    } catch (e) {
+      log?.call('fake gateway error: $e');
+      try {
+        await res.close();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _jsonResponse(
+    HttpResponse res,
+    int status,
+    Map<String, Object?> body,
+  ) async {
+    res
+      ..statusCode = status
+      ..headers.contentType = ContentType.json
+      ..write(jsonEncode(body));
+    await res.close();
+  }
+
+  Future<void> _invoke(HttpResponse res, Map<String, Object?> body) async {
+    final caller = (body['caller'] as Map?) ?? const {};
+    final target = (body['target'] as Map?) ?? const {};
+    final invocationId = caller['invocation_id'] as String? ?? '';
+    if (!_invocationIds.add(invocationId)) {
+      return _jsonResponse(res, 409, {
+        'error': 'invocation_repeated',
+        'message': 'invocation_id $invocationId was already used',
+      });
+    }
+    final obs = CallObservation(invocationId);
+    observations.add(obs);
+    if (_calls.isEmpty) {
+      return _sse(
+        res,
+        obs,
+        ScriptedCall(error: {'code': -500, 'message': 'script exhausted'}),
+        '',
+      );
+    }
+    final call = _calls.removeAt(0);
+    if (call.httpStatus != 200) {
+      obs.completed = true;
+      return _jsonResponse(res, call.httpStatus, {
+        'error': 'scripted_http_error',
+        'message': 'scripted HTTP ${call.httpStatus}',
+      });
+    }
+    return _sse(res, obs, call, target['model'] as String? ?? '');
+  }
+
+  Future<void> _sse(
+    HttpResponse res,
+    CallObservation obs,
+    ScriptedCall call,
+    String model,
+  ) async {
+    res.statusCode = 200;
+    res.headers
+      ..contentType = ContentType('text', 'event-stream')
+      ..chunkedTransferEncoding = true
+      ..persistentConnection = false;
+    // A detached socket reports the peer closing the connection, which an
+    // HttpResponse does not reliably do while nothing is read from it.
+    final socket = await res.detachSocket(writeHeaders: true);
+    var closed = false;
+    void markClosed() {
+      closed = true;
+      if (!obs.completed && !obs.closedByClient.isCompleted) {
+        obs.closedByClient.complete();
+      }
+    }
+
+    socket.listen(
+      (_) {},
+      onDone: markClosed,
+      onError: (_) => markClosed(),
+      cancelOnError: true,
+    );
+
+    Future<bool> send(String text) async {
+      if (closed) return false;
+      try {
+        // Chunked framing written by hand on the detached socket.
+        final bytes = utf8.encode(text);
+        socket
+          ..write('${bytes.length.toRadixString(16)}\r\n')
+          ..add(bytes)
+          ..write('\r\n');
+        await socket.flush();
+        return !closed;
+      } catch (_) {
+        markClosed();
+        return false;
+      }
+    }
+
+    // Waits while pinging, so a closed connection is noticed.
+    Future<bool> wait(int ms) async {
+      final end = DateTime.now().add(Duration(milliseconds: ms));
+      while (DateTime.now().isBefore(end)) {
+        if (!await send(': ping\n\n')) return false;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      return !closed;
+    }
+
+    String envelope(int code, String message, Object? data) =>
+        'data: ${jsonEncode({'code': code, 'message': message, 'data': data})}\n\n';
+
+    if (!await wait(call.delayMs)) return;
+    for (var i = 0; i < call.chunks.length; i++) {
+      final c = call.chunks[i];
+      if (i > 0 && !await wait(call.chunkDelayMs + c.delayMs)) return;
+      if (!await send(envelope(0, '', c.toChunk(model, i)))) return;
+    }
+    final error = call.error;
+    if (error != null) {
+      final message = jsonEncode({
+        'error_type': error['error_type'] ?? 'ScriptedError',
+        'message': error['message'] ?? 'scripted error',
+      });
+      if (!await send(envelope(error['code'] as int? ?? -500, message, null))) {
+        return;
+      }
+    }
+    if (call.hang) {
+      while (await wait(200)) {}
+      return;
+    }
+    obs.completed = true;
+    try {
+      socket.write('0\r\n\r\n');
+      await socket.close();
+    } catch (_) {}
+  }
+}
