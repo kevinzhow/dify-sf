@@ -9,6 +9,45 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('widget renderer reports real completed frames, including after panning', (t) async {
+    final lines = <String>[];
+    final previous = debugPrint;
+    debugPrint = (String? message, {int? wrapWidth}) {
+      if (message != null) lines.add(message);
+    };
+    CanvasDefaults.reportRect = true;
+    addTearDown(() {
+      debugPrint = previous;
+      CanvasDefaults.reportRect = false;
+    });
+    final demo = DemoBackend(withBo: false);
+    final opened = await demo.openSession('demo', clientId: 'ready-test', journaled: false);
+    await opened.session.start();
+    final controller = EditorController(session: opened.session, docId: 'demo', journaled: false);
+    try {
+      await t.pumpWidget(MaterialApp(home: WorkflowCanvas(controller: controller)));
+      for (var i = 0; i < 6; i++) {
+        await t.pump(const Duration(milliseconds: 100));
+      }
+      expect(lines.where((line) => line.startsWith('CANVAS_SETTLED')), isNotEmpty);
+      lines.clear();
+      final canvas = t.state<WorkflowCanvasState>(find.byType(WorkflowCanvas)).canvas;
+      canvas.view.center += const Offset(10, 0);
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 200));
+      expect(lines.where((line) => line.startsWith('CANVAS_SETTLED')), isNotEmpty);
+      expect(t.takeException(), isNull);
+    } finally {
+      await t.pumpWidget(const SizedBox());
+      controller.dispose();
+      await opened.close();
+      await demo.dispose();
+      await t.pump(const Duration(seconds: 20));
+      debugPrint = previous;
+      CanvasDefaults.reportRect = false;
+    }
+  });
+
   testWidgets('canvas panning preserves chrome paint and chrome updates still paint', (t) async {
     t.view.physicalSize = const Size(1200, 800);
     t.view.devicePixelRatio = 1;

@@ -106,11 +106,13 @@ class _FixtureState extends State<_Fixture> {
     if (k == 'textarea') {
       return SizedBox(
         width: 300,
-        child: DifyTextarea(
-          value: input,
-          placeholder: label,
-          semanticLabel: 'Textarea',
-          onChanged: (x) => setState(() => input = x),
+        child: DifyInlineReplacedBox(
+          child: DifyTextarea(
+            value: input,
+            placeholder: label,
+            semanticLabel: 'Textarea',
+            onChanged: (x) => setState(() => input = x),
+          ),
         ),
       );
     }
@@ -195,6 +197,26 @@ class _FixtureState extends State<_Fixture> {
     if (k == 'pagination') return DifyPagination(page: 2, totalPages: 10, onPageChange: (_) {});
     if (k == 'text' || k == 'selection') {
       return DifySelectionRegion(child: DifyText('$label ABC 0123', DifyType.systemSmRegular));
+    }
+    if (k == 'alpha-composite') {
+      return SizedBox(
+        width: 320,
+        child: Wrap(
+          children: [
+            for (final alpha in <double>[1, .8, .6, .4, .95, .05, .1, .5])
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: ColoredBox(
+                  color: const Color(0xFF1D1D20),
+                  child: ColoredBox(
+                    color: Color.from(alpha: alpha, red: 24 / 255, green: 24 / 255, blue: 27 / 255),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
     }
     if (k == 'surface') {
       return DifyBlurredBox(

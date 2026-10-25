@@ -13,7 +13,112 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dify_spec/dify_test_i18n.dart';
 
+Finder _runButton() => find.byWidgetPredicate(
+  (widget) =>
+      widget is DifyIconButton && widget.label == 'share.generation.run' ||
+      widget is DifyButton &&
+          widget.child is DifyTextLine &&
+          (widget.child as DifyTextLine).data == 'share.generation.run',
+);
+bool _runDisabled(WidgetTester t, Finder finder) => switch (t.widget(finder)) {
+  DifyButton(:final disabled) => disabled,
+  DifyIconButton(:final disabled) => disabled,
+  _ => throw StateError('Expected public run control'),
+};
+
 void main() {
+  test('public chat theme uses the upstream default and saved custom color', () {
+    expect(difyPublicChatPrimary(null), const Color(0xFF1C64F2));
+    expect(difyPublicChatPrimary('#A12b3C'), const Color(0xFFA12B3C));
+    expect(difyPublicChatPrimary('invalid'), const Color(0xFF1C64F2));
+  });
+
+  for (final mode in ['workflow', 'advanced-chat']) {
+    for (final width in [320.0, 390.0, 1440.0]) {
+      testWidgets('published $mode layout stays usable at $width and with a keyboard', (t) async {
+        t.view.physicalSize = Size(width, 900);
+        t.view.devicePixelRatio = 1;
+        addTearDown(t.view.reset);
+        SharedPreferences.setMockInitialValues({});
+        useDifyTestTranslator();
+        final api = HttpPublicAppApi(
+          Uri.parse('https://fixture.invalid'),
+          code: 'layout',
+          client: MockClient((request) async {
+            if (request.url.path == '/v1/passport') return http.Response('{"access_token":"visitor"}', 200);
+            if (request.url.path == '/v1/site') {
+              return http.Response(
+                jsonEncode({
+                  'title': 'A long published application title in several languages',
+                  'mode': mode,
+                  'parameters': {'user_input_form': [], 'opening_statement': 'Ready to help'},
+                }),
+                200,
+              );
+            }
+            throw StateError('Layout test must not start a run: ${request.url}');
+          }),
+        );
+        await t.pumpWidget(
+          MaterialApp(
+            home: PublicAppPage(code: 'layout', server: Uri.parse('https://fixture.invalid'), apiFor: (_, _, _) => api),
+          ),
+        );
+        await t.pumpAndSettle();
+        expect(t.takeException(), isNull);
+        if (mode == 'workflow' && width == 1440) {
+          expect(t.getSize(find.byKey(const Key('public-workflow-inputs'))).width, 600);
+          expect(t.getRect(find.byKey(const Key('public-workflow-result'))).left, 600);
+          // Original RunOnce has mt-6 after the empty form, below the 1px sidebar divider.
+          expect(t.getRect(_runButton()).top - t.getRect(find.byType(DifyTabsList)).bottom, closeTo(25, .01));
+        }
+        if (mode == 'advanced-chat') {
+          expect(find.byType(DifyPublicChatComposer), findsOneWidget);
+          expect(t.getSize(find.byType(DifyPublicChatComposer)).height, 52);
+          t.view.viewInsets = const FakeViewPadding(bottom: 300);
+          await t.pumpAndSettle();
+          expect(t.getRect(find.byType(DifyPublicChatComposer)).bottom, lessThanOrEqualTo(600));
+          expect(t.takeException(), isNull);
+        }
+        await t.pumpWidget(const SizedBox());
+      });
+    }
+  }
+
+  testWidgets('public workflow renders structured outputs with more than one key', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    useDifyTestTranslator();
+    final api = HttpPublicAppApi(
+      Uri.parse('https://fixture.invalid'),
+      code: 'structured',
+      client: MockClient((request) async {
+        if (request.url.path == '/v1/passport') return http.Response('{"access_token":"visitor"}', 200);
+        if (request.url.path == '/v1/site') {
+          return http.Response('{"title":"Structured","mode":"workflow","parameters":{"user_input_form":[]}}', 200);
+        }
+        if (request.url.path == '/v1/workflows/run') {
+          return http.Response(
+            'data: {"event":"workflow_finished","data":{"status":"succeeded","outputs":{"name":"Result","count":3}}}\n\n',
+            200,
+            headers: {'content-type': 'text/event-stream'},
+          );
+        }
+        throw StateError('Unexpected ${request.url}');
+      }),
+    );
+    await t.pumpWidget(
+      MaterialApp(
+        home: PublicAppPage(code: 'structured', server: Uri.parse('https://fixture.invalid'), apiFor: (_, _, _) => api),
+      ),
+    );
+    await t.pumpAndSettle();
+    await t.tap(_runButton());
+    await t.pumpAndSettle();
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(t.widget<EditableText>(find.byType(EditableText)).controller.text, contains('"count": 3'));
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+  });
   test('published paths remain distinct from console app and mail form routes', () {
     expect(LaunchOptions.fromQuery({}, path: '/workflow/code').publicAppCode, 'code');
     expect(LaunchOptions.fromQuery({}, path: '/chat/another').publicAppCode, 'another');
@@ -64,10 +169,10 @@ void main() {
     );
     await t.pumpAndSettle();
     expect(find.text('Published echo'), findsOneWidget);
-    await t.tap(find.widgetWithText(DifyButton, 'share.generation.run'));
+    await t.tap(_runButton());
     await t.pumpAndSettle();
     expect(find.text('Retry fixture'), findsOneWidget);
-    expect(t.widget<DifyButton>(find.widgetWithText(DifyButton, 'share.generation.run')).disabled, isFalse);
+    expect(_runDisabled(t, _runButton()), isFalse);
     await t.tap(find.widgetWithText(DifyButton, 'common.operation.retry'));
     await t.pump(const Duration(milliseconds: 50));
     await t.pumpAndSettle();
@@ -197,18 +302,18 @@ void main() {
       await t.pump(const Duration(milliseconds: 20));
     }
     await t.pump(const Duration(milliseconds: 20));
-    final run = find.widgetWithText(DifyButton, 'share.generation.run');
+    final run = _runButton();
     expect(
       histories,
       1,
       reason:
           'History must load before controls enable; errors: ${t.widgetList<DifyTextLine>(find.byType(DifyTextLine)).map((w) => w.toString()).join()}',
     );
-    expect(t.widget<DifyButton>(run).disabled, isTrue);
+    expect(_runDisabled(t, run), isTrue);
     expect(starts, 0);
     restore.complete(http.Response('{"data":[]}', 200));
     await t.pumpAndSettle();
-    expect(t.widget<DifyButton>(run).disabled, isFalse);
+    expect(_runDisabled(t, run), isFalse);
     await t.enterText(find.byType(EditableText), 'first question');
     await t.tap(run);
     await t.pumpAndSettle();
@@ -302,7 +407,7 @@ void main() {
     );
     await t.pumpAndSettle();
     await t.enterText(find.byType(EditableText), 'retry this');
-    await t.tap(find.widgetWithText(DifyButton, 'share.generation.run'));
+    await t.tap(_runButton());
     await t.pumpAndSettle();
     expect(find.text('Provider refused'), findsOneWidget);
     expect(t.widget<EditableText>(find.byType(EditableText)).controller.text, 'retry this');
@@ -352,7 +457,7 @@ void main() {
     );
     await t.pumpAndSettle();
     expect(find.text('History unavailable'), findsOneWidget);
-    expect(t.widget<DifyButton>(find.widgetWithText(DifyButton, 'share.generation.run')).disabled, isTrue);
+    expect(_runDisabled(t, _runButton()), isTrue);
     await t.tap(find.widgetWithText(DifyButton, 'common.operation.retry'));
     await t.pumpAndSettle();
     expect(reads, 2);
@@ -414,7 +519,7 @@ void main() {
     );
     await t.pumpAndSettle();
     await t.enterText(find.byType(EditableText), 'a file');
-    await t.tap(find.widgetWithText(DifyButton, 'share.generation.run'));
+    await t.tap(_runButton());
     await t.pump();
     for (final frame in [
       {

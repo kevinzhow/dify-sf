@@ -3,6 +3,27 @@ import 'control_harness.dart';
 
 void main() {
   group('Textarea', () {
+    testWidgets('resize grip changes the field height while preserving value and parent width', (t) async {
+      await renderControl(t, const SizedBox(width: 300, child: DifyTextarea(value: 'Kept text')));
+      final before = t.getSize(find.byType(DifyTextarea));
+      await t.drag(find.byKey(const Key('textarea-resize')), const Offset(30, 40));
+      await t.pump();
+      final after = t.getSize(find.byType(DifyTextarea));
+      expect(after.height, greaterThan(before.height));
+      expect(after.width, before.width);
+      expect(t.widget<TextField>(find.byType(TextField)).controller!.text, 'Kept text');
+      expect(t.takeException(), isNull);
+    });
+    testWidgets('fixed and disabled textareas do not offer an unusable resize control', (t) async {
+      for (final field in [
+        const DifyTextarea(value: '', resizable: false),
+        const DifyTextarea(value: '', disabled: true),
+      ]) {
+        await renderControl(t, field);
+        expect(find.byKey(const Key('textarea-resize')), findsNothing);
+      }
+    });
+
     testWidgets('should show keyboard focus when read-only', (t) async {
       await renderControl(t, const DifyTextarea(value: 'Saved notes', readOnly: true));
       final resting = inputDecoration(t).boxShadow;
@@ -16,7 +37,8 @@ void main() {
         const DifyTextarea(value: 'A workspace for support automation.', semanticLabel: 'Description'),
       );
       expect(t.widget<TextField>(find.byType(TextField)).controller!.text, 'A workspace for support automation.');
-      expect(t.getSemantics(find.byType(DifyTextarea)).label, contains('Description'));
+      expect(t.getSemantics(find.byType(TextField)).label, contains('Description'));
+      expect(t.getSemantics(find.byType(TextField)).value, 'A workspace for support automation.');
       expect(t.widget<TextField>(find.byType(TextField)).maxLines, isNull);
     });
     testWidgets('should call onValueChange and stay controlled until value changes', (t) async {

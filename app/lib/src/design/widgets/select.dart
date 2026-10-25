@@ -89,7 +89,7 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
       disabled: widget.disabledValues.contains(o.value),
       focusNode: selected ? _selectedNode : null,
       leading: widget.optionLeading?.call(o.value),
-      child: DifyTextLine(_label(o.label)),
+      child: DifyTextLine(_label(o.label), style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary)),
     );
     return selected ? _FocusOnOpen(node: _selectedNode, child: item) : item;
   }
@@ -103,6 +103,7 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
       width: w.width,
       child: LayoutBuilder(
         builder: (context, c) => DifyDropdownMenu(
+          popupStyle: DifyMenuPopupStyle.select,
           placement: w.placement,
           sideOffset: w.sideOffset,
           alignOffset: w.alignOffset,
@@ -129,7 +130,10 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
               onValueChange: w.onChanged,
               children: [
                 for (final o in w.options) _item(o),
-                for (final g in w.groups) ...[DifyMenuGroupLabel(g.label), for (final o in g.options) _item(o)],
+                for (final g in w.groups) ...[
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: DifyMenuGroupLabel(g.label)),
+                  for (final o in g.options) _item(o),
+                ],
               ],
             ),
           ],
@@ -209,6 +213,7 @@ class _SelectTriggerState extends State<_SelectTrigger> {
     final style = (w.textStyle ?? difyTextStyle(DifyType.systemSmRegular, color)).copyWith(color: color);
     return Semantics(
       excludeSemantics: true,
+      expanded: w.open,
       button: true,
       enabled: !w.disabled,
       label: w.semanticLabel ?? w.text,

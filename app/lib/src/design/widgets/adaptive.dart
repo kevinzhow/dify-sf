@@ -38,3 +38,28 @@ class DifyViewport extends InheritedWidget {
   @override
   bool updateShouldNotify(DifyViewport oldWidget) => width != oldWidget.width;
 }
+
+/// CSS `flex justify-between` without wrapping. Intrinsically wide translated
+/// controls stay reachable by scrolling instead of producing a RenderFlex overflow.
+class DifyJustifiedRow extends StatelessWidget {
+  const DifyJustifiedRow({super.key, required this.children, this.crossAxisAlignment = CrossAxisAlignment.center});
+  final List<Widget> children;
+  final CrossAxisAlignment crossAxisAlignment;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: constraints.hasBoundedWidth ? constraints.maxWidth : 0),
+        child: IntrinsicWidth(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: crossAxisAlignment,
+            children: children,
+          ),
+        ),
+      ),
+    ),
+  );
+}

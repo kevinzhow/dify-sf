@@ -206,9 +206,16 @@ class DifyChatBubbleSurface extends StatelessWidget {
 /// Public-form branding-footer.tsx: px-2/py-3, inner px-1/gap-1.5,
 /// the system-2xs uppercase label and small Dify (or caller-supplied) logo.
 class DifyBrandingFooter extends StatelessWidget {
-  const DifyBrandingFooter({super.key, this.removeBrand = false, this.logoUrl, this.label});
+  const DifyBrandingFooter({
+    super.key,
+    this.removeBrand = false,
+    this.logoUrl,
+    this.label,
+    this.alignment = MainAxisAlignment.end,
+  });
   final bool removeBrand;
   final String? logoUrl, label;
+  final MainAxisAlignment alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -217,13 +224,15 @@ class DifyBrandingFooter extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: alignment,
         spacing: 6,
         children: [
-          DifyText(
-            label ?? DifyI18n.tr('share', 'chat.poweredBy'),
-            DifyType.system2xsMediumUppercase,
-            color: DifyColors.textTertiary,
+          Flexible(
+            child: DifyText(
+              label ?? DifyI18n.tr('share', 'chat.poweredBy'),
+              DifyType.system2xsMediumUppercase,
+              color: DifyColors.textTertiary,
+            ),
           ),
           if (logo != null && logo.isNotEmpty)
             Image.network(logo, height: 20, semanticLabel: 'logo')

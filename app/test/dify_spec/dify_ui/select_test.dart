@@ -3,6 +3,30 @@ import 'control_harness.dart';
 
 void main() {
   group('Select wrappers', () {
+    testWidgets('trigger announces and tracks its expanded state', (t) async {
+      await renderControl(
+        t,
+        const DifySelect(
+          value: 'one',
+          semanticLabel: 'Model',
+          options: [(value: 'one', label: 'Option one'), (value: 'two', label: 'Option two')],
+        ),
+      );
+      var data = t.getSemantics(find.bySemanticsLabel('Model')).getSemanticsData();
+      expect(data.flagsCollection.isButton, isTrue);
+      expect(data.flagsCollection.isExpanded, Tristate.isFalse);
+      await t.tap(find.bySemanticsLabel('Model'));
+      await t.pumpAndSettle();
+      data = t.getSemantics(find.bySemanticsLabel('Model')).getSemanticsData();
+      expect(data.flagsCollection.isExpanded, Tristate.isTrue);
+      await t.sendKeyEvent(LogicalKeyboardKey.escape);
+      await t.pumpAndSettle();
+      expect(
+        t.getSemantics(find.bySemanticsLabel('Model')).getSemanticsData().flagsCollection.isExpanded,
+        Tristate.isFalse,
+      );
+    });
+
     group('SelectTrigger', () {
       testWidgets('should use SelectLabel as the trigger accessible name', (t) async {
         await renderControl(
