@@ -273,6 +273,19 @@ is `disabled` without a supervisor, `unavailable` after the latest probe or supe
 | Stop races success | The first terminal result committed in the Swift server wins; a later result for the same execution generation is discarded |
 | Transport failure, lost executor | Treated as a node error (the node's general error handling), never as a declared-output retry |
 
+### Fixtures
+
+[`agent_service/fixtures/dify-sf-agent-1/`](../agent_service/fixtures/README.md) holds one recorded scenario per file
+of this protocol: every request and response, the full event lists, the run status, ack, cancel, lease and DELETE, and
+every inner-gateway request with the gateway's answer (plain text, declared outputs and output retry, two questions,
+both reasoning forms, interleaved and non-streamed tool calls, images, idempotency and the 4xx answers, cancel, lease
+expiry, gateway errors, the shell with file outputs, failed cleanup). They are generated from the agent service's own
+code against the scripted gateway; a change that alters them changes this document or is a bug. Volatile values (run
+IDs, timestamps, URLs) are fixed placeholders described there. The fake agent service
+(`agent_service/bin/fake_agent_service.dart`) serves the same API with scripted runs, including the fixtures' runs, and
+fault injection (dropped streams, duplicate or late terminal events, lost POST responses, expired cursors, scripted
+409/422/400 answers, failing DELETEs, delays) for the Swift server's tests.
+
 ## Session envelope
 
 The snapshot passed back in `continuation` is a versioned envelope, not a bare Genkit history:
@@ -330,7 +343,10 @@ Tool call deltas follow Dify's chunk shape (`delta.message.tool_calls[]` with `i
 (later deltas may carry only `index`); the first delta with an `id` sets the id; name and arguments concatenate in
 arrival order per call; a delta with an id but no index matches by id. Reasoning may arrive as
 `delta.message.reasoning_content` (string, streamed in pieces) or as `<think>…</think>` in `delta.message.content`;
-an assistant history message carries prior reasoning back the same way (`reasoning_content` or the think tag). The last chunk carries `delta.usage` and `delta.finish_reason`. Errors end the stream with
+an assistant history message carries prior reasoning back the same way (`reasoning_content` or the think tag). That
+is all the agent service guarantees: what reaches the vendor is decided by the model plugin and is not guaranteed. For
+example, the signed `openai_api_compatible` plugin 0.0.68 removes `<think>` blocks from earlier assistant messages, and
+drops the think blocks it returns when the model declares no reasoning support. The last chunk carries `delta.usage` and `delta.finish_reason`. Errors end the stream with
 `{"code": -429 | -500, "message": "{\"error_type\":…,\"message\":…}", "data": null}`, as in Dify. A repeated
 `invocation_id` is rejected, so usage is recorded once. Closing the connection closes the gateway's connection to the plugin (see below).
 
