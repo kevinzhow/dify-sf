@@ -234,11 +234,14 @@ String _trimNewlines(String s) {
   return s.substring(start, end);
 }
 
-/// Dify `PromptMessageTool`.
+/// Dify `PromptMessageTool`. Genkit's `$schema` marker is dropped: Dify's
+/// tool parameters carry none.
 Map<String, Object?> toPromptMessageTool(ToolDefinition t) => {
   'name': t.name,
   'description': t.description,
-  'parameters': t.inputSchema ?? {'type': 'object', 'properties': {}},
+  'parameters': t.inputSchema == null
+      ? {'type': 'object', 'properties': {}}
+      : (Map<String, Object?>.of(t.inputSchema!)..remove(r'$schema')),
 };
 
 /// Genkit messages → Dify `PromptMessage` JSON. System content is merged

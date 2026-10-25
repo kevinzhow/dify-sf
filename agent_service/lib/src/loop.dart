@@ -11,6 +11,7 @@ import 'package:schemantic/schemantic.dart';
 import 'ask_human.dart';
 import 'gateway.dart';
 import 'model.dart';
+import 'output_tool.dart';
 import 'protocol.dart';
 import 'run_store.dart';
 
@@ -20,6 +21,18 @@ class AskHumanInvalid implements Exception {
   final String message;
   @override
   String toString() => 'AskHumanInvalid: $message';
+}
+
+/// A model turn called `final_output`: the run ends with its arguments and
+/// no tool of that turn is executed (pydantic-ai's `end_strategy='early'`).
+class FinalOutputReached implements Exception {
+  FinalOutputReached(this.history, this.response);
+
+  /// The messages sent to the model in that turn.
+  final List<Message> history;
+
+  /// The model message holding the `final_output` call.
+  final Message response;
 }
 
 /// Why a run was stopped from outside the loop.
@@ -44,6 +57,12 @@ List<Map<String, Object?>> toolDefinitions(OperationRequest r) => [
       'name': askHumanToolName,
       'description': askHumanDescription,
       'parameters': askHumanInputSchema,
+    },
+  if (r.outputSchema case final schema?)
+    {
+      'name': finalOutputToolName,
+      'description': finalOutputTool(schema).description,
+      'parameters': finalOutputTool(schema).parameters,
     },
 ];
 
@@ -91,7 +110,10 @@ List<Message> verifyContinuation(OperationRequest r) {
   } catch (_) {
     throw _incompatible('snapshot messages are not Genkit messages');
   }
-  if (messages.isEmpty || messages.last.role != Role.model) {
+  // A run ended by `final_output` ends with the tool message answering it.
+  final lastRole = messages.isEmpty ? null : messages.last.role;
+  if (lastRole != Role.model &&
+      !(c is OutputRetryContinuation && lastRole == Role.tool)) {
     throw _incompatible('snapshot does not end with a model message');
   }
   switch (c) {
@@ -141,17 +163,13 @@ ToolRequestPart? _pendingPart(List<Message> messages, String toolCallId) {
   return null;
 }
 
-String outputInstructions(Map<String, Object?> schema) =>
-    'Output should be in JSON format and conform to the following '
-    'schema:\n\n```\n${const JsonEncoder.withIndent('  ').convert(schema)}\n```\n';
-
 /// Per-field JSON Schema violations of [candidate].
 Future<List<Map<String, Object?>>> candidateErrors(
   Map<String, Object?> schema,
   Object? candidate,
 ) async {
   final type = SchemanticType.from<Object?>(
-    jsonSchema: schema,
+    jsonSchema: inlineLocalDefs(schema),
     parse: (j) => j,
   );
   final errors = await type.validate(candidate);
@@ -318,6 +336,8 @@ class AgentRun {
         ),
       );
       if (r.askHuman) _defineAskHuman(ai);
+      final outputSchema = r.outputSchema;
+      if (outputSchema != null) _defineFinalOutput(ai, outputSchema);
       final events = ai.defineGenerateMiddleware<void>(
         name: 'dify_sf_events',
         create: (_, _) => _EventsMiddleware(this),
@@ -381,22 +401,14 @@ class AgentRun {
         }
       }
 
-      final schemaJson = r.outputSchema;
-      final schema = schemaJson == null
-          ? null
-          : SchemanticType.from<Object?>(
-              jsonSchema: schemaJson,
-              parse: (j) => j,
-            );
       final generation = ai.generate<Object?, void>(
         model: model,
         messages: messages,
-        toolNames: r.askHuman ? const [askHumanToolName] : null,
+        toolNames: [
+          if (r.askHuman) askHumanToolName,
+          if (outputSchema != null) finalOutputToolName,
+        ],
         maxTurns: r.maxTurns,
-        outputSchema: schema,
-        outputInstructions: schemaJson == null
-            ? null
-            : outputInstructions(schemaJson),
         onChunk: (_) {},
         use: [events()],
         cancel: _cancel.token,
@@ -458,6 +470,10 @@ class AgentRun {
           'the run reached max_turns (${request.maxTurns}) without a final answer',
         );
       case 'failed':
+        final finalOutput = _findFinalOutput(result.cause);
+        if (finalOutput != null) {
+          return _succeedWithFinalOutput(finalOutput, revision);
+        }
         final (type, message) = _classify(result.cause, result.error?.message);
         _fail(type, message);
       case 'blocked':
@@ -471,17 +487,15 @@ class AgentRun {
         if (schema == null) {
           candidate = {'text': text};
           errors = const [];
-        } else if (result.output == null) {
+        } else {
+          // Declared outputs come only through `final_output`.
           candidate = null;
           errors = [
             {
               'field': '',
-              'error': 'the final answer is not JSON matching the schema',
+              'error': 'the model answered without calling final_output',
             },
           ];
-        } else {
-          candidate = result.output;
-          errors = await candidateErrors(schema, candidate);
         }
         _finish('succeeded', {
           'candidate': candidate,
@@ -490,6 +504,81 @@ class AgentRun {
           'usage': usage.toJson(),
         });
     }
+  }
+
+  static FinalOutputReached? _findFinalOutput(Object? cause) {
+    Object? c = cause;
+    for (var depth = 0; c != null && depth < 8; depth++) {
+      if (c is FinalOutputReached) return c;
+      c = c is GenkitException ? c.cause : null;
+    }
+    return null;
+  }
+
+  /// Ends the run with the first `final_output` call of the turn. Every call
+  /// of that turn is answered in the history with pydantic-ai's texts, so an
+  /// output retry continues from a complete conversation.
+  Future<void> _succeedWithFinalOutput(
+    FinalOutputReached reached,
+    int revision,
+  ) async {
+    final calls = [
+      for (final p in reached.response.content) ?p.toolRequestPart,
+    ];
+    final first = calls.firstWhere(
+      (c) => c.toolRequest.name == finalOutputToolName,
+    );
+    final messages = [
+      ...reached.history,
+      reached.response,
+      Message(
+        role: Role.tool,
+        content: [
+          for (final c in calls)
+            ToolResponsePart(
+              toolResponse: ToolResponse(
+                ref: c.toolRequest.ref,
+                name: c.toolRequest.name,
+                output: identical(c, first)
+                    ? finalResultProcessed
+                    : c.toolRequest.name == finalOutputToolName
+                    ? outputToolNotUsed
+                    : toolNotExecuted,
+              ),
+            ),
+        ],
+      ),
+    ];
+    final input = first.toolRequest.input;
+    _emit('tool_call', {
+      'id': first.toolRequest.ref,
+      'name': finalOutputToolName,
+      'phase': 'started',
+      'input': input,
+    });
+    _emit('tool_call', {
+      'id': first.toolRequest.ref,
+      'name': finalOutputToolName,
+      'phase': 'finished',
+      'output': finalResultProcessed,
+    });
+    final Object? candidate;
+    final List<Map<String, Object?>> errors;
+    if (input is Map) {
+      candidate = input;
+      errors = await candidateErrors(request.outputSchema!, input);
+    } else {
+      candidate = null;
+      errors = [
+        {'field': '', 'error': 'final_output arguments are not a JSON object'},
+      ];
+    }
+    _finish('succeeded', {
+      'candidate': candidate,
+      'candidate_errors': errors,
+      'snapshot': _snapshot(revision + 1, messages),
+      'usage': usage.toJson(),
+    });
   }
 
   (String, String) _classify(Object? cause, String? fallback) {
@@ -554,6 +643,20 @@ class AgentRun {
         'Reply again with the complete JSON output conforming to the schema.';
   }
 
+  void _defineFinalOutput(Genkit ai, Map<String, Object?> schema) {
+    final tool = finalOutputTool(schema);
+    ai.defineTool<Object?, Object?>(
+      name: finalOutputToolName,
+      description: tool.description,
+      inputSchema: SchemanticType.from<Object?>(
+        jsonSchema: tool.parameters,
+        parse: (j) => j,
+      ),
+      // Never executed: the model middleware ends the run first.
+      fn: (_, _) => throw StateError('final_output is not executed'),
+    );
+  }
+
   void _defineAskHuman(Genkit ai) {
     ai.defineTool<Object?, Object?>(
       name: askHumanToolName,
@@ -596,6 +699,13 @@ class _EventsMiddleware extends GenerateMiddleware {
     next,
   ) async {
     final response = await next(request, ctx);
+    final message = response.message;
+    if (message != null &&
+        message.content.any(
+          (p) => p.toolRequest?.name == finalOutputToolName,
+        )) {
+      throw FinalOutputReached(request.messages, message);
+    }
     final asks =
         response.message?.content
             .where((p) => p.toolRequest?.name == askHumanToolName)

@@ -19,7 +19,8 @@ The contract it implements is [`docs/agent-v2.md`](../docs/agent-v2.md) (protoco
   `reasoning_content`, usage per call.
 - The `ask_human` tool with Dify's arguments and limits; pauses with a versioned session snapshot and resumes the
   original tool call in a later operation (any process).
-- Declared outputs as a candidate with per-field errors (the Swift server decides retries and defaults).
+- Declared outputs through the `final_output` tool, as in Dify: its arguments are the candidate, with per-field
+  errors (the Swift server decides retries and defaults).
 
 Not yet: the shell tool and its sandbox (phase 3; `tools.shell: true` fails with `sandbox_unavailable` and health
 reports `"sandbox": "disabled"`), and uploads of declared file outputs (the upload-request client exists, nothing uses
@@ -87,5 +88,6 @@ certificates; mount a volume at `/data`.
 | `lib/src/model.dart` | Genkit model over the gateway, PromptMessage mapping |
 | `lib/src/loop.dart` | One run: Genkit loop, ask_human, snapshots, terminal results |
 | `lib/src/ask_human.dart` | Dify's ask_human schema, guidance and limits |
+| `lib/src/output_tool.dart` | The `final_output` tool: schema checks, `$defs` inlining, pydantic-ai texts |
 | `lib/src/leases.dart` | Execution leases |
 | `lib/src/testing/` | Scripted inner gateway shared by tests and `bin/fake_gateway.dart` |

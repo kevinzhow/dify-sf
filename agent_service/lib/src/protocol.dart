@@ -5,6 +5,8 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+import 'output_tool.dart';
+
 /// Protocol name and version sent in every request and response body.
 const protocolName = 'dify-sf-agent/1';
 
@@ -346,6 +348,13 @@ class OperationRequest {
     final outputSchema = json['output_schema'] == null
         ? null
         : _object(json['output_schema'], 'output_schema');
+    if (outputSchema != null) {
+      try {
+        checkOutputSchema(outputSchema);
+      } on FormatException catch (e) {
+        throw invalidRequest(e.message);
+      }
+    }
     final tools = json['tools'] == null
         ? const <String, Object?>{}
         : _object(json['tools'], 'tools');

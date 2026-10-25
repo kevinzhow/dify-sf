@@ -113,7 +113,9 @@ Starts one operation. Every operation is a separate request; there is no separat
 }
 ```
 
-- `output_schema`: JSON Schema of the declared outputs plus `text`, or `null` when none are declared.
+- `output_schema`: JSON Schema of the declared outputs plus `text`, or `null` when none are declared. As in Dify it
+  must be an object schema whose `$ref`s are local `#/$defs/…` (`400 invalid_request` otherwise); its top-level
+  `description` becomes the `final_output` tool description.
 - `tools.ask_human` is derived by the Swift server from the inline agent's `human.contacts` (Dify's Soul config:
   questions are enabled only when contacts are configured). The agent service treats it as a plain flag; form
   delivery and recipients stay entirely in the Swift server. `tools.shell: true` fails the run with
@@ -200,9 +202,10 @@ Exactly one terminal event (`succeeded`, `paused`, `failed`, `cancelled`) per ru
 data is also stored as the run's `result`. A terminal result is written to the service's run store before it is
 streamed.
 
-- `candidate` is the model's final output as parsed JSON (with `text`); without declared outputs it is `{"text"}`.
-  `candidate_errors` lists JSON Schema violations per field as `{"field", "error"}` (`field` is the top-level property;
-  `""` for the whole output). A final answer that is not JSON gives `candidate: null` and one error with `field: ""`. The agent service does not retry, default or branch on declared outputs; the Swift server decides
+- `candidate` is the arguments of the model's `final_output` call (declared outputs with `text`); without declared
+  outputs it is `{"text"}` from the final answer. `candidate_errors` lists JSON Schema violations per field as
+  `{"field", "error"}` (`field` is the top-level property; `""` for the whole output). With declared outputs, a final
+  answer that does not call `final_output` gives `candidate: null` and one error with `field: ""`. The agent service does not retry, default or branch on declared outputs; the Swift server decides
   (see [Declared outputs](#declared-outputs)).
 - `usage` is summed over the run's model calls: `{"prompt_tokens", "completion_tokens", "total_tokens",
   "reasoning_tokens"}`. `reasoning_tokens` is `null` when the provider does not report it; it is a detail of
@@ -287,7 +290,7 @@ Genkit Dart supplies the tool loop, streaming, interrupts and image input. The s
 |---|---|
 | Model | A Genkit model that calls the inner gateway `POST /inner/agent/llm/invoke` with the run's execution and a fresh `invocation_id`. It holds a per-run HTTP client. |
 | Reasoning | Reasoning arrives as `<think>…</think>` inside the content (Dify's convention for model plugins) or as `delta.message.reasoning_content`. It becomes `thought` events and is kept out of the answer text and the candidate. It stays in the session history as reasoning and is sent back on later calls and resumes the way it arrived for that call: `<think>\n…\n</think>` before the assistant content, or the assistant message's `reasoning_content`. |
-| Declared outputs | The schema goes to the model as structured output. The final answer is parsed and checked against the schema; the result is a candidate with per-field errors. No retries here. |
+| Declared outputs | As in Dify (pydantic-ai `ToolOutput`), the schema is exposed as the tool `final_output` (local `$defs` inlined, title `final_output`); there are no prompt instructions and no `response_format`. The tool is never executed: the first `final_output` call of a turn ends the run `succeeded` with its arguments as the candidate, checked against the schema for per-field errors. As with pydantic-ai's default `end_strategy='early'`, no other call of that turn is executed; the history answers them with pydantic-ai's texts (`Final result processed.`, `Output tool not used - a final result was already processed.`, `Tool not executed - a final result was already processed.`). No retries here. |
 | Human question | Tool `ask_human` (Dify's arguments: `title`, `question`, `markdown`, `fields`, `actions`, `urgency`, with Dify's limits) returns a Genkit interrupt. Arguments outside the schema or limits go back to the model as a tool error, as Dify's `ModelRetry` does. The run ends `paused`. A resume answers the same tool call with Dify's tool result (`status`, `action`, `values`, `rendered_content`). As in Dify, a model turn with more than one `ask_human` call fails with `ask_human_invalid`. |
 | Cancel | Closes the run's HTTP client (the Swift server cancels the plugin call on its side), interrupts tools and stops sandbox jobs. Whether the vendor stopped generating cannot be observed and is not claimed. |
 | Usage | Taken from each model call's final usage chunk, counted once per `invocation_id`. |
