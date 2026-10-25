@@ -77,8 +77,8 @@ void main() {
           ScriptedCall(
             chunks: [
               // One model call: reasoning is one `thought` per call, split
-              // only above thoughtPieceChars -> two thoughts here.
-              ScriptedChunk(reasoning: 'a' * thoughtPieceChars),
+              // only above thoughtPieceBytes -> two thoughts here.
+              ScriptedChunk(reasoning: 'a' * thoughtPieceBytes),
               ScriptedChunk(reasoning: 'b'),
               ScriptedChunk(text: 'done'),
               ScriptedChunk(usage: defaultUsage(), finishReason: 'stop'),

@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:agent_service/agent_service.dart';
 import 'package:agent_service/testing.dart';
 import 'package:test/test.dart';
 
@@ -133,4 +136,34 @@ void main() {
       );
     },
   );
+
+  test('one reasoning chunk above the limit (CJK and emoji) becomes several '
+      'thoughts of at most thoughtPieceBytes that join back', () async {
+    final reasoning = List.filled(2500, '先想一想😀 step\n').join();
+    final h = await Harness.start(
+      calls: [
+        ScriptedCall(
+          chunks: [
+            ScriptedChunk(reasoning: reasoning),
+            ScriptedChunk(text: 'ok'),
+            ScriptedChunk(usage: defaultUsage(), finishReason: 'stop'),
+          ],
+        ),
+      ],
+    );
+    addTearDown(h.close);
+    final runId = await h.startOperation(operation(askHuman: false));
+    final events = await h.events(runId);
+    final thoughts = [
+      for (final e in events)
+        if (e.event == 'thought') e.data['text'] as String,
+    ];
+    expect(utf8.encode(reasoning).length, greaterThan(2 * thoughtPieceBytes));
+    expect(thoughts.length, greaterThan(2));
+    expect(thoughts.join(), reasoning);
+    for (final t in thoughts) {
+      expect(utf8.encode(t).length, lessThanOrEqualTo(thoughtPieceBytes));
+    }
+    expect(events.last.event, 'succeeded');
+  });
 }

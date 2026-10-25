@@ -194,7 +194,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 | `event` | `data` |
 |---|---|
 | `run_started` | `{"model", "call_index_base"}`; `call_index_base` is 0 (call indexes of the run start at 1) |
-| `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB is split into several |
+| `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB of UTF-8 is split into several, cut only between code points |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
 | `model_call` | `{"invocation_id", "usage"}` after each model call |
 | `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage"}` |

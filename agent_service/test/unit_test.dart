@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:agent_service/agent_service.dart';
 import 'package:genkit/genkit.dart';
 import 'package:agent_service/testing.dart';
@@ -65,6 +67,47 @@ void main() {
     for (final n in ['API_KEY', 'PROXY_HOST', 'HOMEPAGE']) {
       expect(isReservedEnvName(n), isFalse, reason: n);
     }
+  });
+
+  group('thought buffer', () {
+    // ASCII, 3-byte CJK and 4-byte emoji (a surrogate pair in Dart).
+    final text = List.filled(3000, 'ab思考😀\n').join();
+
+    test('a single chunk above the limit is cut into pieces of at most '
+        'maxBytes UTF-8 bytes that join back to the text', () {
+      for (final maxBytes in [7, 16, 1024, thoughtPieceBytes]) {
+        final pieces = <String>[];
+        ThoughtBuffer(pieces.add, maxBytes: maxBytes)
+          ..add(text)
+          ..flush();
+        expect(pieces.join(), text, reason: 'maxBytes $maxBytes');
+        for (final p in pieces) {
+          final bytes = utf8.encode(p);
+          expect(bytes.length, lessThanOrEqualTo(maxBytes));
+          // No piece ends inside a surrogate pair.
+          expect(utf8.decode(bytes), p);
+        }
+        // Pieces are filled: only the last is more than 3 bytes short.
+        for (final p in pieces.take(pieces.length - 1)) {
+          expect(utf8.encode(p).length, greaterThan(maxBytes - 4));
+        }
+      }
+    });
+
+    test('small chunks are joined; flush writes the rest once', () {
+      final pieces = <String>[];
+      final b = ThoughtBuffer(pieces.add, maxBytes: 8);
+      for (final c in ['思', '考', 'a']) {
+        b.add(c);
+      }
+      expect(pieces, isEmpty);
+      b.add('😀');
+      expect(pieces, ['思考a']);
+      b
+        ..flush()
+        ..flush();
+      expect(pieces, ['思考a', '😀']);
+    });
   });
 
   group('think parser', () {
