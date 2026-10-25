@@ -367,13 +367,15 @@ The Swift server is the only place that decides declared-output strategies, foll
 - While a failed field has retry budget left, it starts an `output_retry` operation with per-field feedback.
 - When budgets are spent, strategies combine as `fail_branch > stop > default_value`.
 
-File outputs (a dify-sf choice; Dify's model uploads through its CLI instead): a top-level property, or the `items` of
-an array property, carrying `"x-dify-sf-file": {"extensions"?: ["csv"], "mime_types"?: ["text/csv", "image/*"]}`. The
+File outputs (a dify-sf choice; Dify's model uploads through its CLI instead): any schema node — a top-level property,
+a property of an object output at any depth, or the `items` of an array — carrying `"x-dify-sf-file": {"extensions"?: ["csv"], "mime_types"?: ["text/csv", "image/*"]}`. The
 keyword is removed from the schema the model sees. The model gives a path relative to the workspace. The agent service
 checks that it stays inside `/workspace` after resolving symlinks, is a regular file of at most 64 MiB and meets the
 constraints (MIME type by extension, else `file --mime-type`); otherwise that field gets a `candidate_errors` entry and
 keeps the model's value. A good file is uploaded and replaced in the candidate by
-`{"upload_id", "filename", "mime_type", "size"}` (a list of them for an array). A failed upload ends the run `failed`
+`{"upload_id", "filename", "mime_type", "size"}` at the same place (each item of an array). `candidate_errors` names the
+top-level property in `field` and the exact place in `error` (`bundle.pages[1]: …`); a field with any bad file keeps
+the model's value and none of its files are uploaded. A failed upload ends the run `failed`
 (`file_error`); the workspace is kept.
 
 Node outputs follow Dify: `text` plus declared outputs; `process_data` carries `agent_id`, `agent_config_snapshot_id`

@@ -799,18 +799,20 @@ class AgentRun {
     Map<String, Object?> candidate,
     List<Map<String, Object?>> errors,
   ) async {
-    final specs = fileOutputFields(request.outputSchema!);
-    final present = {
-      for (final e in specs.entries)
-        if (candidate[e.key] != null) e.key: e.value,
-    };
-    if (present.isEmpty) return (candidate, errors);
-    final out = Map<String, Object?>.of(candidate);
+    final sites = fileSites(request.outputSchema!, candidate);
+    if (sites.isEmpty) return (candidate, errors);
+    Object? out = Map<String, Object?>.of(candidate);
     final allErrors = List<Map<String, Object?>>.of(errors);
     final failed = {for (final e in errors) e['field']};
     final hasWorkspace = request.shell && _workspaceRef != null;
     ExecutionSandbox? sandbox;
-    for (final MapEntry(key: field, value: spec) in present.entries) {
+    // Check every site of a field before uploading any of it, so a field is
+    // either fully replaced by receipts or left as the model gave it.
+    final byField = <String, List<FileSite>>{};
+    for (final site in sites) {
+      (byField[site.field] ??= []).add(site);
+    }
+    for (final MapEntry(key: field, value: fieldSites) in byField.entries) {
       if (failed.contains(field)) continue;
       if (!hasWorkspace) {
         allErrors.add({
@@ -821,32 +823,34 @@ class AgentRun {
         });
         continue;
       }
-      final raw = candidate[field];
-      final paths = spec.isArray ? raw : [raw];
-      if (paths is! List || paths.any((p) => p is! String)) {
-        allErrors.add({
-          'field': field,
-          'error':
-              'expected ${spec.isArray ? 'a list of workspace paths' : 'a workspace path'}',
-        });
-        continue;
-      }
-      sandbox ??= await _openSandbox();
-      final resolved = <({String real, String name, String mime, int size})>[];
+      final resolved =
+          <
+            ({FileSite site, String real, String name, String mime, int size})
+          >[];
       String? error;
-      for (final p in paths.cast<String>()) {
+      for (final site in fieldSites) {
+        final p = site.value;
+        if (p is! String) {
+          error = '${site.label}: expected a workspace path';
+          break;
+        }
+        sandbox ??= await _openSandbox();
         final st = await sandbox.statFile(p);
         if (st.error != null) {
-          error = st.error;
+          error = '${site.label}: ${st.error}';
           break;
         }
         final name = st.realPath!.substring(st.realPath!.lastIndexOf('/') + 1);
         final mime = outputMimeType(name, st.mimeType);
-        error = st.size > maxOutputFileBytes
+        final v = st.size > maxOutputFileBytes
             ? '$name exceeds $maxOutputFileBytes bytes'
-            : spec.violation(name, mime);
-        if (error != null) break;
+            : site.spec.violation(name, mime);
+        if (v != null) {
+          error = '${site.label}: $v';
+          break;
+        }
         resolved.add((
+          site: site,
           real: st.realPath!,
           name: name,
           mime: mime,
@@ -857,9 +861,8 @@ class AgentRun {
         allErrors.add({'field': field, 'error': error});
         continue;
       }
-      final uploaded = <Map<String, Object?>>[];
       for (final f in resolved) {
-        final bytes = await sandbox.readFile(f.real, f.size);
+        final bytes = await sandbox!.readFile(f.real, f.size);
         try {
           final up = await _inner!.uploadRequest(
             filename: f.name,
@@ -872,7 +875,7 @@ class AgentRun {
             throw GatewayException('file_error', 'upload-request gave no url');
           }
           await _inner!.uploadBytes(url, bytes, f.mime);
-          uploaded.add({
+          out = replaceAt(out, f.site.path, {
             'upload_id': uploadId,
             'filename': f.name,
             'mime_type': f.mime,
@@ -881,13 +884,12 @@ class AgentRun {
         } on GatewayException catch (e) {
           throw SandboxFailure(
             'file_error',
-            'uploading ${f.name} for output $field failed: ${e.message}',
+            'uploading ${f.name} for output ${f.site.label} failed: ${e.message}',
           );
         }
       }
-      out[field] = spec.isArray ? uploaded : uploaded.single;
     }
-    return (out, allErrors);
+    return ((out as Map).cast<String, Object?>(), allErrors);
   }
 
   void _defineAskHuman(Genkit ai) {

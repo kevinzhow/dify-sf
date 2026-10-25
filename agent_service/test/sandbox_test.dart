@@ -430,6 +430,81 @@ void main() {
       return (h, sup, await h.waitEnded(runId));
     }
 
+    test('file outputs nested in objects and arrays are uploaded at any '
+        'depth; a bad nested path errors its top-level field', () async {
+      const nested = {
+        'type': 'object',
+        'properties': {
+          'text': {'type': 'string'},
+          'bundle': {
+            'type': 'object',
+            'properties': {
+              'title': {'type': 'string'},
+              'summary': {
+                'type': 'string',
+                'x-dify-sf-file': {
+                  'extensions': ['csv'],
+                },
+              },
+              'pages': {
+                'type': 'array',
+                'items': {'type': 'string', 'x-dify-sf-file': {}},
+              },
+            },
+          },
+          'broken': {
+            'type': 'object',
+            'properties': {
+              'file': {'type': 'string', 'x-dify-sf-file': {}},
+            },
+          },
+        },
+        'required': ['text'],
+      };
+      final (h, _) = await startWithSandbox(
+        [
+          ScriptedCall.toolCall('c1', 'shell_run', {'script': 'make'}),
+          ScriptedCall.toolCall('fo', 'final_output', {
+            'text': 'ok',
+            'bundle': {
+              'title': 'T',
+              'summary': 'out/report.csv',
+              'pages': ['out/p1.txt', 'out/p2.txt'],
+            },
+            'broken': {'file': 'out/missing.txt'},
+          }),
+        ],
+        configure: (s) {
+          s.files['/workspace/out/report.csv'] = utf8.encode('a,b\n');
+          s.files['/workspace/out/p1.txt'] = utf8.encode('one');
+          s.files['/workspace/out/p2.txt'] = utf8.encode('two');
+        },
+      );
+      final runId = await h.startOperation(
+        operation(shell: true, askHuman: false, outputSchema: nested),
+      );
+      final s = await h.waitEnded(runId);
+      expect(s['status'], 'succeeded', reason: jsonEncode(s));
+      final result = s['result'] as Map;
+      final bundle = (result['candidate'] as Map)['bundle'] as Map;
+      expect(bundle['title'], 'T');
+      expect((bundle['summary'] as Map)['filename'], 'report.csv');
+      final pages = (bundle['pages'] as List).cast<Map>();
+      expect(pages.map((p) => p['filename']), ['p1.txt', 'p2.txt']);
+      expect(
+        pages.map((p) => utf8.decode(h.gateway.uploads[p['upload_id']]!)),
+        ['one', 'two'],
+      );
+      // The broken field keeps the model's value and gets one error.
+      expect((result['candidate'] as Map)['broken'], {
+        'file': 'out/missing.txt',
+      });
+      final errors = (result['candidate_errors'] as List).cast<Map>();
+      expect(errors, hasLength(1));
+      expect(errors.single['field'], 'broken');
+      expect(errors.single['error'], startsWith('broken.file: '));
+    });
+
     test('a workspace file is uploaded and replaced by its upload', () async {
       final (h, sup, s) = await runWith('out/report.csv');
       expect(s['status'], 'succeeded', reason: jsonEncode(s));
