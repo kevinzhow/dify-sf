@@ -82,4 +82,70 @@ void main() {
     final result = await api.readInlineAgent('app', 'node', agentId: 'frozen-agent', snapshotId: 'frozen-snapshot');
     expect(result['document_seq'], 12);
   });
+
+  test('clipboard authentication retries preserve the exact atomic paste identity', () async {
+    final sent = <http.Request>[];
+    final api = HttpAgentComposerApi(
+      Uri.parse('https://server.test/base'),
+      auth: _Tokens(),
+      client: MockClient((request) async {
+        sent.add(request);
+        if (sent.length == 1) {
+          return http.Response('{"error":{"code":"unauthorized","message":"expired"}}', 401);
+        }
+        return http.Response('{"document_seq":11,"node_ids":["copy"]}', 200);
+      }),
+    );
+    addTearDown(api.close);
+    final body = <String, Object?>{
+      'expected_seq': 8,
+      'idempotency_key': '481725aa-c99a-46ba-bb75-0b4eeb167ae1',
+      'nodes': [
+        {
+          'id': 'copy',
+          'data': {'type': 'agent', 'version': '2'},
+        },
+      ],
+      'edges': <Object?>[],
+      'agent_packages': <String, Object?>{},
+      'id_mapping': {'source': 'copy'},
+      'local_sources': {
+        'copy': {'node_id': 'source', 'agent_id': 'owned', 'snapshot_id': 'pinned'},
+      },
+    };
+    final result = await api.pasteAgentClipboard('app', body);
+    expect(sent, hasLength(2));
+    expect(sent.every((request) => request.method == 'POST'), isTrue);
+    expect(sent.last.url.path, '/base/v1/apps/app/workflows/draft/agent-clipboard/paste');
+    expect(sent.map((request) => request.headers['authorization']), ['Bearer expired', 'Bearer refreshed']);
+    expect(sent.first.bodyBytes, sent.last.bodyBytes);
+    expect(jsonDecode(sent.last.body), body);
+    expect(result['document_seq'], 11);
+  });
+
+  test('clipboard export conflicts are returned before any portable content is accepted', () async {
+    var calls = 0;
+    final api = HttpAgentComposerApi(
+      Uri.parse('https://server.test'),
+      client: MockClient((request) async {
+        calls++;
+        expect(request.method, 'POST');
+        expect(request.url.path, '/v1/apps/app/workflows/draft/agent-clipboard/export');
+        expect(jsonDecode(request.body), {
+          'expected_seq': 3,
+          'node_ids': ['source'],
+        });
+        return http.Response('{"error":{"code":"agent_document_changed","message":"Reload before copying"}}', 409);
+      }),
+    );
+    addTearDown(api.close);
+    await expectLater(
+      api.exportAgentClipboard('app', {
+        'expected_seq': 3,
+        'node_ids': ['source'],
+      }),
+      throwsA(isA<TransportException>().having((error) => error.statusCode, 'status', 409)),
+    );
+    expect(calls, 1);
+  });
 }
