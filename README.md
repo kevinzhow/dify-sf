@@ -14,6 +14,7 @@ storage. Built-in and published workflow tools, durable Chatflow and published w
 * `docs/architecture.md` - how the server works and why.
 * [`docs/migration-plan.md`](docs/migration-plan.md) - remaining delivery sequence, dependencies and acceptance criteria.
 * [`docs/five-step-delivery-20261024.md`](docs/five-step-delivery-20261024.md) - delivered HTTPS/tools/public runtime/helpers, clean-install and upgrade checks, complete 450-case visual results and remaining gaps.
+* [`docs/agent-v2.md`](docs/agent-v2.md) - Agent v2 inline agents: scope, agent service protocol, sandbox isolation.
 * `docs/step1-report.md` - what was built, results, failures found, known limits.
 * `server/` - the SwiftPM package (`CollabCore`, `CollabServer`, `CollabStore`, simulator, harness).
 * `bench/` - chaos and storm runners.
