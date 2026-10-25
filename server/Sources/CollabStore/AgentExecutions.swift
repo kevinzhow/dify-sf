@@ -160,7 +160,7 @@ extension PostgresStore {
         }
     }
 
-    public func startAgentOperation(session: StoredAgentSession, operation: String, digest: String, tokenHash: String, maxConcurrent: Int = 2) async throws {
+    public func startAgentOperation(session: StoredAgentSession, operation: String, digest: String, tokenHash: String, startedData: String? = nil, maxConcurrent: Int = 2) async throws {
         try await bounded {
             try await self.client.withTransaction(logger: self.logger) { tx in
                 try await self.lockRun(session.workflowRunID, tx)
@@ -174,7 +174,9 @@ extension PostgresStore {
                 var active = false
                 for try await _ in try await tx.query("""
                     UPDATE agent_node_sessions SET status = 'running', operation_id = \(operation), agent_run_id = NULL,
-                        result_event_id = NULL, prepared_result = NULL, updated_at = now()
+                        result_event_id = NULL, prepared_result = NULL, updated_at = now(),
+                        usage = CASE WHEN \(startedData)::jsonb IS NULL THEN usage
+                            ELSE jsonb_set(usage, '{node_started}', \(startedData)::jsonb) END
                     WHERE execution_id = \(session.executionID) AND owner_id = \(session.ownerID)
                       AND generation = \(session.generation) AND lease_until > now() AND status IN ('prepared', 'paused', 'retry')
                       AND EXISTS(SELECT 1 FROM workflow_runs WHERE id = \(session.workflowRunID) AND status = 'running')

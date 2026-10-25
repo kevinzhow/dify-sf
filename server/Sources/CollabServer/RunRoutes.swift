@@ -1163,6 +1163,14 @@ struct RunStreamEncoder: Sendable {
         (scope.iterationId.map(JSONValue.string) ?? .null, scope.loopId.map(JSONValue.string) ?? .null)
     }
 
+    /// Shared with durable Agent reconnects: never reconstruct a different title, index, timestamp or scope.
+    static func nodeStartedData(execution: String, node: String, type: String, title: String, at: Date, scope: NodeScope) -> JSONValue {
+        let (iterationId, loopId) = scopeFields(scope)
+        return ["id": .string(execution), "node_id": .string(node), "node_type": .string(type), "title": .string(title), "index": 1,
+                "predecessor_node_id": .null, "inputs": .null, "inputs_truncated": false, "created_at": ts(at), "extras": [:],
+                "iteration_id": iterationId, "loop_id": loopId, "agent_strategy": .null]
+    }
+
     /// `_merge_metadata`: the result's metadata with the started node's iteration / loop id; null when empty.
     static func mergedMetadata(_ metadata: JSONObject, _ snap: Snapshot?) -> JSONValue {
         var m = metadata
@@ -1184,12 +1192,7 @@ struct RunStreamEncoder: Sendable {
             case .started(let x, let nodeId, let type, let title, let startAt, let scope):
                 if isContainer(nodeId) { return [] }
                 snapshots[x] = Snapshot(title: title, startAt: startAt, scope: scope)
-                let (iterationId, loopId) = Self.scopeFields(scope)
-                return [envelope("node_started", [
-                    "id": .string(x), "node_id": .string(nodeId), "node_type": .string(type), "title": .string(title), "index": 1,
-                    "predecessor_node_id": .null, "inputs": .null, "inputs_truncated": false, "created_at": Self.ts(startAt), "extras": [:],
-                    "iteration_id": iterationId, "loop_id": loopId, "agent_strategy": .null,
-                ])]
+                return [envelope("node_started", Self.nodeStartedData(execution: x, node: nodeId, type: type, title: title, at: startAt, scope: scope))]
             case .streamChunk(_, _, let selector, let chunk, _):
                 return [envelope("text_chunk", ["text": .string(chunk), "from_variable_selector": .array(selector.map(JSONValue.string))])]
             case .reasoningChunk(_, let nodeId, _, let chunk, let isFinal):

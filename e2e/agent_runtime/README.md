@@ -40,3 +40,6 @@ with a recoverable node identity, and that all final logs appear unchanged in co
 
 Completed events queries intentionally return only the terminal workflow frame, matching Dify. The harness reads
 finished node logs through the ordinary authenticated node-executions endpoint and compares them with the durable ledger.
+
+The initial and restarted paused node-start data must also match exactly, including the custom fixture title,
+index, timestamp and scope fields. Both paths use the same runtime encoder.

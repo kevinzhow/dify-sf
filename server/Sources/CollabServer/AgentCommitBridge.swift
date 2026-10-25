@@ -20,6 +20,17 @@ actor AgentCommitBridge {
     func install(_ handler: @escaping Handler) { self.handler = handler }
     func started(_ execution: String, trace: AgentNodeTrace) { traces[execution] = trace }
 
+    func startedData(_ execution: String) async throws -> JSONValue {
+        for _ in 0..<500 {
+            try Task.checkCancellation()
+            if let trace = traces[execution] {
+                return RunStreamEncoder.nodeStartedData(execution: execution, node: trace.nodeID, type: "agent", title: trace.title, at: trace.startedAt, scope: trace.scope)
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        throw NodeError("AgentPersistenceUnavailable", "The workflow could not capture the agent node start")
+    }
+
     func commit(_ execution: String, result: NodeRunResult) async throws {
         // The started event and this call are delivered on separate tasks. A bounded wait also makes unsupported
         // direct-node execution fail clearly, without leaving a continuation or waiting on a frontend connection.

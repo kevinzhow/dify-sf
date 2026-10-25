@@ -75,6 +75,7 @@ struct ServerAgentRuntime: AgentRuntime {
                 maxConcurrent: routes.config.agentService.maxConcurrent)
         }
         let service = AgentServiceClient(config: routes.config.agentService)
+        let startedData = try await pending.agentCommits.startedData(execution)
         let shellAvailable = await service.shellAvailable()
         let deadline = Date().addingTimeInterval(Double(routes.config.agentService.timeoutSeconds))
         var roundUsage = LLMUsage.empty
@@ -88,6 +89,7 @@ struct ServerAgentRuntime: AgentRuntime {
         func usageJSON() -> String {
             var json = cumulative.json.object ?? [:]
             json["active_elapsed_time"] = .double(activeElapsed())
+            json["node_started"] = recordedUsage["node_started"] ?? .null
             json["agent_events"] = recordedUsage["agent_events"] ?? []
             json["agent_log"] = recordedUsage["agent_log"] ?? []
             return JSONValue.object(json).compactJSON()
@@ -124,7 +126,7 @@ struct ServerAgentRuntime: AgentRuntime {
             let token = try await routes.agentModelScopes.activate(scope)
             do {
                 try await routes.store.startAgentOperation(session: session, operation: operation,
-                    digest: Self.operationDigest(body), tokenHash: Tokens.sha256(token), maxConcurrent: routes.config.agentService.maxConcurrent)
+                    digest: Self.operationDigest(body), tokenHash: Tokens.sha256(token), startedData: startedData.compactJSON(), maxConcurrent: routes.config.agentService.maxConcurrent)
                 session = try requireAgentSession(try await routes.store.agentSession(execution: execution))
                 try await service.lease(execution: execution, generation: session.generation)
                 let remote = try await service.start(body, token: token)

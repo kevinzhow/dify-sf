@@ -86,7 +86,9 @@ struct AgentRuntimeIntegrationTests {
                     let reconnect = try await api.get("/v1/workflow/" + run + "/events?include_state_snapshot=true", token: token)
                     let restored = HumanInputRunTests.frames(reconnect.text)
                     #expect(restored.contains { $0["event"] == "agent_log" })
-                    #expect(restored.contains { $0["event"] == "node_started" && $0["data"]?["id"] == .string(first.executionId) })
+                    let originalStarted = try #require(frames.first { $0["event"] == "node_started" && $0["data"]?["id"] == .string(first.executionId) }?["data"])
+                    #expect(restored.first { $0["event"] == "node_started" && $0["data"]?["id"] == .string(first.executionId) }?["data"] == originalStarted)
+                    #expect(originalStarted["index"] == 1)
                     let traceSession = try #require(try await store.agentSession(execution: first.executionId))
                     #expect(!(try JSONValue.parse(traceSession.usage)["agent_log"]?.array ?? []).isEmpty, "Thoughts and tool calls must be durable before a question is acknowledged")
 

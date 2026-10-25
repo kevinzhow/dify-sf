@@ -136,7 +136,7 @@ workflow:
     - id: start
       data: {type: start, title: Start, variables: []}
     - id: inline-agent
-      data: {type: agent, version: '2', title: Agent, agent_node_kind: dify_agent, agent_task: fixture-restart, agent_declared_outputs: []}
+      data: {type: agent, version: '2', title: 'Fixture operator', agent_node_kind: dify_agent, agent_task: fixture-restart, agent_declared_outputs: []}
     - id: end
       data:
         type: end
@@ -177,7 +177,9 @@ workflow:
     replay = frames(replay_wire)
     replay_logs = [frame['data'] for frame in replay if frame['event'] == 'agent_log']
     assert replay_logs == initial_logs, 'A new process must recover every committed log in the same order'
-    assert any(frame['event'] == 'node_started' and frame['data']['id'] == execution for frame in replay)
+    original_started = next(frame['data'] for frame in frames(wire) if frame['event'] == 'node_started' and frame['data']['id'] == execution)
+    assert next(frame['data'] for frame in replay if frame['event'] == 'node_started' and frame['data']['id'] == execution) == original_started
+
 
     print('New process adopted unanswered pause. Waiting beyond remote lease TTL.', flush=True)
     waited = time.monotonic()

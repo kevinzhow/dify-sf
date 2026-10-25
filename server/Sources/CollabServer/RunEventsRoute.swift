@@ -177,10 +177,10 @@ extension Routes {
         }
         for session in try await store.agentTraceSessions(run: run.id) {
             let usage = try JSONValue.parse(session.usage)
-            if !executions.contains(where: { $0.id == session.executionID }) {
-                frames.append(RunExecution.sse(["event": "node_started", "workflow_run_id": .string(run.id), "data": [
-                    "id": .string(session.executionID), "node_id": .string(session.nodeID), "node_type": "agent", "title": "Agent", "index": 0,
-                    "created_at": .int(Int(run.createdAt.timeIntervalSince1970))]]))
+            if !executions.contains(where: { $0.id == session.executionID }), let started = usage["node_started"],
+               started["id"] == .string(session.executionID), started["node_id"] == .string(session.nodeID) {
+                frames.append(RunExecution.sse(["event": "node_started", "workflow_run_id": .string(run.id),
+                                               "task_id": .string(run.id), "data": started]))
             }
             for log in usage["agent_log"]?.array ?? [] {
                 frames.append(RunExecution.sse(["event": "agent_log", "workflow_run_id": .string(run.id), "data": log]))

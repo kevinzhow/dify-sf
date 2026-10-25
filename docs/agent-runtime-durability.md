@@ -92,7 +92,8 @@ projections and thought/tool/usage logs in the private execution ledger before b
 the cursor. A result cannot enqueue its acknowledgement until the terminal cursor agrees with durable service
 state. Replayed events have stable run/event identities and are deduplicated. A 410 is an explicit lost-history
 failure, not an empty successful log. Final node metadata retains the log; paused reconnect snapshots reconstruct
-it from the private execution ledger. Terminal service snapshots are not copied into the public log. Environment
+it from the private execution ledger. The original node-start payload is committed with each operation, using the
+same encoder as live events, so reconnects preserve its title, index, timestamp and iteration/loop scope. Terminal service snapshots are not copied into the public log. Environment
 values are redacted from event projections, and operation audit digests omit environment values.
 
 The running admission budget excludes unanswered pauses. Resuming work checks the same database-wide running
