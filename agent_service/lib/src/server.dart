@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:http/http.dart' as http;
+
 import 'leases.dart';
 import 'loop.dart';
 import 'protocol.dart';
@@ -29,12 +31,14 @@ class AgentService {
     this.keepAliveInterval = const Duration(seconds: 15),
     SupervisorClient? supervisor,
     SandboxLayout sandboxLayout = const SandboxLayout(),
+    http.Client Function()? shellctlHttpClient,
   }) : store = RunStore(dataDir, clock: clock, eventRetention: eventRetention) {
     leases = LeaseManager(onExpired: _leaseExpired);
     sandboxes = SandboxManager(
       supervisor: supervisor,
       store: store,
       layout: sandboxLayout,
+      shellctlHttpClient: shellctlHttpClient,
       log: (m) => _log(LogLevel.warning, m),
     );
   }

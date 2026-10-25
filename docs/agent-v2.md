@@ -400,17 +400,19 @@ the home and writable paths come from environment variables.
 dify-sf therefore gives each execution that enables the shell its own container from that image:
 
 - created on first shell use, removed with the execution (`DELETE /v1/executions/{id}`) or when its lease expires;
-- internal network only; egress through the sandbox proxy, enforced by network rules, not by proxy variables;
+- its own internal network, shared with no other sandbox; egress only through the sandbox proxy, enforced by network
+  rules, not by proxy variables;
 - memory, CPU, PID and disk limits; at the end of a run the processes its jobs left in the container are killed;
 - reserved environment variables cannot be set by users;
 - containers are created by a small supervisor, the only component with access to the container runtime, which
   accepts only "create sandbox for execution X with the fixed image and limits" and "remove it".
 
 Supervisor (`agent_service/bin/sandbox_supervisor.dart`, Docker Engine API on the unix socket, bearer key):
-`POST /v1/sandboxes {"execution_key"}` → `{"sandbox_id", "url", "token", "created"}`, idempotent per key (a stopped
-container is replaced, with a new ID); `DELETE /v1/sandboxes/{id}`; `GET /v1/sandboxes`. Any other request field is
-`400`. Containers carry its label and only labelled containers are listed, swept at start (labelled but unknown) or
-removed. Each container gets a fresh random `SHELLCTL_AUTH_TOKEN` and, from the supervisor's configuration only:
+`POST /v1/sandboxes {"execution_key"}` → `{"sandbox_id", "url", "token", "gateway", "created"}`, idempotent per key (a
+stopped container is replaced, with a new ID and network); `DELETE /v1/sandboxes/{id}`; `GET /v1/sandboxes`. Any other
+request field is `400`. Containers and networks carry its label and the execution label; only objects with both are
+listed, swept at start (labelled but unknown containers, and labelled networks no known container uses) or removed.
+Each container gets a fresh random `SHELLCTL_AUTH_TOKEN` and, from the supervisor's configuration only:
 
 | Concern | Docker option |
 |---|---|
@@ -419,21 +421,46 @@ removed. Each container gets a fresh random `SHELLCTL_AUTH_TOKEN` and, from the 
 | Processes | `PidsLimit` (default 256) |
 | Disk | `ReadonlyRootfs`; `Tmpfs` `/home/dify` (256 MiB) and `/workspace` (512 MiB), `rw,exec,nosuid,nodev,mode=0700` |
 | Privileges | `CapDrop: ["ALL"]`, `SecurityOpt: ["no-new-privileges:true"]`, not privileged, no binds or mounts |
-| Network | `NetworkMode` = the configured internal network (created by compose, never by the supervisor) |
+| Network | `NetworkMode` = its own network (below), fixed address `.3`; IPv6 off (`Sysctls` `disable_ipv6`) |
 | Readiness | a Docker health check on shellctl `/healthz`; the supervisor waits for `healthy` |
 
-The compose network is `internal` with `com.docker.network.bridge.inhibit_ipv4`: on an internal network without it,
-the host's bridge address (and every host service listening on all interfaces) was reachable from a sandbox. Sandboxes
-share that network with the agent service, the proxy and each other; shellctl ports are protected by per-sandbox
-tokens and the agent service by its key. The proxy (Squid) allows only the domains in its allowlist (default: the npm
-and PyPI registries) and refuses private addresses.
+Per-sandbox networks. For each sandbox the supervisor, in this order:
+
+1. resolves the peers from its configuration, never from a request: `SANDBOX_AGENT_PEERS` (the agent service) and
+   `SANDBOX_PROXY_PEER`, as compose services of `SANDBOX_COMPOSE_PROJECT` (labels `com.docker.compose.project` and
+   `com.docker.compose.service`, running containers only, sandboxes excluded) or as container names. A missing peer
+   is `503` before anything is created;
+2. allocates the first /28 of `SANDBOX_SUBNET_POOL` (default `10.213.0.0/16`, 4096 networks) that overlaps no existing
+   Docker network (`GET /networks`, every network on the host, IPv4 subnets), serialized within the supervisor; a
+   subnet Docker still refuses as overlapping (taken concurrently) is skipped. The pool must lie inside the ranges the
+   proxy refuses as destinations (10/8, 172.16/12, 192.168/16, 100.64/10);
+3. `POST /networks/create` with `Name` = the container name, `Driver: bridge`, `Internal: true`, `EnableIPv6: false`,
+   `Options: {"com.docker.network.bridge.inhibit_ipv4": "true"}`, `IPAM` subnet, gateway `.1` (reserved, never
+   assigned) and `IPRange` = the upper /29 (dynamic addresses), and both labels;
+4. connects the proxy at the fixed address `.2` (sandboxes get `HTTP(S)_PROXY=http://<.2>:3128`, so no DNS name is
+   needed), creates the container on the network at `.3`, connects the agent service container(s) (dynamic, `.8`+),
+   starts it and waits for `healthy`. Any failure removes the container and the network.
+
+A later acquire of a running sandbox connects peers missing from its network (e.g. a recreated agent service or proxy
+container; the proxy gets `.2` again). Removal is: force-remove the container, disconnect the remaining endpoints (the
+peers), remove the network. The network has exactly three kinds of endpoint: the sandbox, the agent service and the
+proxy; two sandboxes share no network, so one cannot even open a connection to another's shellctl port (observed:
+"Network is unreachable", curl exit 7), and the proxy refuses private destinations (403). The host has no address on
+the bridge (`inhibit_ipv4`): on an internal network without it, the host's bridge address and every host service
+listening on all interfaces (observed: port 22) were reachable from a sandbox. Inside its network a sandbox can still
+reach the agent service's port (protected by its key) and the proxy. The proxy (Squid) allows only the domains in its
+allowlist (default: the npm and PyPI registries) and refuses private addresses.
 
 Jobs run with `HOME=/home/dify/agent` and `cwd=/workspace`, so shellctl's own state (`/home/dify/.local/share/shellctl`)
 is outside the paths Landlock grants. Landlock stays as an additional layer. Before the first command in each process
 the service runs probes, each of which must fail: write outside the workspace and job home (`/home/dify`, `/tmp`,
 `/var/tmp`, `/dev/shm`, `/`), read the daemon's state or another process's environment, connect to 1.1.1.1:443 or
-8.8.8.8:443. A probe that succeeds makes the sandbox `unavailable`: it is removed and the run fails with
-`sandbox_unavailable`. The probes check the setup; they do not replace the container boundary.
+8.8.8.8:443, reach the host (`host_reachable`: TCP, in parallel with 3 s each, to the network's gateway address
+reported by the supervisor, Docker's default bridge address 172.17.0.1, and `host.docker.internal` /
+`gateway.docker.internal` when they resolve, on ports 22, 53, 80, 443, 2375, 2376, 3000, 5000, 5432, 6379, 8000, 8080,
+8443 and 11434), or have IPv6 on any interface but `lo` (`host_ipv6`). A probe that succeeds makes the sandbox
+`unavailable`: it is removed and the run fails with `sandbox_unavailable`. The probes check the setup; they do not
+replace the container boundary, and a closed port proves nothing about a port not in the list.
 
 At the end of every run (succeeded, paused, failed or cancelled) the service terminates and deletes the run's jobs and
 then kills every remaining process in the container except the shellctl daemon (shellctl's terminate alone leaves
@@ -475,7 +502,8 @@ under `sh -c` remained. This covers processes inside the container only; what a 
    missing, file of another tenant or a dead reference.
 7. Cancel at three points (before the first chunk, mid-stream, during a tool) through Genkit → Swift → plugin daemon →
    scripted provider; upstream connection and child processes checked; late results do not overwrite the final state.
-8. Sandbox: two executions, daemon state and control port, reserved env, isolation unavailable, direct egress,
+8. Sandbox: two executions (no shared network), daemon state and control port, reserved env, isolation unavailable,
+   host reachability, direct egress,
    descendant processes and disk limits.
 9. Input URLs refetched after expiry; failed uploads keep the workspace; files survive a pause; failed cleanup retries.
 10. Collaboration conflicts and publish pinning, copy and DSL round trip, editor and MCP on the same snapshot; an

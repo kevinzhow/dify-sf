@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:agent_service/agent_service.dart';
 import 'package:agent_service/testing.dart';
@@ -322,6 +323,73 @@ void main() {
     final (_, health) = await h.get('/v1/health');
     expect(health['sandbox'], 'unavailable');
   });
+
+  test('a sandbox that reaches the host is unavailable; the probe targets the '
+      'gateway the supervisor reported', () async {
+    final (h, sup) = await startWithSandbox([
+      ScriptedCall.toolCall('c1', 'shell_run', {'script': 'id'}),
+    ], configure: (s) => s.probes['host_reachable'] = 'reachable 10.9.0.1:22');
+    sup.gateway = '10.9.0.1';
+    final runId = await h.startOperation(operation(shell: true));
+    final s = await h.waitEnded(runId);
+    expect(s['status'], 'failed');
+    final result = s['result'] as Map;
+    expect(result['error_type'], 'sandbox_unavailable');
+    expect(result['message'], contains('host_reachable'));
+    expect(sup.deletes, ['sbx1']);
+    final (_, health) = await h.get('/v1/health');
+    expect(health['sandbox'], 'unavailable');
+    expect(h.gateway.observations, hasLength(1), reason: 'no second turn');
+  });
+
+  test('a sandbox with an IPv6 interface is unavailable', () async {
+    final (h, sup) = await startWithSandbox([
+      ScriptedCall.toolCall('c1', 'shell_run', {'script': 'id'}),
+    ], configure: (s) => s.probes['host_ipv6'] = 'reachable');
+    final runId = await h.startOperation(operation(shell: true));
+    final s = await h.waitEnded(runId);
+    expect((s['result'] as Map)['error_type'], 'sandbox_unavailable');
+    expect((s['result'] as Map)['message'], contains('host_ipv6'));
+    expect(sup.deletes, ['sbx1']);
+  });
+
+  test('the probe script carries the reported gateway, Docker\'s bridge '
+      'address, the host-gateway names and the ports', () async {
+    final (h, sup) = await startWithSandbox([
+      ScriptedCall.toolCall('c1', 'shell_run', {'script': 'id'}),
+      ScriptedCall.text('done'),
+    ]);
+    sup.gateway = '10.213.4.17';
+    final runId = await h.startOperation(operation(shell: true));
+    expect((await h.waitEnded(runId))['status'], 'succeeded');
+    final script = sup.sandboxOf('E1')!.lastProbeScript!;
+    expect(script, contains("targets='10.213.4.17 172.17.0.1'"));
+    expect(script, contains('host.docker.internal gateway.docker.internal'));
+    expect(script, contains('for p in ${defaultHostProbePorts.join(' ')};'));
+  });
+
+  test('the host probe detects a listening port and nothing else (real bash '
+      'against 127.0.0.1)', () async {
+    final listener = await ServerSocket.bind('127.0.0.1', 0);
+    addTearDown(listener.close);
+    listener.listen((s) => s.destroy());
+    final closed = await ServerSocket.bind('127.0.0.1', 0);
+    final closedPort = closed.port;
+    await closed.close();
+    Future<Map<String, String>> probe(List<int> ports) async {
+      final r = await Process.run('bash', [
+        '-c',
+        ExecutionSandbox.hostProbeScript(gateway: '127.0.0.1', ports: ports),
+      ]);
+      return ExecutionSandbox.parseProbes(r.stdout as String);
+    }
+
+    expect(
+      (await probe([closedPort, listener.port]))['host_reachable'],
+      'reachable 127.0.0.1:${listener.port}',
+    );
+    expect((await probe([closedPort]))['host_reachable'], 'blocked');
+  }, skip: Platform.isLinux ? false : 'needs bash and /dev/tcp');
 
   test('a failing supervisor is sandbox_unavailable', () async {
     final (h, sup) = await startWithSandbox([

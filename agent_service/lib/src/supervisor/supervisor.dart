@@ -1,15 +1,26 @@
 /// The sandbox supervisor: the only component with access to the container
 /// runtime. It accepts exactly two commands, "create the sandbox for
-/// execution X" and "remove sandbox Y"; image, network, limits and labels come
-/// from its own configuration, never from a request.
+/// execution X" and "remove sandbox Y"; image, network layout, limits, peers
+/// and labels come from its own configuration, never from a request.
+///
+/// Every sandbox gets its own internal bridge network (`Internal`,
+/// `com.docker.network.bridge.inhibit_ipv4`, a /28 from
+/// `SANDBOX_SUBNET_POOL`), attached to exactly three kinds of endpoint: the
+/// sandbox, the configured agent service container(s) and the configured
+/// proxy container. Sandboxes therefore share no network with each other, and
+/// the host has no address on any of them. The network is removed with the
+/// sandbox.
 ///
 /// API (bearer `SANDBOX_SUPERVISOR_KEY`):
 ///
 /// - `POST /v1/sandboxes {"execution_key"}` → `{"sandbox_id", "url", "token",
-///   "created"}`; idempotent per execution key (a stopped container is
-///   replaced, with a new `sandbox_id`).
+///   "gateway", "created"}`; idempotent per execution key (a stopped
+///   container is replaced, with a new `sandbox_id`). `gateway` is the
+///   sandbox network's reserved (never assigned) gateway address, for the
+///   host-reachability probe.
 /// - `DELETE /v1/sandboxes/{sandbox_id}` → `{"sandbox_id", "deleted"}`
-///   (force remove with volumes; containers without the label are refused).
+///   (force remove with volumes, then its network; containers without the
+///   labels are refused).
 /// - `GET /v1/sandboxes` → `{"sandboxes": [...]}` (labelled containers only).
 /// - `GET /v1/health` → `{"status", "docker"}`.
 library;
@@ -27,8 +38,21 @@ import 'docker.dart';
 /// The shellctl port of the sandbox image.
 const shellctlPort = 5004;
 
-/// Label holding the SHA-256 of the execution key.
+/// Label holding the SHA-256 of the execution key (containers and networks).
 const executionLabel = 'dify-sf.sandbox.execution';
+
+/// Prefix length of every sandbox network.
+const sandboxSubnetPrefix = 28;
+
+/// Host numbers inside a sandbox subnet: the reserved gateway (never
+/// assigned: the bridge has no IPv4 address), the proxy and the sandbox.
+/// Agent service containers get dynamic addresses from the upper half
+/// (`IPRange`), so they never take a fixed one.
+const gatewayHost = 1, proxyHost = 2, sandboxHost = 3;
+
+/// The network option that leaves the bridge (the host side) without an
+/// IPv4 address.
+const inhibitIpv4Option = 'com.docker.network.bridge.inhibit_ipv4';
 
 class SupervisorConfigError implements Exception {
   SupervisorConfigError(this.message);
@@ -37,12 +61,79 @@ class SupervisorConfigError implements Exception {
   String toString() => message;
 }
 
+/// An IPv4 network `address/prefix`.
+class Ipv4Net {
+  Ipv4Net(int address, this.prefix)
+    : base = address & _mask(prefix),
+      assert(prefix >= 0 && prefix <= 32);
+
+  final int base;
+  final int prefix;
+
+  static int _mask(int prefix) =>
+      prefix == 0 ? 0 : (0xffffffff << (32 - prefix)) & 0xffffffff;
+
+  int get size => 1 << (32 - prefix);
+  int get last => base + size - 1;
+
+  /// Parses `a.b.c.d/n`; null for anything else (e.g. IPv6).
+  static Ipv4Net? tryParse(String text) {
+    final m = RegExp(r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})$')
+        .firstMatch(text.trim());
+    if (m == null) return null;
+    var address = 0;
+    for (var i = 1; i <= 4; i++) {
+      final octet = int.parse(m.group(i)!);
+      if (octet > 255) return null;
+      address = (address << 8) | octet;
+    }
+    final prefix = int.parse(m.group(5)!);
+    if (prefix > 32) return null;
+    return Ipv4Net(address, prefix);
+  }
+
+  static String format(int address) =>
+      [for (var shift = 24; shift >= 0; shift -= 8) (address >> shift) & 0xff]
+          .join('.');
+
+  /// The address of host number [n] in this network.
+  String host(int n) => format(base + n);
+
+  bool overlaps(Ipv4Net other) => base <= other.last && other.base <= last;
+  bool containsNet(Ipv4Net other) => base <= other.base && other.last <= last;
+
+  /// The [index]th sub-network of length [subPrefix].
+  Ipv4Net subnet(int index, int subPrefix) =>
+      Ipv4Net(base + index * (1 << (32 - subPrefix)), subPrefix);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Ipv4Net && other.base == base && other.prefix == prefix;
+  @override
+  int get hashCode => Object.hash(base, prefix);
+  @override
+  String toString() => '${format(base)}/$prefix';
+}
+
+/// The ranges the sandbox proxy refuses as destinations
+/// (docker/agent_sandbox_proxy/squid.conf); a sandbox pool must lie inside
+/// one of them so that the proxy cannot be used to reach another sandbox.
+final proxyRefusedRanges = [
+  for (final r in ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'])
+    Ipv4Net.tryParse(r)!,
+  Ipv4Net.tryParse('100.64.0.0/10')!,
+];
+
 /// Everything a sandbox is made of. Only the environment of the supervisor
 /// process sets these.
 class SupervisorConfig {
   SupervisorConfig({
     required this.key,
-    required this.network,
+    required this.agentPeers,
+    this.proxyPeer,
+    this.proxyPort = 3128,
+    this.composeProject,
+    String subnetPool = '10.213.0.0/16',
     this.image = 'langgenius/dify-agent-local-sandbox:1.17.1',
     this.dockerSocket = '/var/run/docker.sock',
     this.port = 5060,
@@ -56,15 +147,51 @@ class SupervisorConfig {
     this.workspaceMb = 512,
     this.uid = 1000,
     this.gid = 1000,
-    this.proxyUrl,
     this.noProxy = 'localhost,127.0.0.1',
     this.addressByIp = false,
     this.statePath,
     this.startTimeout = const Duration(seconds: 60),
-  });
+  }) : subnetPool = _pool(subnetPool) {
+    if (agentPeers.isEmpty) {
+      throw SupervisorConfigError('at least one agent peer is required');
+    }
+  }
+
+  static Ipv4Net _pool(String text) {
+    final pool = Ipv4Net.tryParse(text);
+    if (pool == null || pool.prefix > sandboxSubnetPrefix) {
+      throw SupervisorConfigError(
+        'SANDBOX_SUBNET_POOL must be an IPv4 network of /$sandboxSubnetPrefix '
+        'or larger, e.g. 10.213.0.0/16',
+      );
+    }
+    if (!proxyRefusedRanges.any((r) => r.containsNet(pool))) {
+      throw SupervisorConfigError(
+        'SANDBOX_SUBNET_POOL must lie inside 10.0.0.0/8, 172.16.0.0/12, '
+        '192.168.0.0/16 or 100.64.0.0/10 (destinations the proxy refuses)',
+      );
+    }
+    return pool;
+  }
 
   final String key;
-  final String network;
+
+  /// The agent service container(s) attached to every sandbox network:
+  /// container names, or compose service names when [composeProject] is set.
+  final List<String> agentPeers;
+
+  /// The proxy container attached to every sandbox network (same naming as
+  /// [agentPeers]); sandboxes get `HTTP(S)_PROXY=http://<its address on the
+  /// sandbox network>:[proxyPort]`. Without it sandboxes have no egress.
+  final String? proxyPeer;
+  final int proxyPort;
+
+  /// Peers are compose services of this project (labels
+  /// `com.docker.compose.project` and `com.docker.compose.service`).
+  final String? composeProject;
+
+  /// Split into one /28 per sandbox.
+  final Ipv4Net subnetPool;
   final String image;
   final String dockerSocket;
   final int port;
@@ -78,10 +205,9 @@ class SupervisorConfig {
   final int workspaceMb;
   final int uid;
   final int gid;
-  final String? proxyUrl;
   final String noProxy;
 
-  /// Sandbox URLs use the container's IP on [network] instead of its name
+  /// Sandbox URLs use the container's IP on its network instead of its name
   /// (for a caller outside Docker's DNS, e.g. the integration test).
   final bool addressByIp;
 
@@ -91,6 +217,11 @@ class SupervisorConfig {
   final Duration startTimeout;
 
   String get label => '$labelKey=$labelValue';
+
+  /// The filters selecting this supervisor's sandboxes and their networks:
+  /// its label and the execution label (never the label alone, which other
+  /// objects may carry, e.g. a compose project labelled the same way).
+  List<String> get sandboxFilters => [label, executionLabel];
 
   /// Reads `SANDBOX_*` and `DOCKER_SOCKET` (see README.md).
   static SupervisorConfig fromEnv(Map<String, String> env) {
@@ -102,16 +233,24 @@ class SupervisorConfig {
     String req(String name) =>
         opt(name) ?? (throw SupervisorConfigError('$name is required'));
 
-    int intOf(String name, int fallback, {int min = 1}) {
+    int intOf(String name, int fallback, {int min = 1, int max = 1 << 31}) {
       final v = opt(name);
       if (v == null) return fallback;
       final n = int.tryParse(v);
-      if (n == null || n < min) {
-        throw SupervisorConfigError('$name must be an integer >= $min');
+      if (n == null || n < min || n > max) {
+        throw SupervisorConfigError('$name must be an integer in $min..$max');
       }
       return n;
     }
 
+    for (final gone in ['SANDBOX_NETWORK', 'SANDBOX_PROXY_URL']) {
+      if (opt(gone) != null) {
+        throw SupervisorConfigError(
+          '$gone is no longer used: every sandbox gets its own network '
+          '(SANDBOX_SUBNET_POOL, SANDBOX_AGENT_PEERS, SANDBOX_PROXY_PEER)',
+        );
+      }
+    }
     final label = opt('SANDBOX_LABEL') ?? 'dify-sf.agent-sandbox=1';
     final eq = label.indexOf('=');
     if (eq <= 0 || eq == label.length - 1) {
@@ -125,13 +264,21 @@ class SupervisorConfig {
     if (address != 'name' && address != 'ip') {
       throw SupervisorConfigError('SANDBOX_ADDRESS must be name or ip');
     }
+    final agents = [
+      for (final p in req('SANDBOX_AGENT_PEERS').split(','))
+        if (p.trim().isNotEmpty) p.trim(),
+    ];
     final config = SupervisorConfig(
       key: req('SANDBOX_SUPERVISOR_KEY'),
-      network: req('SANDBOX_NETWORK'),
+      agentPeers: agents,
+      proxyPeer: opt('SANDBOX_PROXY_PEER'),
+      proxyPort: intOf('SANDBOX_PROXY_PORT', 3128, max: 65535),
+      composeProject: opt('SANDBOX_COMPOSE_PROJECT'),
+      subnetPool: opt('SANDBOX_SUBNET_POOL') ?? '10.213.0.0/16',
       image:
           opt('SANDBOX_IMAGE') ?? 'langgenius/dify-agent-local-sandbox:1.17.1',
       dockerSocket: opt('DOCKER_SOCKET') ?? '/var/run/docker.sock',
-      port: intOf('SANDBOX_SUPERVISOR_PORT', 5060, min: 0),
+      port: intOf('SANDBOX_SUPERVISOR_PORT', 5060, min: 0, max: 65535),
       labelKey: label.substring(0, eq),
       labelValue: label.substring(eq + 1),
       namePrefix: opt('SANDBOX_NAME_PREFIX') ?? 'dify-sf-sandbox-',
@@ -142,7 +289,6 @@ class SupervisorConfig {
       workspaceMb: intOf('SANDBOX_WORKSPACE_MB', 512),
       uid: intOf('SANDBOX_UID', 1000, min: 0),
       gid: intOf('SANDBOX_GID', 1000, min: 0),
-      proxyUrl: opt('SANDBOX_PROXY_URL'),
       noProxy: opt('SANDBOX_NO_PROXY') ?? 'localhost,127.0.0.1',
       addressByIp: address == 'ip',
       statePath: opt('SANDBOX_STATE_FILE'),
@@ -189,16 +335,55 @@ class SandboxSupervisor {
   static String hashKey(String key) =>
       sha256.convert(utf8.encode(key)).toString();
 
+  /// The name of the execution's container and of its network.
   String containerName(String executionKey) =>
       '${config.namePrefix}${hashKey(executionKey).substring(0, 24)}';
 
-  /// The container create payload: everything but the token is fixed by the
-  /// configuration.
-  Map<String, Object?> createPayload(String executionKey, String token) {
+  Map<String, String> _labels(String hash) => {
+    config.labelKey: config.labelValue,
+    executionLabel: hash,
+  };
+
+  /// The network create payload: internal, no IPv4 address on the bridge,
+  /// one /28, labelled like the sandbox.
+  Map<String, Object?> networkPayload(
+    String name,
+    String hash,
+    Ipv4Net subnet,
+  ) => {
+    'Name': name,
+    'Driver': 'bridge',
+    'Internal': true,
+    'Attachable': false,
+    'EnableIPv6': false,
+    'IPAM': {
+      'Driver': 'default',
+      'Config': [
+        {
+          'Subnet': '$subnet',
+          'IPRange': '${subnet.subnet(1, subnet.prefix + 1)}',
+          'Gateway': subnet.host(gatewayHost),
+        },
+      ],
+    },
+    'Options': {inhibitIpv4Option: 'true'},
+    'Labels': _labels(hash),
+  };
+
+  /// The container create payload: everything but the token and the
+  /// network is fixed by the configuration.
+  Map<String, Object?> createPayload(
+    String executionKey,
+    String token, {
+    required String network,
+    required Ipv4Net subnet,
+  }) {
     final c = config;
     String tmpfs(int mb) =>
         'rw,exec,nosuid,nodev,size=${mb}m,mode=0700,uid=${c.uid},gid=${c.gid}';
-    final proxy = c.proxyUrl;
+    final proxy = c.proxyPeer == null
+        ? null
+        : 'http://${subnet.host(proxyHost)}:${c.proxyPort}';
     return {
       'Image': c.image,
       'Env': [
@@ -212,10 +397,7 @@ class SandboxSupervisor {
           'no_proxy=${c.noProxy}',
         ],
       ],
-      'Labels': {
-        c.labelKey: c.labelValue,
-        executionLabel: hashKey(executionKey),
-      },
+      'Labels': _labels(hashKey(executionKey)),
       'Healthcheck': {
         'Test': [
           'CMD',
@@ -230,7 +412,7 @@ class SandboxSupervisor {
         'StartInterval': 500000000,
       },
       'HostConfig': {
-        'NetworkMode': c.network,
+        'NetworkMode': network,
         'Memory': c.memoryMb * 1024 * 1024,
         'MemorySwap': c.memoryMb * 1024 * 1024,
         'NanoCpus': (c.cpus * 1e9).round(),
@@ -246,6 +428,10 @@ class SandboxSupervisor {
         'Binds': <String>[],
         'Mounts': <Object?>[],
         'IpcMode': 'private',
+        'Sysctls': {
+          'net.ipv6.conf.all.disable_ipv6': '1',
+          'net.ipv6.conf.default.disable_ipv6': '1',
+        },
         'RestartPolicy': {'Name': 'no'},
         'LogConfig': {
           'Type': 'json-file',
@@ -253,7 +439,11 @@ class SandboxSupervisor {
         },
       },
       'NetworkingConfig': {
-        'EndpointsConfig': {c.network: <String, Object?>{}},
+        'EndpointsConfig': {
+          network: {
+            'IPAMConfig': {'IPv4Address': subnet.host(sandboxHost)},
+          },
+        },
       },
     };
   }
@@ -277,19 +467,33 @@ class SandboxSupervisor {
     docker.close();
   }
 
-  /// Removes every labelled container this supervisor does not know of and
-  /// forgets known ones that no longer exist. Unlabelled containers are never
-  /// listed, so never touched.
+  /// Removes every labelled container this supervisor does not know of (with
+  /// its network), every labelled sandbox network no known container uses,
+  /// and forgets known containers that no longer exist. Objects without both
+  /// labels are never listed, so never touched.
   Future<List<String>> sweep() async {
     final removed = <String>[];
     final present = <String>{};
-    for (final c in await docker.listContainers([config.label])) {
+    final keptNetworks = <String>{};
+    for (final c in await docker.listContainers(config.sandboxFilters)) {
       final id = c['Id'] as String;
+      final network = (c['HostConfig'] as Map?)?['NetworkMode'] as String?;
       present.add(id);
-      if (_known.containsKey(id)) continue;
+      if (_known.containsKey(id)) {
+        if (network != null) keptNetworks.add(network);
+        continue;
+      }
       await docker.removeContainer(id);
       removed.add(id);
       log?.call('sweep removed unknown sandbox $id');
+    }
+    for (final n in await docker.listNetworks(config.sandboxFilters)) {
+      final name = n['Name'] as String;
+      if (keptNetworks.contains(name) || keptNetworks.contains(n['Id'])) {
+        continue;
+      }
+      await _removeNetwork(name);
+      log?.call('sweep removed unused sandbox network $name');
     }
     final before = _known.length;
     _known.removeWhere((id, _) => !present.contains(id));
@@ -333,8 +537,10 @@ class SandboxSupervisor {
   }
 
   bool _labelled(Map<String, Object?> inspect) {
-    final labels = (inspect['Config'] as Map?)?['Labels'];
-    return labels is Map && labels[config.labelKey] == config.labelValue;
+    final labels = (inspect['Config'] as Map?)?['Labels'] ?? inspect['Labels'];
+    return labels is Map &&
+        labels[config.labelKey] == config.labelValue &&
+        labels[executionLabel] is String;
   }
 
   String _newToken() {
@@ -344,11 +550,161 @@ class SandboxSupervisor {
     return base64Url.encode(bytes).replaceAll('=', '');
   }
 
+  // ---- peers --------------------------------------------------------------
+
+  /// Container IDs of one configured peer: by compose labels when a compose
+  /// project is configured, else by container name. Sandboxes never count.
+  Future<List<String>> _resolvePeer(String ref) async {
+    final project = config.composeProject;
+    if (project != null) {
+      final found = await docker.listContainers([
+        'com.docker.compose.project=$project',
+        'com.docker.compose.service=$ref',
+      ], runningOnly: true);
+      return [
+        for (final c in found)
+          if ((c['Labels'] as Map?)?[executionLabel] == null) c['Id'] as String,
+      ];
+    }
+    final inspect = await docker.inspectContainer(ref);
+    if (inspect == null || _labelled(inspect)) return const [];
+    if ((inspect['State'] as Map?)?['Running'] != true) return const [];
+    return [inspect['Id'] as String];
+  }
+
+  /// The proxy (null when none is configured) and the agent containers.
+  Future<({String? proxy, List<String> agents})> _peers() async {
+    String? proxy;
+    final ref = config.proxyPeer;
+    if (ref != null) {
+      final ids = await _resolvePeer(ref);
+      if (ids.length != 1) {
+        throw SupervisorError(
+          503,
+          'peer_unavailable',
+          'the proxy peer $ref resolves to ${ids.length} running containers',
+        );
+      }
+      proxy = ids.single;
+    }
+    final agents = <String>[];
+    for (final a in config.agentPeers) {
+      final ids = await _resolvePeer(a);
+      if (ids.isEmpty) {
+        throw SupervisorError(
+          503,
+          'peer_unavailable',
+          'the agent peer $a has no running container',
+        );
+      }
+      agents.addAll(ids.where((id) => !agents.contains(id)));
+    }
+    return (proxy: proxy, agents: agents);
+  }
+
+  /// Connects the peers missing from [network] (e.g. after a peer container
+  /// was recreated): the proxy at its fixed address, agents anywhere.
+  Future<void> _attachPeers(
+    String network,
+    Ipv4Net subnet,
+    ({String? proxy, List<String> agents}) peers,
+  ) async {
+    final inspect = await docker.inspectNetwork(network);
+    if (inspect == null) {
+      throw SupervisorError(503, 'sandbox_start_failed', 'network vanished');
+    }
+    final attached = ((inspect['Containers'] as Map?) ?? const {}).keys.toSet();
+    final proxy = peers.proxy;
+    if (proxy != null && !attached.contains(proxy)) {
+      await docker.connectNetwork(network, proxy, ipv4: subnet.host(proxyHost));
+    }
+    for (final a in peers.agents) {
+      if (!attached.contains(a)) await docker.connectNetwork(network, a);
+    }
+  }
+
+  // ---- networks -----------------------------------------------------------
+
+  /// The IPv4 subnets of every Docker network on the host.
+  Future<List<Ipv4Net>> _usedSubnets() async => [
+    for (final n in await docker.listNetworks())
+      for (final c in ((n['IPAM'] as Map?)?['Config'] as List?) ?? const [])
+        if (c is Map && c['Subnet'] is String)
+          ?Ipv4Net.tryParse(c['Subnet'] as String),
+  ];
+
+  /// Creates the execution's network on the first /28 of the pool that
+  /// overlaps no existing network. Allocations are serialized; a subnet
+  /// Docker still refuses (e.g. taken concurrently by another process) is
+  /// skipped. A leftover labelled network of the same name is replaced.
+  Future<Ipv4Net> _createNetwork(String name, String hash) =>
+      _locked('\u0000subnets', () async {
+        final existing = await docker.inspectNetwork(name);
+        if (existing != null) {
+          if (!_labelled(existing)) {
+            throw SupervisorError(
+              409,
+              'name_conflict',
+              'a network named $name exists and is not a sandbox network',
+            );
+          }
+          await _removeNetwork(name);
+        }
+        final used = await _usedSubnets();
+        final pool = config.subnetPool;
+        final count = pool.size ~/ (1 << (32 - sandboxSubnetPrefix));
+        for (var i = 0; i < count; i++) {
+          final candidate = pool.subnet(i, sandboxSubnetPrefix);
+          if (used.any(candidate.overlaps)) continue;
+          try {
+            await docker.createNetwork(networkPayload(name, hash, candidate));
+            return candidate;
+          } on DockerException catch (e) {
+            if (e.status == 0 || !e.message.toLowerCase().contains('overlap')) {
+              rethrow;
+            }
+            used.add(candidate);
+          }
+        }
+        throw SupervisorError(
+          503,
+          'subnet_pool_exhausted',
+          'no free /$sandboxSubnetPrefix in $pool',
+        );
+      });
+
+  /// The subnet of a sandbox network, from its IPAM configuration.
+  static Ipv4Net? _subnetOf(Map<String, Object?> network) {
+    for (final c
+        in ((network['IPAM'] as Map?)?['Config'] as List?) ?? const []) {
+      final subnet = c is Map ? Ipv4Net.tryParse('${c['Subnet']}') : null;
+      if (subnet != null) return subnet;
+    }
+    return null;
+  }
+
+  /// Disconnects every endpoint still attached (the peers) and removes a
+  /// labelled sandbox network; false when it is absent. Unlabelled networks
+  /// are never touched.
+  Future<bool> _removeNetwork(String network) async {
+    final inspect = await docker.inspectNetwork(network);
+    if (inspect == null) return false;
+    if (!_labelled(inspect)) return false;
+    final id = inspect['Id'] as String;
+    for (final c in ((inspect['Containers'] as Map?) ?? const {}).keys) {
+      await docker.disconnectNetwork(id, c as String);
+    }
+    return docker.removeNetwork(id);
+  }
+
+  // ---- sandboxes ----------------------------------------------------------
+
   /// Creates (or returns) the sandbox of [executionKey].
   Future<Map<String, Object?>> acquire(String executionKey) => _locked(
     executionKey,
     () async {
       final name = containerName(executionKey);
+      final hash = hashKey(executionKey);
       for (var attempt = 0; attempt < 3; attempt++) {
         final existing = await docker.inspectContainer(name);
         if (existing != null) {
@@ -361,36 +717,61 @@ class SandboxSupervisor {
           }
           final id = existing['Id'] as String;
           final state = existing['State'] as Map?;
+          final network = await docker.inspectNetwork(name);
+          final subnet = network == null ? null : _subnetOf(network);
           if (state?['Running'] == true &&
-              (state?['Health'] as Map?)?['Status'] != 'unhealthy') {
-            _known[id] = hashKey(executionKey);
+              (state?['Health'] as Map?)?['Status'] != 'unhealthy' &&
+              network != null &&
+              subnet != null &&
+              _labelled(network)) {
+            _known[id] = hash;
             _saveState();
+            await _attachPeers(name, subnet, await _peers());
             final ready = await _waitHealthy(id);
-            return _describe(ready, created: false);
+            return _describe(ready, subnet, created: false);
           }
-          // Stopped (its tmpfs workspace is gone) or unhealthy: replace it.
+          // Stopped (its tmpfs workspace is gone), unhealthy or without its
+          // network: replace it.
           log?.call('replacing stopped sandbox $id');
-          await docker.removeContainer(id);
-          _known.remove(id);
-          _saveState();
+          await _removeSandbox(id, name);
         }
-        final token = _newToken();
-        final id = await docker.createContainer(
-          name,
-          createPayload(executionKey, token),
-        );
-        if (id == null) continue; // created concurrently; inspect again
-        _known[id] = hashKey(executionKey);
-        _saveState();
+        final peers = await _peers();
+        final subnet = await _createNetwork(name, hash);
+        String? id;
         try {
+          if (peers.proxy case final proxy?) {
+            await docker.connectNetwork(
+              name,
+              proxy,
+              ipv4: subnet.host(proxyHost),
+            );
+          }
+          final token = _newToken();
+          id = await docker.createContainer(
+            name,
+            createPayload(executionKey, token, network: name, subnet: subnet),
+          );
+          if (id == null) {
+            // Created concurrently: inspect again.
+            await _removeNetwork(name);
+            continue;
+          }
+          _known[id] = hash;
+          _saveState();
+          for (final a in peers.agents) {
+            await docker.connectNetwork(name, a);
+          }
           await docker.startContainer(id);
           final ready = await _waitHealthy(id);
-          log?.call('created sandbox $id');
-          return _describe(ready, created: true);
+          log?.call('created sandbox $id on $subnet');
+          return _describe(ready, subnet, created: true);
         } catch (e) {
-          await docker.removeContainer(id).catchError((_) => false);
-          _known.remove(id);
-          _saveState();
+          if (id != null) {
+            await docker.removeContainer(id).catchError((_) => false);
+            _known.remove(id);
+            _saveState();
+          }
+          await _removeNetwork(name).catchError((_) => false);
           rethrow;
         }
       }
@@ -427,7 +808,8 @@ class SandboxSupervisor {
   }
 
   Map<String, Object?> _describe(
-    Map<String, Object?> inspect, {
+    Map<String, Object?> inspect,
+    Ipv4Net subnet, {
     required bool created,
   }) {
     final id = inspect['Id'] as String;
@@ -437,28 +819,40 @@ class SandboxSupervisor {
         .whereType<String>()
         .firstWhere((e) => e.startsWith(prefix), orElse: () => prefix)
         .substring(prefix.length);
+    final name = (inspect['Name'] as String? ?? '').replaceFirst('/', '');
     final String host;
     if (config.addressByIp) {
       final networks =
           ((inspect['NetworkSettings'] as Map?)?['Networks'] as Map?) ??
           const {};
-      final ip = (networks[config.network] as Map?)?['IPAddress'];
+      final ip = (networks[name] as Map?)?['IPAddress'];
       if (ip is! String || ip.isEmpty) {
         throw SupervisorError(503, 'sandbox_start_failed', 'sandbox has no IP');
       }
       host = ip;
     } else {
-      host = (inspect['Name'] as String? ?? '').replaceFirst('/', '');
+      host = name;
     }
     return {
       'sandbox_id': id,
       'url': 'http://$host:$shellctlPort',
       'token': token,
+      'gateway': subnet.host(gatewayHost),
       'created': created,
     };
   }
 
-  /// Force-removes a labelled container; false when it does not exist.
+  /// Removes the container, then its network (peers disconnected first).
+  Future<bool> _removeSandbox(String id, String network) async {
+    final removed = await docker.removeContainer(id);
+    _known.remove(id);
+    _saveState();
+    await _removeNetwork(network);
+    return removed;
+  }
+
+  /// Force-removes a labelled container and its network; false when the
+  /// container does not exist.
   Future<bool> remove(String sandboxId) async {
     if (!RegExp(r'^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$').hasMatch(sandboxId)) {
       throw SupervisorError(400, 'invalid_request', 'invalid sandbox_id');
@@ -472,15 +866,16 @@ class SandboxSupervisor {
       throw SupervisorError(404, 'not_found', 'no sandbox $sandboxId');
     }
     final id = inspect['Id'] as String;
-    final removed = await docker.removeContainer(id);
-    _known.remove(id);
-    _saveState();
-    log?.call('removed sandbox $id');
+    final network =
+        (inspect['HostConfig'] as Map?)?['NetworkMode'] as String? ??
+        (inspect['Name'] as String? ?? '').replaceFirst('/', '');
+    final removed = await _removeSandbox(id, network);
+    log?.call('removed sandbox $id and its network');
     return removed;
   }
 
   Future<List<Map<String, Object?>>> list() async => [
-    for (final c in await docker.listContainers([config.label]))
+    for (final c in await docker.listContainers(config.sandboxFilters))
       {
         'sandbox_id': c['Id'],
         'name': ((c['Names'] as List?)?.firstOrNull as String?)?.replaceFirst(

@@ -51,7 +51,12 @@ class FakeShellctl {
     'write_outside_workspace': 'blocked',
     'daemon_records': 'blocked',
     'direct_internet': 'blocked',
+    'host_reachable': 'blocked',
+    'host_ipv6': 'blocked',
   };
+
+  /// The latest probe script received.
+  String? lastProbeScript;
   bool reapSucceeds = true;
   FakeJobSpec Function(String script)? onJob;
 
@@ -246,6 +251,7 @@ class FakeShellctl {
   (int, String) _control(String script) {
     if (script.contains('write_outside_workspace=')) {
       probeRuns++;
+      lastProbeScript = script;
       return (
         0,
         [for (final e in probes.entries) '${e.key}=${e.value}'].join('\n'),
@@ -329,6 +335,9 @@ class FakeSupervisor {
   final List<String> created = [];
   final List<String> deletes = [];
 
+  /// The `gateway` reported for every sandbox.
+  String gateway = '10.213.0.1';
+
   /// Answer acquires with this status instead (e.g. 503).
   int? failAcquire;
 
@@ -386,6 +395,7 @@ class FakeSupervisor {
           'sandbox_id': id,
           'url': '${s.url}',
           'token': s.token,
+          'gateway': gateway,
           'created': isNew,
         });
       case ('DELETE', ['v1', 'sandboxes', final id]):

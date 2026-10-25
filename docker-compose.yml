@@ -204,7 +204,8 @@ services:
 
   # ---- profile `agent`: the Agent v2 agent service (docs/agent-v2.md, docs/runtime-services.md) ----
 
-  # Runs inline agents. Reaches the server's inner endpoints on `default` and its sandboxes on agent_sandbox_network.
+  # Runs inline agents. Reaches the server's inner endpoints on `default`; the supervisor attaches it to each
+  # sandbox's own network.
   agent_service:
     profiles: [agent]
     image: dify-sf-agent-service
@@ -233,10 +234,11 @@ services:
         condition: service_healthy
     networks:
       - default
-      - agent_sandbox_network
 
   # The only component with access to the container runtime: creates one sandbox container per execution from the
-  # fixed image, network and limits below, and removes it. The Docker socket is mounted here and nowhere else.
+  # fixed image and limits below, each on its own internal network (a /28 of the pool) to which it attaches only
+  # agent_service and agent_sandbox_proxy of this project, and removes both. The Docker socket is mounted here and
+  # nowhere else.
   sandbox_supervisor:
     profiles: [agent]
     image: dify-sf-agent-service
@@ -252,9 +254,13 @@ services:
       - "${DOCKER_GID:-999}"
     environment:
       SANDBOX_SUPERVISOR_KEY: ${AGENT_SANDBOX_SUPERVISOR_KEY:-dify-sf-local-sandbox-supervisor-key}
-      SANDBOX_NETWORK: ${AGENT_SANDBOX_NETWORK:-dify-sf-agent-sandbox}
       SANDBOX_IMAGE: langgenius/dify-agent-local-sandbox:1.17.1
-      SANDBOX_PROXY_URL: http://agent_sandbox_proxy:3128
+      # Peers are this project's compose services (labels com.docker.compose.project/service), never request input.
+      SANDBOX_COMPOSE_PROJECT: ${COMPOSE_PROJECT_NAME:-dify-sf}
+      SANDBOX_AGENT_PEERS: agent_service
+      SANDBOX_PROXY_PEER: agent_sandbox_proxy
+      # One /28 per sandbox; must not overlap host routes (VPNs, LANs). Existing Docker networks are skipped.
+      SANDBOX_SUBNET_POOL: ${AGENT_SANDBOX_SUBNET_POOL:-10.213.0.0/16}
       SANDBOX_LABEL: dify-sf.agent-sandbox=${COMPOSE_PROJECT_NAME:-dify-sf}
       SANDBOX_STATE_FILE: /data/sandboxes.json
       SANDBOX_MEMORY_MB: "1024"
@@ -277,6 +283,7 @@ services:
       - default
 
   # Squid forward proxy: the sandboxes' only way out, to the domains in docker/agent_sandbox_proxy/allowlist.txt.
+  # The supervisor attaches it to each sandbox network at a fixed address (.2 of the sandbox's /28).
   agent_sandbox_proxy:
     profiles: [agent]
     image: ubuntu/squid:latest@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
@@ -293,21 +300,12 @@ services:
       timeout: 3s
       retries: 12
     networks:
-      - agent_sandbox_network
       - default
 
 networks:
   # The sandbox's only network: no route out except through ssrf_proxy.
   ssrf_proxy_network:
     internal: true
-  # The agent sandboxes' only network (created here, never by the supervisor): no gateway, and no host address on the
-  # bridge (inhibit_ipv4), so a sandbox reaches only agent_service, the proxy and other sandboxes' token-protected
-  # shellctl ports.
-  agent_sandbox_network:
-    name: ${AGENT_SANDBOX_NETWORK:-dify-sf-agent-sandbox}
-    internal: true
-    driver_opts:
-      com.docker.network.bridge.inhibit_ipv4: "true"
 
 volumes:
   agent_service_data:

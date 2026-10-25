@@ -1,12 +1,20 @@
-// Real sandbox integration test: Docker on this machine, the local image
-// langgenius/dify-agent-local-sandbox:1.17.1 (never pulled here).
+// Real sandbox integration test: Docker on this machine, the local images
+// langgenius/dify-agent-local-sandbox:1.17.1, dart:3.13 and ubuntu/squid
+// (never pulled here).
 //
 //   AGENT_SANDBOX_IT=1 dart test -j 1 test/sandbox_integration_test.dart
 //
-// It creates its own internal networks and containers, all labelled
-// `dify-sf.test=<random>`, and removes them in tearDownAll even on failure.
-// Nothing else on the host is touched.
-@Timeout(Duration(minutes: 4))
+// Every sandbox gets its own internal inhibit_ipv4 network from the
+// supervisor, so this process (on the host) cannot reach any sandbox. A relay
+// container (test/it_relay.dart, published on 127.0.0.1) plays the agent
+// service peer and forwards the test's shellctl requests; a Squid container
+// with the repository's configuration plays the proxy peer. The sandbox pool
+// is AGENT_SANDBOX_IT_POOL (default 10.213.0.0/16); the relay's own network is
+// a free /28 of AGENT_SANDBOX_IT_RELAY_POOL (default 10.214.0.0/16).
+//
+// Everything it creates is labelled `dify-sf.test=<random>` and removed in
+// tearDownAll, also on failure. Nothing else on the host is touched.
+@Timeout(Duration(minutes: 6))
 library;
 
 import 'dart:convert';
@@ -16,6 +24,7 @@ import 'dart:math';
 import 'package:agent_service/agent_service.dart';
 import 'package:agent_service/supervisor.dart';
 import 'package:agent_service/testing.dart';
+import 'package:http/io_client.dart';
 import 'package:test/test.dart';
 
 import 'support.dart';
@@ -30,10 +39,20 @@ void main() {
     (_) => random.nextInt(16).toRadixString(16),
   ).join();
   final labelFilter = 'dify-sf.test=$label';
+  final pool = Ipv4Net.tryParse(
+    Platform.environment['AGENT_SANDBOX_IT_POOL'] ?? '10.213.0.0/16',
+  )!;
+  final relayPool = Ipv4Net.tryParse(
+    Platform.environment['AGENT_SANDBOX_IT_RELAY_POOL'] ?? '10.214.0.0/16',
+  )!;
+  final repo = Directory.current.parent.path;
   late DockerClient docker;
-  late String network;
-  late String inhibitedNetwork;
-  late String inhibitedGateway;
+  late String relayNetwork;
+  late String relayName;
+  late String relayId;
+  late String proxyName;
+  late String proxyId;
+  late int relayPort;
   late SandboxSupervisor supervisor;
   late Uri supervisorUrl;
   late ScriptedGateway gateway;
@@ -41,38 +60,52 @@ void main() {
 
   void log(String m) => stderr.writeln('[it] $m');
 
-  Future<(String, String)> createNetwork(
-    String name, {
-    bool inhibit = false,
-  }) async {
-    for (var attempt = 0; attempt < 30; attempt++) {
-      final subnet = '10.${200 + random.nextInt(50)}.${random.nextInt(256)}';
-      try {
-        await docker.createNetwork({
-          'Name': name,
-          'Driver': 'bridge',
-          'Internal': true,
-          'Labels': {'dify-sf.test': label},
-          'IPAM': {
-            'Config': [
-              {'Subnet': '$subnet.0/24'},
-            ],
-          },
-          if (inhibit)
-            'Options': {'com.docker.network.bridge.inhibit_ipv4': 'true'},
-        });
-        return (name, '$subnet.1');
-      } on DockerException catch (e) {
-        if (e.status == 0) rethrow;
-        // Overlapping subnet: try another.
-      }
+  /// A free /28 of [range]: overlapping no existing network.
+  Future<Ipv4Net> freeSubnet(Ipv4Net range) async {
+    final used = [
+      for (final n in await docker.listNetworks())
+        for (final c in ((n['IPAM'] as Map?)?['Config'] as List?) ?? const [])
+          ?Ipv4Net.tryParse('${(c as Map)['Subnet']}'),
+    ];
+    for (var i = 0; i < range.size ~/ 16; i++) {
+      final candidate = range.subnet(i, 28);
+      if (!used.any(candidate.overlaps)) return candidate;
     }
-    throw StateError('no free subnet for $name');
+    throw StateError('no free /28 in $range');
   }
 
-  SupervisorConfig supervisorConfig(String net) => SupervisorConfig(
+  Future<String> createNetwork(
+    String name,
+    Ipv4Net subnet, {
+    required bool internal,
+  }) => docker.createNetwork({
+    'Name': name,
+    'Driver': 'bridge',
+    'Internal': internal,
+    'Labels': {'dify-sf.test': label},
+    'IPAM': {
+      'Config': [
+        {'Subnet': '$subnet', 'Gateway': subnet.host(1)},
+      ],
+    },
+  });
+
+  /// Creates and starts a labelled helper container; returns its ID.
+  Future<String> helper(String name, Map<String, Object?> payload) async {
+    final id = await docker.createContainer(name, {
+      ...payload,
+      'Labels': {'dify-sf.test': label},
+    });
+    if (id == null) throw StateError('container $name exists');
+    await docker.startContainer(id);
+    return id;
+  }
+
+  SupervisorConfig supervisorConfig() => SupervisorConfig(
     key: supervisorKey,
-    network: net,
+    agentPeers: [relayName],
+    proxyPeer: proxyName,
+    subnetPool: '$pool',
     labelKey: 'dify-sf.test',
     labelValue: label,
     namePrefix: 'dify-sf-it-$label-',
@@ -84,16 +117,78 @@ void main() {
     addressByIp: true,
   );
 
+  /// shellctl requests go through the relay.
+  IOClient viaRelay() =>
+      IOClient(HttpClient()..findProxy = (_) => 'PROXY 127.0.0.1:$relayPort');
+
   setUpAll(() async {
     if (!enabled) return;
     docker = DockerClient('/var/run/docker.sock');
     await docker.ping();
-    (network, _) = await createNetwork('dify-sf-it-$label');
-    (inhibitedNetwork, inhibitedGateway) = await createNetwork(
-      'dify-sf-it-$label-inh',
-      inhibit: true,
+    relayNetwork = 'dify-sf-it-$label-relay';
+    await createNetwork(
+      relayNetwork,
+      await freeSubnet(relayPool),
+      internal: false,
     );
-    supervisor = SandboxSupervisor(supervisorConfig(network), log: log);
+    relayName = 'dify-sf-it-$label-relay';
+    relayId = await helper(relayName, {
+      'Image': 'dart:3.13',
+      'Cmd': ['dart', '/relay/it_relay.dart', '8080', '$pool'],
+      'ExposedPorts': {'8080/tcp': <String, Object?>{}},
+      'HostConfig': {
+        'NetworkMode': relayNetwork,
+        'Binds': [
+          '${Directory.current.path}/test/it_relay.dart:/relay/it_relay.dart:ro',
+        ],
+        'PortBindings': {
+          '8080/tcp': [
+            {'HostIp': '127.0.0.1', 'HostPort': ''},
+          ],
+        },
+        'Memory': 256 * 1024 * 1024,
+        'MemorySwap': 256 * 1024 * 1024,
+        'CapDrop': ['ALL'],
+        'SecurityOpt': ['no-new-privileges:true'],
+      },
+    });
+    proxyName = 'dify-sf-it-$label-proxy';
+    proxyId = await helper(proxyName, {
+      'Image': 'ubuntu/squid:latest',
+      'HostConfig': {
+        'NetworkMode': relayNetwork,
+        'Binds': [
+          '$repo/docker/agent_sandbox_proxy/squid.conf:/etc/squid/squid.conf:ro',
+          '$repo/docker/agent_sandbox_proxy/allowlist.txt:/etc/squid/allowlist.txt:ro',
+        ],
+        'Memory': 128 * 1024 * 1024,
+        'MemorySwap': 128 * 1024 * 1024,
+      },
+    });
+    final relay = (await docker.inspectContainer(relayId))!;
+    final ports = (relay['NetworkSettings'] as Map)['Ports'] as Map;
+    relayPort = int.parse(
+      ((ports['8080/tcp'] as List).first as Map)['HostPort'] as String,
+    );
+    final ready = HttpClient();
+    final deadline = DateTime.now().add(const Duration(seconds: 60));
+    while (true) {
+      try {
+        final r = await (await ready.get(
+          '127.0.0.1',
+          relayPort,
+          '/ready',
+        )).close();
+        await r.drain<void>();
+        if (r.statusCode == 200) break;
+      } on IOException {
+        // Not up yet.
+      }
+      if (DateTime.now().isAfter(deadline)) throw StateError('relay not up');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    }
+    ready.close();
+    supervisor = SandboxSupervisor(supervisorConfig(), log: log);
     final port = await supervisor.start(address: '127.0.0.1', port: 0);
     supervisorUrl = Uri.parse('http://127.0.0.1:$port');
     gateway = ScriptedGateway(
@@ -120,37 +215,37 @@ void main() {
         await cleanup.removeContainer(c['Id'] as String);
       }
       for (final n in await cleanup.listNetworks([labelFilter])) {
-        await cleanup.removeNetwork(n['Id'] as String);
+        final id = n['Id'] as String;
+        final inspect = await cleanup.inspectNetwork(id);
+        for (final c in ((inspect?['Containers'] as Map?) ?? const {}).keys) {
+          await cleanup.disconnectNetwork(id, c as String);
+        }
+        await cleanup.removeNetwork(id);
       }
     } finally {
       cleanup.close();
     }
     if (dataDir.existsSync()) dataDir.deleteSync(recursive: true);
-    final ps = await Process.run('docker', [
-      'ps',
-      '-a',
-      '--filter',
-      'label=$labelFilter',
-    ]);
-    final nets = await Process.run('docker', [
-      'network',
-      'ls',
-      '--filter',
-      'label=$labelFilter',
-    ]);
-    log(
-      'cleanup check: docker ps -a --filter label=$labelFilter\n${ps.stdout}',
-    );
-    log(
-      'cleanup check: docker network ls --filter label=$labelFilter\n${nets.stdout}',
-    );
-    expect((ps.stdout as String).trim().split('\n'), hasLength(1));
-    expect((nets.stdout as String).trim().split('\n'), hasLength(1));
+    final checks = <String, List<String>>{
+      'ps': ['ps', '-a', '--filter', 'label=$labelFilter'],
+      'network': ['network', 'ls', '--filter', 'label=$labelFilter'],
+      'volume': ['volume', 'ls', '--filter', 'label=$labelFilter'],
+    };
+    for (final MapEntry(:key, :value) in checks.entries) {
+      final r = await Process.run('docker', value);
+      log('cleanup check: docker ${value.join(' ')}\n${r.stdout}');
+      expect(
+        (r.stdout as String).trim().split('\n'),
+        hasLength(1),
+        reason: key,
+      );
+    }
   });
 
   SandboxManager newManager() => SandboxManager(
     supervisor: SupervisorClient(supervisorUrl, supervisorKey),
     store: RunStore(newDataDir().path)..load(),
+    shellctlHttpClient: viaRelay,
     log: log,
   );
 
@@ -220,7 +315,10 @@ cat /workspace/mine.txt 2>&1; ls -a /workspace
 ls /home/dify/.local/share/shellctl/jobs 2>&1; echo jobs_rc=\$?
 for d in /proc/[0-9]*; do [ "\$(cat \$d/comm 2>/dev/null)" = shellctl ] && { head -c 20 \$d/environ >/dev/null 2>&1; echo environ_rc=\$?; }; done
 echo probe > /home/dify/x 2>&1; echo home_root_rc=\$?
-curl -s -o /dev/null -w "peer_no_token=%{http_code}\\n" -m 5 http://$ipA:5004/v1/jobs
+curl -sS -o /dev/null -w "peer=%{http_code}\\n" -m 5 --noproxy '*' http://$ipA:5004/v1/jobs 2>&1; echo peer_rc=\$?
+timeout 5 bash -c "exec 3<>/dev/tcp/$ipA/5004" 2>&1; echo peer_tcp_rc=\$?
+curl -sS -o /dev/null -w "via_proxy=%{http_code}\\n" -m 10 http://$ipA:5004/v1/jobs 2>&1
+echo "proxy=\$HTTP_PROXY"
 ''');
       expect(outB, isNot(contains('secret-A')));
       expect(outB, contains('No such file'));
@@ -228,17 +326,43 @@ curl -s -o /dev/null -w "peer_no_token=%{http_code}\\n" -m 5 http://$ipA:5004/v1
       expect(outB, isNot(contains('jobs_rc=0')));
       expect(outB, contains('environ_rc=1'));
       expect(outB, isNot(contains('home_root_rc=0')));
-      expect(outB, contains('peer_no_token=401'));
+      // Not even a connection: the sandboxes share no network.
+      expect(outB, contains('peer=000'));
+      expect(outB, matches(RegExp(r'peer_rc=(7|28)\b')));
+      expect(outB, isNot(contains('peer_tcp_rc=0')));
+      // The proxy, attached to both networks, refuses private destinations.
+      expect(outB, contains('via_proxy=403'));
+      final subnetB = b.grant.gateway!.replaceFirst(RegExp(r'\.\d+$'), '');
+      expect(outB, contains('proxy=http://$subnetB.'));
+      expect(a.grant.gateway, isNot(b.grant.gateway));
+      for (final (key, sandbox) in [('IT-A', a), ('IT-B', b)]) {
+        final net = (await docker.inspectNetwork(
+          supervisor.containerName(key),
+        ))!;
+        expect(net['Internal'], isTrue);
+        expect((net['Options'] as Map)[inhibitIpv4Option], 'true');
+        expect((net['Labels'] as Map)['dify-sf.test'], label);
+        expect(((net['Containers'] as Map?) ?? const {}).keys.toSet(), {
+          sandbox.sandboxId,
+          relayId,
+          proxyId,
+        }, reason: 'only the sandbox, the agent peer and the proxy');
+      }
       expect(await sa.close(), isTrue);
       expect(await sb.close(), isTrue);
 
-      // DELETE path: release removes the containers.
+      // DELETE path: release removes the container and its network.
       await manager.release('IT-A');
       expect(await docker.inspectContainer(a.sandboxId), isNull);
+      expect(
+        await docker.inspectNetwork(supervisor.containerName('IT-A')),
+        isNull,
+      );
     });
 
-    test('direct egress fails; with inhibit_ipv4 the host bridge address is '
-        'unreachable too', () async {
+    test('direct egress fails; the host is unreachable: the probes pass on '
+        'the sandbox network, and catch a network where the host has an '
+        'address', () async {
       final manager = newManager();
       final client = inner();
       addTearDown(() async {
@@ -247,40 +371,67 @@ curl -s -o /dev/null -w "peer_no_token=%{http_code}\\n" -m 5 http://$ipA:5004/v1
         manager.close();
       });
       final sandbox = await manager.open(request('IT-N'), client);
+      expect(sandbox.probed, isTrue);
+      expect(manager.health, 'isolated');
+      final gw = sandbox.grant.gateway!;
       final s = ShellSession(sandbox, {});
       final out = await run(s, '''
 timeout 5 bash -c "exec 3<>/dev/tcp/1.1.1.1/443" 2>&1; echo tcp_rc=\$?
 getent hosts pypi.org; echo dns_rc=\$?
-timeout 5 curl -s -m 4 -o /dev/null https://pypi.org; echo curl_rc=\$?
-timeout 3 bash -c "exec 3<>/dev/tcp/${sandbox.grant.url.host.replaceFirst(RegExp(r'\.\d+$'), '.1')}/22" 2>&1; echo bridge_rc=\$?
+timeout 5 curl -s -m 4 --noproxy '*' -o /dev/null https://pypi.org; echo curl_rc=\$?
+for p in 22 80 5432; do timeout 3 bash -c "exec 3<>/dev/tcp/$gw/\$p" 2>&1; echo gw_\${p}_rc=\$?; done
+timeout 3 bash -c "exec 3<>/dev/tcp/172.17.0.1/22" 2>&1; echo docker0_rc=\$?
+cat /proc/net/if_inet6; echo if_inet6_done
 ''');
       expect(out, isNot(contains('tcp_rc=0')));
       expect(out, isNot(contains('dns_rc=0')));
       expect(out, isNot(contains('curl_rc=0')));
-      log(
-        out.contains('bridge_rc=0')
-            ? 'OBSERVED: without inhibit_ipv4 the host bridge address is reachable'
-            : 'observed: the host bridge address is not reachable',
+      expect(out, isNot(contains(RegExp(r'gw_\d+_rc=0'))));
+      expect(out, isNot(contains('docker0_rc=0')));
+      expect(
+        out.split('if_inet6_done').first,
+        isNot(contains('eth0')),
+        reason: 'no IPv6 on the sandbox interface',
       );
       expect(await s.close(), isTrue);
 
-      // The same image on an inhibit_ipv4 network (as in compose).
-      final inhibited = SandboxSupervisor(
-        supervisorConfig(inhibitedNetwork),
-        log: log,
+      // The same image on an internal network *without* inhibit_ipv4, where
+      // the host owns the gateway address: a listener there is found.
+      final subnet = await freeSubnet(relayPool);
+      final plain = 'dify-sf-it-$label-plain';
+      await createNetwork(plain, subnet, internal: true);
+      final listener = await ServerSocket.bind(subnet.host(1), 0);
+      addTearDown(listener.close);
+      listener.listen((c) => c.destroy());
+      final payload = supervisor.createPayload(
+        'IT-H',
+        'tok',
+        network: plain,
+        subnet: subnet,
       );
-      final grant = await inhibited.acquire('IT-INH');
-      addTearDown(() => inhibited.remove(grant['sandbox_id'] as String));
-      final (code, text) = await docker.exec(grant['sandbox_id'] as String, [
+      final id = await helper('dify-sf-it-$label-plain-sbx', payload);
+      final deadline = DateTime.now().add(const Duration(seconds: 30));
+      while (((await docker.inspectContainer(id))!['State']
+              as Map)['Running'] !=
+          true) {
+        if (DateTime.now().isAfter(deadline)) fail('helper did not start');
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
+      final (code, text) = await docker.exec(id, [
         'bash',
         '-c',
-        'timeout 3 bash -c "exec 3<>/dev/tcp/$inhibitedGateway/22" 2>&1; '
-            'echo bridge_rc=\$?; timeout 3 bash -c '
-            '"exec 3<>/dev/tcp/1.1.1.1/443" 2>&1; echo tcp_rc=\$?',
+        ExecutionSandbox.hostProbeScript(
+          gateway: subnet.host(1),
+          ports: [22, listener.port],
+        ),
       ]);
-      log('inhibited network: exit $code\n$text');
-      expect(text, isNot(contains('bridge_rc=0')));
-      expect(text, isNot(contains('tcp_rc=0')));
+      log('probe on a network where the host has an address: $code\n$text');
+      final seen = ExecutionSandbox.parseProbes(text);
+      expect(
+        seen['host_reachable'],
+        contains('${subnet.host(1)}:${listener.port}'),
+      );
+      await docker.removeContainer(id);
     });
 
     test('many processes hit the PID limit; a large file hits the disk '
@@ -305,6 +456,7 @@ timeout 3 bash -c "exec 3<>/dev/tcp/${sandbox.grant.url.host.replaceFirst(RegExp
       final pids = await run(s, '''
 python3 - <<'EOF'
 import os, time
+time.sleep(1)  # let shellctl finish starting the job before the PIDs run out
 n = 0
 try:
     while n < 400:
@@ -350,6 +502,7 @@ EOF
         innerUrl: gateway.url,
         logLevel: LogLevel.warning,
         supervisor: SupervisorClient(supervisorUrl, supervisorKey),
+        shellctlHttpClient: viaRelay,
       );
       await service.start(address: '127.0.0.1', port: 0);
       addTearDown(service.stop);
@@ -436,6 +589,10 @@ EOF
         });
         expect(ds, 200);
         expect(await docker.inspectContainer(id), isNull);
+        expect(
+          await docker.inspectNetwork(supervisor.containerName(e)),
+          isNull,
+        );
       }
     });
   });

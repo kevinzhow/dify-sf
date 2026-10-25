@@ -29,6 +29,8 @@ The contract it implements is [`docs/agent-v2.md`](../docs/agent-v2.md) (protoco
 - Declared file outputs (`x-dify-sf-file`): workspace paths checked, uploaded and replaced by
   `{"upload_id", "filename", "mime_type", "size"}`.
 - The sandbox supervisor, `bin/sandbox_supervisor.dart` (`lib/src/supervisor/`): the only component with Docker access.
+  Each sandbox gets its own internal network (a /28 of `SANDBOX_SUBNET_POOL`, no host address), shared only with the
+  configured agent service and proxy containers and removed with the sandbox.
 
 Without `AGENT_SANDBOX_SUPERVISOR_URL`, `tools.shell: true` fails with `sandbox_unavailable` and health reports
 `"sandbox": "disabled"`.
@@ -50,18 +52,22 @@ The supervisor (`sandbox_supervisor`) reads:
 | Variable | Default | Meaning |
 |---|---|---|
 | `SANDBOX_SUPERVISOR_KEY` | required | Bearer key of its API |
-| `SANDBOX_NETWORK` | required | Existing internal Docker network for sandboxes (never created by the supervisor) |
+| `SANDBOX_AGENT_PEERS` | required | Comma-separated agent service container(s) attached to every sandbox network |
+| `SANDBOX_PROXY_PEER` | none | The proxy container, attached at `.2` of every sandbox network; sandboxes get `HTTP(S)_PROXY=http://<.2>:SANDBOX_PROXY_PORT`. Without it sandboxes have no egress |
+| `SANDBOX_PROXY_PORT` | `3128` | The proxy's port |
+| `SANDBOX_COMPOSE_PROJECT` | none | Peers are compose service names of this project (labels `com.docker.compose.project`/`service`); without it, container names |
+| `SANDBOX_SUBNET_POOL` | `10.213.0.0/16` | Split into one /28 per sandbox network; subnets of existing Docker networks are skipped. Must lie in 10/8, 172.16/12, 192.168/16 or 100.64/10 (refused by the proxy) and must not overlap host routes |
 | `SANDBOX_SUPERVISOR_PORT` | `5060` | Listening port |
 | `DOCKER_SOCKET` | `/var/run/docker.sock` | Docker Engine API socket (API v1.44) |
 | `SANDBOX_IMAGE` | `langgenius/dify-agent-local-sandbox:1.17.1` | Sandbox image (must be present; never pulled) |
-| `SANDBOX_LABEL` | `dify-sf.agent-sandbox=1` | `key=value` on every sandbox; only such containers are listed, swept or removed |
-| `SANDBOX_NAME_PREFIX` | `dify-sf-sandbox-` | Container names: prefix + 24 hex of SHA-256(execution key) |
+| `SANDBOX_LABEL` | `dify-sf.agent-sandbox=1` | `key=value` on every sandbox and sandbox network; only objects with it and the execution label are listed, swept or removed |
+| `SANDBOX_NAME_PREFIX` | `dify-sf-sandbox-` | Container and network names: prefix + 24 hex of SHA-256(execution key) |
 | `SANDBOX_MEMORY_MB`, `SANDBOX_CPUS`, `SANDBOX_PIDS_LIMIT` | `1024`, `1`, `256` | Limits (memory includes the tmpfs) |
 | `SANDBOX_HOME_MB`, `SANDBOX_WORKSPACE_MB` | `256`, `512` | tmpfs sizes of `/home/dify` and `/workspace` |
 | `SANDBOX_UID`, `SANDBOX_GID` | `1000` | Owner of the tmpfs mounts (the image's `dify` user) |
-| `SANDBOX_PROXY_URL`, `SANDBOX_NO_PROXY` | none, `localhost,127.0.0.1` | Proxy variables given to sandboxes |
-| `SANDBOX_ADDRESS` | `name` | Sandbox URLs by container `name` (Docker DNS) or `ip` |
-| `SANDBOX_STATE_FILE` | none | Known sandboxes; without it a restart sweeps every labelled container |
+| `SANDBOX_NO_PROXY` | `localhost,127.0.0.1` | `NO_PROXY` given to sandboxes |
+| `SANDBOX_ADDRESS` | `name` | Sandbox URLs by container `name` (Docker DNS on the sandbox network) or `ip` |
+| `SANDBOX_STATE_FILE` | none | Known sandboxes; without it a restart sweeps every labelled container and network |
 | `SANDBOX_START_TIMEOUT` | `60` | Seconds to wait for a healthy shellctl |
 
 `SIGTERM` stops the service: running operations end `failed` (`internal`) and their results are stored.
@@ -82,8 +88,12 @@ The tests are hermetic: they start the service, a scripted inner gateway, a fake
 daemons (`lib/src/testing/`) in-process on `127.0.0.1`, and a fake Docker Engine on a unix socket; they use no real
 model or container. Test data goes to `.dart_tool/agent_service_test/`.
 
-The real sandbox test uses this machine's Docker and the local sandbox image; it creates its own internal networks and
-containers labelled `dify-sf.test=<random>` and removes them at the end:
+The real sandbox test uses this machine's Docker and the local images `langgenius/dify-agent-local-sandbox:1.17.1`,
+`dart:3.13` and `ubuntu/squid:latest` (never pulled). The host has no address on sandbox networks, so a relay container
+(`test/it_relay.dart`, published on 127.0.0.1) is the agent peer and forwards the test's shellctl requests; a Squid
+container with the repository's configuration is the proxy peer. Sandbox networks come from `AGENT_SANDBOX_IT_POOL`
+(default `10.213.0.0/16`), the relay's network from `AGENT_SANDBOX_IT_RELAY_POOL` (default `10.214.0.0/16`). Everything
+is labelled `dify-sf.test=<random>` and removed at the end:
 
 ```sh
 AGENT_SANDBOX_IT=1 dart test -j 1 test/sandbox_integration_test.dart
@@ -136,3 +146,4 @@ bind-mounted host directory must be writable by uid 10001.
 | `lib/src/sandbox/` | Supervisor client, per-execution sandboxes (probes, reaper, files), shellctl client, shell tools |
 | `lib/src/supervisor/` | The sandbox supervisor and its Docker Engine client |
 | `lib/src/testing/` | Scripted inner gateway, fake supervisor and shellctl, shared by tests and `bin/fake_gateway.dart` |
+| `test/it_relay.dart` | The integration test's relay into sandbox networks |

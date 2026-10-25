@@ -29,11 +29,21 @@ class SandboxFailure implements Exception {
 
 /// What the supervisor granted.
 class SandboxGrant {
-  SandboxGrant(this.sandboxId, this.url, this.token, {required this.created});
+  SandboxGrant(
+    this.sandboxId,
+    this.url,
+    this.token, {
+    required this.created,
+    this.gateway,
+  });
   final String sandboxId;
   final Uri url;
   final String token;
   final bool created;
+
+  /// The sandbox network's reserved gateway address (no host owns it when
+  /// the network is set up as required); probed for host reachability.
+  final String? gateway;
 }
 
 /// Client of the sandbox supervisor.
@@ -94,6 +104,7 @@ class SupervisorClient {
       Uri.parse(j['url'] as String),
       j['token'] as String,
       created: j['created'] == true,
+      gateway: j['gateway'] as String?,
     );
   }
 
@@ -125,6 +136,19 @@ class SandboxLayout {
   final String daemonStateDir;
 }
 
+/// TCP ports tried on every host address by the host-reachability probe.
+const defaultHostProbePorts = [
+  22, 53, 80, 443, 2375, 2376, 3000, 5000, 5432, 6379, 8000, 8080, 8443, //
+  11434,
+];
+
+/// Host addresses tried besides the sandbox network's gateway: Docker's
+/// default bridge gateway (no route exists from a sandbox network).
+const defaultHostProbeAddresses = ['172.17.0.1'];
+
+/// Names Docker maps to the host (`host-gateway`); tried when they resolve.
+const hostGatewayNames = ['host.docker.internal', 'gateway.docker.internal'];
+
 /// The result of a bounded control command.
 typedef ControlResult = ({String status, int? exitCode, String output});
 
@@ -134,12 +158,19 @@ class ExecutionSandbox {
     required this.executionId,
     required this.grant,
     this.layout = const SandboxLayout(),
+    this.hostProbePorts = defaultHostProbePorts,
+    this.httpClient,
     this.log,
   });
 
   final String executionId;
   final SandboxGrant grant;
   final SandboxLayout layout;
+  final List<int> hostProbePorts;
+
+  /// Makes the HTTP client of each shellctl connection (default: a plain
+  /// one); the integration test routes through a relay with it.
+  final http.Client Function()? httpClient;
   final void Function(String)? log;
 
   /// Set once the probes passed in this process.
@@ -148,7 +179,12 @@ class ExecutionSandbox {
   String get sandboxId => grant.sandboxId;
 
   ShellctlClient client({int outputLimit = shellctlOutputLimitBytes}) =>
-      ShellctlClient(grant.url, grant.token, outputLimit: outputLimit);
+      ShellctlClient(
+        grant.url,
+        grant.token,
+        outputLimit: outputLimit,
+        client: httpClient?.call(),
+      );
 
   /// The environment of every job: the user's `env` plus `HOME`. Reserved
   /// names are refused here too, whatever the protocol layer let through.
@@ -267,7 +303,35 @@ r=blocked
 for a in 1.1.1.1 8.8.8.8; do
   if timeout 3 bash -c "exec 3<>/dev/tcp/\$a/443" 2>/dev/null; then r=reachable; fi
 done
-echo "direct_internet=\$r"''';
+echo "direct_internet=\$r"
+${hostProbeScript(gateway: grant.gateway, ports: hostProbePorts)}''';
+  }
+
+  /// The host-reachability probes: `host_reachable` tries TCP to the
+  /// sandbox network's gateway [gateway], [defaultHostProbeAddresses] and the
+  /// host-gateway names (when they resolve) on [ports], all in parallel with
+  /// a 3-second budget; any connection makes it `reachable` (followed by the
+  /// address:port pairs). `host_ipv6` is `reachable` when any interface but
+  /// `lo` has an IPv6 address (a link-local route to the host's bridge).
+  static String hostProbeScript({
+    required String? gateway,
+    required List<int> ports,
+  }) {
+    final addresses = [?gateway, ...defaultHostProbeAddresses];
+    return '''
+targets=${shellQuote(addresses.join(' '))}
+for n in ${hostGatewayNames.join(' ')}; do
+  a=\$(getent ahostsv4 "\$n" 2>/dev/null | awk 'NR==1{print \$1}')
+  [ -n "\$a" ] && targets="\$targets \$a"
+done
+hits=\$(for a in \$targets; do
+  for p in ${ports.join(' ')}; do
+    ( timeout 3 bash -c "exec 3<>/dev/tcp/\$a/\$p" 2>/dev/null && echo "\$a:\$p" ) &
+  done
+  wait
+done)
+if [ -n "\$hits" ]; then echo "host_reachable=reachable" \$hits; else echo "host_reachable=blocked"; fi
+if grep -qv ' lo\$' /proc/net/if_inet6 2>/dev/null; then echo "host_ipv6=reachable"; else echo "host_ipv6=blocked"; fi''';
   }
 
   /// Probe names that must report `blocked`.
@@ -275,7 +339,19 @@ echo "direct_internet=\$r"''';
     'write_outside_workspace',
     'daemon_records',
     'direct_internet',
+    'host_reachable',
+    'host_ipv6',
   ];
+
+  /// Parses `name=value` probe lines.
+  static Map<String, String> parseProbes(String output) {
+    final seen = <String, String>{};
+    for (final line in const LineSplitter().convert(output)) {
+      final eq = line.indexOf('=');
+      if (eq > 0) seen[line.substring(0, eq).trim()] = line.substring(eq + 1);
+    }
+    return seen;
+  }
 
   /// Runs the probes; returns the names of failed probes (empty = isolated).
   Future<List<String>> probe() async {
@@ -283,15 +359,17 @@ echo "direct_internet=\$r"''';
       probeScript(),
       timeout: const Duration(seconds: 30),
     );
-    final seen = <String, String>{};
-    for (final line in const LineSplitter().convert(r.output)) {
-      final eq = line.indexOf('=');
-      if (eq > 0) seen[line.substring(0, eq).trim()] = line.substring(eq + 1);
-    }
-    return [
+    final seen = parseProbes(r.output);
+    final failed = [
       for (final name in probeNames)
         if (seen[name]?.trim() != 'blocked') name,
     ];
+    if (failed.isNotEmpty) {
+      log?.call(
+        'probes of $sandboxId: ${[for (final n in failed) '$n=${seen[n]}'].join('; ')}',
+      );
+    }
+    return failed;
   }
 
   /// Kills every process except PID 1, the shellctl daemon (the oldest
@@ -472,6 +550,8 @@ class SandboxManager {
     required this.store,
     this.layout = const SandboxLayout(),
     this.maxInputFileBytes = 64 * 1024 * 1024,
+    this.hostProbePorts = defaultHostProbePorts,
+    this.shellctlHttpClient,
     this.log,
   });
 
@@ -480,6 +560,10 @@ class SandboxManager {
   final RunStore store;
   final SandboxLayout layout;
   final int maxInputFileBytes;
+  final List<int> hostProbePorts;
+
+  /// See [ExecutionSandbox.httpClient].
+  final http.Client Function()? shellctlHttpClient;
   final void Function(String)? log;
 
   final Map<String, ExecutionSandbox> _live = {};
@@ -554,6 +638,8 @@ class SandboxManager {
               executionId: executionId,
               grant: grant,
               layout: layout,
+              hostProbePorts: hostProbePorts,
+              httpClient: shellctlHttpClient,
               log: log,
             );
       _live[executionId] = sandbox;

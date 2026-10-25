@@ -113,13 +113,17 @@ class DockerClient {
     expect(r, {200}, 'ping');
   }
 
-  /// Containers (any state) carrying every label in [labels] (`key=value`).
-  Future<List<Map<String, Object?>>> listContainers(List<String> labels) async {
+  /// Containers carrying every label in [labels] (`key=value` or `key`), in
+  /// any state unless [runningOnly].
+  Future<List<Map<String, Object?>>> listContainers(
+    List<String> labels, {
+    bool runningOnly = false,
+  }) async {
     final r = await send(
       'GET',
       '/containers/json',
       query: {
-        'all': '1',
+        'all': runningOnly ? '0' : '1',
         'filters': jsonEncode({'label': labels}),
       },
     );
@@ -168,12 +172,22 @@ class DockerClient {
     return true;
   }
 
-  // ---- used by tests only (the supervisor never manages networks) ---------
+  // ---- networks -----------------------------------------------------------
 
+  /// Creates a network; returns its ID. Docker's refusals (a name conflict,
+  /// an overlapping subnet) are thrown as [DockerException] with the status.
   Future<String> createNetwork(Map<String, Object?> payload) async {
     final r = await send('POST', '/networks/create', body: payload);
     expect(r, {201}, 'create network');
     return r.json['Id'] as String;
+  }
+
+  /// The network's inspect document, or null when it does not exist.
+  Future<Map<String, Object?>?> inspectNetwork(String idOrName) async {
+    final r = await send('GET', '/networks/$idOrName');
+    if (r.status == 404) return null;
+    expect(r, {200}, 'inspect network');
+    return r.json;
   }
 
   Future<bool> removeNetwork(String id) async {
@@ -183,17 +197,53 @@ class DockerClient {
     return true;
   }
 
-  Future<List<Map<String, Object?>>> listNetworks(List<String> labels) async {
+  /// Networks carrying every label in [labels]; all networks when empty.
+  Future<List<Map<String, Object?>>> listNetworks([
+    List<String> labels = const [],
+  ]) async {
     final r = await send(
       'GET',
       '/networks',
       query: {
-        'filters': jsonEncode({'label': labels}),
+        if (labels.isNotEmpty) 'filters': jsonEncode({'label': labels}),
       },
     );
     expect(r, {200}, 'list networks');
     return [for (final n in r.body as List) (n as Map).cast<String, Object?>()];
   }
+
+  /// Connects [container] to [network], with a fixed [ipv4] if given.
+  Future<void> connectNetwork(
+    String network,
+    String container, {
+    String? ipv4,
+  }) async {
+    final r = await send(
+      'POST',
+      '/networks/$network/connect',
+      body: {
+        'Container': container,
+        'EndpointConfig': {
+          if (ipv4 != null) 'IPAMConfig': {'IPv4Address': ipv4},
+        },
+      },
+    );
+    expect(r, {200}, 'connect $container to $network');
+  }
+
+  /// Disconnects [container] from [network]; false when either is gone.
+  Future<bool> disconnectNetwork(String network, String container) async {
+    final r = await send(
+      'POST',
+      '/networks/$network/disconnect',
+      body: {'Container': container, 'Force': true},
+    );
+    if (r.status == 404) return false;
+    expect(r, {200}, 'disconnect $container from $network');
+    return true;
+  }
+
+  // ---- used by tests only -------------------------------------------------
 
   /// Runs [cmd] in a running container (test tooling); returns the exit
   /// code and the combined output (multiplexed stream headers stripped).
