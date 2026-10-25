@@ -1,7 +1,7 @@
 """Real SQL/vector CRUD and SIGKILL/reclaim contract on OWN isolated fixture only."""
 import argparse,fcntl,hashlib,json,os,pathlib,ssl,subprocess,sys,time,urllib.request
-p=argparse.ArgumentParser();p.add_argument('--out',type=pathlib.Path,required=True);p.add_argument('--restart-suffix',default='index-restart');a=p.parse_args();assert a.restart_suffix.replace('-','').isalnum();a.out.mkdir(parents=True,exist_ok=True)
-f=pathlib.Path('/var/tmp/Winnie/five-steps-cb9fa7f3');private=f/'private-fixture';info=json.loads((f/'d/fixture.json').read_text());data=json.loads((private/'helper-fixture.json').read_text())
+p=argparse.ArgumentParser();p.add_argument('--fixture-root',type=pathlib.Path,default=os.environ.get('DIFY_E2E_FIXTURE_ROOT'),required='DIFY_E2E_FIXTURE_ROOT' not in os.environ);p.add_argument('--out',type=pathlib.Path,required=True);p.add_argument('--cleanup-lock',type=pathlib.Path,default=os.environ.get('DIFY_E2E_CLEANUP_LOCK'),required='DIFY_E2E_CLEANUP_LOCK' not in os.environ);p.add_argument('--restart-suffix',default='index-restart');a=p.parse_args();assert a.restart_suffix.replace('-','').isalnum();a.out.mkdir(parents=True,exist_ok=True)
+f=a.fixture_root.resolve();private=f/'private-fixture';info=json.loads((f/'d/fixture.json').read_text());data=json.loads((private/'helper-fixture.json').read_text())
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]));sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'lib'))
 from lib.e2ehttp import Session,HTTPError
 from lib.dify import STUB_PROVIDER
@@ -78,7 +78,7 @@ while time.monotonic()<end:
  time.sleep(.2)
 else:raise AssertionError('Did not enter delayed real embedding request')
 old=inspect();assert old['Config']['Labels']['raft.fixture']=='five-helper';start=time.monotonic()
-with open('/home/kevinzhow/.slock/machine-cleanup.lock','a')as lock:
+with a.cleanup_lock.open('a')as lock:
  fcntl.flock(lock,fcntl.LOCK_EX);command(['docker','kill','--signal','KILL',name]);command(['docker','rename',name,name+'-before-'+a.restart_suffix]);origin.post('/stub/modes',{});newid=command(info['apiArgs'])
 for _ in range(200):
  try:urllib.request.urlopen('http://127.0.0.1:19128/healthz',timeout=2);break
