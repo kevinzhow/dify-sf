@@ -100,7 +100,7 @@
             },
             "prompt_messages": [
               {
-                "content": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits.",
+                "content": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits.",
                 "name": null,
                 "role": "system"
               },
@@ -474,7 +474,7 @@
             },
             "prompt_messages": [
               {
-                "content": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits.",
+                "content": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits.",
                 "name": null,
                 "role": "system"
               },
@@ -869,7 +869,7 @@
             },
             "prompt_messages": [
               {
-                "content": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits.",
+                "content": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits.",
                 "name": null,
                 "role": "system"
               },
@@ -1407,7 +1407,7 @@
                   {
                     "content": [
                       {
-                        "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                        "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                       }
                     ],
                     "role": "system"
@@ -1551,7 +1551,7 @@
                 {
                   "content": [
                     {
-                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                     }
                   ],
                   "role": "system"
@@ -1701,7 +1701,7 @@
                 {
                   "content": [
                     {
-                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                     }
                   ],
                   "role": "system"
@@ -1823,7 +1823,7 @@
                 {
                   "content": [
                     {
-                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                     }
                   ],
                   "role": "system"
@@ -2056,7 +2056,7 @@
                   {
                     "content": [
                       {
-                        "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                        "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                       }
                     ],
                     "role": "system"
@@ -2222,7 +2222,7 @@
                 {
                   "content": [
                     {
-                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                     }
                   ],
                   "role": "system"
@@ -2394,7 +2394,7 @@
                 {
                   "content": [
                     {
-                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                     }
                   ],
                   "role": "system"
@@ -2547,7 +2547,7 @@
                 {
                   "content": [
                     {
-                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                     }
                   ],
                   "role": "system"
@@ -2788,7 +2788,7 @@
                   {
                     "content": [
                       {
-                        "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                        "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                       }
                     ],
                     "role": "system"
@@ -2954,7 +2954,7 @@
                 {
                   "content": [
                     {
-                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                     }
                   ],
                   "role": "system"
@@ -3126,7 +3126,7 @@
                 {
                   "content": [
                     {
-                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Field names: ASCII identifiers of at most 30 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
                     }
                   ],
                   "role": "system"

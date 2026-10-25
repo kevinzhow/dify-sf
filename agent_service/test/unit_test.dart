@@ -297,6 +297,27 @@ void main() {
         );
       }
     });
+
+    test('field names are limited to 30 characters (the Swift form store)', () {
+      Map<String, Object?> withName(String name) => {
+        'question': 'q',
+        'fields': [
+          {'type': 'paragraph', 'name': name, 'label': 'L'},
+        ],
+      };
+      expect(normalizeAskHumanArgs(withName('a' * 30)), isA<Map>());
+      expect(
+        () => normalizeAskHumanArgs(withName('a' * 31)),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('at most 30'),
+          ),
+        ),
+      );
+      expect(askHumanPromptHint(), contains('at most 30 characters'));
+    });
   });
 
   test('a run left running by a crashed process loads as failed internal', () {
