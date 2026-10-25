@@ -293,7 +293,7 @@ Genkit Dart supplies the tool loop, streaming, interrupts and image input. The s
 | Reasoning | Reasoning arrives as `<think>…</think>` inside the content (Dify's convention for model plugins) or as `delta.message.reasoning_content`. It becomes `thought` events and is kept out of the answer text and the candidate. It stays in the session history as reasoning and is sent back on later calls and resumes the way it arrived for that call: `<think>\n…\n</think>` before the assistant content, or the assistant message's `reasoning_content`. |
 | Declared outputs | As in Dify (pydantic-ai `ToolOutput`), the schema is exposed as the tool `final_output` (local `$defs` inlined, title `final_output`); there are no prompt instructions and no `response_format`. The tool is never executed: the first `final_output` call of a turn ends the run `succeeded` with its arguments as the candidate, checked against the schema for per-field errors. As with pydantic-ai's default `end_strategy='early'`, no other call of that turn is executed; the history answers them with pydantic-ai's texts (`Final result processed.`, `Output tool not used - a final result was already processed.`, `Tool not executed - a final result was already processed.`). No retries here. |
 | Human question | Tool `ask_human` (Dify's arguments: `title`, `question`, `markdown`, `fields`, `actions`, `urgency`, with Dify's limits) returns a Genkit interrupt. Arguments outside the schema or limits go back to the model as a tool error, as Dify's `ModelRetry` does. The run ends `paused`. A resume answers the same tool call with Dify's tool result (`status`, `action`, `values`, `rendered_content`). As in Dify, a model turn with more than one `ask_human` call fails with `ask_human_invalid`. |
-| Cancel | Closes the run's HTTP client (the Swift server cancels the plugin call on its side), interrupts tools and stops sandbox jobs. Whether the vendor stopped generating cannot be observed and is not claimed. |
+| Cancel | Closes the run's HTTP client (the Swift server then closes its connection to the plugin), interrupts tools and stops sandbox jobs. Whether the vendor stopped generating or billing cannot be observed and is not claimed. |
 | Usage | Taken from each model call's final usage chunk, counted once per `invocation_id`. |
 | Events | Tool starts and ends become `tool_call`. |
 | Failures | Genkit reports model errors and the turn limit in `finishReason`, not as exceptions; both map to `failed`. |
@@ -325,7 +325,13 @@ arrival order per call; a delta with an id but no index matches by id. Reasoning
 `delta.message.reasoning_content` (string, streamed in pieces) or as `<think>…</think>` in `delta.message.content`;
 an assistant history message carries prior reasoning back the same way (`reasoning_content` or the think tag). The last chunk carries `delta.usage` and `delta.finish_reason`. Errors end the stream with
 `{"code": -429 | -500, "message": "{\"error_type\":…,\"message\":…}", "data": null}`, as in Dify. A repeated
-`invocation_id` is rejected, so usage is recorded once. Closing the connection cancels the plugin call.
+`invocation_id` is rejected, so usage is recorded once. Closing the connection closes the gateway's connection to the plugin (see below).
+
+The gateway may complete any call without streaming and return the result as one or a few complete chunks (full
+`tool_calls` with `id`, reasoning, usage and finish reason in one delta). It does so today for every call that offers
+tools: the signed `openai_api_compatible` plugin 0.0.68 drops `index` from streamed tool-call deltas, so interleaved
+calls get mixed arguments, while the same request without streaming is correct. Closing the connection to the gateway
+closes the gateway's HTTP connection to the plugin; it does not prove that the vendor stopped generating or billing.
 
 Files in `prompt_messages` (Dify image/document content parts) carry `"url": "dify-sf-file:<file_id>"` and an empty
 `base64_data`. The Swift server checks the file against the files of the run token's execution and reads it from

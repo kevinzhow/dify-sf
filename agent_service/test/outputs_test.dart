@@ -258,4 +258,50 @@ void main() {
     expect(status, 400);
     expect(json['error'], 'invalid_request');
   });
+
+  test('a non-streamed call: one complete chunk with reasoning, two tool '
+      'calls without index, usage and finish reason', () async {
+    // Shape the Swift gateway sends when it calls the plugin without
+    // streaming (calls that offer tools; see docs/agent-v2.md).
+    final h = await Harness.start(
+      calls: [
+        ScriptedCall(
+          chunks: [
+            ScriptedChunk(
+              reasoning: 'Score it.',
+              toolCalls: [
+                toolCallDelta(
+                  id: 'fo_1',
+                  name: 'final_output',
+                  arguments: '{"text":"ok","score":3}',
+                ),
+                toolCallDelta(
+                  id: 'fo_2',
+                  name: 'final_output',
+                  arguments: '{"text":"second","score":1}',
+                ),
+              ],
+              usage: defaultUsage(),
+              finishReason: 'tool_calls',
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(h.close);
+    final runId = await h.startOperation(operation(outputSchema: schema));
+    final s = await h.waitEnded(runId);
+    expect(s['status'], 'succeeded');
+    final result = s['result'] as Map;
+    // Complete calls are kept apart by id; the first final_output wins.
+    expect(result['candidate'], {'text': 'ok', 'score': 3});
+    expect(result['candidate_errors'], isEmpty);
+    final events = await h.events(runId);
+    expect(
+      events.where((e) => e.event == 'thought').map((e) => e.data['text']),
+      ['Score it.'],
+    );
+    expect(events.where((e) => e.event == 'model_call'), hasLength(1));
+    expect(h.gateway.llmRequests, hasLength(1));
+  });
 }
