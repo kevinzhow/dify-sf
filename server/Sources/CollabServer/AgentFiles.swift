@@ -90,3 +90,31 @@ extension Routes {
         return value
     }
 }
+
+
+extension Routes {
+    /// Fallbacks are user-configured mappings and use the ordinary scoped file resolver. Model candidates still
+    /// require operation upload receipts and cannot use this path to turn arbitrary references into owned files.
+    func resolveAgentDefault(definition: JSONObject, value: JSONValue, files: (any RuntimeFiles)?, depth: Int = 0) async throws -> JSONValue {
+        guard depth < 32 else { throw RuntimeFileError("Agent default nesting is too deep") }
+        if definition["type"] == "file" {
+            guard let files else { throw RuntimeFileError("File storage is unavailable") }
+            return try await files.resolve(value, config: nil).json
+        }
+        if definition["type"] == "object", var object = value.object {
+            for child in definition["children"]?.array ?? [] {
+                if let spec = child.object, let name = spec["name"]?.string, let present = object[name] {
+                    object[name] = try await resolveAgentDefault(definition: spec, value: present, files: files, depth: depth + 1)
+                }
+            }
+            return .object(object)
+        }
+        if definition["type"] == "array", let array = value.array {
+            let spec = definition["array_item"]?.object ?? ["type": "object"]
+            var resolved: [JSONValue] = []
+            for item in array { resolved.append(try await resolveAgentDefault(definition: spec, value: item, files: files, depth: depth + 1)) }
+            return .array(resolved)
+        }
+        return value
+    }
+}

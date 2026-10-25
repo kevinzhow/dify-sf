@@ -93,6 +93,22 @@ extension Routes {
             "document_seq": .int(head)]
     }
 
+    /// Availability is a read-time projection. Immutable snapshots retain their identities after a blob is deleted.
+    func readableAgentSoul(_ raw: JSONObject, user: String) async -> JSONObject {
+        var soul = raw
+        let files = runtimeServices(appId: "", userId: user).files
+        var projected: [JSONValue] = []
+        for item in raw["config_files"]?.array ?? [] {
+            var file = item.object ?? [:]
+            if let id = file["file_id"]?.string, !id.isEmpty, let files {
+                if (try? await files.resolve(["transfer_method": "local_file", "upload_file_id": .string(id)], config: nil)) == nil { file["is_missing"] = true }
+            } else { file["is_missing"] = true }
+            projected.append(.object(file))
+        }
+        soul["config_files"] = .array(projected)
+        return soul
+    }
+
     private func readAgentComposer(_ req: Request) async throws -> Response {
         let p = try await authenticate(req)
         let app = try await appOfMode(req, p, ["workflow"])
@@ -106,7 +122,7 @@ extension Routes {
                 throw ServerError.missing("Agent config not found in this workflow node")
             }
             return rawJSON(Self.agentComposerResponse(app: app.id, node: id, title: snapshot.doc.nodes[id]?.title ?? "Agent",
-                head: snapshot.seq, config: stored, soul: try JSONValue.parse(stored.soul).object ?? [:],
+                head: snapshot.seq, config: stored, soul: await readableAgentSoul(try JSONValue.parse(stored.soul).object ?? [:], user: p.id),
                 job: try JSONValue.parse(stored.nodeJob).object ?? [:]))
         }
         if parameters["agent_id"] != nil { throw Self.invalidParam("A historical agent identity needs snapshot_id") }
@@ -115,7 +131,7 @@ extension Routes {
         let stored = try await pinnedAgentConfig(app: app.id, node: id, graph: graph, snapshotOverride: query(req)["snapshot_id"])
         let soul = try stored.map { try JSONValue.parse($0.soul).object ?? [:] } ?? AgentInlineConfig.empty
         return rawJSON(Self.agentComposerResponse(app: app.id, node: id, title: node.title, head: snapshot.seq,
-            config: stored, soul: soul, job: try Self.agentNodeJob(graph: graph, stored: stored)))
+            config: stored, soul: await readableAgentSoul(soul, user: p.id), job: try Self.agentNodeJob(graph: graph, stored: stored)))
     }
 
     private func saveAgentComposer(_ req: Request) async throws -> Response {

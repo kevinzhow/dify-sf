@@ -83,6 +83,25 @@ struct AgentExecutionStoreTests {
             #expect(try await store.pendingAgentJobs().first?.generation == 2)
         }
     }
+    @Test func recoveryAdoptsAnUnansweredPauseBeforeWaitingForItsFormSubmission() async throws {
+        try await withServerAndRoutes { api, store, routes in
+            let s = try await Self.result(try await Self.seed(api, store), store)
+            let form = Self.form(s, question: s.executionID + ":q1")
+            let change = AgentOutcomeCommit(session: s, status: "paused", continuation: "{}", questionID: form.questionID, formID: form.id)
+            _ = try await store.createPause(workflowRunId: s.workflowRunID, docId: s.docID, snapshot: "{}", forms: [form], at: Date(), agentOutcomes: [change])
+            await routes.recoverAgentExecutions()
+            #expect(try await store.agentSession(execution: s.executionID)?.ownerID == "worker-a")
+            _ = try await store.client.query("UPDATE agent_node_sessions SET lease_until = now() - interval '1 second' WHERE execution_id = \(s.executionID)", logger: store.logger)
+            await routes.recoverAgentExecutions()
+            let adopted = try #require(try await store.agentSession(execution: s.executionID))
+            #expect(adopted.ownerID == routes.agentOwner && adopted.generation == 2 && adopted.status == "paused")
+            #expect(try await store.humanInputForm(id: form.id)?.status == .waiting)
+            #expect(try await store.ownedAgentSessions(owner: routes.agentOwner).map(\.executionID) == [s.executionID])
+            await routes.recoverAgentExecutions()
+            #expect(try await store.agentSession(execution: s.executionID)?.generation == 2)
+        }
+    }
+
     @Test func expiredActiveOwnerFailsWithoutReplayAndLateResultsCannotResurrectRun() async throws {
         try await withServer { api, store, _ in
             var s = try await Self.seed(api, store)

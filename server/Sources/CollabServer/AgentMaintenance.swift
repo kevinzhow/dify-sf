@@ -93,6 +93,11 @@ extension Routes {
 
     func recoverAgentExecutions() async {
         do {
+            // Adoption is independent from answering the question. Otherwise a restarted server would let the
+            // remote workspace expire while waiting for the user, despite having a durable resumable pause.
+            for session in try await store.expiredPausedAgents() {
+                _ = try? await store.adoptPausedAgent(execution: session.executionID, owner: agentOwner)
+            }
             for session in try await store.expiredActiveAgents() {
                 if try await store.failExpiredAgent(session) {
                     await agentModelScopes.revokeExecution(session.executionID, generation: session.generation)

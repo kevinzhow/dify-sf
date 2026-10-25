@@ -64,6 +64,20 @@ extension PostgresStore {
         }
     }
 
+    /// An unanswered pause also needs a new lease owner after restart, so its remote workspace is kept alive.
+    public func expiredPausedAgents() async throws -> [StoredAgentSession] {
+        try await bounded {
+            var found: [StoredAgentSession] = []
+            for try await json in try await self.client.query("""
+                SELECT row_to_json(s)::text FROM agent_node_sessions s
+                JOIN workflow_runs r ON r.id = s.workflow_run_id
+                WHERE s.status = 'paused' AND s.lease_until <= now() AND r.status IN ('running', 'paused')
+                ORDER BY s.lease_until LIMIT 100
+                """, logger: self.logger).decode(String.self) { found.append(try StoredAgentSession(json: json)) }
+            return found
+        }
+    }
+
     /// Return expired active owners for the maintenance worker. A paused session stays recoverable across restarts.
     public func expiredActiveAgents() async throws -> [StoredAgentSession] {
         try await bounded {

@@ -53,3 +53,22 @@ These tests do not yet establish a full independent-process restart, actual shel
 round trips or production readiness. Client configuration/checklist integration and private-resource import/copy/export
 are separate delivery work. Keep the public run capability off until those acceptance steps are complete. Merging this
 adapter does not deploy or enable it.
+
+
+## Restart acceptance
+
+The maintenance worker adopts expired unanswered pauses independently from form submission. This keeps the remote
+workspace leased after a server restart while the user is still deciding. An active worker lost mid-operation is
+failed without replaying shell effects. Cleanup has a persistent retry queue and waits behind committed result ACKs.
+
+`e2e/agent_runtime/restart.py` uses two real server processes and a real sandbox. It verifies a new owner/generation,
+waiting longer than the remote lease before answering, two native questions, a shell side effect occurring once and
+a nested file output uploaded through the real receipt endpoint and downloaded byte-for-byte. The model is a local
+scripted fixture behind the signed provider plugin. This is isolated process evidence, not a deployed feature or a
+physical-device performance claim. The preceding whole-server regression covered 520 tests; the additional recovery,
+default-output and attribution changes passed 149 related tests.
+
+Output defaults are type-checked before model execution. Configured canonical file defaults resolve through the
+ordinary scoped file runtime and pass the same declared file constraints; model candidates still require received
+operation upload receipts. Configuration-file availability is projected on read without rewriting immutable snapshots.
+Composer graph operations carry the authenticated editor's attribution in the same transaction.

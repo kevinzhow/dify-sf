@@ -142,6 +142,8 @@ struct ServerAgentRuntime: AgentRuntime {
                         fileValid: { value in
                             guard RuntimeFile.isFile(value), let files = self.files else { return false }
                             return (try? await files.resolve(value, config: nil)) != nil
+                        }, resolveDefault: { definition, value in
+                            try await self.routes.resolveAgentDefault(definition: definition, value: value, files: self.files)
                         })
                     if decision.action == .retry {
                         guard let snapshot = result["snapshot"], snapshot.object != nil else { throw NodeError("AgentServiceProtocolError", "An output retry has no continuation") }

@@ -27,7 +27,7 @@ struct AgentComposerTests {
 
     @Test func configSecretsGraphAndReplayShareOneCommit() async throws {
         try await withServer { api, store, registry in
-            let (token, _, app) = try await Self.seed(api, store)
+            let (token, account, app) = try await Self.seed(api, store)
             var soul = AgentInlineConfig.empty
             soul["env"] = ["variables": [["name": "PROJECT", "value": "fixture"]],
                            "secret_refs": [["name": "TOKEN", "value": "fixture-private-agent-secret"]]]
@@ -39,6 +39,8 @@ struct AgentComposerTests {
             #expect(!saved.text.contains("fixture-private-agent-secret"))
             let snap = try await registry.sequencer(app).currentSnapshot()
             #expect(snap.seq == 3 && snap.doc.nodes[Self.nodeID]?.config["agent_task"] == .string("New task"))
+            let requestID = try #require(body["idempotency_key"]?.string)
+            #expect(try await store.clientAccount(app, client: "agent-" + account + "-" + requestID) == account)
             let stored = try await store.currentAgentConfig(doc: app, node: Self.nodeID)
             let config = try #require(stored)
             #expect(config.revision == 1 && !config.soul.contains("fixture-private-agent-secret"))

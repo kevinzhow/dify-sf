@@ -71,7 +71,30 @@ public struct AgentDeclaredOutput: Sendable {
         if failure == .defaultValue && (defaultValue == nil || defaultValue == .null) {
             throw NodeDataError("agent_declared_outputs: The output default value is required")
         }
+        if failure == .defaultValue, let value = defaultValue, !Self.validDefault(value, kind: kind, itemKind: itemKind) {
+            throw NodeDataError("agent_declared_outputs: The output default does not match its declared type")
+        }
         self.json = json
+    }
+
+    // Dify validates the outer type at save time; file defaults are portable canonical references, never runtime IDs.
+    static func validDefault(_ value: JSONValue, kind: Kind, itemKind: Kind?) -> Bool {
+        switch (kind, value) {
+        case (.string, .string), (.number, .int), (.boolean, .bool), (.object, .object): return true
+        case (.number, .double(let number)): return number.isFinite
+        case (.array, .array(let items)): return itemKind != .file || items.allSatisfy { validDefault($0, kind: .file, itemKind: nil) }
+        case (.file, .object(let mapping)):
+            guard let method = mapping["transfer_method"]?.string else { return false }
+            if method == "remote_url" {
+                return Set(mapping.keys) == ["transfer_method", "url"] && mapping["url"]?.string?.isEmpty == false
+            }
+            guard ["local_file", "tool_file"].contains(method), Set(mapping.keys) == ["transfer_method", "reference"],
+                  let reference = mapping["reference"]?.string, reference.hasPrefix("dify-file-ref:"),
+                  let bytes = Data(base64Encoded: String(reference.dropFirst("dify-file-ref:".count))),
+                  let record = try? JSONValue.parse(bytes)["record_id"]?.string else { return false }
+            return !record.isEmpty
+        default: return false
+        }
     }
 
     static func validateDefinition(_ value: JSONObject, child: Bool, depth: Int) throws {
@@ -174,7 +197,8 @@ public struct AgentOutputDecision: Sendable {
 /// Validates and decides once. JSON-Schema feedback from the agent is informative; authoritative field checks live here.
 public enum AgentOutputPolicy {
     public static func decide(fields: [AgentDeclaredOutput], candidate: JSONValue, attempt: Int,
-                              fileValid: @Sendable (JSONValue) async -> Bool) async -> AgentOutputDecision {
+                              fileValid: @Sendable (JSONValue) async -> Bool,
+                              resolveDefault: @Sendable (JSONObject, JSONValue) async throws -> JSONValue = { _, value in value }) async -> AgentOutputDecision {
         let payload = candidate.object
         guard payload != nil || !fields.isEmpty else {
             let checks = fields.map { AgentOutputCheck(field: $0.name, status: .failed, value: candidate, reason: "Backend output is not a JSON object.") }
@@ -216,7 +240,7 @@ public enum AgentOutputPolicy {
             return .init(action: .failNode, outputs: outputs, checks: checks, nextAttempt: attempt, retryIntervalMs: 0)
         }
         for field in failedFields {
-            guard let value = field.defaultValue,
+            guard let raw = field.defaultValue, let value = try? await resolveDefault(field.json, raw),
                   await reason(definition: field.json, value: value, fileValid: fileValid) == nil else {
                 return .init(action: .failNode, outputs: outputs, checks: checks, nextAttempt: attempt, retryIntervalMs: 0)
             }
