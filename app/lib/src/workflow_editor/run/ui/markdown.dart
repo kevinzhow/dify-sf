@@ -17,14 +17,22 @@ import 'thinking_details.dart';
 /// `<Markdown content=… />`: `markdown-body text-text-primary` (15 px / 1.6), [color] overriding the text colour
 /// (an error answer's `text-[#F04438]`).
 class DifyMarkdown extends StatelessWidget {
-  const DifyMarkdown({super.key, required this.content, this.color, this.onTapLink, this.isStreaming = false});
+  const DifyMarkdown({
+    super.key,
+    required this.content,
+    this.color,
+    this.onTapLink,
+    this.isStreaming = false,
+    this.paragraphStyle,
+  });
 
   final String content;
   final bool isStreaming;
   final Color? color;
+  final TextStyle? paragraphStyle;
   final void Function(String href)? onTapLink;
 
-  static MarkdownStyleSheet styleSheet(Color color) {
+  static MarkdownStyleSheet styleSheet(Color color, {TextStyle? paragraphStyle}) {
     final base = TextStyle(
       fontFamily: cardFontFamily,
       fontSize: 15,
@@ -32,7 +40,7 @@ class DifyMarkdown extends StatelessWidget {
       color: color,
       letterSpacing: 0,
       leadingDistribution: TextLeadingDistribution.even,
-    );
+    ).merge(paragraphStyle);
     final mono = TextStyle(fontFamily: codeEditorFontFamily, fontSize: 12, height: 1.6, color: color);
     return MarkdownStyleSheet(
       p: base,
@@ -84,7 +92,7 @@ class DifyMarkdown extends StatelessWidget {
         'dify-think': _ThinkBuilder(color: color, onTapLink: onTapLink),
         'dify-comment-tail': _CommentTailBuilder(color: color, onTapLink: onTapLink),
       },
-      styleSheet: styleSheet(color ?? DifyColors.textPrimary),
+      styleSheet: styleSheet(color ?? DifyColors.textPrimary, paragraphStyle: paragraphStyle),
       extensionSet: md.ExtensionSet.gitHubFlavored,
       // remark-breaks: a single newline is a line break.
       softLineBreak: true,

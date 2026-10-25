@@ -259,6 +259,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
       selection: selection,
       cards: widget.cards,
       live: live,
+      onSettled: CanvasDefaults.reportRect ? () => debugPrint('CANVAS_SETTLED') : null,
     ),
   };
 

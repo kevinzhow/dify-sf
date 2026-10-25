@@ -33,6 +33,71 @@ Future<void> _render(WidgetTester t, WorkflowStore store) async {
 
 void main() {
   group('Operator', () {
+    testWidgets('desktop panels keep undo, variables and zoom on one row at the 400px floor', (t) async {
+      final store = WorkflowStore()
+        ..setWorkflowCanvasWidth(620)
+        ..setRightPanelWidth(350);
+      await t.pumpWidget(
+        MaterialApp(
+          home: WorkflowStoreScope(
+            store: store,
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: SizedBox(
+                width: 392,
+                child: WorkflowOperator(
+                  canvas: TestCanvas(),
+                  history: TestHistory(),
+                  variableTrigger: const SizedBox(key: Key('variables'), width: 140, height: 24),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pump();
+      expect(t.takeException(), isNull);
+      final undo = t.getTopLeft(find.byType(UndoRedo));
+      final zoom = t.getTopLeft(find.byType(ZoomInOut));
+      final variables = t.getRect(find.byKey(const Key('variables')));
+      expect(zoom.dy, undo.dy);
+      expect(variables.top, greaterThanOrEqualTo(undo.dy));
+      expect(variables.bottom, lessThanOrEqualTo(undo.dy + 37));
+      expect(store.bottomPanelHeight.value, closeTo(45, 1));
+    });
+
+    testWidgets('long desktop labels remain reachable horizontally without wrapping or overflow', (t) async {
+      final store = WorkflowStore()
+        ..setWorkflowCanvasWidth(620)
+        ..setRightPanelWidth(350);
+      await t.pumpWidget(
+        MaterialApp(
+          home: WorkflowStoreScope(
+            store: store,
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: SizedBox(
+                width: 392,
+                child: WorkflowOperator(
+                  canvas: TestCanvas(),
+                  history: TestHistory(),
+                  variableTrigger: const SizedBox(width: 500, height: 24, child: Text('Long translated variables')),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pump();
+      expect(t.takeException(), isNull);
+      final scroll = find.descendant(of: find.byType(WorkflowOperator), matching: find.byType(SingleChildScrollView));
+      expect(scroll, findsOneWidget);
+      await t.drag(scroll, const Offset(-500, 0));
+      await t.pumpAndSettle();
+      expect(t.getRect(find.byType(ZoomInOut)).right, lessThanOrEqualTo(392));
+      expect(t.takeException(), isNull);
+    });
+
     testWidgets('should keep the operator width on the 400px floor when the available width is smaller', (t) async {
       final store = WorkflowStore()
         ..setWorkflowCanvasWidth(620)

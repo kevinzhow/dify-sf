@@ -14,7 +14,10 @@ class DifyInlineDeleteConfirm extends StatelessWidget {
   final VoidCallback onConfirm, onCancel;
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context) => DifyBlurredBox(
+    blur: 10,
+    borderRadius: BorderRadius.circular(10),
+    decoration: BoxDecoration(color: DifyColors.componentsPanelBgBlur, borderRadius: BorderRadius.circular(10)),
     padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
     child: Column(
       mainAxisSize: MainAxisSize.min,

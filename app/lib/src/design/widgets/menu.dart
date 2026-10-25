@@ -39,23 +39,33 @@ class _MenuScope extends InheritedWidget {
   bool updateShouldNotify(_MenuScope old) => old.popup != popup;
 }
 
+/// The shared floating surface's two upstream styles. Select keeps the same
+/// keyboard/focus machinery, but uses its opaque panel instead of menu glass.
+enum DifyMenuPopupStyle { menu, select }
+
 /// The menu popup surface (overlay-shared.ts `menuPopupClassName`): `rounded-xl border-[0.5px]
 /// border-components-panel-border bg-components-panel-bg-blur py-1 shadow-lg backdrop-blur-[5px]`, `text-sm
 /// text-text-secondary`, scrolling past `--available-height`. As wide as its widest row unless [width] is given.
 /// Arrow keys, Home and End move the highlight; ArrowLeft closes a submenu.
 class DifyMenuPopup extends StatefulWidget {
-  const DifyMenuPopup({super.key, required this.children, this.width, this.semanticLabel})
-    : _root = null,
-      _focusNode = null,
-      _focusFirst = false,
-      _onArrowLeft = null,
-      _parent = null;
+  const DifyMenuPopup({
+    super.key,
+    required this.children,
+    this.width,
+    this.semanticLabel,
+    this.style = DifyMenuPopupStyle.menu,
+  }) : _root = null,
+       _focusNode = null,
+       _focusFirst = false,
+       _onArrowLeft = null,
+       _parent = null;
 
   const DifyMenuPopup._({
     super.key,
     required this.children,
     this.width,
     this.semanticLabel,
+    this.style = DifyMenuPopupStyle.menu,
     required _MenuRoot this._root,
     required FocusNode this._focusNode,
     this._focusFirst = false,
@@ -64,6 +74,7 @@ class DifyMenuPopup extends StatefulWidget {
   });
 
   final List<Widget> children;
+  final DifyMenuPopupStyle style;
   final double? width;
   final String? semanticLabel;
   final _MenuRoot? _root;
@@ -187,11 +198,20 @@ class _DifyMenuPopupState extends State<DifyMenuPopup> {
     );
     column = SingleChildScrollView(padding: const EdgeInsets.symmetric(vertical: 4), child: column);
     Widget surface = DifyBlurredBox(
-      blur: 5,
+      blur: widget.style == DifyMenuPopupStyle.select ? 0 : 5,
       borderRadius: r,
-      decoration: DifyMenuPopup.decoration,
+      decoration: widget.style == DifyMenuPopupStyle.select
+          ? DifyMenuPopup.decoration.copyWith(color: DifyColors.componentsPanelBg)
+          : DifyMenuPopup.decoration,
       child: ClipRRect(borderRadius: r, child: column),
     );
+    if (widget.style == DifyMenuPopupStyle.select) {
+      // SelectList max-h-80, plus the popup's outside hairline border.
+      surface = ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: 320 + 2 * Css.hairline),
+        child: surface,
+      );
+    }
     // CSS widths include the border; the surface insets its content itself.
     surface = widget.width != null ? SizedBox(width: widget.width, child: surface) : IntrinsicWidth(child: surface);
     return _MenuScope(
@@ -238,6 +258,7 @@ class DifyDropdownMenu extends StatefulWidget {
     this.alignOffset = 0,
     this.width,
     this.semanticLabel,
+    this.popupStyle = DifyMenuPopupStyle.menu,
   });
 
   final DifyTriggerBuilder builder;
@@ -250,6 +271,7 @@ class DifyDropdownMenu extends StatefulWidget {
   final double alignOffset;
   final double? width;
   final String? semanticLabel;
+  final DifyMenuPopupStyle popupStyle;
 
   @override
   State<DifyDropdownMenu> createState() => _DifyDropdownMenuState();
@@ -284,6 +306,7 @@ class _DifyDropdownMenuState extends State<DifyDropdownMenu> {
         focusNode: _popupNode,
         width: widget.width,
         semanticLabel: widget.semanticLabel,
+        style: widget.popupStyle,
         children: widget.children,
       ),
     );

@@ -19,6 +19,8 @@ const {default:react}=await import(pathToFileURL(req.resolve('@vitejs/plugin-rea
 const {default:tailwindcss}=await import(pathToFileURL(req.resolve('@tailwindcss/vite')).href)
 const source=path.join(path.dirname(fileURLToPath(import.meta.url)),'react_ui')
 fs.mkdirSync(stage,{recursive:true})
+// The fresh stage can live outside deps-root; resolve packages from the pinned install.
+fs.symlinkSync(path.join(root,'node_modules'),path.join(stage,'node_modules'),'dir')
 const sha=(file)=>createHash('sha256').update(fs.readFileSync(file)).digest('hex')
 const inputs={}
 for(const name of ['host.tsx','host.css','index.html']){fs.copyFileSync(path.join(source,name),path.join(stage,name));inputs[name]=sha(path.join(source,name))}

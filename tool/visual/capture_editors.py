@@ -5,6 +5,7 @@ from PIL import Image
 from playwright.sync_api import sync_playwright
 import argparse,requests
 import compare
+from capture_contract import FIXED_TIME_ISO, observe_capture_health, assert_capture_health
 parser=argparse.ArgumentParser(description='Actual editor/node-panel capture, with original PNGs and no custom score.')
 for name in ['session','catalog','flutter-build','out']:parser.add_argument('--'+name,type=Path,required=True)
 parser.add_argument('--product-commit',help='Verified source base of the supplied Flutter build')
@@ -30,6 +31,7 @@ class SafeBrowsers(compare.Browsers):
   c.route('**/*',guard)
   def attach(page):
    page.on('pageerror',lambda e:errors.append({'case':current['id'],'error':str(e)}))
+   page._capture_health=observe_capture_health(page)
    page.on('console',lambda m:run_events.setdefault(current['id'],[]).append(m.text) if m.text.startswith('VISUAL_RUN ') else None)
   c.on('page',attach)
   return c
@@ -38,7 +40,7 @@ facts={}
 def shot(page,box,case,path):
  if page.locator('flt-semantics-placeholder').count():page.locator('flt-semantics-placeholder').evaluate('(e)=>e.click()');page.wait_for_timeout(500)
  page.wait_for_timeout(case.get('admissionWaitMs',1000))
- env=page.evaluate('({width:innerWidth,height:innerHeight,dpr:devicePixelRatio,scale:visualViewport.scale,userAgent:navigator.userAgent})');assert env['dpr']==2 and env['width']==case['window'][0]
+ env=page.evaluate('({width:innerWidth,height:innerHeight,dpr:devicePixelRatio,scale:visualViewport.scale,userAgent:navigator.userAgent,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,wallClock:Date.now()})');assert env['dpr']==2 and env['width']==case['window'][0]
  if case.get('select'):
   if 'flutter' in path.parts:
    panel=page.get_by_role('group',name=re.compile('Node configuration panel Width:'))
@@ -62,8 +64,9 @@ def shot(page,box,case,path):
    assert any(re.search('VISUAL_RUN.*succeeded',m,re.I) for m in run_events.get(case['id'],[])), 'No successful model-free run terminal event: '+str(run_events.get(case['id'],[]))
   if case.get('expectCommentMode'):
    page.get_by_role('switch',name='Comment Mode',checked=True).wait_for(state='visible',timeout=5000)
+ assert_capture_health(page._capture_health)
  page.screenshot(path=str(path.with_suffix('.full.png')))
- original_shot(page,box,case,path);facts[str(path)]={'environment':env,'box':box,'source':'flutter-web-wasm' if 'flutter' in path.parts else 'dify-web-1.17.1','sourceCommit':args.product_commit if 'flutter' in path.parts else json.loads(Path(__file__).with_name('ui_reference.json').read_text())['commit'],'compiledSha256':compiled if 'flutter' in path.parts else None,'admission':{'loadedWasm':loaded if 'flutter' in path.parts else [],'expectedCorpus':case.get('expectedCorpus',[]),'expectedTab':case.get('expectedTab'),'runEvents':run_events.get(case['id'],[])}}
+ original_shot(page,box,case,path);assert_capture_health(page._capture_health);facts[str(path)]={'environment':env,'box':box,'source':'flutter-web-wasm' if 'flutter' in path.parts else 'dify-web-1.17.1','sourceCommit':args.product_commit if 'flutter' in path.parts else json.loads(Path(__file__).with_name('ui_reference.json').read_text())['commit'],'compiledSha256':compiled if 'flutter' in path.parts else None,'admission':{'fixedBrowserClock':FIXED_TIME_ISO,'assetErrors':list(page._capture_health),'canvas':case.get('canvasAdmission') if 'flutter' in path.parts else None,'loadedWasm':loaded if 'flutter' in path.parts else [],'expectedCorpus':case.get('expectedCorpus',[]),'expectedTab':case.get('expectedTab'),'runEvents':run_events.get(case['id'],[])}}
 compare.shot=shot
 with sync_playwright() as p:
  browsers=SafeBrowsers(p)

@@ -49,7 +49,8 @@ void main() {
   Finder rows() => find.byType(DifyTableRow);
 
   testWidgets('workflow logs: mock rows, the run drawer with the real run panel, replay opens the editor', (t) async {
-    final source = MockAppLogsSource(now: DateTime(2026, 10, 19, 12));
+    // Keep generated records inside the page's real default seven-day filter.
+    final source = MockAppLogsSource();
     await renderPage(t, detailFor(app('workflow'), services: {AppLogsSource: source}));
     expect(find.text('app-log.workflowTitle'), findsOneWidget);
     expect(rows(), findsNWidgets(appPageLimit));
@@ -67,7 +68,7 @@ void main() {
   testWidgets('chatflow logs: conversation drawer from ?conversation_id=, transcript, clearing the admin feedback', (
     t,
   ) async {
-    final source = MockAppLogsSource(now: DateTime(2026, 10, 19, 12));
+    final source = MockAppLogsSource();
     await renderPage(
       t,
       detailFor(app('advanced-chat'), services: {AppLogsSource: source}, query: {'conversation_id': 'conversation-1'}),
@@ -86,7 +87,7 @@ void main() {
   testWidgets('chatflow logs: a dislike asks what went wrong first (Provide Feedback), Cancel saves nothing', (
     t,
   ) async {
-    final source = MockAppLogsSource(now: DateTime(2026, 10, 19, 12));
+    final source = MockAppLogsSource();
     await renderPage(
       t,
       detailFor(app('advanced-chat'), services: {AppLogsSource: source}, query: {'conversation_id': 'conversation-0'}),
