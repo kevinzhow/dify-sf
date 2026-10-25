@@ -100,7 +100,7 @@ extension PostgresStore {
 
     /// The execution's immutable app/node/config identity cannot be replaced by a later graph edit or another worker.
     public func createAgentSession(_ s: StoredAgentSession, maxConcurrent: Int = 2) async throws -> StoredAgentSession {
-        try await bounded {
+        try await agentAdmission {
             try await self.client.withTransaction(logger: self.logger) { tx in
                 try await self.lockRun(s.workflowRunID, tx)
                 // A database-wide admission fence counts executing work; unanswered forms do not consume the running budget.
@@ -161,7 +161,7 @@ extension PostgresStore {
     }
 
     public func startAgentOperation(session: StoredAgentSession, operation: String, digest: String, tokenHash: String, startedData: String? = nil, maxConcurrent: Int = 2) async throws {
-        try await bounded {
+        try await agentAdmission {
             try await self.client.withTransaction(logger: self.logger) { tx in
                 try await self.lockRun(session.workflowRunID, tx)
                 _ = try await tx.query("SELECT pg_advisory_xact_lock(743229871)", logger: self.logger)
@@ -314,6 +314,22 @@ extension PostgresStore {
                     WHERE id = \(id) AND done_at IS NULL
                     """, logger: self.logger)
             }
+        }
+    }
+}
+
+
+extension PostgresStore {
+    /// PostgresNIO wraps a rolled-back closure error. Preserve only the admission refusal's typed identity;
+    /// begin/commit/rollback failures keep their original semantics and must never become a retryable capacity wait.
+    private func agentAdmission<T: Sendable>(_ work: @escaping @Sendable () async throws -> T) async throws -> T {
+        do { return try await bounded(work) }
+        catch let error as PostgresTransactionError {
+            if error.beginError == nil, error.commitError == nil, error.rollbackError == nil,
+               let cause = error.closureError as? StoreError {
+                if case .agentCapacityFull = cause { throw cause }
+            }
+            throw error
         }
     }
 }

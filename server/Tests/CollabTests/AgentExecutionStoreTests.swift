@@ -148,10 +148,10 @@ struct AgentExecutionStoreTests {
             do {
                 try await store.startAgentOperation(session: first, operation: first.executionID + ":0:1", digest: "fixture", tokenHash: "fixture", maxConcurrent: 1)
                 Issue.record("A resumed session exceeded the running admission budget")
-            } catch { }
+            } catch StoreError.agentCapacityFull { }
             #expect(try await store.agentSession(execution: first.executionID)?.status == "paused")
             var third = first; third.executionID = UUID().uuidString.lowercased()
-            do { _ = try await store.createAgentSession(third, maxConcurrent: 1); Issue.record("Running admission was bypassed") } catch { }
+            do { _ = try await store.createAgentSession(third, maxConcurrent: 1); Issue.record("Running admission was bypassed") } catch StoreError.agentCapacityFull { }
             #expect(try await store.agentSession(execution: third.executionID) == nil)
         }
     }
