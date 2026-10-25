@@ -21,7 +21,7 @@ storage. Built-in and published workflow tools, durable Chatflow and published w
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-294 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
+295 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
 
 | Status | Features |
 |---|---|
@@ -29,7 +29,7 @@ storage. Built-in and published workflow tools, durable Chatflow and published w
 | partial | 51 |
 | not ported | 30 |
 | n/a | 17 |
-| dify-sf only | 14 |
+| dify-sf only | 15 |
 
 Per area, with the reason for everything not ported: [docs/features.md](docs/features.md).
 <!-- features:end -->

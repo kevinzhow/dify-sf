@@ -4,6 +4,7 @@ version: 0.1.0
 publish_to: none
 
 executables:
+  login_profile:
   storm:
 
 environment:

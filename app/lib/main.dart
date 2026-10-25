@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,6 +12,9 @@ import 'src/design/dify_theme_mode.dart';
 import 'src/design/platform_input.dart';
 import 'src/i18n/dify_i18n.dart';
 import 'src/home_page.dart';
+import 'src/app_root.dart' show defaultAuthApiFor;
+import 'src/auth/auth_controller.dart';
+import 'src/mcp/host.dart';
 import 'src/auth/auth_api.dart' show TokenStore;
 import 'src/i18n/app_locale.dart';
 import 'src/launch_options.dart';
@@ -20,6 +25,17 @@ import 'src/settings.dart';
 /// editor opens once signed in, `--demo` opens the in-memory demo without a server. Several windows on one document
 /// are fine: each claims its own journal slot.
 Future<void> main(List<String> args) async {
+  try {
+    await _startApp(args);
+  } on Object {
+    // A GUI isolate can survive an uncaught main() exception with a blank
+    // window. In MCP mode the wrapper must see a failed process and clean up.
+    if (!kIsWeb && args.contains('--mcp-port')) failReadonlyMcpStartup();
+    rethrow;
+  }
+}
+
+Future<void> _startApp(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDifyPlatformInput();
   final settings = await AppSettings.load(defaultServerUrl: kIsWeb ? Uri.base.origin : null);
@@ -46,7 +62,20 @@ Future<void> main(List<String> args) async {
   if (CanvasDefaults.reportRect) CanvasDefaults.select = Uri.base.queryParameters['select'];
   // The signed-in sessions (protocol 1.8): files (0600) under the app support directory, localStorage on the web.
   final tokens = TokenStore.platform(
-    directory: kIsWeb ? null : '${(await getApplicationSupportDirectory()).path}/auth',
+    directory: kIsWeb ? null : options.mcpProfile ?? '${(await getApplicationSupportDirectory()).path}/auth',
   );
-  runApp(buildApp(settings, launch: options, locale: AppLocale(lang), theme: theme, tokenStore: tokens));
+  AuthController? mcpAuth;
+  if (options.mcpPort case final port?) {
+    final tokenFile = options.mcpTokenFile;
+    if (tokenFile == null) throw const FormatException('--mcp-token-file is required');
+    mcpAuth = AuthController.on(
+      server: settings.serverUrl,
+      api: defaultAuthApiFor(Uri.parse(settings.serverUrl)),
+      store: tokens,
+    );
+    await startReadonlyMcp(port: port, tokenFile: tokenFile, auth: mcpAuth);
+    unawaited(mcpAuth.start());
+    WidgetsBinding.instance.addPostFrameCallback((_) => debugPrint('dify-sf MCP client first frame'));
+  }
+  runApp(buildApp(settings, auth: mcpAuth, launch: options, locale: AppLocale(lang), theme: theme, tokenStore: tokens));
 }
