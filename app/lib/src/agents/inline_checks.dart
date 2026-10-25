@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:collab_client/collab_client.dart';
 
 import '../workflow/dify_json.dart';
+import 'model_compatibility.g.dart';
 
 bool isInlineAgentData(Map<String, Object?> data) =>
     (data['type'] == 'agent' || data['type'] == 'agent-v2') &&
@@ -10,14 +11,9 @@ bool isInlineAgentData(Map<String, Object?> data) =>
     data['agent_node_kind'] == 'dify_agent';
 
 /// Same pinned upstream name filter as the Swift runtime, in addition to tool-call capability checks.
-bool inlineAgentModelCompatible(String model) => ![
-  RegExp(r'^chatgpt-', caseSensitive: false),
-  RegExp(r'^gpt-5(?:$|-|\.1$|\.2$)', caseSensitive: false),
-  RegExp(r'^gpt.*(?:min|chat)', caseSensitive: false),
-  RegExp(r'^gpt.*nano', caseSensitive: false),
-  RegExp(r'^gpt-4', caseSensitive: false),
-  RegExp(r'^gpt-3', caseSensitive: false),
-].any((pattern) => pattern.hasMatch(model));
+bool inlineAgentModelCompatible(String englishLabel) =>
+    !inlineAgentExcludedModels.any((pattern) => pattern.hasMatch(englishLabel));
+
 
 /// The private half of the editor's checklist, fetched by the immutable identities in the same graph snapshot.
 /// Only issue labels reach the checklist/MCP response; masked config and credential references stay internal.
@@ -120,6 +116,7 @@ class InlineAgentChecks {
   static List<({String namespace, String key})> issues(
     Map<String, Object?>? soul, {
     Map<String, List<String>>? modelFeatures,
+    Map<String, String>? modelLabels,
     List<Object?> declarations = const [],
   }) {
     if (soul == null || soul['_missing'] == true) return [(namespace: 'agent-v-2', key: 'inline.configUnavailable')];
@@ -137,7 +134,7 @@ class InlineAgentChecks {
         (namespace: 'agent-v-2', key: 'agentDetail.configure.files.missing'),
       if (jsList(jsGet(soul['env'], 'secret_refs')).any((entry) => jsStr(jsGet(entry, 'ref'))?.isNotEmpty != true || jsGet(entry, 'is_missing') == true))
         (namespace: 'agent-v-2', key: 'inline.secretMissing'),
-      if (model is Map && !inlineAgentModelCompatible('${model['model'] ?? ''}'))
+      if (model is Map && !inlineAgentModelCompatible(modelLabels?['${model['plugin_id']}/${model['model_provider']}/${model['model']}'] ?? '${model['model'] ?? ''}'))
         (namespace: 'agent-v-2', key: 'inline.modelUnsupported'),
       if (modelFeatures?.containsKey('__loading__') == true) (namespace: 'agent-v-2', key: 'inline.catalogUnavailable'),
       if (model is Map &&

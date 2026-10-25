@@ -154,27 +154,44 @@ void main() {
     expect(f.api.requests.length, 1);
   });
 
-  testWidgets('reload after a private conflict preserves the local prompt draft', (t) async {
+  testWidgets('reload overlays edited prompt only and a successful save clears edited sections', (t) async {
     final f = Fixture();
     addTearDown(f.changes.close);
+    f.api.response = {...composerReply(), 'agent_soul': {
+      'prompt': {'system_prompt': 'Initial'}, 'model': {'model': 'Original'}, 'config_files': [],
+    }, 'node_job': {'metadata': {'file_refs': []}, 'other': 'old'}};
     f.api.write = (_) async => throw const TransportException('conflict', statusCode: 409, code: 'agent_node_changed');
     await mount(t, f);
-    final prompt = find.descendant(
-      of: find.byKey(const ValueKey('inline-agent-prompt')),
-      matching: find.byType(EditableText),
-    );
+    final prompt = find.descendant(of: find.byKey(const ValueKey('inline-agent-prompt')), matching: find.byType(EditableText));
+    Future<void> settle() async {
+      for (var i = 0; i < 4; i++) {
+        await t.runAsync(() => Future<void>.delayed(Duration.zero));
+        await t.pump(const Duration(milliseconds: 100));
+      }
+    }
     await t.enterText(prompt, 'My unsaved work');
     await t.tap(find.byKey(const ValueKey('inline-agent-save')));
-    for (var i = 0; i < 4; i++) {
-      await t.runAsync(() => Future<void>.delayed(Duration.zero));
-      await t.pump(const Duration(milliseconds: 100));
-    }
+    await settle();
+    f.api.response = {...composerReply(), 'agent_soul': {
+      'prompt': {'system_prompt': 'Remote'}, 'model': {'model': 'Collaborator'}, 'config_files': [],
+    }, 'node_job': {'metadata': {'file_refs': []}, 'other': 'new'}};
     await t.tap(find.text('Reload baseline, keep my edits'));
-    for (var i = 0; i < 4; i++) {
-      await t.runAsync(() => Future<void>.delayed(Duration.zero));
-      await t.pump(const Duration(milliseconds: 100));
-    }
+    await settle();
     expect(t.widget<EditableText>(prompt).controller.text, 'My unsaved work');
+    f.api.write = (body) async {
+      expect((body['agent_soul'] as Map)['model'], {'model': 'Collaborator'});
+      expect((body['node_job'] as Map)['other'], 'new');
+      return {...composerReply(), 'agent_soul': body['agent_soul'], 'node_job': body['node_job']};
+    };
+    await t.tap(find.byKey(const ValueKey('inline-agent-save')));
+    await settle();
+    f.api.write = (_) async => throw const TransportException('second conflict', statusCode: 409);
+    await t.tap(find.byKey(const ValueKey('inline-agent-save')));
+    await settle();
+    f.api.response = {...composerReply(), 'agent_soul': {'prompt': {'system_prompt': 'After save remote'}, 'config_files': []}};
+    await t.tap(find.text('Reload baseline, keep my edits'));
+    await settle();
+    expect(t.widget<EditableText>(prompt).controller.text, 'After save remote');
     expect(t.takeException(), isNull);
   });
 }

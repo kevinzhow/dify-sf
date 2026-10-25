@@ -37,4 +37,30 @@ void main() {
     expect(h.doc.nodes.containsKey('source'), true);
     await h.dispose(t);
   });
+  for (final kind in ['unconfigured', 'roster_agent']) {
+    testWidgets('$kind placeholders duplicate as graph nodes without copying private identity', (t) async {
+      final source = node('source', type: 'agent', config: {
+        'version': const VString('2'), 'agent_node_kind': const VString('dify_agent'),
+        if (kind == 'roster_agent') 'agent_binding': Value.fromJson({
+          'binding_type': kind, 'agent_id': 'private-roster-agent', 'current_snapshot_id': 'private-roster-snapshot',
+        }),
+      });
+      final h = await Harness.start(t, [source]);
+      var endpointCalls = 0;
+      await h.actions(WorkflowMenuOptions(exportAgentClipboard: (_) async {
+        endpointCalls++;
+        throw StateError('Placeholders do not require private resource export');
+      })).duplicateNodes('source');
+      expect(endpointCalls, 0);
+      expect(h.doc.nodes, hasLength(2));
+      expect(h.controller.undo.past, hasLength(1));
+      expect(h.clipboard, isNot(contains('private-roster')));
+      final clone = h.doc.nodes.values.firstWhere((n) => n.id != 'source');
+      expect(jsonEncode(clone.toJson()), isNot(contains('private-roster')));
+      h.controller.undo.undo();
+      expect(h.doc.nodes, hasLength(1));
+      await h.dispose(t);
+    });
+  }
+
 }

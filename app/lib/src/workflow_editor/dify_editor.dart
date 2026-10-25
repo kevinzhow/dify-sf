@@ -1,3 +1,4 @@
+import '../workflow/model_catalog.dart' show ProviderWithModels;
 import '../i18n/dify_i18n.dart';
 import 'header/format.dart';
 import 'run/ui/before_run_form.dart' show RunFilePicker, RunFilePickerScope;
@@ -1087,6 +1088,10 @@ class _BoundHeaderState extends State<_BoundHeader> {
         inlineAgentModelFeatures: widget.models == null ? null : !widget.models!.isModelListLoaded('llm') ? {'__loading__': const []} : {
           for (final provider in widget.models!.catalog.textGenerationModelList)
             for (final model in provider.models) '${provider.provider}/${model.model}': model.features ?? const [],
+        },
+        inlineAgentModelLabels: {
+          for (final provider in widget.models?.catalog.textGenerationModelList ?? const <ProviderWithModels>[])
+            for (final model in provider.models) '${provider.provider}/${model.model}': model.label['en_US'] ?? model.model,
         },
         language: widget.models?.language ?? 'en_US',
         environmentVariables: widget.controller.appLists.environmentVariables,

@@ -230,4 +230,18 @@ void main() {
     expect(inlineAgentModelCompatible('claude-sonnet-4-5'), true);
     expect(inlineAgentModelCompatible('GPT-4o'), false);
   });
+  test('pinned vendor exclusions apply to English catalog labels, including opaque provider IDs', () {
+    for (final label in ['o3', 'claude-3-7-sonnet', 'deepseek-chat', 'qwen3-32b', 'gemini-2.0-flash', 'glm-4', 'minimax-m2']) {
+      expect(inlineAgentModelCompatible(label), false, reason: label);
+      final issues = InlineAgentChecks.issues({...configured, 'model': {
+        'plugin_id': 'vendor/plugin', 'model_provider': 'provider', 'model': 'opaque-id',
+      }}, modelLabels: {'vendor/plugin/provider/opaque-id': label}, modelFeatures: {'vendor/plugin/provider/opaque-id': ['tool-call']});
+      expect(issues.map((v) => v.key), contains('inline.modelUnsupported'), reason: label);
+    }
+    final allowed = InlineAgentChecks.issues({...configured, 'model': {
+      'plugin_id': 'vendor/plugin', 'model_provider': 'provider', 'model': 'deepseek-chat',
+    }}, modelLabels: {'vendor/plugin/provider/deepseek-chat': 'Approved vendor alias'}, modelFeatures: {'vendor/plugin/provider/deepseek-chat': ['tool-call']});
+    expect(allowed.map((v) => v.key), isNot(contains('inline.modelUnsupported')));
+  });
+
 }

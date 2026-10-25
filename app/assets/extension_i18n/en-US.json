@@ -23,6 +23,14 @@
     "inline.defaultFileMissing": "An output default file needs to be selected again.",
     "inline.modelUnsupported": "This model is not supported by Agent v2.",
     "inline.clipboardFailed": "Agent copy or paste could not be confirmed. Retry after reconnecting.",
-    "inline.catalogUnavailable": "The model catalog has not loaded; retry before publishing."
+    "inline.catalogUnavailable": "The model catalog has not loaded; retry before publishing.",
+    "inline.secretsUnavailable": "Secret storage is not configured on this server. Ask the server administrator to enable it.",
+    "inline.receiptConflict": "This save receipt belongs to different content. Reload before saving again.",
+    "inline.invalidConfiguration": "Some configuration fields are invalid or unsupported. Check the model, files, environment and contacts.",
+    "inline.loginRequired": "Your session expired. Sign in again before saving.",
+    "inline.editForbidden": "You do not have permission to edit this workflow.",
+    "inline.nodeMissing": "This node or its configuration was removed. Reload the workflow.",
+    "inline.configurationTooLarge": "This configuration is too large. Remove files or shorten its text.",
+    "inline.rateLimited": "Too many requests. Wait briefly and retry."
   }
 }

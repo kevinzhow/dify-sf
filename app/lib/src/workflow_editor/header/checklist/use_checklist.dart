@@ -285,6 +285,7 @@ class ChecklistEnv {
     this.datasetsDetail = const {},
     this.inlineAgentSouls = const {},
     this.inlineAgentModelFeatures,
+    this.inlineAgentModelLabels,
     this.usedVars,
     this.availableVars,
     this.isSpecialVar = isSpecialVarPrefix,
@@ -326,6 +327,7 @@ class ChecklistEnv {
 
   final Map<String, DifyJson> inlineAgentSouls;
   final Map<String, List<String>>? inlineAgentModelFeatures;
+  final Map<String, String>? inlineAgentModelLabels;
 
   /// Overrides `getNodeUsedVars` (default: [getNodeUsedVars] of the document node).
   final List<List<String>> Function(DifyFlowNode node)? usedVars;
@@ -592,7 +594,7 @@ List<ChecklistItem> computeChecklistOf(List<DifyFlowNode> nodes, List<DifyFlowEd
         if (e.isNotEmpty) errors.add(e);
       }
       if (_isAgentV2(n.data) && hasValidInlineAgentBinding(n.data)) {
-        for (final issue in InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, declarations: jsList(n.data['agent_declared_outputs']))) {
+        for (final issue in InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, modelLabels: env.inlineAgentModelLabels, declarations: jsList(n.data['agent_declared_outputs']))) {
           errors.add(t(issue.namespace, issue.key));
         }
       }
@@ -612,7 +614,7 @@ List<ChecklistItem> computeChecklistOf(List<DifyFlowNode> nodes, List<DifyFlowEd
           unConnected: unConnected,
           errorMessages: errors,
           openInlineAgentPanel: _isAgentV2(n.data) && hasValidInlineAgentBinding(n.data) &&
-              InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, declarations: jsList(n.data['agent_declared_outputs'])).isNotEmpty,
+              InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, modelLabels: env.inlineAgentModelLabels, declarations: jsList(n.data['agent_declared_outputs'])).isNotEmpty,
           canNavigate: !isPluginMissing,
           disableGoTo: isPluginMissing,
           isPluginMissing: isPluginMissing,
@@ -684,7 +686,7 @@ String? checkBeforePublishOf(List<DifyFlowNode> nodes, List<DifyFlowEdge> edges,
       if (e.isNotEmpty) return '[${n.title}] $e';
     }
     if (_isAgentV2(n.data) && hasValidInlineAgentBinding(n.data)) {
-      final issues = InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, declarations: jsList(n.data['agent_declared_outputs']));
+      final issues = InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, modelLabels: env.inlineAgentModelLabels, declarations: jsList(n.data['agent_declared_outputs']));
       if (issues.isNotEmpty) return '[${n.title}] ${t(issues.first.namespace, issues.first.key)}';
     }
     final duplicates = c.duplicates[n.id] ?? const [];

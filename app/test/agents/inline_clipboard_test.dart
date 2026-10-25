@@ -30,7 +30,10 @@ void main() {
     api.committed = () { current = (document: document(), seq: 9, ready: true); changes.add(null); };
     final graph = {'nodes': [{'id': 'confirmed-node'}], 'edges': [], 'agent_packages': {}, 'id_mapping': {}};
     await expectLater(composer.pasteClipboard(graph), throwsA(isA<TransportException>()));
-    final saved = await composer.pasteClipboard({...graph, 'nodes': [{'id': 'must-not-be-submitted'}]});
+    await expectLater(composer.pasteClipboard({...graph, 'nodes': [{'id': 'must-not-be-submitted'}]}),
+      throwsA(isA<AgentComposerConflict>()));
+    expect(api.sent, hasLength(1));
+    final saved = await composer.pasteClipboard(graph);
     expect(saved['node_ids'], ['confirmed-node']);
     expect(api.sent, hasLength(2));
     expect(api.sent[0], api.sent[1]);

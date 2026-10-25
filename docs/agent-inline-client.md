@@ -41,3 +41,14 @@ must be lossless decompressions of the bundled pinned WOFF2 glyphs; they do not 
 These are native layout checks, not a claim of pixel parity with Dify or physical-device browser performance.
 
 See [resource portability](agent-resource-portability.md) for clipboard/import boundaries and atomic paste.
+
+
+The pinned model-name exclusion patterns have one source, `tool/agent/model_compatibility.json` (Dify 8387590).
+`gen_model_compatibility.py --check` verifies both generated Swift and Dart lists. The runtime, picker and shared
+editor/MCP checklist apply the filter to the catalog's English model label, independently of tool-call support.
+An omitted English label uses the model identifier consistently in each path.
+
+Reloading a conflicting private form overlays only sections edited locally onto the latest configuration. Plain and
+secret environment sections and task attachments are tracked independently; untouched model/config/job fields come
+from the new baseline. A confirmed save clears those edit markers. Uncertain saves and pastes retain their exact
+receipt; a different clipboard source cannot silently retry an older pending paste.

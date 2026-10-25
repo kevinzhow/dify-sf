@@ -23,6 +23,14 @@
     "inline.defaultFileMissing": "输出的默认文件需要重新选择。",
     "inline.modelUnsupported": "Agent v2 不支持此模型。",
     "inline.clipboardFailed": "无法确认 Agent 的复制或粘贴。请重新连接后重试。",
-    "inline.catalogUnavailable": "模型目录尚未加载，请加载后再发布。"
+    "inline.catalogUnavailable": "模型目录尚未加载，请加载后再发布。",
+    "inline.secretsUnavailable": "服务器尚未配置密钥存储，请联系服务器管理员启用。",
+    "inline.receiptConflict": "这次保存的回执对应其他内容，请重新加载后保存。",
+    "inline.invalidConfiguration": "部分配置无效或尚不支持，请检查模型、文件、环境变量和联系人。",
+    "inline.loginRequired": "登录已过期，请重新登录后保存。",
+    "inline.editForbidden": "你没有编辑此工作流的权限。",
+    "inline.nodeMissing": "此节点或其配置已删除，请重新加载工作流。",
+    "inline.configurationTooLarge": "配置过大，请减少文件或缩短文本。",
+    "inline.rateLimited": "请求过于频繁，请稍后重试。"
   }
 }

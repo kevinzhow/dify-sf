@@ -425,7 +425,7 @@ class WorkflowActions {
       }
     }
     final data = (
-      nodes: [for (final n in copied.values) difyNodeOf(n)],
+      nodes: [for (final n in copied.values) _portablePlaceholder(difyNodeOf(n))],
       edges: [
         for (final e in doc.edges.values)
           if (copied.containsKey(e.source) && copied.containsKey(e.target)) difyEdgeOf(e, doc),
@@ -434,7 +434,7 @@ class WorkflowActions {
     var copiedData = data;
     var packages = <String, Object?>{};
     var sources = <String, Object?>{};
-    if (copied.values.any((n) => n.type == 'agent' && plainJson(n.config['version'] ?? const VNull()) == '2')) {
+    if (copied.values.any(_hasPrivateInlineBinding)) {
       final export = options.exportAgentClipboard;
       if (export == null) { options.onAgentClipboardError?.call(); return false; }
       try {
@@ -442,7 +442,7 @@ class WorkflowActions {
         copiedData = (nodes: (value['nodes'] as List).map((v) => (v as Map).cast<String, Object?>()).toList(),
           edges: (value['edges'] as List).map((v) => (v as Map).cast<String, Object?>()).toList());
         packages = (value['agent_packages'] as Map).cast<String, Object?>();
-        sources = {for (final n in copied.values) if (n.type == 'agent' && n.config['agent_binding'] is VMap)
+        sources = {for (final n in copied.values) if (_hasPrivateInlineBinding(n))
           n.id: {'node_id': n.id, ...(plainJson(n.config['agent_binding']!) as Map).cast<String, Object?>()}};
       } on Object { options.onAgentClipboardError?.call(); return false; }
     }
@@ -451,6 +451,19 @@ class WorkflowActions {
     store.clipboardAgentSources = sources;
     unawaited(writeWorkflowClipboard(copiedData, options.appDslVersion, agentPackages: packages).catchError((Object _) {}));
     return true;
+  }
+
+  bool _hasPrivateInlineBinding(Node n) {
+    final binding = plainJson(n.config['agent_binding'] ?? const VNull());
+    return n.type == 'agent' && n.config['version'] == const VString('2') && binding is Map &&
+      binding['binding_type'] == 'inline_agent' && binding['agent_id'] is String && binding['current_snapshot_id'] is String;
+  }
+
+  DifyJson _portablePlaceholder(DifyJson node) {
+    final data = (node['data'] as Map).cast<String, Object?>();
+    final binding = data['agent_binding'];
+    if (data['version'] != '2' || binding is! Map || binding['binding_type'] == 'inline_agent') return node;
+    return {...node, 'data': {...data, 'agent_binding': {'binding_type': binding['binding_type']}}};
   }
 
   /// Where pasted nodes go: the pointer's last position on the canvas.
@@ -634,10 +647,12 @@ class WorkflowActions {
       final sh = e['sourceHandle'] as String? ?? 'source', th = e['targetHandle'] as String? ?? 'target';
       edges.add(Edge(id: '$s-$sh-$t-$th', source: s, sourceHandle: sh, target: t, targetHandle: th));
     }
-    if (pasted.any((n) => n.type == 'agent' && n.config['version'] == const VString('2'))) {
+    if (pasted.any(_hasPrivateInlineBinding) || store.clipboardAgentPackages.isNotEmpty) {
       final paste = options.pasteAgentClipboard;
       if (paste == null) { options.onAgentClipboardError?.call(); return; }
       final saved = await paste({
+        'clipboard_source': {'nodes': compatible, 'edges': clipEdges.toList(), 'packages': store.clipboardAgentPackages,
+          'local_sources': localDuplicate ? store.clipboardAgentSources : const {}},
         'nodes': [for (final n in pasted) difyNodeOf(n)],
         'edges': [for (final e in edges) difyEdgeOf(e, Document(nodes: pasted, edges: edges))],
         'agent_packages': store.clipboardAgentPackages,

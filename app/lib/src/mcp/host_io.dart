@@ -131,11 +131,18 @@ ReadonlyWorkflowReader nativeWorkflowReader(AuthController auth) => ReadonlyWork
       }
     }
     Map<String, List<String>>? agentModelFeatures;
+    Map<String, String>? agentModelLabels;
     if (nodes.any((n) => isInlineAgentData(n.data))) {
       final api = HttpModelProvidersApi(Uri.parse(auth.server), auth: auth.session);
       try {
+        final catalog = await api.modelsOfType('llm');
+        agentModelLabels = {
+          for (final provider in catalog)
+            for (final model in (provider['models'] as List? ?? const []).whereType<Map>())
+              '${provider['provider']}/${model['model']}': (model['label'] as Map?)?['en_US'] as String? ?? '${model['model']}',
+        };
         agentModelFeatures = {
-          for (final provider in await api.modelsOfType('llm'))
+          for (final provider in catalog)
             for (final model in (provider['models'] as List? ?? const []).whereType<Map>())
               '${provider['provider']}/${model['model']}': [for (final feature in model['features'] as List? ?? const []) '$feature'],
         };
@@ -186,6 +193,7 @@ ReadonlyWorkflowReader nativeWorkflowReader(AuthController auth) => ReadonlyWork
         builtInTools: builtin,
         inlineAgentSouls: agents.souls,
         inlineAgentModelFeatures: agentModelFeatures,
+        inlineAgentModelLabels: agentModelLabels,
         workflowTools: workflows,
       ),
       unavailable: missing.toSet().toList(),

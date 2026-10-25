@@ -48,6 +48,9 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
   bool _busy = false, _uploading = false;
   int _loadGeneration = 0;
   String _note = '';
+  final _editedSections = <String>{};
+  final _editedEnvironment = <String>{};
+  bool _editedJobFiles = false;
 
   @override
   void initState() {
@@ -59,7 +62,8 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
 
   Future<void> _reload() async {
     final generation = ++_loadGeneration;
-    final draft = _soul, draftJob = _loaded?['node_job'];
+    final draft = _soul;
+    final draftFiles = _jobFiles;
     setState(() {
       _busy = true;
       _error = null;
@@ -68,8 +72,23 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
       final loaded = await widget.composer.load(widget.args.nodeId);
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
-        _loaded = {...loaded, 'node_job': ?draftJob};
-        _soul = draft ?? (jsonDecode(jsonEncode(loaded['agent_soul'])) as Map).cast<String, Object?>();
+        _loaded = (jsonDecode(jsonEncode(loaded)) as Map).cast<String, Object?>();
+        _soul = (jsonDecode(jsonEncode(loaded['agent_soul'])) as Map).cast<String, Object?>();
+        for (final key in _editedSections) {
+          if (draft?.containsKey(key) == true) {
+            _soul![key] = draft![key];
+          } else {
+            _soul!.remove(key);
+          }
+        }
+        for (final key in _editedEnvironment) {
+          final env = _map(_soul!['env']);
+          _soul!['env'] = {...env, key: _map(draft?['env'])[key]};
+        }
+        if (_editedJobFiles) {
+          final job = _map(_loaded!['node_job']);
+          _loaded!['node_job'] = {...job, 'metadata': {..._map(job['metadata']), 'file_refs': draftFiles}};
+        }
         _payload = null;
         if (draft == null) _note = '';
       });
@@ -98,8 +117,12 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
       if (!mounted) return;
       setState(() {
         _loaded = saved;
-        _soul = {..._map(saved['agent_soul'])};
+        _soul = (jsonDecode(jsonEncode(saved['agent_soul'])) as Map).cast<String, Object?>();
         _payload = null;
+        _editedSections.clear();
+        _editedEnvironment.clear();
+        _editedJobFiles = false;
+        _note = '';
       });
       widget.args.onSaved(_map(saved['binding']));
     } on Object catch (error) {
@@ -111,7 +134,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
           _payload = null;
           _error = error is AgentComposerConflict || (error is TransportException && error.statusCode == 409)
               ? 'inline.changed'
-              : 'inline.saveFailed';
+              : agentSaveErrorKey(error);
         }
       });
     } finally {
@@ -119,12 +142,16 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
     }
   }
 
-  void _section(String key, Object? value) => setState(() => _soul![key] = value);
+  void _section(String key, Object? value) => setState(() {
+    _soul![key] = value;
+    _editedSections.add(key);
+  });
   AgentJson get _model => _map(_soul?['model']);
   AgentJson get _env => _map(_soul?['env']);
 
   List<AgentJson> get _jobFiles => _rows(_map(_map(_loaded?['node_job'])['metadata'])['file_refs']);
   void _setJobFiles(List<AgentJson> files) => setState(() {
+    _editedJobFiles = true;
     final job = _map(_loaded?['node_job']);
     _loaded = {
       ...?_loaded,
@@ -191,7 +218,10 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
   Widget _environment(bool secret) {
     final key = secret ? 'secret_refs' : 'variables';
     final rows = _rows(_env[key]);
-    void update() => _section('env', {..._env, key: rows});
+    void update() => setState(() {
+      _soul!['env'] = {..._env, key: rows};
+      _editedEnvironment.add(key);
+    });
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 8,
@@ -363,7 +393,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                         completionParams: _map(model['model_settings']),
                         readonly: _locked,
                         modelPredicate: (_, item) =>
-                            inlineAgentModelCompatible(item.model) &&
+                            inlineAgentModelCompatible(item.label['en_US'] ?? item.model) &&
                             (item.features ?? const []).any((v) => v == 'tool-call' || v == 'multi-tool-call'),
                         onModelChange: (choice) {
                           final id = extractPluginId(choice.provider);

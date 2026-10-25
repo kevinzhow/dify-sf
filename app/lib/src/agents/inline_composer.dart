@@ -141,18 +141,28 @@ class InlineAgentComposer {
   }
 
   Map<String, Object?>? _pendingPaste;
+  String? _pendingPasteSource;
 
   Future<Map<String, Object?>> exportClipboard(List<String> nodes) async {
     if (api is! AgentClipboardApi) throw const AgentComposerConflict('clipboard_unavailable');
     await _until((s) => s.ready);
-    return (api as AgentClipboardApi).exportAgentClipboard(appId, {'expected_seq': state().seq, 'node_ids': nodes});
+    return (api as AgentClipboardApi).exportAgentClipboard(appId, {
+      'expected_seq': state().seq, 'node_ids': nodes,
+      'expected_nodes': {for (final id in nodes) id: state().document.nodes[id]?.toJson()},
+    });
   }
 
   Future<Map<String, Object?>> pasteClipboard(Map<String, Object?> graph) async {
     if (api is! AgentClipboardApi) throw const AgentComposerConflict('clipboard_unavailable');
     await _until((s) => s.ready);
+    final source = jsonEncode(graph['clipboard_source'] ?? graph);
+    if (_pendingPaste != null && _pendingPasteSource != source) {
+      // Resolve the original receipt before accepting a different operation. Never silently paste old contents.
+      throw const AgentComposerConflict('clipboard_pending_changed');
+    }
+    _pendingPasteSource ??= source;
     _pendingPaste ??= (jsonDecode(
-      jsonEncode({...graph, 'expected_seq': state().seq, 'idempotency_key': newUuid()}),
+      jsonEncode({...graph, 'expected_seq': state().seq, 'idempotency_key': newUuid()}..remove('clipboard_source')),
     ) as Map).cast<String, Object?>();
     try {
       final saved = await (api as AgentClipboardApi).pasteAgentClipboard(appId, _pendingPaste!);
@@ -162,9 +172,10 @@ class InlineAgentComposer {
       }
       await _until((s) => s.ready && s.seq >= seq);
       _pendingPaste = null;
+      _pendingPasteSource = null;
       return saved;
     } on Object catch (error) {
-      if (!agentSaveUncertain(error)) _pendingPaste = null;
+      if (!agentSaveUncertain(error)) { _pendingPaste = null; _pendingPasteSource = null; }
       rethrow;
     }
   }
@@ -202,4 +213,20 @@ class AgentComposerConflict implements Exception {
   final String reason;
   @override
   String toString() => 'AgentComposerConflict($reason)';
+}
+
+/// Only locally authored error text is shown. Remote response bodies may contain private configuration.
+String agentSaveErrorKey(Object error) {
+  if (error is! TransportException) return 'inline.saveFailed';
+  if (error.code == 'secrets_key_missing') return 'inline.secretsUnavailable';
+  if (error.code == 'agent_idempotency_conflict') return 'inline.receiptConflict';
+  return switch (error.statusCode) {
+    400 || 422 => 'inline.invalidConfiguration',
+    401 => 'inline.loginRequired',
+    403 => 'inline.editForbidden',
+    404 => 'inline.nodeMissing',
+    413 => 'inline.configurationTooLarge',
+    429 => 'inline.rateLimited',
+    _ => 'inline.saveFailed',
+  };
 }
