@@ -31,16 +31,19 @@ Future<void> main(List<String> args) async {
   // Cards on the canvas are captured right after they first paint: their icons must be ready by then, in the colours
   // of the theme (the launch option's, the remembered choice, or the system's), and again after a switch.
   DifyTheme.icons = () => DifyCards.icons;
-  final theme = await AppTheme.load(override: options.theme);
-  await IconCache.preload(DifyCards.icons);
-  // Cards measure and draw text outside the widget tree too: the translations load before anything is built. The
-  // language: the command line's, the one chosen last time (the sign-in page's locale menu), the system's.
   final lang =
       options.lang ??
       await AppLocale.remembered() ??
       difyLanguageFor(WidgetsBinding.instance.platformDispatcher.locale);
-  if (kIsWeb) await DifyFonts.loadFor(lang);
-  await DifyI18n.load(lang);
+  // Start independent resources together. Every face/icon/translation is still ready
+  // before the first frame, so startup never paints with temporary font metrics.
+  final themeFuture = AppTheme.load(override: options.theme);
+  await Future.wait<Object?>([
+    themeFuture.then((_) => IconCache.preload(DifyCards.icons)),
+    if (kIsWeb) DifyFonts.loadFor(lang),
+    DifyI18n.load(lang),
+  ]);
+  final theme = await themeFuture;
   CanvasDefaults.viewport = CanvasDefaults.parseViewport(options.view);
   CanvasDefaults.reportRect = kIsWeb && Uri.base.queryParameters['visual'] == '1';
   if (CanvasDefaults.reportRect) CanvasDefaults.select = Uri.base.queryParameters['select'];

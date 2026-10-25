@@ -154,3 +154,30 @@ test('runtime errors after first paint are not mistaken for startup failures', a
   assert.equal(rejection.defaultPrevented, false);
   assert.deepEqual(env.replacements, []);
 });
+
+test('desktop stages initialize engine and app with the same config; failure reaches the document shell', async () => {
+  const env = environment({userAgent: 'Chrome', platform: 'Linux', maxTouchPoints: 0});
+  const stages = [];
+  let failed = 0;
+  env.__difyStartup = {stage: value => stages.push(value), fail: () => failed++};
+  await assert.rejects(launch(env, {load: async options => {
+    await options.onEntrypointLoaded({initializeEngine: async config => {
+      assert.equal(config, options.config);
+      return {runApp: async () => {throw Error('asset unavailable');}};
+    }});
+  }}), /asset unavailable/);
+  assert.deepEqual(stages, ['engine', 'app']);
+  assert.ok(failed >= 1);
+  assert.deepEqual(env.replacements, []);
+});
+
+test('iOS fallback stays loading rather than displaying a terminal startup error', async () => {
+  const env = environment();
+  const stages = [];
+  let failed = false;
+  env.__difyStartup = {stage: value => stages.push(value), fail: () => failed = true};
+  await launch(env, {load: async () => {throw Error('wasm failed');}});
+  assert.deepEqual(stages, ['fallback']);
+  assert.equal(failed, false);
+  assert.equal(env.replacements.length, 1);
+});
