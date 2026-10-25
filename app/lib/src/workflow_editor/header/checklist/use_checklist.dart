@@ -4,10 +4,13 @@
 /// `isNodePluginMissing` (utils/plugin-install-check.ts) and the default node metadata (`useAvailableNodesMetaData`).
 ///
 /// Pure Dart over a Dify-shaped view of the document ([DifyFlowNode], [DifyFlowEdge]). What Dify reads from hooks and
-/// services comes in a [ChecklistEnv]. Left out: the inline Agent v2 checks (`agentComposer` queries to Dify's backend:
-/// missing model / files / skills / tools), and before publishing the fetches of the latest datasets and knowledge-base
-/// models ([ChecklistEnv.datasetsDetail] is used as is).
+/// services comes in a [ChecklistEnv], including private configuration pinned by inline Agent v2 nodes.
+/// Before publishing, the latest datasets and knowledge-base models are not fetched here
+/// ([ChecklistEnv.datasetsDetail] is used as is).
 library;
+
+import '../../../agents/inline_checks.dart';
+import '../../node_panel/bodies/llm/agent_v2_logic.dart' show hasValidInlineAgentBinding;
 
 import 'package:collab_client/collab_client.dart';
 
@@ -280,6 +283,8 @@ class ChecklistEnv {
     this.strategyProviders,
     this.modelProviders,
     this.datasetsDetail = const {},
+    this.inlineAgentSouls = const {},
+    this.inlineAgentModelFeatures,
     this.usedVars,
     this.availableVars,
     this.isSpecialVar = isSpecialVarPrefix,
@@ -318,6 +323,9 @@ class ChecklistEnv {
 
   /// Datasets by id (the datasets-detail store), for knowledge-retrieval checks.
   final Map<String, DifyJson> datasetsDetail;
+
+  final Map<String, DifyJson> inlineAgentSouls;
+  final Map<String, List<String>>? inlineAgentModelFeatures;
 
   /// Overrides `getNodeUsedVars` (default: [getNodeUsedVars] of the document node).
   final List<List<String>> Function(DifyFlowNode node)? usedVars;
@@ -582,6 +590,11 @@ List<ChecklistItem> computeChecklistOf(List<DifyFlowNode> nodes, List<DifyFlowEd
         final e = validator(c.checkData(n), t, c.moreData(n));
         if (e.isNotEmpty) errors.add(e);
       }
+      if (_isAgentV2(n.data) && hasValidInlineAgentBinding(n.data)) {
+        for (final issue in InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures)) {
+          errors.add(t(issue.namespace, issue.key));
+        }
+      }
       if (c.hasInvalidVar(n, usedVars)) errors.add(t('workflow', 'errorMsg.invalidVariable'));
       errors.addAll(c.duplicates[n.id] ?? const []);
     }
@@ -597,6 +610,8 @@ List<ChecklistItem> computeChecklistOf(List<DifyFlowNode> nodes, List<DifyFlowEd
           toolIcon: env.toolIcon?.call(n),
           unConnected: unConnected,
           errorMessages: errors,
+          openInlineAgentPanel: _isAgentV2(n.data) && hasValidInlineAgentBinding(n.data) &&
+              InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures).isNotEmpty,
           canNavigate: !isPluginMissing,
           disableGoTo: isPluginMissing,
           isPluginMissing: isPluginMissing,
@@ -665,6 +680,10 @@ String? checkBeforePublishOf(List<DifyFlowNode> nodes, List<DifyFlowEdge> edges,
     if (validator != null) {
       final e = validator(c.checkData(n), t, c.moreData(n));
       if (e.isNotEmpty) return '[${n.title}] $e';
+    }
+    if (_isAgentV2(n.data) && hasValidInlineAgentBinding(n.data)) {
+      final issues = InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures);
+      if (issues.isNotEmpty) return '[${n.title}] ${t(issues.first.namespace, issues.first.key)}';
     }
     final duplicates = c.duplicates[n.id] ?? const [];
     if (duplicates.isNotEmpty) return '[${n.title}] ${duplicates.first}';

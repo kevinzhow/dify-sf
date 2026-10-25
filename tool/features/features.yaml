@@ -2447,3 +2447,13 @@ features:
   deviation: 'dify-sf extensions: authenticated clipboard export/paste, immutable source identity fences, idempotent paste receipts and one collaborative undo step. Agent Apps, roster bindings, skills and external tool catalogs are not exposed.'
   evidence: [server/Tests/CollabTests/AgentPackageTests.swift, server/Tests/CollabTests/AgentClipboardTests.swift]
   ours: [server/Sources/CollabServer/AgentPackages.swift, server/Sources/CollabServer/AgentClipboard.swift, docs/agent-resource-portability.md]
+
+- id: run.agent-v2-inline-client
+  area: run
+  title: 'Agent v2: inline editor configuration and shared editor/MCP checks'
+  dify: [web/app/components/workflow/nodes/agent-v2, web/app/components/agent/configure, api/services/agent/composer_service.py]
+  status: partial
+  reason: 'The inline workflow form wires model parameters, prompt, uploads, environment secrets and human contacts through an authenticated collaborative composer. Editor and native MCP inspect the exact private snapshot from the frozen graph; missing configuration and unsupported contexts cannot pass the gate. Portable copy/import and full visual acceptance are being completed separately. Deployment execution stays disabled by default.'
+  deviation: 'dify-sf extensions: revision-fenced saves with exact idempotent retry, the native read-only MCP endpoint and a tool-call capability diagnostic. Explicit save actions are used; complete Agent App/roster UI parity is not claimed.'
+  evidence: [packages/collab_client/test/agent_composer_api_test.dart, app/test/agents/inline_composer_test.dart, app/test/agents/inline_configure_test.dart, app/test/agents/inline_checks_test.dart]
+  ours: [app/lib/src/agents/inline_composer.dart, app/lib/src/agents/inline_configure.dart, app/lib/src/agents/inline_checks.dart, app/lib/src/mcp/host_io.dart, docs/agent-inline-client.md]

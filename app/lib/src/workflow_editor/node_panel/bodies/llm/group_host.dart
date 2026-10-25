@@ -49,6 +49,7 @@ class LlmGroupServices {
     this.saveToRoster,
     this.openInlineAgentWorkspace,
     this.inlineAgentWorkspaceBuilder,
+    this.composerCommitsBinding = false,
     this.rosterAgentContentBuilder,
     this.canCreateAgents = false,
     this.generatePrompt,
@@ -152,6 +153,9 @@ class LlmGroupServices {
   /// [onSaveInlineToRoster] opens "Save to Agents" (null when not allowed).
   final Widget Function(BuildContext context, InlineAgentWorkspaceArgs args)? inlineAgentWorkspaceBuilder;
 
+  /// The host waits for the composer's atomic graph transaction; the panel must not submit duplicate graph edits.
+  final bool composerCommitsBinding;
+
   /// The roster drawer's body (Dify's read-only WorkflowRosterAgentOrchestratePanelContent for an agent id); an
   /// empty panel when absent.
   final Widget Function(BuildContext context, String agentId)? rosterAgentContentBuilder;
@@ -185,7 +189,11 @@ bool Function(String pluginId) modelPluginInstalledIn(ModelCatalog catalog) =>
 
 /// Hands [services] to the model-node panels below it.
 class LlmGroupScope extends InheritedWidget {
-  const LlmGroupScope({super.key, required this.services, required super.child});
+  const LlmGroupScope({
+    super.key,
+    required this.services,
+    required super.child,
+  });
 
   final LlmGroupServices services;
 

@@ -2,6 +2,7 @@
 library;
 
 export 'src/access_api.dart';
+export 'src/agent_composer_api.dart';
 export 'src/annotations_api.dart';
 export 'src/apps_api.dart';
 export 'src/auth/account.dart';

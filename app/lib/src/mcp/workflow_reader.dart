@@ -12,7 +12,7 @@ typedef CheckContext = ({ChecklistEnv env, List<String> unavailable});
 class ReadonlyWorkflowReader {
   ReadonlyWorkflowReader({required this.snapshot, required this.context});
   final Future<DraftSnapshot> Function(String id) snapshot;
-  final Future<CheckContext> Function(Document doc, String mode) context;
+  final Future<CheckContext> Function(String appId, Document doc, String mode) context;
 
   Future<Map<String, Object?>> read(String id, {int? expectedRevision, bool check = false}) async {
     if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(id)) throw const FormatException('invalid_workflow_id');
@@ -55,7 +55,7 @@ class ReadonlyWorkflowReader {
         'conversation_variables': AppRegisters.variables(draft.doc, AppRegisters.conversationVariables),
       };
     }
-    final loaded = await context(draft.doc, draft.mode);
+    final loaded = await context(id, draft.doc, draft.mode);
     final items = computeChecklist(draft.doc, loaded.env);
     final publishError = checkBeforePublish(draft.doc, loaded.env);
     final complete = loaded.unavailable.isEmpty;
