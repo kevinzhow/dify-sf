@@ -48,7 +48,7 @@ public struct AgentNodeData: Sendable {
         if let description = declaration["description"]?.string { schema["description"] = .string(description) }
         if type == "file" {
             schema["type"] = "string"
-            schema["x-dify-sf-file"] = declaration["file"] ?? [:]
+            schema["x-dify-sf-file"] = declaration["file"]?.object.map(JSONValue.object) ?? [:]
         }
         if type == "array" { schema["items"] = Self.schema(declaration["array_item"]?.object ?? ["type": "object"]) }
         if type == "object", let children = declaration["children"]?.array, !children.isEmpty {

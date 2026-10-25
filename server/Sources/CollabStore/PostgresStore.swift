@@ -106,9 +106,9 @@ public struct PostgresStore: Sendable {
     /// Protocol 1.10: the app row is inserted in the same transaction: `app`, or one derived from `metadata`
     /// (`NewApp.from`, name = the file's or the document id, creator unknown).
     public func createDocument(id: String, initial: Document, metadata: Value? = nil, secrets: [String: String] = [:],
-                               app: NewApp? = nil) async throws -> Bool {
+                               app: NewApp? = nil, agentConfigs: [AgentConfigCommit] = []) async throws -> Bool {
         let row = app ?? NewApp.from(metadata: metadata, fallbackName: id, createdBy: nil)
-        return try await bounded { try await self.createDocumentImpl(id: id, initial: initial, metadata: metadata, secrets: secrets, app: row) }
+        return try await bounded { try await self.createDocumentImpl(id: id, initial: initial, metadata: metadata, secrets: secrets, app: row, agentConfigs: agentConfigs) }
     }
 
     /// Stores a secret environment variable under `ref` (protocol 1.7), encrypted (1.9; `SecretsKeyMissing` without a key).
@@ -212,7 +212,7 @@ public struct PostgresStore: Sendable {
 
     /// Creates the document with its seed state (snapshot at seq 0). Returns false if it already existed.
     func createDocumentImpl(id: String, initial: Document, metadata: Value? = nil, secrets: [String: String] = [:],
-                            app: NewApp) async throws -> Bool {
+                            app: NewApp, agentConfigs: [AgentConfigCommit] = []) async throws -> Bool {
         var sealedSecrets: [String: String] = [:]
         for (ref, value) in secrets { sealedSecrets[ref] = try sealSecret(doc: id, ref: ref, value) }
         let state = try WireJSON.encodeString(initial)
@@ -230,6 +230,7 @@ public struct PostgresStore: Sendable {
                 for (ref, value) in sealedSecrets.sorted(by: { $0.key < $1.key }) {
                     _ = try await c.query("INSERT INTO secrets (doc_id, ref, value, sealed) VALUES (\(id), \(ref), \(value), true)", logger: logger)
                 }
+                for change in agentConfigs { try await self.commitAgentConfig(change, doc: id, tx: c) }
             }
             return created
         }
@@ -374,7 +375,7 @@ public struct PostgresStore: Sendable {
     /// `metadata` (a replacement from a Dify file, `POST /replace`) replaces the document's import metadata and `secrets` are
     /// stored, in the same transaction.
     public func commit(doc id: String, expectedRev: Int, groups: [CommitGroup], newHead: Int, snapshot: Snapshot?,
-                       metadata: Value? = nil, secrets: [String: String] = [:], agentConfig: AgentConfigCommit? = nil) async throws -> Int {
+                       metadata: Value? = nil, secrets: [String: String] = [:], agentConfig: AgentConfigCommit? = nil, agentConfigs: [AgentConfigCommit] = []) async throws -> Int {
         let snapshotJSON = try snapshot.map { try WireJSON.encodeString($0.doc) }
         var rows = Rows()
         for g in groups {
@@ -389,6 +390,7 @@ public struct PostgresStore: Sendable {
             if g.batch.highChanged { rows.highClient.append(g.client); rows.highValue.append(g.batch.newHigh) }
         }
         rows.agentConfig = agentConfig
+        rows.agentConfigs = agentConfigs
         rows.metadata = try metadata.map { try WireJSON.encodeString($0) }
         for (ref, value) in secrets.sorted(by: { $0.key < $1.key }) {
             rows.secretRef.append(ref)
@@ -416,6 +418,7 @@ public struct PostgresStore: Sendable {
         var highClient: [String] = [], highValue: [Int] = []
         var metadata: String?
         var agentConfig: AgentConfigCommit?
+        var agentConfigs: [AgentConfigCommit] = []
         var secretRef: [String] = [], secretValue: [String] = []
     }
 
@@ -474,6 +477,7 @@ public struct PostgresStore: Sendable {
                     """, logger: logger)
             }
             if let change = r.agentConfig { try await self.commitAgentConfig(change, doc: id, tx: tx) }
+            for change in r.agentConfigs { try await self.commitAgentConfig(change, doc: id, tx: tx) }
             // Protocol 1.10: `updated_at` is the app's "last modified" (same statement, no extra round trip).
             _ = try await tx.query("UPDATE documents SET rev = rev + 1, head = \(newHead), updated_at = now() WHERE id = \(id)", logger: logger)
             return expectedRev + 1

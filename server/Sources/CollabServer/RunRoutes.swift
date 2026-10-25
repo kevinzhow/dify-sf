@@ -992,13 +992,21 @@ final class RunExecution: Sendable {
         let nodeType = start?.nodeType ?? ""
         let outputs = nodeType == NodeType.start ? r.inputs : r.outputs
         var processData = r.processData
+        var metadata = r.metadata
+        if nodeType == "agent", let session = try? await routes.store.agentSession(execution: executionId) {
+            let usage = (try? JSONValue.parse(session.usage)) ?? [:]
+            if metadata["agent_log"] == nil { metadata["agent_log"] = usage["agent_log"] ?? [] }
+            processData["agent_id"] = .string(session.agentID)
+            processData["agent_config_snapshot_id"] = .string(session.configSnapshotID)
+        }
         if let retries, !retries.isEmpty { processData[RetryHistory.key] = .array(retries) }
         let e = StoredNodeExecution(
             id: executionId, docId: appId, workflowRunId: runId, triggeredFrom: triggeredFrom, docSeq: docSeq, index: start?.index ?? 0,
             predecessorNodeId: nil, nodeId: nodeId, nodeType: nodeType, title: start?.title ?? "",
             inputs: JSONValue.object(r.inputs).compactJSON(), processData: JSONValue.object(processData).compactJSON(),
             outputs: JSONValue.object(outputs).compactJSON(), status: status, error: error.flatMap { $0.isEmpty ? nil : $0 },
-            elapsedTime: max(finishedAt.timeIntervalSince(startAt), 0), executionMetadata: JSONValue.object(r.metadata).compactJSON(),
+            elapsedTime: nodeType == "agent" ? (r.metadata["agent_active_elapsed_time"]?.double ?? max(finishedAt.timeIntervalSince(startAt), 0)) : max(finishedAt.timeIntervalSince(startAt), 0),
+            executionMetadata: JSONValue.object(metadata).compactJSON(),
             createdBy: createdBy, createdAt: startAt, finishedAt: finishedAt)
         let agentChange = pendingForms.agentOutcome(executionId)
         do {
@@ -1021,10 +1029,15 @@ final class RunExecution: Sendable {
         let now = Date()
         // `_fail_running_node_executions`: nodes still running when the run ends.
         for (x, s) in running {
+            var metadata: String? = nil
+            if s.nodeType == "agent", let session = try? await routes.store.agentSession(execution: x),
+               let usage = try? JSONValue.parse(session.usage) {
+                metadata = JSONValue.object(["agent_log": usage["agent_log"] ?? []]).compactJSON()
+            }
             let e = StoredNodeExecution(
                 id: x, docId: appId, workflowRunId: runId, triggeredFrom: triggeredFrom, docSeq: docSeq, index: s.index, predecessorNodeId: nil,
                 nodeId: s.nodeId, nodeType: s.nodeType, title: s.title, inputs: nil, processData: nil, outputs: nil, status: "failed",
-                error: error ?? "", elapsedTime: max(now.timeIntervalSince(s.startAt), 0), executionMetadata: nil, createdBy: createdBy,
+                error: error ?? "", elapsedTime: max(now.timeIntervalSince(s.startAt), 0), executionMetadata: metadata, createdBy: createdBy,
                 createdAt: s.startAt, finishedAt: now)
             try? await routes.store.upsertNodeExecution(e)
         }
@@ -1260,7 +1273,8 @@ struct RunStreamEncoder: Sendable {
             "index": snap == nil ? 0 : 1, "predecessor_node_id": .null, "inputs": .object(r.inputs), "inputs_truncated": false,
             "process_data": .object(r.processData), "process_data_truncated": false, "outputs": .object(projected(nodeId, r)),
             "outputs_truncated": false, "status": .string(status), "error": error.map(JSONValue.string) ?? .null,
-            "elapsed_time": .double(finishedAt.timeIntervalSince(start)), "execution_metadata": Self.mergedMetadata(r.metadata, snap),
+            "elapsed_time": .double(nodeType(nodeId) == "agent" ? (r.metadata["agent_active_elapsed_time"]?.double ?? finishedAt.timeIntervalSince(start)) : finishedAt.timeIntervalSince(start)),
+            "execution_metadata": Self.mergedMetadata(r.metadata, snap),
             "created_at": Self.ts(start), "finished_at": Self.ts(finishedAt), "files": [], "iteration_id": iterationId, "loop_id": loopId,
         ])
     }

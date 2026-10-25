@@ -64,31 +64,45 @@ extension Routes {
         return rawJSON(["upload_id": .string(id)], status: .created)
     }
 
-    func normalizeAgentCandidate(_ value: JSONValue, session: StoredAgentSession, files: (any RuntimeFiles)?, depth: Int = 0) async throws -> JSONValue {
-        guard depth < 40 else { throw NodeError("file_error", "Agent output nesting is too deep") }
-        if let id = value["upload_id"]?.string {
-            guard let receipt = try await store.agentUpload(id: id, execution: session.executionID, generation: session.generation),
-                  let fileID = receipt.fileID, let files, value["filename"] == .string(receipt.filename),
-                  value["mime_type"] == .string(receipt.mimeType), value["size"] == .int(receipt.size) else {
-                throw NodeError("file_error", "An agent output file has no matching received upload")
+    /// Normalize only declared file leaves. An ordinary object may legitimately contain an upload_id key.
+    /// Bad receipts become field failures and take the same retry/default/fail-branch policy as type errors.
+    func normalizeAgentCandidate(_ value: JSONValue, session: StoredAgentSession, files: (any RuntimeFiles)?, declarations: [AgentDeclaredOutput]) async throws -> JSONValue {
+        guard var object = value.object else { return value }
+        for field in declarations {
+            if let present = object[field.name] {
+                object[field.name] = try await normalizeAgentFileLeaf(present, definition: field.json, session: session, files: files)
             }
-            let file = try await files.resolve(["transfer_method": "tool_file", "upload_file_id": .string(fileID)], config: nil)
-            return file.json
         }
-        // A model cannot turn an arbitrary object/ID/URL into an owned runtime file. Only upload receipts cross this boundary.
-        if RuntimeFile.isFile(value) { throw NodeError("file_error", "An agent output file must reference its upload receipt") }
-        if let object = value.object {
-            var normalized = JSONObject()
-            for (key, child) in object { normalized[key] = try await normalizeAgentCandidate(child, session: session, files: files, depth: depth + 1) }
-            return .object(normalized)
+        return .object(object)
+    }
+
+    private func normalizeAgentFileLeaf(_ value: JSONValue, definition: JSONObject, session: StoredAgentSession, files: (any RuntimeFiles)?, depth: Int = 0) async throws -> JSONValue {
+        guard depth < 32 else { return .null }
+        if definition["type"] == "file" {
+            guard let id = value["upload_id"]?.string,
+                  let receipt = try await store.agentUpload(id: id, execution: session.executionID, generation: session.generation),
+                  let fileID = receipt.fileID, let files, value["filename"] == .string(receipt.filename),
+                  value["mime_type"] == .string(receipt.mimeType), value["size"] == .int(receipt.size),
+                  let resolved = try? await files.resolve(["transfer_method": "tool_file", "upload_file_id": .string(fileID)], config: nil) else { return .null }
+            return resolved.json
         }
-        if let array = value.array {
+        if definition["type"] == "object", var object = value.object {
+            for child in definition["children"]?.array ?? [] {
+                if let spec = child.object, let name = spec["name"]?.string, let present = object[name] {
+                    object[name] = try await normalizeAgentFileLeaf(present, definition: spec, session: session, files: files, depth: depth + 1)
+                }
+            }
+            return .object(object)
+        }
+        if definition["type"] == "array", let array = value.array {
+            let spec = definition["array_item"]?.object ?? ["type": "object"]
             var normalized: [JSONValue] = []
-            for child in array { normalized.append(try await normalizeAgentCandidate(child, session: session, files: files, depth: depth + 1)) }
+            for child in array { normalized.append(try await normalizeAgentFileLeaf(child, definition: spec, session: session, files: files, depth: depth + 1)) }
             return .array(normalized)
         }
         return value
     }
+
 }
 
 

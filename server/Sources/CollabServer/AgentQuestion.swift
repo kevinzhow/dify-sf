@@ -39,6 +39,7 @@ struct AgentQuestion: Sendable {
                 guard !options.isEmpty, options.allSatisfy({ $0["value"]?.string != nil }) else { throw NodeError("ask_human_invalid", "Invalid question options") }
                 input["type"] = "select"
                 input["option_source"] = ["type": "constant", "value": .array(options.map { $0["value"]! })]
+                input["option_labels"] = .object(JSONObject(options.map { ($0["value"]!.string!, $0["label"] ?? $0["value"]!) }))
                 if let value = field["default"], value != .null { defaults[name] = value }
             default: throw NodeError("ask_human_invalid", "Agent file question fields are not supported")
             }

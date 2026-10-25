@@ -56,7 +56,7 @@ extension Routes {
 
     func renewAgentRemoteLeases() async {
         guard let sessions = try? await store.ownedAgentSessions(owner: agentOwner) else { return }
-        let service = AgentServiceClient(config: config.agentService)
+        let service = AgentServiceClient(config: config.agentService, logger: logger)
         await withTaskGroup(of: Void.self) { group in
             for session in sessions {
                 group.addTask {
@@ -69,7 +69,7 @@ extension Routes {
 
     func deliverAgentOutbox() async {
         guard let jobs = try? await store.pendingAgentJobs() else { return }
-        let service = AgentServiceClient(config: config.agentService)
+        let service = AgentServiceClient(config: config.agentService, logger: logger)
         // Sequential ACKs preserve each execution's committed result order. Cleanup was excluded while any ACK is pending.
         for job in jobs {
             if Task.isCancelled { return }
@@ -93,6 +93,15 @@ extension Routes {
 
     func recoverAgentExecutions() async {
         do {
+            // Recover a remote accepted run that crashed before its ID reached the local operation ledger.
+            // Unknown remote executions can belong to another database, so this only fills an exact expired local match.
+            do {
+                for remote in try await AgentServiceClient(config: config.agentService).activeRuns() {
+                    guard let execution = remote["execution_id"]?.string, let operation = remote["operation_id"]?.string,
+                          case .int(let generation)? = remote["generation"], let id = remote["run_id"]?.string else { continue }
+                    try await store.reconcileExpiredAgentRun(execution: execution, operation: operation, generation: generation, run: id)
+                }
+            } catch { logger.warning("agent service reconciliation will retry; local recovery continues") }
             // Adoption is independent from answering the question. Otherwise a restarted server would let the
             // remote workspace expire while waiting for the user, despite having a durable resumable pause.
             for session in try await store.expiredPausedAgents() {

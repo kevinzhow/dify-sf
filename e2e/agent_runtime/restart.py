@@ -82,7 +82,7 @@ def wait_until(check, seconds=90):
 def api(name):
     env = {'COLLAB_DB_HOST': PG, 'COLLAB_DB_USER': 'collab', 'COLLAB_DB_PASSWORD': 'collab', 'COLLAB_DB_NAME': 'collab',
         'COLLAB_HTTP_HOST': '0.0.0.0', 'COLLAB_HTTP_PORT': '8080', 'COLLAB_HUMAN_INPUT_WEB_ENABLED': 'true',
-        'COLLAB_AGENT_INLINE_ENABLED': 'true', 'COLLAB_AGENT_SERVICE_URL': f'http://{SERVICE}:5050',
+        'COLLAB_AGENT_INLINE_ENABLED': 'true', 'COLLAB_AGENT_SHELL_ENABLED': 'true', 'COLLAB_AGENT_SERVICE_URL': f'http://{SERVICE}:5050',
         'COLLAB_AGENT_SERVICE_KEY': 'fixture-agent-service-key', 'COLLAB_AGENT_TIMEOUT_SECONDS': '600',
         'COLLAB_PLUGIN_DAEMON_URL': 'http://winnie-agent-plugin-daemon:5002', 'COLLAB_PLUGIN_DAEMON_KEY': 'fixture-daemon-key',
         'COLLAB_PLUGIN_DAEMON_TENANT': '00000000-0000-0000-0000-000000000001', 'COLLAB_MODELS_VALIDATE': 'false',

@@ -12,8 +12,10 @@ public struct AgentServiceConfig: Sendable {
     public var maxConcurrent: Int
     public var timeoutSeconds: Int
     public var inlineEnabled: Bool
+    public var shellEnabled: Bool
 
     public init(reader: ConfigReader) {
+        shellEnabled = reader.bool(forKey: "collab.agent.shell.enabled", default: false)
         inlineEnabled = reader.bool(forKey: "collab.agent.inline.enabled", default: false)
         url = reader.string(forKey: "collab.agent.service.url", default: "").trimmingCharacters(in: .whitespacesAndNewlines)
         key = reader.string(forKey: "collab.agent.service.key", isSecret: true, default: "")

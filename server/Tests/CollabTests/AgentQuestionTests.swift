@@ -16,6 +16,7 @@ struct AgentQuestionTests {
         #expect(q.config.content.contains("**Comment ***\n\n{{#$output.note#}}"))
         #expect(q.config.inputs.first?["default"] == ["type": "constant", "value": "Initial"])
         #expect(q.defaults["grade"] == "yes")
+        #expect(q.config.inputs.last?["option_labels"]?["yes"] == "Accept")
         #expect(q.config.actions.first?["button_style"] == "accent")
         let short = try #require(q.config.actions.first?["id"]?.string)
         #expect(short.count == 20 && q.actionIDs[short] == action)

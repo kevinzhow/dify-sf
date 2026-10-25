@@ -103,7 +103,7 @@ extension PostgresStore {
         try await bounded {
             try await self.client.withTransaction(logger: self.logger) { tx in
                 try await self.lockRun(s.workflowRunID, tx)
-                // A database-wide admission fence includes paused sessions, not just currently polling HTTP calls.
+                // A database-wide admission fence counts executing work; unanswered forms do not consume the running budget.
                 _ = try await tx.query("SELECT pg_advisory_xact_lock(743229871)", logger: self.logger)
                 for try await json in try await tx.query("SELECT row_to_json(s)::text FROM agent_node_sessions s WHERE execution_id = \(s.executionID) FOR UPDATE", logger: self.logger).decode(String.self) {
                     let found = try StoredAgentSession(json: json)
@@ -116,7 +116,7 @@ extension PostgresStore {
                 }
                 var count = 0
                 for try await n in try await tx.query("""
-                    SELECT count(*) FROM agent_node_sessions WHERE status IN ('prepared', 'running', 'result_ready', 'paused', 'retry')
+                    SELECT count(*) FROM agent_node_sessions WHERE status IN ('prepared', 'running', 'result_ready', 'retry')
                     """, logger: self.logger).decode(Int.self) { count = n }
                 guard maxConcurrent > 0, count < maxConcurrent else { throw StoreError.notCommitted("Agent execution concurrency limit reached") }
                 var inserted = false
@@ -160,10 +160,17 @@ extension PostgresStore {
         }
     }
 
-    public func startAgentOperation(session: StoredAgentSession, operation: String, digest: String, tokenHash: String) async throws {
+    public func startAgentOperation(session: StoredAgentSession, operation: String, digest: String, tokenHash: String, maxConcurrent: Int = 2) async throws {
         try await bounded {
             try await self.client.withTransaction(logger: self.logger) { tx in
                 try await self.lockRun(session.workflowRunID, tx)
+                _ = try await tx.query("SELECT pg_advisory_xact_lock(743229871)", logger: self.logger)
+                var executing = 0
+                for try await count in try await tx.query("""
+                    SELECT count(*) FROM agent_node_sessions WHERE execution_id <> \(session.executionID)
+                      AND status IN ('prepared', 'running', 'result_ready', 'retry')
+                    """, logger: self.logger).decode(Int.self) { executing = count }
+                guard maxConcurrent > 0, executing < maxConcurrent else { throw StoreError.notCommitted("Agent execution concurrency limit reached") }
                 var active = false
                 for try await _ in try await tx.query("""
                     UPDATE agent_node_sessions SET status = 'running', operation_id = \(operation), agent_run_id = NULL,

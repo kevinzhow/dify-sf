@@ -138,14 +138,21 @@ struct AgentExecutionStoreTests {
             #expect(jobs.contains { $0.kind == "cleanup" })
         }
     }
-    @Test func pausedSessionsCountTowardDatabaseAdmissionLimit() async throws {
+    @Test func pausedQuestionsDoNotConsumeTheRunningBudgetButResumesStillCheckIt() async throws {
         try await withServer { api, store, _ in
             let first = try await Self.seed(api, store)
             _ = try await store.client.query("UPDATE agent_node_sessions SET status = 'paused' WHERE execution_id = \(first.executionID)", logger: store.logger)
             var next = first; next.executionID = UUID().uuidString.lowercased()
-            do { _ = try await store.createAgentSession(next, maxConcurrent: 1); Issue.record("Paused execution did not count") } catch { }
-            #expect(try await store.createAgentSession(first, maxConcurrent: 1).executionID == first.executionID)
-            #expect(try await store.agentSession(execution: next.executionID) == nil)
+            let admitted = try await store.createAgentSession(next, maxConcurrent: 1)
+            #expect(admitted.executionID == next.executionID)
+            do {
+                try await store.startAgentOperation(session: first, operation: first.executionID + ":0:1", digest: "fixture", tokenHash: "fixture", maxConcurrent: 1)
+                Issue.record("A resumed session exceeded the running admission budget")
+            } catch { }
+            #expect(try await store.agentSession(execution: first.executionID)?.status == "paused")
+            var third = first; third.executionID = UUID().uuidString.lowercased()
+            do { _ = try await store.createAgentSession(third, maxConcurrent: 1); Issue.record("Running admission was bypassed") } catch { }
+            #expect(try await store.agentSession(execution: third.executionID) == nil)
         }
     }
     @Test func nodeResultAndAckRollbackTogetherWhenOwnershipWasLost() async throws {

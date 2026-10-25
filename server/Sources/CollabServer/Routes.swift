@@ -211,12 +211,10 @@ struct Routes: Sendable {
         let docId = id ?? UUID().uuidString.lowercased()
         let created: Bool
         do {
-            created = try await store.createDocument(id: docId, initial: imported.document, metadata: imported.metadata,
-                                                     secrets: imported.secrets,
-                                                     app: NewApp.from(metadata: imported.metadata, fallbackName: docId, createdBy: principal.id))
-        } catch {
-            throw ServerError.unavailable("\(error)")
-        }
+            created = try await createAgentAwareDocument(id: docId, imported: imported,
+                app: NewApp.from(metadata: imported.metadata, fallbackName: docId, createdBy: principal.id), user: principal.id)
+        } catch let error as ServerError { throw error }
+        catch { throw ServerError.unavailable("The workflow import could not be committed") }
         let head = try await liveHead(docId)
         struct Created: Encodable { var id: String; var head: Int; var created: Bool; var nodes: Int; var edges: Int }
         return try json(Created(id: docId, head: head, created: created, nodes: imported.document.nodes.count,
@@ -285,6 +283,7 @@ struct Routes: Sendable {
             throw ServerError.badRequest(error.message)
         }
         let store = self.store
+        let routes = self
         typealias Renamed = (nodes: [String: String], edges: [String: String])
         let (outcome, renamed) = try await registry.sequencer(doc).replace(client: client, cseq: cseq) { current, head -> (DocumentSequencer.ReplaceWork, Renamed) in
             let metadata: Value?, secrets: [String: String]
@@ -301,8 +300,10 @@ struct Routes: Sendable {
                 throw ServerError.badRequest("not an importable Dify workflow: \(error)")
             }
             if !plan.secrets.isEmpty, store.cipher == nil { throw SecretsKeyMissing() }
-            return (.init(ops: plan.ops, metadata: plan.metadata == metadata ? nil : plan.metadata, secrets: plan.secrets),
-                    (plan.renamedNodes, plan.renamedEdges))
+            let agents = try await routes.agentImportPlan(plan.document, metadata: plan.metadata, app: doc,
+                user: principal.id, preserveLocalBindings: !adoptApp)
+            return (.init(ops: plan.ops + (try agents.bindingOps()), metadata: agents.metadata == metadata ? nil : agents.metadata,
+                          secrets: plan.secrets, agentConfigs: agents.changes), (plan.renamedNodes, plan.renamedEdges))
         }
         // Protocol 1.10: as Dify's overwrite import, the app takes the file's name, description and icon.
         if adoptApp, !outcome.replayed { try await adoptAppSection(doc, of: root, by: principal.id) }
@@ -323,12 +324,12 @@ struct Routes: Sendable {
         let (s, metadata, secrets) = try await exportParts(id, viewer: p.id, includeSecret: includeSecret)
         var headers = HTTPFields()
         if q["format"] == "json" {
-            let v = try DifyDSL.exportValue(s.doc, metadata: metadata, secrets: secrets)
+            let v = try await agentExportValue(s.doc, metadata: metadata, secrets: secrets, app: id)
             headers[.contentType] = "application/json"
             return Response(status: .ok, headers: headers, body: .init(data: try WireJSON.encode(v)))
         }
         headers[.contentType] = "application/x-yaml; charset=utf-8"
-        let yaml = try DifyDSL.exportYAML(s.doc, metadata: metadata, secrets: secrets)
+        let yaml = try DifyDSL.encodeYAML(try await agentExportValue(s.doc, metadata: metadata, secrets: secrets, app: id))
         return Response(status: .ok, headers: headers, body: .init(data: Data(yaml.utf8)))
     }
 

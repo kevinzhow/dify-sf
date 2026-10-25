@@ -72,3 +72,29 @@ Output defaults are type-checked before model execution. Configured canonical fi
 ordinary scoped file runtime and pass the same declared file constraints; model candidates still require received
 operation upload receipts. Configuration-file availability is projected on read without rewriting immutable snapshots.
 Composer graph operations carry the authenticated editor's attribution in the same transaction.
+
+## Inline runtime boundaries
+
+Shell access requires both `COLLAB_AGENT_SHELL_ENABLED=true` and an authenticated agent-service health response
+with `sandbox: "isolated"`. The switch defaults to false. An unavailable sandbox does not prevent a model-only
+inline agent from running. `/v1/system-features` reports `inline_agent` and the effective `inline_agent_shell`;
+`COLLAB_AGENT_INLINE_ENABLED` still defaults to false.
+
+Only declared file leaves are interpreted as upload receipts. Missing or mismatched receipts become individual
+output validation failures, including inside objects and arrays; they follow the declared retry/default/failure
+policy. Ordinary object properties named `upload_id` remain ordinary data. Runtime output files still require a
+received upload owned by that execution and generation; configured defaults use the existing scoped file resolver.
+
+The Swift adapter consumes the service's durable SSE stream with `after=<last committed event>`. It stores event
+projections and thought/tool/usage logs in the private execution ledger before broadcasting `agent_log` or advancing
+the cursor. A result cannot enqueue its acknowledgement until the terminal cursor agrees with durable service
+state. Replayed events have stable run/event identities and are deduplicated. A 410 is an explicit lost-history
+failure, not an empty successful log. Final node metadata retains the log; paused reconnect snapshots reconstruct
+it from the private execution ledger. Terminal service snapshots are not copied into the public log. Environment
+values are redacted from event projections, and operation audit digests omit environment values.
+
+The running admission budget excludes unanswered pauses. Resuming work checks the same database-wide running
+budget. Paused execution ownership and remote workspace leases continue to renew independently of browser/SSE
+connections. Active elapsed time accumulates across answering rounds and output retries, excluding time spent
+waiting for a human. ACK/cancel/cleanup retries treat already removed or superseded remote work as resolved;
+transient cleanup failures remain in the durable outbox.
