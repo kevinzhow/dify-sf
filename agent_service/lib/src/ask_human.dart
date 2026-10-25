@@ -22,6 +22,10 @@ class AskHumanLimits {
   final int maxQuestionChars = 1000;
   final int maxFieldLabelChars = 120;
   final int maxActionLabelChars = 80;
+
+  /// dify-sf: the Swift server stores form field names of at most 30 ASCII
+  /// characters; a longer name is a tool error the model can correct.
+  final int maxFieldNameChars = 30;
 }
 
 const askHumanLimits = AskHumanLimits();
@@ -45,6 +49,7 @@ String askHumanPromptHint([AskHumanLimits l = askHumanLimits]) {
       '- Use at most ${l.maxActions} action(s).\n'
       "- Keep 'question' under ${l.maxQuestionChars} characters.\n"
       "- Keep 'markdown' under ${l.maxMarkdownChars} characters.\n"
+      '- Field names: ASCII identifiers of at most ${l.maxFieldNameChars} characters.\n'
       '- Keep each field label under ${l.maxFieldLabelChars} characters.\n'
       '- Keep each action label under ${l.maxActionLabelChars} characters.\n'
       '- If you omit actions, the system will add one primary action: Submit.\n'
@@ -206,6 +211,11 @@ Map<String, Object?> normalizeAskHumanArgs(
     final name = reqString(f, 'name', 'field name');
     if (!_identifier.hasMatch(name)) {
       throw const FormatException('field name must be a valid identifier');
+    }
+    if (name.length > l.maxFieldNameChars) {
+      throw FormatException(
+        'field name must be at most ${l.maxFieldNameChars} characters',
+      );
     }
     final label = reqString(f, 'label', 'field label');
     final required = f['required'] ?? false;
