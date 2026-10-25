@@ -1,13 +1,17 @@
 # Native read-only workflow MCP
 
+This native client interface and its two checklist tools are **dify-sf extensions**,
+not upstream Dify console/MCP endpoints.
+
 The normal Flutter Linux executable optionally serves **only** `read_workflow`
 and `check_workflow` over loopback Streamable HTTP. It runs the editor's existing
 `computeChecklist` and `checkBeforePublish`; there is no second validator or DSL
 importer. Protocol handling uses the maintained `mcp_dart` SDK, pinned to 2.4.3.
 No workflow edit, import, execution, publishing or approval tool is registered.
-Checks accept an existing draft ID, not a YAML pathname. To gate a file before
-importing into a real workspace, first stage it through the existing import API
-in an isolated target, then check that draft ID.
+Checks accept an existing draft ID, not a YAML pathname. Import a file as a new
+draft through the existing API, then check that draft ID and revision. Retain a
+complete, clean draft; delete or correct a draft with warnings before delivery.
+Import and deletion stay outside this read-only MCP interface.
 
 ## Build and sign in
 
@@ -19,13 +23,28 @@ flutter pub get
 flutter build linux --release
 ```
 
-Choose a private profile directory and first sign in through the native client's
-normal sign-in page, using `--server URL --mcp-profile /private/profile`.
-This reuses the existing `AuthSession` and owner-only token store, including its
-normal server validation and refresh. The MCP caller does not supply or receive
-the account's access/refresh tokens. No login tool or account impersonation is
-provided. `--mcp-profile` is optional: omit it to reuse the native app's normal
-profile. Keep different test accounts/environments in separate profiles.
+For headless operation, sign in once with the pure Dart helper. It needs no
+Flutter window, Weston, `DISPLAY` or Wayland connection:
+
+```sh
+cd packages/collab_client
+dart pub get
+dart run bin/login_profile.dart --server URL \
+  --credentials-file /private/login.json --profile /private/profile
+```
+
+The input is an owner-only **0600** regular JSON file with exactly `email` and
+`password` fields. The helper reuses `AuthSession.login`, creates a **0700** profile
+and writes the existing **0600** token-store format, then exits. It prints a
+constant success/failure message; passwords, tokens, account data and remote error
+payloads are never printed. Invalid configuration exits 78; failed sign-in exits
+1 and leaves an existing valid profile unchanged. Use the **same server URL** and
+`--mcp-profile /private/profile` when starting the native client below.
+
+An existing private native profile or ordinary interactive sign-in also works.
+The MCP caller never receives the login credentials or token pair, and no login
+tool is registered in MCP. Keep different accounts/environments in separate
+profiles. The input credential file stays under the operator's control.
 
 Create a **different**, random local MCP access key in an owner-only file:
 
@@ -125,6 +144,10 @@ snapshot even when the graph requires an unavailable catalog for validation.
 Never use read completeness as a substitute for `check_workflow.gate_passed`.
 
 ## Verification
+
+`cd packages/collab_client && dart test test/login_profile_cli_test.dart test/auth_test.dart`
+checks no-display profile creation and normal session restore, rejected permissions
+and symlinks, failed-login profile preservation and credential-safe error messages.
 
 `flutter test test/mcp test/dify_spec/workflow/hooks/use_checklist_test.dart
  test/dify_spec/workflow/header/checklist_test.dart` exercises version guards,
