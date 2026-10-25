@@ -13,7 +13,8 @@ import 'package:collab_client/collab_client.dart'
         TransportException,
         VersionsApi,
         ToolsApi,
-        HelpersApi;
+        HelpersApi,
+        HttpAgentComposerApi;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -125,6 +126,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   Object? _error;
   ToolsApi? _tools;
   HelpersApi? _helpers;
+  HttpAgentComposerApi? _agentComposer;
 
   /// The document's Dify app metadata; the defaults (a workflow, no variables) until it arrives or if it cannot be read.
   DocMeta _meta = const DocMeta();
@@ -146,6 +148,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     if (widget.backend case HttpBackend(:final baseUrl, :final auth)) {
       _tools = ToolsApi(baseUrl, auth: auth?.session);
       _helpers = HelpersApi(baseUrl, auth: auth?.session);
+      _agentComposer = HttpAgentComposerApi(baseUrl, auth: auth?.session);
     }
     WidgetsBinding.instance.addObserver(this);
     _stopOnlineListener = listenForOnline(() => _controller?.reconnectNow());
@@ -313,6 +316,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   void dispose() {
     _tools?.close();
     _helpers?.close();
+    _agentComposer?.close();
     unawaited(_appEvents?.cancel());
     widget.onImportAvailable?.call(null);
     WidgetsBinding.instance.removeObserver(this);
@@ -489,6 +493,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     return DifyWorkflowEditor(
       tools: _tools,
       helpers: _helpers,
+      agentComposer: _agentComposer,
       controller: c,
       serverLabel: widget.backend.label,
       allowMockRuns: widget.backend is DemoRunBackend,

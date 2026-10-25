@@ -138,6 +138,12 @@ extension PostgresStore {
         guard receipt.nodeID == s.nodeId, receipt.userID == s.createdBy, !receipt.requestID.isEmpty else {
             throw StoreError.notCommitted("Invalid agent composer receipt")
         }
+        // Composer changes are document operations too; collaborators must see the authenticated editor's name.
+        let client = "agent-" + receipt.userID + "-" + receipt.requestID
+        _ = try await tx.query("""
+            INSERT INTO client_accounts(doc_id, client_id, account_id) VALUES (\(doc), \(client), \(receipt.userID))
+            ON CONFLICT (doc_id, client_id) DO NOTHING
+            """, logger: logger)
         _ = try await tx.query("""
             INSERT INTO agent_composer_receipts(doc_id, user_id, request_id, node_id, digest, response_json)
             VALUES (\(doc), \(receipt.userID), \(receipt.requestID), \(receipt.nodeID), \(receipt.digest), \(receipt.response)::jsonb)

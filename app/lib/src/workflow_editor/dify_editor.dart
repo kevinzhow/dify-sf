@@ -1,3 +1,4 @@
+import '../workflow/model_catalog.dart' show ProviderWithModels;
 import '../i18n/dify_i18n.dart';
 import 'header/format.dart';
 import 'run/ui/before_run_form.dart' show RunFilePicker, RunFilePickerScope;
@@ -8,6 +9,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../audio/audio_player.dart';
+import '../agents/inline_composer.dart';
+import '../agents/inline_configure.dart';
+import '../agents/inline_checks.dart';
+import 'variable_panels/app_variables.dart' show toastError;
 import '../workflow_helpers/generator_dialog.dart';
 import '../workflow/dify_json.dart' show difyDataOf, plainOf;
 import 'node_panel/bodies/core/core_kit.dart' show CorePanelHost, CorePanelHostData;
@@ -148,6 +153,7 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.serverRuntime,
     this.tools,
     this.helpers,
+    this.agentComposer,
     this.allowMockRuns = false,
     this.commentsStore,
     this.access = WorkflowAccessControl.full,
@@ -224,6 +230,7 @@ class DifyWorkflowEditor extends StatefulWidget {
   final ServerWorkflowRuntime? serverRuntime;
   final ToolsApi? tools;
   final HelpersApi? helpers;
+  final AgentComposerApi? agentComposer;
 
   /// The document's canvas comments. Null: the editor keeps its own for the controller's session (created with it,
   /// disposed with it). Either way the comments UI finds it with [CommentsScope.of].
@@ -234,6 +241,9 @@ class DifyWorkflowEditor extends StatefulWidget {
 }
 
 class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
+  InlineAgentComposer? _agentComposer;
+  InlineAgentComposer? get _inlineComposer => widget.agentComposer == null ? null :
+      (_agentComposer ??= InlineAgentComposer.forSession(widget.agentComposer!, controller.docId, controller.session));
   EditorController get controller => widget.controller;
   DocMeta get meta => widget.meta;
   String get serverLabel => widget.serverLabel;
@@ -355,6 +365,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   @override
   void didUpdateWidget(DifyWorkflowEditor old) {
     super.didUpdateWidget(old);
+    if (old.agentComposer != widget.agentComposer || old.controller != controller) _agentComposer = null;
     if (widget.models case final models? when old.models != models) ProviderIconScope.fallback = models.icons;
     if (old.versions != widget.versions || old.controller != controller) _bindVersions();
     _versions?.appName = meta.appName;
@@ -469,6 +480,12 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     onAddNote: onAddNote,
     onChangeBlock: onChangeBlock,
     onExportDsl: widget.onExportDsl == null ? null : _exportDsl,
+    exportAgentClipboard: _inlineComposer?.exportClipboard,
+    pasteAgentClipboard: _inlineComposer?.pasteClipboard,
+    onAgentClipboardError: () {
+      final context = _inner;
+      if (context != null && context.mounted) toastError(context, DifyI18n.tr('agent-v-2', 'inline.clipboardFailed'));
+    },
     // Run this step / Stop: the node's single run (local run state in the store).
     isSingleRunning: (nodeId) {
       final context = _inner;
@@ -562,6 +579,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                       header: (context, canvas) => _BoundHeader(
                         controller: controller,
                         models: widget.models,
+                        agentComposer: widget.agentComposer,
                         canvas: canvas,
                         meta: meta,
                         access: widget.access,
@@ -914,6 +932,13 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       refreshModels: () => unawaited(models.refreshModelLists()),
       generatePrompt: widget.helpers == null || !widget.access.canEdit ? null : _generatePrompt,
       generateJsonSchema: widget.helpers == null || !widget.access.canEdit ? null : _generateSchema,
+      fetchInlineAgent: _inlineComposer == null ? null : (node, agent) => _inlineComposer!.load(node, agentId: agent,
+          snapshotId: (difyDataOf(controller.doc.nodes[node]!)['agent_binding'] as Map?)?['current_snapshot_id'] as String?),
+      createInlineAgent: _inlineComposer == null || !widget.access.canEdit ? null : _inlineComposer!.create,
+      composerCommitsBinding: _inlineComposer != null,
+      inlineAgentWorkspaceBuilder: _inlineComposer == null ? null : (context, args) => InlineAgentConfigure(
+        key: ValueKey('inline-configure-${args.nodeId}'), composer: _inlineComposer!, args: args,
+        readOnly: !widget.access.canEdit, pickFile: widget.pickRunFile),
     );
   }
 
@@ -958,6 +983,7 @@ class _BoundHeader extends StatefulWidget {
     this.access = WorkflowAccessControl.full,
     this.user,
     this.models,
+    this.agentComposer,
     this.versions,
     this.publisher = const EditorPublisherHost(),
   });
@@ -966,6 +992,7 @@ class _BoundHeader extends StatefulWidget {
   final EditorVersions? versions;
   final EditorPublisherHost publisher;
   final WorkspaceModels? models;
+  final AgentComposerApi? agentComposer;
   final DocMeta meta;
   final WorkflowAccessControl access;
   final EditorUser? user;
@@ -980,6 +1007,36 @@ class _BoundHeader extends StatefulWidget {
 
 class _BoundHeaderState extends State<_BoundHeader> {
   EditorHeaderBinding? _binding;
+  InlineAgentChecks _agents = const InlineAgentChecks();
+  String? _agentIdentity;
+  int _agentLoad = 0, _agentRetryCount = 0;
+  Timer? _agentRetry;
+
+  void _agentGraphChanged({bool retry = false}) {
+    final doc = widget.controller.doc;
+    final identity = InlineAgentChecks.identities(doc);
+    if (identity == _agentIdentity) return;
+    _agentIdentity = identity;
+    if (!retry) _agentRetryCount = 0;
+    _agentRetry?.cancel();
+    final generation = ++_agentLoad;
+    _agents = const InlineAgentChecks();
+    // The normal document listener presents configuration unavailable while this snapshot is loading.
+    final api = widget.agentComposer;
+    if (api == null || identity.isEmpty) return;
+    unawaited(InlineAgentChecks.load(api, widget.controller.docId, doc).then((loaded) {
+      if (!mounted || generation != _agentLoad) return;
+      _agents = loaded;
+      _binding?.refreshChecklist();
+      if (loaded.retryable && _agentRetryCount++ < 3) {
+        _agentRetry = Timer(const Duration(seconds: 5), () {
+          if (!mounted || generation != _agentLoad) return;
+          _agentIdentity = null;
+          _agentGraphChanged(retry: true);
+        });
+      }
+    }));
+  }
 
   /// The store's environment and conversation variables follow the document (protocol 1.7).
   AppRegistersSync? _variables;
@@ -989,11 +1046,12 @@ class _BoundHeaderState extends State<_BoundHeader> {
   final _users = ValueNotifier<List<OnlineUser>>(const []);
 
   /// The providers the checklist last saw: it is recomputed when they change.
-  List<Json>? _providers;
 
   @override
   void initState() {
     super.initState();
+    widget.controller.addListener(_agentGraphChanged);
+    _agentGraphChanged();
     widget.models?.addListener(_modelsChanged);
     widget.versions?.addListener(_versionsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _versionsChanged());
@@ -1010,9 +1068,6 @@ class _BoundHeaderState extends State<_BoundHeader> {
   }
 
   void _modelsChanged() {
-    final providers = widget.models?.summary;
-    if (identical(providers, _providers)) return;
-    _providers = providers;
     _binding?.refreshChecklist();
   }
 
@@ -1029,6 +1084,15 @@ class _BoundHeaderState extends State<_BoundHeader> {
       // of the document).
       checklistEnv: () => checklist.ChecklistEnv(
         appMode: widget.meta.appMode,
+        inlineAgentSouls: _agents.souls,
+        inlineAgentModelFeatures: widget.models == null ? null : !widget.models!.isModelListLoaded('llm') ? {'__loading__': const []} : {
+          for (final provider in widget.models!.catalog.textGenerationModelList)
+            for (final model in provider.models) '${provider.provider}/${model.model}': model.features ?? const [],
+        },
+        inlineAgentModelLabels: {
+          for (final provider in widget.models?.catalog.textGenerationModelList ?? const <ProviderWithModels>[])
+            for (final model in provider.models) '${provider.provider}/${model.model}': model.label['en_US'] ?? model.model,
+        },
         language: widget.models?.language ?? 'en_US',
         environmentVariables: widget.controller.appLists.environmentVariables,
         conversationVariables: widget.controller.appLists.conversationVariables,
@@ -1051,6 +1115,12 @@ class _BoundHeaderState extends State<_BoundHeader> {
   @override
   void didUpdateWidget(_BoundHeader old) {
     super.didUpdateWidget(old);
+    if (old.controller != widget.controller || old.agentComposer != widget.agentComposer) {
+      old.controller.removeListener(_agentGraphChanged);
+      widget.controller.addListener(_agentGraphChanged);
+      _agentIdentity = null;
+      _agentGraphChanged();
+    }
     if (old.models != widget.models) {
       old.models?.removeListener(_modelsChanged);
       widget.models?.addListener(_modelsChanged);
@@ -1077,6 +1147,8 @@ class _BoundHeaderState extends State<_BoundHeader> {
 
   @override
   void dispose() {
+    _agentRetry?.cancel();
+    widget.controller.removeListener(_agentGraphChanged);
     widget.models?.removeListener(_modelsChanged);
     widget.versions?.removeListener(_versionsChanged);
     _variables?.dispose();

@@ -11,8 +11,12 @@ public struct AgentServiceConfig: Sendable {
     public var key: String
     public var maxConcurrent: Int
     public var timeoutSeconds: Int
+    public var inlineEnabled: Bool
+    public var shellEnabled: Bool
 
     public init(reader: ConfigReader) {
+        shellEnabled = reader.bool(forKey: "collab.agent.shell.enabled", default: false)
+        inlineEnabled = reader.bool(forKey: "collab.agent.inline.enabled", default: false)
         url = reader.string(forKey: "collab.agent.service.url", default: "").trimmingCharacters(in: .whitespacesAndNewlines)
         key = reader.string(forKey: "collab.agent.service.key", isSecret: true, default: "")
         maxConcurrent = max(1, reader.int(forKey: "collab.agent.maxConcurrent", default: 2))
@@ -36,6 +40,8 @@ struct AgentModelScope: Sendable {
     var inputFileIDs: Set<String> = []
     var endUserID: String? = nil
     var modelParameters: JSONObject? = nil
+    var credentialReference: JSONValue? = nil
+    var durableOwner: String? = nil
 
     var appID: String { execution["app_id"]?.string ?? "" }
     var workflowRunID: String { execution["workflow_run_id"]?.string ?? "" }
@@ -83,7 +89,7 @@ struct AgentModelGatewayRequest: Sendable {
             guard let object = raw.object else { throw Self.invalid() }
             parameters = object
         } else { parameters = [:] }
-        if let raw = target["stop"], raw != .null {
+        if let raw = (target["stop"] == .null ? nil : target["stop"]) ?? parameters["stop"], raw != .null {
             guard let array = raw.array, array.count <= 32, array.allSatisfy({ $0.string != nil }) else { throw Self.invalid() }
             stop = array.compactMap(\.string)
         } else { stop = [] }
@@ -192,6 +198,7 @@ actor AgentModelScopes {
               scope.modelParameters.map({ expected in
                   expected.count == request.parameters.count && expected.allSatisfy { request.parameters[$0.key] == $0.value }
               }) ?? true,
+              scope.modelParameters.map({ expected in request.stop == (expected["stop"]?.array?.compactMap(\.string) ?? []) }) ?? true,
               scope.caller.allSatisfy({ request.caller[$0.key] == $0.value }) else { throw Self.denied() }
         guard request.callIndex <= scope.maxCalls else {
             throw ServerError.http(status: 429, code: "agent_call_limit", message: "Agent model call limit reached")
@@ -224,6 +231,18 @@ actor AgentModelScopes {
         entries[claim.digest] = entry
     }
 
+    func grantFiles(execution: String, generation: Int, files: Set<String>) {
+        for (digest, var entry) in entries where entry.scope.executionID == execution && entry.scope.generation == generation {
+            entry.scope.inputFileIDs.formUnion(files); entries[digest] = entry
+        }
+    }
+
+    func revokeExecution(_ execution: String, generation: Int) {
+        for (digest, entry) in entries where entry.scope.executionID == execution && entry.scope.generation == generation {
+            for task in entry.tasks.values { task.cancel() }; entries[digest] = nil
+        }
+    }
+
     func revoke(token: String) -> LLMUsage {
         guard let entry = entries.removeValue(forKey: Tokens.sha256(token)) else { return .empty }
         for task in entry.tasks.values { task.cancel() }
@@ -254,7 +273,7 @@ extension Routes {
         }
     }
 
-    private func authenticateAgentService(_ req: Request) throws -> String {
+    func authenticateAgentService(_ req: Request) throws -> String {
         guard config.agentService.isConfigured else {
             throw ServerError.http(status: 503, code: "agent_not_configured", message: "The agent service is not configured")
         }
@@ -272,6 +291,7 @@ extension Routes {
     private func downloadAgentFile(_ req: Request) async throws -> Response {
         let token = try authenticateAgentService(req)
         let scope = try await agentModelScopes.activeScope(token: token)
+        if scope.durableOwner != nil { try await requireDurableAgentScope(scope) }
         let bytes = try await req.body.collect(max: .specified(ByteCount(value: 4096))) ?? Data()
         guard let payload = try? JSONValue.parse(bytes), let id = payload["file_id"]?.string,
               scope.inputFileIDs.contains(id) else { throw ServerError.missing("File not found") }
@@ -340,6 +360,7 @@ extension Routes {
         let payload: JSONValue
         do { payload = try JSONValue.parse(bytes) } catch { throw AgentModelGatewayRequest.invalid() }
         let authorized = try await agentModelScopes.activeScope(token: token)
+        if authorized.durableOwner != nil { try await requireDurableAgentScope(authorized) }
         guard let caller = payload["caller"]?.object,
               authorized.caller.allSatisfy({ caller[$0.key] == $0.value }),
               payload["target"]?["provider"] == .string(authorized.provider),
@@ -366,12 +387,16 @@ extension Routes {
             var lastUsage: LLMUsage?
             do {
                 try Task.checkCancellation()
-                let credentials = try await models.credentials(provider: request.provider, model: request.model, modelType: "llm")
+                let credentials: JSONObject
+                if scope.credentialReference != nil { credentials = try await self.agentCredentials(provider: request.provider, model: request.model, reference: scope.credentialReference) }
+                else { credentials = try await models.credentials(provider: request.provider, model: request.model, modelType: "llm") }
                 try Task.checkCancellation()
+                var parameters = request.parameters
+                parameters["stop"] = nil
                 let instance = ModelInstance(provider: request.provider, modelName: request.model, credentials: credentials,
-                                             parameters: request.parameters, stop: request.stop)
+                                             parameters: parameters, stop: request.stop)
                 var size = 0
-                for try await chunk in models.invokeLLM(instance, promptMessages: request.messages, parameters: request.parameters,
+                for try await chunk in models.invokeLLM(instance, promptMessages: request.messages, parameters: parameters,
                     tools: request.tools, stop: request.stop, stream: request.tools.isEmpty, user: scope.userID) {
                     try Task.checkCancellation()
                     if let usage = chunk.usage { lastUsage = usage }

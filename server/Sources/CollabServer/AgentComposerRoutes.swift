@@ -7,6 +7,8 @@ import Vapor
 
 extension Routes {
     func registerAgentComposer(on r: any RoutesBuilder) {
+        registerAgentClipboard(on: r)
+        registerAgentRecords(on: r)
         let path = r.grouped("v1", "apps", ":app", "workflows", "draft", "nodes", ":node", "agent-composer")
         path.get { req in await handle(req) { try await self.readAgentComposer(req) } }
         path.put { req in await handle(req) { try await self.saveAgentComposer(req) } }
@@ -93,17 +95,69 @@ extension Routes {
             "document_seq": .int(head)]
     }
 
+    /// Availability is a read-time projection. Immutable snapshots retain their identities after a blob is deleted.
+    func readableAgentSoul(_ raw: JSONObject, user: String, app: String) async -> JSONObject {
+        var soul = raw
+        let files = runtimeServices(appId: "", userId: user).files
+        var projected: [JSONValue] = []
+        for item in raw["config_files"]?.array ?? [] {
+            var file = item.object ?? [:]
+            if let id = file["file_id"]?.string, !id.isEmpty, let files {
+                file["is_missing"] = .bool((try? await files.resolve(["transfer_method": "local_file", "upload_file_id": .string(id)], config: nil)) == nil)
+            } else { file["is_missing"] = true }
+            projected.append(.object(file))
+        }
+        soul["config_files"] = .array(projected)
+        let secrets = (try? await store.secrets(app)) ?? [:]
+        var env = soul["env"]?.object ?? [:]
+        env["secret_refs"] = .array((env["secret_refs"]?.array ?? []).map { value in
+            var ref = value.object ?? [:]
+            ref["is_missing"] = .bool(ref["ref"]?.string.flatMap { secrets[$0] }?.isEmpty != false)
+            return .object(ref)
+        })
+        soul["env"] = .object(env)
+        return soul
+    }
+
+    func readableAgentJob(_ raw: JSONObject, user: String, app: String) async -> JSONObject {
+        var job = raw, metadata = raw["metadata"]?.object ?? [:]
+        let files = runtimeServices(appId: app, userId: user).files
+        var projected: [JSONValue] = []
+        for value in metadata["file_refs"]?.array ?? [] {
+            var file = value.object ?? [:]
+            let id = file["file_id"]?.string ?? RuntimeFile.recordId(in: value)
+            if let id, !id.isEmpty, let files {
+                file["is_missing"] = .bool((try? await files.resolve(["transfer_method": "local_file", "upload_file_id": .string(id)], config: nil)) == nil)
+            } else { file["is_missing"] = true }
+            projected.append(.object(file))
+        }
+        metadata["file_refs"] = .array(projected); job["metadata"] = .object(metadata)
+        return job
+    }
+
     private func readAgentComposer(_ req: Request) async throws -> Response {
         let p = try await authenticate(req)
         let app = try await appOfMode(req, p, ["workflow"])
         let id = try nodeId(req)
         let snapshot = try await registry.sequencer(app.id).currentSnapshot()
+        let parameters = query(req)
+        // A reader checking an atomic older graph supplies both immutable identities. The current draft may have
+        // removed/replaced that node; its mutable task and binding must not be mixed into the historical config.
+        if let agent = parameters["agent_id"], let configID = parameters["snapshot_id"] {
+            guard let stored = try await store.agentConfig(doc: app.id, node: id, agent: agent, snapshot: configID) else {
+                throw ServerError.missing("Agent config not found in this workflow node")
+            }
+            return rawJSON(Self.agentComposerResponse(app: app.id, node: id, title: snapshot.doc.nodes[id]?.title ?? "Agent",
+                head: snapshot.seq, config: stored, soul: await readableAgentSoul(try JSONValue.parse(stored.soul).object ?? [:], user: p.id, app: app.id),
+                job: await readableAgentJob(try JSONValue.parse(stored.nodeJob).object ?? [:], user: p.id, app: app.id)))
+        }
+        if parameters["agent_id"] != nil { throw Self.invalidParam("A historical agent identity needs snapshot_id") }
         guard let node = snapshot.doc.nodes[id] else { throw ServerError.missing("Node not found") }
         let graph = try Self.agentNodeConfig(node)
         let stored = try await pinnedAgentConfig(app: app.id, node: id, graph: graph, snapshotOverride: query(req)["snapshot_id"])
         let soul = try stored.map { try JSONValue.parse($0.soul).object ?? [:] } ?? AgentInlineConfig.empty
         return rawJSON(Self.agentComposerResponse(app: app.id, node: id, title: node.title, head: snapshot.seq,
-            config: stored, soul: soul, job: try Self.agentNodeJob(graph: graph, stored: stored)))
+            config: stored, soul: await readableAgentSoul(soul, user: p.id, app: app.id), job: await readableAgentJob(try Self.agentNodeJob(graph: graph, stored: stored), user: p.id, app: app.id)))
     }
 
     private func saveAgentComposer(_ req: Request) async throws -> Response {
@@ -119,7 +173,7 @@ extension Routes {
             throw Self.invalidParam("Inline composer requires variant, save_strategy, expected_seq and a UUID idempotency_key")
         }
         let allowed: Set<String> = ["variant", "binding", "soul_lock", "agent_soul", "node_job", "save_strategy",
-            "version_note", "idempotency_key", "client_revision_id", "expected_seq"]
+            "version_note", "idempotency_key", "client_revision_id", "expected_seq", "expected_node"]
         guard Set(payload.keys).isSubset(of: allowed), payload["binding"]?["binding_type"] == nil || payload["binding"]?["binding_type"] == "inline_agent" else {
             throw Self.invalidParam("Unsupported inline composer field or binding")
         }
@@ -138,11 +192,17 @@ extension Routes {
         let store = store
         let routes = self
         _ = try await registry.sequencer(app.id).replace(client: "agent-" + p.id + "-" + requestID, cseq: 1) { doc, head -> (DocumentSequencer.ReplaceWork, Bool) in
-            guard head == expected else {
-                throw ServerError.http(status: 409, code: "agent_document_changed", message: "Reload the current workflow before saving this agent")
-            }
             guard let node = doc.nodes[id] else { throw ServerError.missing("Node not found") }
             let graph = try Self.agentNodeConfig(node)
+            if let baseline = payload["expected_node"]?.object {
+                let fields: Set<String> = ["agent_binding", "agent_task", "agent_declared_outputs"]
+                guard Set(baseline.keys) == fields,
+                      fields.allSatisfy({ (baseline[$0] ?? .null) == (graph[$0] ?? .null) }) else {
+                    throw ServerError.http(status: 409, code: "agent_node_changed", message: "This agent node changed; keep your edits and reload its baseline")
+                }
+            } else if head != expected {
+                throw ServerError.http(status: 409, code: "agent_document_changed", message: "Reload the current workflow before saving this agent")
+            }
             let pinned = try await routes.pinnedAgentConfig(app: app.id, node: id, graph: graph)
             if let binding = payload["binding"]?.object {
                 guard (binding["agent_id"] == .null ? nil : binding["agent_id"]) == pinned.map({ .string($0.agentId) }),
@@ -158,6 +218,11 @@ extension Routes {
             } else if strategy == "node_job_only", let proposed = payload["agent_soul"], proposed != .object(Self.maskedAgentSoul(oldSoul)) {
                 throw Self.invalidParam("node_job_only cannot modify agent_soul")
             }
+            oldSoul["config_files"] = .array((oldSoul["config_files"]?.array ?? []).map { value in
+                var file = value.object ?? [:]
+                if file["file_id"]?.string?.isEmpty == false { file["is_missing"] = false }
+                return .object(file)
+            })
             var soul: AgentInlineConfig
             do { soul = try AgentInlineConfig(oldSoul) } catch { throw Self.invalidParam("Invalid or unsupported agent_soul") }
             var job = try Self.agentNodeJob(graph: graph, stored: pinned)
@@ -177,7 +242,13 @@ extension Routes {
             if let metadata = job["metadata"], metadata.object == nil || !Set(metadata.object?.keys ?? []).isSubset(of: ["file_refs", "agent_soul"]) || (metadata["agent_soul"] != nil && metadata["agent_soul"] != .null) {
                 throw Self.invalidParam("Invalid workflow node job metadata")
             }
-            if var metadata = job["metadata"]?.object { metadata["agent_soul"] = nil; job["metadata"] = .object(metadata) }
+            if var metadata = job["metadata"]?.object {
+                guard metadata["file_refs"] == nil || metadata["file_refs"]?.array != nil,
+                      (metadata["file_refs"]?.array ?? []).count <= 128,
+                      (metadata["file_refs"]?.array ?? []).allSatisfy({ $0.object != nil }) else { throw Self.invalidParam("Invalid task attachments") }
+                metadata["agent_soul"] = nil
+                job["metadata"] = .object(metadata)
+            }
             let snapshotID = UUID().uuidString.lowercased()
             var sealed: [String: String] = [:]
             let priorSoul = try pinned.map { try JSONValue.parse($0.soul).object ?? [:] } ?? [:]
@@ -185,18 +256,25 @@ extension Routes {
             var references: [JSONValue] = []
             for secret in soul.secretReferences {
                 let name = AgentInlineConfig.environmentName(secret)
-                let allowedSecret: Set<String> = ["name", "key", "env_name", "variable", "type", "value", "ref"]
+                let allowedSecret: Set<String> = ["name", "key", "env_name", "variable", "type", "value", "ref", "is_missing"]
                 guard Set(secret.keys).isSubset(of: allowedSecret) else { throw Self.invalidParam("Unsupported secret reference") }
                 var ref: String
                 if let value = secret["value"]?.string, value != "********" {
+                    guard !value.isEmpty else { throw Self.invalidParam("An agent secret value cannot be empty") }
                     ref = "agent-" + snapshotID + "-" + UUID().uuidString.lowercased()
                     sealed[ref] = value
                 } else {
-                    guard let existing = prior.first(where: { AgentInlineConfig.environmentName($0.object ?? [:]) == name }),
-                          let old = existing["ref"]?.string, secret["ref"] == .string(old) else {
+                    guard let existing = prior.first(where: { AgentInlineConfig.environmentName($0.object ?? [:]) == name }) else {
                         throw Self.invalidParam("An agent secret needs a new value or its existing reference")
                     }
-                    ref = old
+                    if let old = existing["ref"]?.string {
+                        guard secret["ref"] == .string(old) else { throw Self.invalidParam("An agent secret has another reference") }
+                        ref = old
+                    } else {
+                        guard secret["ref"] == nil || secret["ref"] == .null else { throw Self.invalidParam("An imported secret has no configured reference") }
+                        references.append(["name": .string(name)])
+                        continue
+                    }
                 }
                 references.append(["name": .string(name), "ref": .string(ref)])
             }

@@ -293,6 +293,11 @@ public enum DifyDSL {
 
     /// `secrets` (ref -> plaintext) given: secret environment variables are exported with their values (Dify's
     /// `include_secret`); nil: with `""` (Dify's default).
+    /// Encode an already projected portable DSL value (including separately materialized private packages).
+    public static func encodeYAML(_ value: Value) throws -> String {
+        try Yams.serialize(node: yamlNode(value), allowUnicode: true)
+    }
+
     public static func exportYAML(_ doc: Document, metadata: Value, secrets: [String: String]? = nil) throws -> String {
         try Yams.serialize(node: yamlNode(exportValue(doc, metadata: metadata, secrets: secrets)), allowUnicode: true)
     }

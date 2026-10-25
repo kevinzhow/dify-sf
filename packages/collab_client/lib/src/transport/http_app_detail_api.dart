@@ -7,6 +7,7 @@ import 'package:http_parser/http_parser.dart' show MediaType;
 import '../files_api.dart';
 
 import '../access_api.dart';
+import '../agent_composer_api.dart';
 import '../annotations_api.dart';
 import '../apps_api.dart';
 import '../auth/auth_api.dart';
@@ -1322,4 +1323,52 @@ class _PublicAppClient extends http.BaseClient {
 
   @override
   void close() => client.close();
+}
+
+/// Inline workflow Agent v2 composer, using the same authentication refresh and error projection as console APIs.
+class HttpAgentComposerApi extends HttpConsoleApi implements AgentComposerApi, AgentClipboardApi {
+  HttpAgentComposerApi(super.baseUrl, {super.client, super.auth, super.timeout});
+
+  @override
+  Future<Map<String, Object?>> exportAgentClipboard(String appId, Map<String, Object?> body) async => HttpConsoleApi._map(
+    (await _send('POST', '${HttpConsoleApi._app(appId)}/workflows/draft/agent-clipboard/export', ok: const [200], body: body)).json);
+
+  @override
+  Future<Map<String, Object?>> pasteAgentClipboard(String appId, Map<String, Object?> body) async => HttpConsoleApi._map(
+    (await _send('POST', '${HttpConsoleApi._app(appId)}/workflows/draft/agent-clipboard/paste', ok: const [200], body: body)).json);
+
+  static String _path(String app, String node) =>
+      '${HttpConsoleApi._app(app)}/workflows/draft/nodes/${HttpConsoleApi._seg(node)}/agent-composer';
+
+  @override
+  Future<Map<String, Object?>> readInlineAgent(
+    String appId,
+    String nodeId, {
+    String? snapshotId,
+    String? agentId,
+  }) async => HttpConsoleApi._map(
+    (await _send(
+      'GET',
+      _path(appId, nodeId),
+      ok: const [200],
+      query: {
+        if (snapshotId != null) 'snapshot_id': [snapshotId],
+        if (agentId != null) 'agent_id': [agentId],
+      },
+    )).json,
+  );
+
+  @override
+  Future<Map<String, Object?>> saveInlineAgent(
+    String appId,
+    String nodeId,
+    Map<String, Object?> body,
+  ) async => HttpConsoleApi._map(
+    (await _send(
+      'PUT',
+      _path(appId, nodeId),
+      ok: const [200],
+      body: body,
+    )).json,
+  );
 }

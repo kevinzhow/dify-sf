@@ -696,7 +696,8 @@ extension Routes {
             do { secrets = try await store.secrets(a.id) } catch { throw ServerError.unavailable("\(error)") }
         }
         let metadata = Self.overlayingAppRow(try WireJSON.decode(Value.self, from: v.dsl), a, fallbackName: a.id)
-        return try DifyDSL.exportYAML(try WireJSON.decode(Document.self, from: v.state), metadata: metadata, secrets: secrets)
+        return try DifyDSL.encodeYAML(try await agentExportValue(try WireJSON.decode(Document.self, from: v.state),
+            metadata: metadata, secrets: secrets, app: a.id))
     }
 
     /// `PATCH /v1/apps/{app}/workflows/{version}` `{marked_name?, marked_comment?}` -> the version.

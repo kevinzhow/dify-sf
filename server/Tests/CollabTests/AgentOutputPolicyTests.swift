@@ -50,7 +50,7 @@ struct AgentOutputPolicyTests {
     }
 
     @Test func fileAndDefaultFileMustPassTheSameOwnershipCheck() async throws {
-        let foreign: JSONValue = ["related_id": "foreign", "transfer_method": "tool_file"]
+        let foreign: JSONValue = ["reference": "dify-file-ref:eyJyZWNvcmRfaWQiOiJmb3JlaWduIn0=", "transfer_method": "tool_file"]
         let fields = try [field("file", type: "file", failure: "default_value", fallback: foreign)]
         let rejected = await AgentOutputPolicy.decide(fields: fields, candidate: ["file": foreign], attempt: 0,
                                                       fileValid: { $0["related_id"] == "owned" })
@@ -59,6 +59,29 @@ struct AgentOutputPolicyTests {
             candidate: ["file": ["related_id": "owned", "transfer_method": "tool_file"]], attempt: 0,
             fileValid: { $0["related_id"] == "owned" })
         #expect(accepted.action == .succeeded)
+    }
+
+    @Test func defaultShapesAreValidatedBeforeAnyAgentOrModelRuns() throws {
+        for (type, value) in [("number", JSONValue.bool(true)), ("string", JSONValue.int(2)),
+                              ("file", ["transfer_method": "tool_file", "upload_file_id": "foreign"]),
+                              ("array", JSONValue.string("not an array"))] {
+            #expect(throws: NodeDataError.self) { try field("answer", type: type, failure: "default_value", fallback: value) }
+        }
+        _ = try field("file", type: "file", failure: "default_value", fallback: ["transfer_method": "remote_url", "url": "https://example.test/file.txt"])
+    }
+
+    @Test func defaultsAreResolvedOnlyAfterRetryAndMustStillPassFileConstraints() async throws {
+        let raw: JSONValue = ["transfer_method": "tool_file", "reference": "dify-file-ref:eyJyZWNvcmRfaWQiOiJvd25lZCJ9"]
+        let f = try field("artifact", type: "file", failure: "default_value", fallback: raw)
+        let actual: JSONValue = ["related_id": "owned", "transfer_method": "tool_file"]
+        let result = await AgentOutputPolicy.decide(fields: [f], candidate: [:], attempt: 0,
+            fileValid: { $0["related_id"] == "owned" }, resolveDefault: { _, value in
+                #expect(value == raw); return actual
+            })
+        #expect(result.action == .succeeded && result.outputs["artifact"] == actual)
+        let failed = await AgentOutputPolicy.decide(fields: [f], candidate: [:], attempt: 0,
+            fileValid: { _ in false }, resolveDefault: { _, _ in actual })
+        #expect(failed.action == .failNode)
     }
 
     @Test func arraysCheckItemTypesAndReservedOrDuplicateNamesAreRefused() async throws {

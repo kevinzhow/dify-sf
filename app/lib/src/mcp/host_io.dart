@@ -6,6 +6,7 @@ import 'package:collab_client/collab_client.dart';
 import 'package:mcp_dart/mcp_dart.dart';
 
 import '../auth/auth_controller.dart';
+import '../agents/inline_checks.dart';
 import '../i18n/dify_i18n.dart';
 import '../workflow_editor/header/checklist/use_checklist.dart';
 import '../workflow/model_catalog.dart' show languageOfLocale;
@@ -112,11 +113,11 @@ ReadonlyWorkflowReader nativeWorkflowReader(AuthController auth) => ReadonlyWork
       docs.close();
     }
   },
-  context: (doc, mode) async {
+  context: (appId, doc, mode) async {
     final missing = <String>[];
     final nodes = difyGraphOf(doc).nodes;
     List<String>? models;
-    if (nodes.any((n) => n.blockType == 'llm')) {
+    if (nodes.any((n) => n.blockType == 'llm' || isInlineAgentData(n.data))) {
       final api = HttpModelProvidersApi(Uri.parse(auth.server), auth: auth.session);
       try {
         models = [
@@ -128,6 +129,25 @@ ReadonlyWorkflowReader nativeWorkflowReader(AuthController auth) => ReadonlyWork
       } finally {
         api.close();
       }
+    }
+    Map<String, List<String>>? agentModelFeatures;
+    Map<String, String>? agentModelLabels;
+    if (nodes.any((n) => isInlineAgentData(n.data))) {
+      final api = HttpModelProvidersApi(Uri.parse(auth.server), auth: auth.session);
+      try {
+        final catalog = await api.modelsOfType('llm');
+        agentModelLabels = {
+          for (final provider in catalog)
+            for (final model in (provider['models'] as List? ?? const []).whereType<Map>())
+              '${provider['provider']}/${model['model']}': (model['label'] as Map?)?['en_US'] as String? ?? '${model['model']}',
+        };
+        agentModelFeatures = {
+          for (final provider in catalog)
+            for (final model in (provider['models'] as List? ?? const []).whereType<Map>())
+              '${provider['provider']}/${model['model']}': [for (final feature in model['features'] as List? ?? const []) '$feature'],
+        };
+      } on Object { missing.add('agent_model_features'); }
+      finally { api.close(); }
     }
     List<Map<String, Object?>>? builtin, workflows;
     if (nodes.any((n) => n.blockType == 'tool')) {
@@ -150,10 +170,16 @@ ReadonlyWorkflowReader nativeWorkflowReader(AuthController auth) => ReadonlyWork
         }
       }
     }
+    var agents = const InlineAgentChecks();
+    if (nodes.any((n) => isInlineAgentData(n.data))) {
+      final api = HttpAgentComposerApi(Uri.parse(auth.server), auth: auth.session);
+      try { agents = await InlineAgentChecks.load(api, appId, doc); missing.addAll(agents.unavailable); }
+      finally { api.close(); }
+    }
     // These contexts are not yet wired into this read-only bridge. Do not
     // replace unknown data with empty catalogs and accidentally pass the gate.
     for (final n in nodes) {
-      if (const ['agent', 'agent-v2', 'knowledge-retrieval', 'trigger-plugin', 'datasource'].contains(n.blockType)) {
+      if (!isInlineAgentData(n.data) && const ['agent', 'agent-v2', 'knowledge-retrieval', 'trigger-plugin', 'datasource'].contains(n.blockType)) {
         missing.add('unsupported_context:${n.blockType}');
       }
     }
@@ -165,6 +191,9 @@ ReadonlyWorkflowReader nativeWorkflowReader(AuthController auth) => ReadonlyWork
         conversationVariables: AppRegisters.variables(doc, AppRegisters.conversationVariables),
         modelProviders: models,
         builtInTools: builtin,
+        inlineAgentSouls: agents.souls,
+        inlineAgentModelFeatures: agentModelFeatures,
+        inlineAgentModelLabels: agentModelLabels,
         workflowTools: workflows,
       ),
       unavailable: missing.toSet().toList(),

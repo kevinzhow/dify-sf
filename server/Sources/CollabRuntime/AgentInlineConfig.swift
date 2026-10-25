@@ -192,16 +192,7 @@ public struct AgentInlineConfig: Sendable {
 /// Dify's UI filter is name/label based, not a capability certificate.
 public enum AgentModelCompatibility {
     public static func isCompatible(label: String) -> Bool {
-        !patterns.contains { label.range(of: $0, options: [.regularExpression, .caseInsensitive]) != nil }
+        !AgentModelPatterns.excluded.contains { label.range(of: $0, options: [.regularExpression, .caseInsensitive]) != nil }
     }
 
-    private static let patterns = [
-        #"^chatgpt-"#, #"^gpt-5(?:$|-|\.1$|\.2$)"#, #"^gpt.*(?:min|chat)"#, #"^gpt.*nano"#, #"^gpt-4"#, #"^gpt-3"#,
-        #"^o[134](?:-|$)"#, #"^claude-3"#, #"^gemini.*flash[ .-]lite"#, #"^gemini[ .-]2(?![ .-]5[ .-]pro$)"#,
-        #"^gemini[ .-]1[ .-]5[ .-]flash(?:[ .-]8b)?(?:[ .-]|$)"#, #"^Nano"#, #"^grok-code-"#, #"^grok.*beta"#,
-        #"^grok-(?:2|3)"#, #"^deepseek-(?:chat|coder|reasoner)(?:-|$)"#, #"^deepseek-r1$"#, #"^deepseek-r1-distill-"#,
-        #"^deepseek-v3"#, #"^qvq-"#, #"^qwq-"#, #"^qwen-"#, #"^qwen2"#, #"^qwen3-"#, #"^qwen3\.5"#,
-        #"^qwen.*flash"#, #"^farui-plus$"#, #"^chatglm-(?:2|3)"#, #"^glm-3"#, #"^glm-4"#, #"^glm-z"#, #"^kimi-k2-"#,
-        #"^moonshot-v1"#, #"^abab"#, #"^minimax-text-01$"#, #"^minimax-m1$"#, #"^minimax-m2(?:-|$)"#,
-    ]
 }

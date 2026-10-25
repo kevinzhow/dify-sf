@@ -27,7 +27,7 @@ struct AgentComposerTests {
 
     @Test func configSecretsGraphAndReplayShareOneCommit() async throws {
         try await withServer { api, store, registry in
-            let (token, _, app) = try await Self.seed(api, store)
+            let (token, account, app) = try await Self.seed(api, store)
             var soul = AgentInlineConfig.empty
             soul["env"] = ["variables": [["name": "PROJECT", "value": "fixture"]],
                            "secret_refs": [["name": "TOKEN", "value": "fixture-private-agent-secret"]]]
@@ -39,6 +39,8 @@ struct AgentComposerTests {
             #expect(!saved.text.contains("fixture-private-agent-secret"))
             let snap = try await registry.sequencer(app).currentSnapshot()
             #expect(snap.seq == 3 && snap.doc.nodes[Self.nodeID]?.config["agent_task"] == .string("New task"))
+            let requestID = try #require(body["idempotency_key"]?.string)
+            #expect(try await store.clientAccount(app, client: "agent-" + account + "-" + requestID) == account)
             let stored = try await store.currentAgentConfig(doc: app, node: Self.nodeID)
             let config = try #require(stored)
             #expect(config.revision == 1 && !config.soul.contains("fixture-private-agent-secret"))
@@ -120,6 +122,28 @@ struct AgentComposerTests {
                 Issue.record("A foreign agent binding must not publish")
             } catch { }
             #expect(try await store.version(foreign, id: foreignVersionID) == nil)
+        }
+    }
+
+    @Test func anAtomicReaderCanReadItsExactPrivateConfigAfterTheDraftNodeWasDeleted() async throws {
+        try await withServer { api, store, registry in
+            let (token, _, app) = try await Self.seed(api, store)
+            let saved = try await api.put(Self.path(app), Self.payload(task: "Frozen task").compactJSON(), token: token)
+            #expect(saved.status == 200)
+            let pinned = try #require(try await store.currentAgentConfig(doc: app, node: Self.nodeID))
+            _ = try await registry.sequencer(app).replace(client: "delete-for-atomic-reader", cseq: 1) { _, _ in
+                (.init(ops: [.removeNode(Self.nodeID)], metadata: nil, secrets: [:]), true)
+            }
+            let current = try await api.get(Self.path(app), token: token)
+            #expect(current.status == 404)
+            let identity = "?agent_id=\(pinned.agentId)&snapshot_id=\(pinned.id)"
+            let historical = try await api.get(Self.path(app) + identity, token: token)
+            #expect(historical.status == 200, "\(historical.text)")
+            #expect(try JSONValue.parse(historical.text)["node_job"]?["workflow_prompt"] == "Frozen task")
+            let foreign = UUID().uuidString.lowercased()
+            _ = try await store.createDocument(id: foreign, initial: Document())
+            #expect(try await api.get(Self.path(foreign) + identity, token: token).status == 404)
+            #expect(try await api.get(Self.path(app) + "?agent_id=" + pinned.agentId, token: token).status == 400)
         }
     }
 }

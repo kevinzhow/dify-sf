@@ -144,6 +144,8 @@ extension Routes {
             var enable_change_email: Bool
             /// 1.13 (dify-sf only): what the workflow runtime can run; absent without a model runtime (plugin daemon).
             var workflow_runtime: WorkflowRuntime?
+            var inline_agent: Bool
+            var inline_agent_shell: Bool
         }
         struct WorkflowRuntime: Encodable {
             var protocol_version = "1.21"
@@ -177,7 +179,9 @@ extension Routes {
                               single_node_run: singleTypes, draft_run: draftTypes,
                               human_input: config.humanInputWebEnabled,
                               human_input_email: config.humanInputWebEnabled && config.humanInputEmailEnabled && mail) : nil
-        return try json(Features(is_email_setup: mail, enable_file_upload: config.files.isConfigured, enable_change_email: mail, workflow_runtime: runtime))
+        return try json(Features(is_email_setup: mail, enable_file_upload: config.files.isConfigured, enable_change_email: mail, workflow_runtime: runtime,
+            inline_agent: config.agentService.inlineEnabled && config.agentService.isConfigured,
+            inline_agent_shell: config.agentService.inlineEnabled && config.agentService.isConfigured ? await agentShellAvailable() : false))
     }
 
     // MARK: - Forgot password (Dify's /forgot-password, /forgot-password/validity, /forgot-password/resets)

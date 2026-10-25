@@ -152,7 +152,7 @@ class HumanInputFieldRenderer extends StatelessWidget {
         value: v,
         large: true,
         semanticLabel: name,
-        options: [for (final o in options) (value: o, label: o)],
+        options: [for (final o in options) (value: o, label: jsStr(jsGet(jsGet(field, 'option_labels'), o)) ?? o)],
         onChanged: onChange,
       );
     }
@@ -532,7 +532,7 @@ class SubmittedHumanInputContentItem extends StatelessWidget {
           large: true,
           disabled: true,
           semanticLabel: name,
-          options: [for (final o in options) (value: o, label: o)],
+          options: [for (final o in options) (value: o, label: jsStr(jsGet(jsGet(field, 'option_labels'), o)) ?? o)],
         ),
       );
     }

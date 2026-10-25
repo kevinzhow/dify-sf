@@ -124,6 +124,20 @@ class UndoManager extends ChangeNotifier {
     if (own) end();
   }
 
+  /// A server transaction already delivered these additions. Record one inverse without re-sending AddNode.
+  void recordCommittedAddition(List<String> nodes, List<String> edges) {
+    end();
+    final step = HistoryStep(HistoryEvent.nodePaste);
+    step.inverse.addAll([
+      for (final id in edges.reversed) RemoveEdge(id),
+      for (final id in nodes.reversed) RemoveNode(id),
+    ]);
+    if (step.inverse.isEmpty) return;
+    _push(_past, step);
+    _future.clear();
+    notifyListeners();
+  }
+
   void undo() => _replay(_past, _future);
   void redo() => _replay(_future, _past);
 

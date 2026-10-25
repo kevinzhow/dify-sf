@@ -169,10 +169,22 @@ extension Routes {
                                              "inputs": (e.inputs.flatMap { try? JSONValue.parse($0) }) ?? .object([:]),
                                              "inputs_truncated": false,
                                              "outputs": (e.outputs.flatMap { try? JSONValue.parse($0) }) ?? .object([:]),
+                                             "execution_metadata": e.executionMetadata.flatMap { try? JSONValue.parse($0) } ?? [:],
                                              "outputs_truncated": false, "error": e.error.map(JSONValue.string) ?? .null,
                                              "elapsed_time": .double(e.elapsedTime),
                                              "created_at": .int(Int(start.timeIntervalSince1970)),
                                              "finished_at": .int(Int(finished.timeIntervalSince1970))]]))
+        }
+        for session in try await store.agentTraceSessions(run: run.id) {
+            let usage = try JSONValue.parse(session.usage)
+            if !executions.contains(where: { $0.id == session.executionID }), let started = usage["node_started"],
+               started["id"] == .string(session.executionID), started["node_id"] == .string(session.nodeID) {
+                frames.append(RunExecution.sse(["event": "node_started", "workflow_run_id": .string(run.id),
+                                               "task_id": .string(run.id), "data": started]))
+            }
+            for log in try await agentLogPreview(session).array ?? [] {
+                frames.append(RunExecution.sse(["event": "agent_log", "workflow_run_id": .string(run.id), "data": log]))
+            }
         }
         var pauseGeneration: Int?
         var waiting: [StoredHumanInputForm] = []

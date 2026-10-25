@@ -17,6 +17,17 @@ public final class PendingHumanInputForms: Sendable {
         var resolvedInputs: [JSONObject]?
     }
 
+    let agentCommits = AgentCommitBridge()
+    private let agentChanges = Mutex<[String: AgentOutcomeCommit]>([:])
+    func addAgentOutcome(_ change: AgentOutcomeCommit) { agentChanges.withLock { $0[change.executionID] = change } }
+    func agentOutcome(_ execution: String) -> AgentOutcomeCommit? { agentChanges.withLock { $0[execution] } }
+    func agentOutcomes(forms: [StoredHumanInputForm]) -> [AgentOutcomeCommit] {
+        let ids = Set(forms.map(\.id))
+        return agentChanges.withLock { $0.values.filter { $0.status == "paused" && $0.formID.map(ids.contains) == true } }
+    }
+    func committedAgentOutcome(_ change: AgentOutcomeCommit) {
+        agentChanges.withLock { if $0[change.executionID]?.operationID == change.operationID && $0[change.executionID]?.generation == change.generation { $0[change.executionID] = nil } }
+    }
     private let forms = Mutex<[String: Prepared]>([:])
 
     func add(_ form: StoredHumanInputForm, deliveryMethods: [JSONObject] = [], resolvedInputs: [JSONObject]? = nil) {

@@ -348,15 +348,15 @@ extension Routes {
         }
         let (s, metadata, secrets) = try await exportParts(src.id, viewer: p.id, includeSecret: true)
         let imported: DifyDSL.Imported
-        do { imported = try DifyDSL.importValue(try DifyDSL.exportValue(s.doc, metadata: metadata, secrets: secrets)) } catch {
+        do { imported = try DifyDSL.importValue(try await agentExportValue(s.doc, metadata: metadata, secrets: secrets, app: src.id)) } catch {
             throw ServerError.internalError("copy: \(error)")
         }
         let id = UUID().uuidString.lowercased()
         do {
-            _ = try await store.createDocument(id: id, initial: imported.document, metadata: imported.metadata, secrets: imported.secrets,
+            _ = try await createAgentAwareDocument(id: id, imported: imported,
                                                app: NewApp(name: name, description: description, mode: src.mode, iconType: iconType, icon: icon,
                                                            iconBackground: background, useIconAsAnswerIcon: src.useIconAsAnswerIcon,
-                                                           maxActiveRequests: src.maxActiveRequests, createdBy: p.id))
+                                                           maxActiveRequests: src.maxActiveRequests, createdBy: p.id), user: p.id)
         } catch is SecretsKeyMissing { throw Self.secretsKeyMissing } catch { throw ServerError.unavailable("\(error)") }
         return try await appDetail(id, p, req, status: .created)
     }
@@ -393,7 +393,7 @@ extension Routes {
             return try json(JSON.object(["data": .string(yaml)]))
         }
         let (s, metadata, secrets) = try await exportParts(id, viewer: p.id, includeSecret: includeSecret)
-        let yaml = try DifyDSL.exportYAML(s.doc, metadata: metadata, secrets: secrets)
+        let yaml = try DifyDSL.encodeYAML(try await agentExportValue(s.doc, metadata: metadata, secrets: secrets, app: id))
         return try json(JSON.object(["data": .string(yaml)]))
     }
 
@@ -488,7 +488,7 @@ extension Routes {
         if let g = overrides["icon_background"]?.string { app.iconBackground = g }
         let id = UUID().uuidString.lowercased()
         do {
-            _ = try await store.createDocument(id: id, initial: imported.document, metadata: imported.metadata, secrets: imported.secrets, app: app)
+            _ = try await createAgentAwareDocument(id: id, imported: imported, app: app, user: account)
         } catch is SecretsKeyMissing { throw Self.secretsKeyMissing } catch { throw ServerError.unavailable("\(error)") }
         // A confirmed pending import is completed (Dify's `confirm_import`).
         let status = checked.status == .pending ? DifyDSL.VersionStatus.completed : checked.status
