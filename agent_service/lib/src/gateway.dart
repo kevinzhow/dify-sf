@@ -77,10 +77,11 @@ class InnerClient {
     final response = await _client.send(request);
     if (response.statusCode != 200) {
       final text = await response.stream.bytesToString();
-      throw GatewayException(
-        response.statusCode == 429 ? 'model_quota' : 'model_error',
-        'model gateway answered HTTP ${response.statusCode}: ${_short(text)}',
-      );
+      throw GatewayException(switch (response.statusCode) {
+        429 => 'model_quota',
+        422 when _errorCode(text) == 'file_error' => 'file_error',
+        _ => 'model_error',
+      }, 'model gateway answered HTTP ${response.statusCode}: ${_short(text)}');
     }
     await for (final data in parseSse(response.stream)) {
       final Object? envelope;
@@ -415,5 +416,14 @@ class LlmAccumulator {
       return null;
     }
     return s;
+  }
+}
+
+String? _errorCode(String body) {
+  try {
+    final j = jsonDecode(body);
+    return j is Map ? j['error'] as String? : null;
+  } on FormatException {
+    return null;
   }
 }

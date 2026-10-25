@@ -14,8 +14,8 @@ The contract it implements is [`docs/agent-v2.md`](../docs/agent-v2.md) (protoco
   stream with cursor resume, ack, cancel, leases, execution deletion, the reconciliation list and health.
 - A durable run store under `AGENT_DATA_DIR`: append-only events, the terminal result written before it is streamed,
   the per-execution generation and operation index. Events are kept until ack or 24 hours after the run ended.
-- A Genkit model over `POST /inner/agent/llm/invoke`: Dify `PromptMessage` mapping (images through
-  `files/download-request`), streamed chunks, tool-call deltas merged by index or id, reasoning from `<think>` tags or
+- A Genkit model over `POST /inner/agent/llm/invoke`: Dify `PromptMessage` mapping (images as
+  `dify-sf-file:<file_id>` references), streamed chunks, tool-call deltas merged by index or id, reasoning from `<think>` tags or
   `reasoning_content`, usage per call.
 - The `ask_human` tool with Dify's arguments and limits; pauses with a versioned session snapshot and resumes the
   original tool call in a later operation (any process).

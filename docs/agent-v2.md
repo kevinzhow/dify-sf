@@ -122,8 +122,9 @@ Starts one operation. Every operation is a separate request; there is no separat
   `sandbox_unavailable` until the sandbox exists (phase 3).
 - The `X-Agent-Run-Token` header is required for a new operation (`400 invalid_request` otherwise). The service keeps
   it in memory only.
-- Files are referenced by stable `file_id`. The agent service asks the Swift server for a fresh signed URL each time it
-  needs the bytes; snapshots never store URLs.
+- Files are referenced by stable `file_id`; snapshots and model requests never contain URLs. Model inputs carry
+  `dify-sf-file:<file_id>` (see the inner gateway); only components that need the bytes (the sandbox) ask for a fresh
+  signed URL.
 - `env` reaches only the sandbox environment and never a prompt. Reserved names (`HOME`, `PATH`, `TMPDIR`, `TMP`,
   `TEMP`, every `SHELLCTL_*`, `*_PROXY` and `NO_PROXY` in either case) are rejected with `400 reserved_env`.
 - `continuation` is `null` for the first run. Otherwise it is one of:
@@ -326,10 +327,16 @@ an assistant history message carries prior reasoning back the same way (`reasoni
 `{"code": -429 | -500, "message": "{\"error_type\":…,\"message\":…}", "data": null}`, as in Dify. A repeated
 `invocation_id` is rejected, so usage is recorded once. Closing the connection cancels the plugin call.
 
+Files in `prompt_messages` (Dify image/document content parts) carry `"url": "dify-sf-file:<file_id>"` and an empty
+`base64_data`. The Swift server checks the file against the files of the run token's execution and reads it from
+storage; a URL that is not a file of the execution is rejected before the stream starts with
+`422 {"error": "file_error", "message"}`, which ends the run `failed` (`file_error`). The model path never uses
+`files/download-request`.
+
 ### File requests
 
-- `POST /inner/agent/files/download-request` `{"file_id"}` → `{"url", "expires_at", "mime_type", "size"}`. Only files
-  that belong to the execution's inputs or uploads.
+- `POST /inner/agent/files/download-request` `{"file_id"}` → `{"url", "expires_at", "mime_type", "size"}`, for
+  components that need the bytes (the sandbox). Only files that belong to the execution's inputs or uploads.
 - `POST /inner/agent/files/upload-request` `{"filename", "mime_type", "size"}` → `{"url", "upload_id"}`; the uploaded
   file belongs to the execution. The Swift server confirms receipt before the node succeeds; only then is the workspace
   removed.

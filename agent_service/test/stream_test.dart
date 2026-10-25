@@ -120,15 +120,16 @@ void main() {
       expect(content.first, {'type': 'text', 'data': 'What is this?'});
       expect(content.last['type'], 'image');
       expect(content.last['mime_type'], 'image/png');
-      expect(content.last['url'], startsWith('${h.gateway.url}/files/F1'));
+      expect(content.last['url'], 'dify-sf-file:F1');
       final snapshot = (s['result'] as Map)['snapshot'] as Map;
       expect(snapshot['file_ids'], ['F1']);
       expect(snapshot.toString(), isNot(contains('/files/F1')));
+      // The model path never asks for a signed URL.
       expect(
         h.gateway.requests.where(
           (r) => r.path == '/inner/agent/files/download-request',
         ),
-        hasLength(1),
+        isEmpty,
       );
     },
   );

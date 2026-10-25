@@ -12,7 +12,7 @@ import 'gateway.dart';
 import 'protocol.dart';
 
 /// URL scheme of task files inside the Genkit history. Snapshots store the
-/// stable `file_id` only; a fresh signed URL is requested for every call.
+/// stable `file_id` only and model requests carry the same reference.
 const fileUrlScheme = 'dify-sf-file:';
 
 /// Metadata key on a [ReasoningPart] recording how the reasoning arrived.
@@ -246,7 +246,7 @@ Map<String, Object?> toPromptMessageTool(ToolDefinition t) => {
 
 /// Genkit messages → Dify `PromptMessage` JSON. System content is merged
 /// into one leading system message (as dify-agent does); task files are
-/// resolved to fresh URLs through `files/download-request`.
+/// sent as `dify-sf-file:<file_id>` references.
 Future<List<Map<String, Object?>>> toPromptMessages(
   List<Message> messages,
   InnerClient inner,
@@ -308,23 +308,18 @@ Future<Map<String, Object?>> _mediaContent(
   Media media,
   InnerClient inner,
 ) async {
-  var url = media.url;
-  var mime = media.contentType ?? 'application/octet-stream';
-  var fileId = 'file';
-  if (url.startsWith(fileUrlScheme)) {
-    fileId = url.substring(fileUrlScheme.length);
-    final signed = await inner.downloadRequest(fileId);
-    final u = signed['url'];
-    if (u is! String || u.isEmpty) {
-      throw GatewayException(
-        'file_error',
-        'download-request for $fileId returned no url',
-      );
-    }
-    url = u;
-    final m = signed['mime_type'];
-    if (m is String && m.isNotEmpty) mime = m;
+  // Task files stay `dify-sf-file:<file_id>` references: the Swift gateway
+  // checks the file against the run token's execution and reads it from
+  // storage. No URL is sent and the gateway never fetches one.
+  final url = media.url;
+  final mime = media.contentType ?? 'application/octet-stream';
+  if (!url.startsWith(fileUrlScheme)) {
+    throw GatewayException(
+      'file_error',
+      'media must reference an execution file ($fileUrlScheme<file_id>)',
+    );
   }
+  final fileId = url.substring(fileUrlScheme.length);
   final base = mime.split(';').first.trim().toLowerCase();
   final format = base.contains('/') ? base.split('/').last : 'bin';
   final type = switch (base.split('/').first) {
