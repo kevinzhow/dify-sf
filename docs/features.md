@@ -53,7 +53,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Variables (environment, conversation, system) & variable picker](#variables) | 5 |  |  |  |  | 5 |
 | [Features panel](#features) | 4 | 3 |  | 1 |  | 8 |
 | [Variable inspect](#variable-inspect) | 2 |  |  |  |  | 2 |
-| [Run & debug](#run) | 10 | 4 |  |  |  | 14 |
+| [Run & debug](#run) | 10 | 5 |  |  |  | 15 |
 | [Chatflow Debug & Preview](#chat-preview) | 2 |  |  |  |  | 2 |
 | [Comments](#comments) | 7 |  |  |  |  | 7 |
 | [Note node](#notes) | 3 |  |  |  |  | 3 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 7 | 9 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 5 | 3 | 1 | 1 |  | 10 |
-| **Total** | **182** | **53** | **30** | **17** | **15** | **297** |
+| **Total** | **182** | **54** | **30** | **17** | **15** | **298** |
 
 <a id="canvas"></a>
 
@@ -505,6 +505,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Run logs special result panel (logs page) | partial | SpecialResultPanel and RunLogs are wired into the node and tracing panels. Draft workflow runs and node executions are persisted on the server (protocols 1.13–1.16). Workflow-tool child runs and node executions are now persisted with the caller link; specialized Agent traces remain deferred; app-level published logs now aggregate real public Web/API execution. This row does not describe missing draft-run storage. | spec `workflow/run/special-result-panel.spec.tsx`, `app/test/dify_spec/workflow/run/panels_test.dart`, `app/test/dify_spec/workflow/run/tracing_test.dart` |
 | Published workflow/Chatflow service API: blocking, streaming, end users, files and durable recovery | ported | Deviation: The public Flutter page reuses the existing design-system inputs, Markdown, output and human-input controls inside responsive workflow input/result columns and a chat sidebar/conversation/composer shell. Public batch execution, full conversation management and settings remain unavailable; full page pixel parity is not claimed. Opaque browser passports never borrow console login. API end users are namespaced by key ID: replacing a key starts a new history namespace. Only workflow/advanced-chat modes are supported. Email delivery remains independently gated. Public deployment examples use placeholder origins and artifact roots; active machine details are kept outside the repository. | `server/Tests/CollabTests/PublicIdentityTests.swift`, `server/Tests/CollabTests/PublicRunTests.swift`, `server/Tests/CollabTests/PublicBoundaryTests.swift`, `app/test/public_app_page_test.dart`, `app/test/public_inputs_test.dart`, `packages/collab_client/test/public_app_api_test.dart`, `e2e/public_app/acceptance.py`, `e2e/public_app/boundaries.py`, `docs/deployment/tailscale-https-acceptance.md` |
 | Agent v2: execution-scoped internal model gateway | partial | Internal model callbacks preserve tools, images, reasoning and usage under operation-scoped authentication. Agent node execution, composer, multi-question forms, shell, DSL and client wiring are delivered in following layers; the public Agent run capability remains disabled. Deviation: The agent loop is a Dart Genkit backend; the callback protocol adds an execution-scoped run token. File inputs use stable execution-scoped references. Calls with tools request a complete provider response to avoid lost stream indices in openai_api_compatible 0.0.68; plain calls remain streamed. No model credentials are sent to the agent service. | `server/Tests/CollabTests/AgentModelWireTests.swift`, `server/Tests/CollabTests/AgentModelGatewayRouteTests.swift`, `server/Tests/CollabTests/AgentModelCancelTests.swift`, `server/Tests/CollabTests/AgentModelIntegrationTests.swift` |
+| Agent v2: private inline composer and immutable config bindings | partial | Private inline Soul snapshots, graph-bound task/output config, encrypted environment references, atomic collaborative composer saves, immutable publication bindings and field output policies are implemented. Agent execution and client/MCP integration remain disabled until their dependent layers are complete. Deviation: The composer requires expected_seq and a UUID idempotency_key to preserve collaboration. Snapshot IDs are scoped to the owning app and node; this is not a roster or Agent App implementation. The backend loop is the dify-sf Dart extension. | `server/Tests/CollabTests/AgentComposerTests.swift`, `server/Tests/CollabTests/AgentInlineConfigTests.swift`, `server/Tests/CollabTests/AgentOutputPolicyTests.swift`, `server/Tests/CollabTests/AgentOutputEngineTests.swift`, `server/Tests/CollabTests/AgentPromptTests.swift` |
 
 <a id="chat-preview"></a>
 

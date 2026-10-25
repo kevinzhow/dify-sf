@@ -30,7 +30,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
    deltas=[{'tool_calls':[{'index':0,'id':'opaque/a','type':'function','function':{'name':'a','arguments':'{"a":'}},{'index':1,'id':'opaque/b','type':'function','function':{'name':'b','arguments':'{"b":'}}]},
            {'tool_calls':[{'index':1,'function':{'arguments':'2}'}}]},
            {'tool_calls':[{'index':0,'function':{'arguments':'1}'}}]}]
-   delta={'tool_calls':[{'id':'opaque/a','type':'function','function':{'name':'a','arguments':'{"a":1}'}},{'id':'opaque/b','type':'function','function':{'name':'b','arguments':'{"b":2}'}}]};finish='tool_calls'
+   delta={'content':'<think>tool thought</think>', 'tool_calls':[{'id':'opaque/a','type':'function','function':{'name':'a','arguments':'{"a":1}'}},{'id':'opaque/b','type':'function','function':{'name':'b','arguments':'{"b":2}'}}]};finish='tool_calls'
   if not body.get('stream'):
 
    return self.send_json(200,{'id':'fixture','object':'chat.completion','created':1,'model':'stub-chat','choices':[{'index':0,'message':{'role':'assistant',**delta},'finish_reason':finish}],'usage':{'prompt_tokens':5,'completion_tokens':3,'total_tokens':8}})

@@ -715,5 +715,5 @@ public enum Schema {
         "ALTER TABLE human_input_form_recipients ALTER COLUMN workflow_run_id DROP NOT NULL",
         // One row per address and form: a pause that adopts a waiting form must keep the links it already handed out.
         "CREATE UNIQUE INDEX IF NOT EXISTS human_input_form_recipients_address ON human_input_form_recipients (form_id, email)",
-    ] + ChatSchema.statements + PublicRuntimeSchema.statements + AnnotationIndexSchema.statements
+    ] + ChatSchema.statements + PublicRuntimeSchema.statements + AnnotationIndexSchema.statements + AgentConfigSchema.statements
 }

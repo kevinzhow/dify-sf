@@ -43,3 +43,7 @@ model chunk, and require the upstream TCP stream to close.
 
 The test service's data, logs and uploaded pixel remain under `TMPDIR` for failure inspection. Set that variable to
 a disk-backed fixture directory; the helper itself does not remove evidence or touch a running deployment.
+
+The reasoning scenario explicitly enables thinking in its fresh fixture credential. It checks thoughts received through the
+real plugin, separated answer text, and reconstructed history sent to Swift. It also records the pinned plugin's intentional
+removal of prior assistant think blocks from the vendor request. A disabled-thinking credential cannot prove reasoning support.

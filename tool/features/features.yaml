@@ -2418,3 +2418,13 @@ features:
   deviation: 'The agent loop is a Dart Genkit backend; the callback protocol adds an execution-scoped run token. File inputs use stable execution-scoped references. Calls with tools request a complete provider response to avoid lost stream indices in openai_api_compatible 0.0.68; plain calls remain streamed. No model credentials are sent to the agent service.'
   evidence: [server/Tests/CollabTests/AgentModelWireTests.swift, server/Tests/CollabTests/AgentModelGatewayRouteTests.swift, server/Tests/CollabTests/AgentModelCancelTests.swift, server/Tests/CollabTests/AgentModelIntegrationTests.swift]
   ours: [server/Sources/CollabServer/AgentModelGateway.swift, server/Sources/CollabServer/AgentServiceClient.swift, server/Sources/CollabRuntime/ModelRuntime.swift, docs/agent-model-gateway.md, e2e/agent_model_gateway/README.md]
+
+- id: run.agent-v2-inline-config
+  area: run
+  title: 'Agent v2: private inline composer and immutable config bindings'
+  dify: [api/services/agent/composer_service.py, api/models/agent_config_entities.py, api/core/workflow/nodes/agent_v2/output_failure_orchestrator.py]
+  status: partial
+  reason: 'Private inline Soul snapshots, graph-bound task/output config, encrypted environment references, atomic collaborative composer saves, immutable publication bindings and field output policies are implemented. Agent execution and client/MCP integration remain disabled until their dependent layers are complete.'
+  deviation: 'The composer requires expected_seq and a UUID idempotency_key to preserve collaboration. Snapshot IDs are scoped to the owning app and node; this is not a roster or Agent App implementation. The backend loop is the dify-sf Dart extension.'
+  evidence: [server/Tests/CollabTests/AgentComposerTests.swift, server/Tests/CollabTests/AgentInlineConfigTests.swift, server/Tests/CollabTests/AgentOutputPolicyTests.swift, server/Tests/CollabTests/AgentOutputEngineTests.swift, server/Tests/CollabTests/AgentPromptTests.swift]
+  ours: [server/Sources/CollabStore/AgentConfigs.swift, server/Sources/CollabServer/AgentComposerRoutes.swift, server/Sources/CollabRuntime/AgentInlineConfig.swift, server/Sources/CollabRuntime/AgentV2Node.swift, server/Sources/CollabRuntime/AgentOutputPolicy.swift, docs/agent-inline-config.md]

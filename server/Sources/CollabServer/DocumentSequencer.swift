@@ -360,6 +360,7 @@ actor DocumentSequencer {
         /// New import metadata (nil = unchanged).
         var metadata: Value?
         var secrets: [String: String] = [:]
+        var agentConfig: AgentConfigCommit? = nil
     }
 
     struct ReplaceOutcome: Sendable {
@@ -412,7 +413,7 @@ actor DocumentSequencer {
                                            message: "the server has handled this client's cseqs up to \(high): wait until its ops are resolved, then send cseq \(high + 1)")
                 }
                 let (work, info) = try await plan(live.core.doc, head)
-                if work.ops.isEmpty && work.metadata == nil && work.secrets.isEmpty {
+                if work.ops.isEmpty && work.metadata == nil && work.secrets.isEmpty && work.agentConfig == nil {
                     // Nothing to commit, so no revision check either: make sure "nothing to do" was decided on current state.
                     let rev: Int?
                     do { rev = try await store.documentRevision(docId) } catch { throw ServerError.unavailable("\(error)") }
@@ -435,7 +436,7 @@ actor DocumentSequencer {
                 let newRev: Int
                 do {
                     newRev = try await store.commit(doc: docId, expectedRev: live.rev, groups: batch.isEmpty ? [] : [.init(client: client, batch: batch)],
-                                                    newHead: working.seq, snapshot: snapshot, metadata: work.metadata, secrets: work.secrets)
+                                                    newHead: working.seq, snapshot: snapshot, metadata: work.metadata, secrets: work.secrets, agentConfig: work.agentConfig)
                 } catch StoreError.revisionMismatch {
                     state = nil
                     logger.warning("document \(docId): revision changed under a replacement, re-planning (attempt \(attempts))")

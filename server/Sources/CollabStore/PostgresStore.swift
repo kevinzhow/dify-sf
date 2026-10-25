@@ -374,7 +374,7 @@ public struct PostgresStore: Sendable {
     /// `metadata` (a replacement from a Dify file, `POST /replace`) replaces the document's import metadata and `secrets` are
     /// stored, in the same transaction.
     public func commit(doc id: String, expectedRev: Int, groups: [CommitGroup], newHead: Int, snapshot: Snapshot?,
-                       metadata: Value? = nil, secrets: [String: String] = [:]) async throws -> Int {
+                       metadata: Value? = nil, secrets: [String: String] = [:], agentConfig: AgentConfigCommit? = nil) async throws -> Int {
         let snapshotJSON = try snapshot.map { try WireJSON.encodeString($0.doc) }
         var rows = Rows()
         for g in groups {
@@ -388,6 +388,7 @@ public struct PostgresStore: Sendable {
             }
             if g.batch.highChanged { rows.highClient.append(g.client); rows.highValue.append(g.batch.newHigh) }
         }
+        rows.agentConfig = agentConfig
         rows.metadata = try metadata.map { try WireJSON.encodeString($0) }
         for (ref, value) in secrets.sorted(by: { $0.key < $1.key }) {
             rows.secretRef.append(ref)
@@ -414,6 +415,7 @@ public struct PostgresStore: Sendable {
         var rejClient: [String] = [], rejCseq: [Int] = [], rejJSON: [String] = [], rejFp: [Int64] = []
         var highClient: [String] = [], highValue: [Int] = []
         var metadata: String?
+        var agentConfig: AgentConfigCommit?
         var secretRef: [String] = [], secretValue: [String] = []
     }
 
@@ -471,6 +473,7 @@ public struct PostgresStore: Sendable {
                         (SELECT min(seq) FROM (SELECT seq FROM snapshots WHERE doc_id = \(id) ORDER BY seq DESC LIMIT 2) keep), 0)
                     """, logger: logger)
             }
+            if let change = r.agentConfig { try await self.commitAgentConfig(change, doc: id, tx: tx) }
             // Protocol 1.10: `updated_at` is the app's "last modified" (same statement, no extra round trip).
             _ = try await tx.query("UPDATE documents SET rev = rev + 1, head = \(newHead), updated_at = now() WHERE id = \(id)", logger: logger)
             return expectedRev + 1

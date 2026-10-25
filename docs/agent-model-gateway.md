@@ -38,3 +38,9 @@ before Swift can see them. Plain calls without tools remain streamed. Thought/to
 appears when the model turn finishes; the workflow's downstream output and first-phase process records already wait
 for node completion. Cancelling closes the plugin HTTP connection; it does not guarantee that a remote provider
 immediately stops generation or billing.
+
+Reasoning is also subject to the selected provider plugin's policy. The pinned OpenAI-compatible plugin removes thought
+blocks when its credential says thinking is unsupported. With thinking enabled, reasoning reaches the callback and Genkit,
+and the local conversation reconstructs it for the next Swift request. That plugin independently strips previous assistant
+`<think>` blocks before sending history to its vendor. The bridge does not bypass or modify a signed plugin to undo this
+policy; vendor-side reasoning-history retention is therefore not promised by this layer.

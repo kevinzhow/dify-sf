@@ -68,6 +68,7 @@ struct AgentModelIntegrationTests {
                     let parsedCredential = try JSONValue.parse(credentialJSON)
                     var credentials = try #require(parsedCredential.object)
                     credentials["function_calling_type"] = "tool_call"
+                    credentials["agent_thought_support"] = "only_thinking_supported"
                     try await store.updateModelCredential(key, id: credential.id, name: nil, config: JSONValue.object(credentials).compactJSON())
                     let workflowID = UUID().uuidString.lowercased()
                     try await store.insertWorkflowRun(.init(id: workflowID, docId: appID, docSeq: 0, workflowId: "draft", type: "workflow",
@@ -157,6 +158,9 @@ struct AgentModelIntegrationTests {
                         "operation": .object(toolOperation), "inner_url": "http://127.0.0.1:21306",
                         "service_key": .string(frozen.agentService.key), "run_token": .string(toolToken)])
                     #expect(probe["text"] == "joint fixture answer")
+                    #expect(probe["reasoning"]?.array?.contains("fixture thought") == true)
+                    #expect(probe["reasoning"]?.array?.contains("tool thought") == true)
+                    #expect(probe["text"]?.string?.contains("thought") == false)
                     let calls = try #require(probe["calls"]?.array)
                     #expect(calls.count == 2)
                     #expect(calls.first { $0["name"] == "a" }?["input"]?["a"] == 1)
@@ -169,6 +173,11 @@ struct AgentModelIntegrationTests {
                     #expect(allRecords.count == priorCount + 3)
                     let lastToolRequest = try JSONValue.parse(try #require(allRecords.last).description)
                     let returnedIDs = lastToolRequest["messages"]?.array?.filter { $0["role"] == "tool" }.compactMap { $0["tool_call_id"]?.string } ?? []
+                    let assistantHistory = lastToolRequest["messages"]?.array?.filter { $0["role"] == "assistant" } ?? []
+                    // The signed plugin deliberately drops prior think blocks before sending history to its vendor.
+                    #expect(!assistantHistory.contains { $0["content"]?.string?.contains("tool thought") == true })
+                    let bridgeHistory = probe["requests"]?.array?.last?["target"]?["prompt_messages"]?.array ?? []
+                    #expect(bridgeHistory.contains { $0["role"] == "assistant" && $0["content"]?.string?.contains("tool thought") == true })
                     #expect(Set(returnedIDs) == ["opaque/a", "opaque/b"])
 
                 }

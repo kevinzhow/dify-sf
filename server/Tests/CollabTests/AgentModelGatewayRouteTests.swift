@@ -41,7 +41,7 @@ struct AgentModelGatewayRouteTests {
             "caller": .object(caller),
             "target": ["provider": .string(scope.provider), "model": .string(scope.model), "stream": true,
                 "prompt_messages": [
-                    ["role": "assistant", "content": .null, "reasoning_content": "preserved thought",
+                    ["role": "assistant", "content": "<think>tag thought</think>", "reasoning_content": "preserved thought",
                      "tool_calls": [["id": "ask_human:0", "type": "function", "function": ["name": "ask_human", "arguments": "{}"]]]],
                     ["role": "tool", "content": "{\"city\":\"Kyoto\"}", "tool_call_id": "ask_human:0"],
                     ["role": "user", "content": .string(text)],
@@ -62,6 +62,7 @@ struct AgentModelGatewayRouteTests {
                 #expect(invocation.body["data"]?["tools"]?.array?.first?["name"] == "add")
                 let messages = try #require(invocation.body["data"]?["prompt_messages"]?.array)
                 #expect(messages[0]["reasoning_content"] == "preserved thought")
+                #expect(messages[0]["content"] == "<think>tag thought</think>")
                 #expect(messages[0]["tool_calls"]?.array?.first?["id"] == "ask_human:0")
                 #expect(messages[1]["tool_call_id"] == "ask_human:0")
                 #expect(invocation.body["data"]?["credentials"]?.object?.isEmpty == false)
