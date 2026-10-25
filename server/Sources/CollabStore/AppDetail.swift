@@ -586,6 +586,7 @@ extension PostgresStore {
                            \(seq), \(state)::text::jsonb, \(dsl)::text::jsonb, \(hash), \(markedName), \(markedComment), \(by), t.ts, \(by), t.ts
                     FROM t
                     """, logger: self.logger)
+                try await self.publishAgentBindings(doc: doc, version: id, state: state, tx: tx)
                 return try await self.decodeVersions(try await tx.query("""
                     SELECT \(unescaped: Self.versionColumnsSQL) FROM app_versions v \(unescaped: Self.versionJoinSQL) WHERE v.id = \(id)
                     """, logger: self.logger)).first

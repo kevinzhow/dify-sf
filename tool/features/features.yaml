@@ -2408,3 +2408,23 @@ features:
   deviation: "The public Flutter page reuses the existing design-system inputs, Markdown, output and human-input controls inside responsive workflow input/result columns and a chat sidebar/conversation/composer shell. Public batch execution, full conversation management and settings remain unavailable; full page pixel parity is not claimed. Opaque browser passports never borrow console login. API end users are namespaced by key ID: replacing a key starts a new history namespace. Only workflow/advanced-chat modes are supported. Email delivery remains independently gated. Public deployment examples use placeholder origins and artifact roots; active machine details are kept outside the repository."
   evidence: [server/Tests/CollabTests/PublicIdentityTests.swift, server/Tests/CollabTests/PublicRunTests.swift, server/Tests/CollabTests/PublicBoundaryTests.swift, app/test/public_app_page_test.dart, app/test/public_inputs_test.dart, packages/collab_client/test/public_app_api_test.dart, e2e/public_app/acceptance.py, e2e/public_app/boundaries.py, docs/deployment/tailscale-https-acceptance.md]
   ours: [app/lib/src/public_app/public_app_page.dart, app/lib/src/public_app/public_inputs.dart, server/Sources/CollabServer/PublicRuntimeRoutes.swift, server/Sources/CollabStore/PublicRuntime.swift, server/Sources/CollabStore/PublishedMonitoring.swift]
+
+- id: run.agent-v2-model-gateway
+  area: run
+  title: 'Agent v2: execution-scoped internal model gateway'
+  dify: [api/controllers/inner_api/agent/llm.py, api/services/agent_llm_inner_service.py]
+  status: partial
+  reason: 'Internal model callbacks preserve tools, images, reasoning and usage under operation-scoped authentication. Agent node execution, composer, multi-question forms, shell, DSL and client wiring are delivered in following layers; the public Agent run capability remains disabled.'
+  deviation: 'The agent loop is a Dart Genkit backend; the callback protocol adds an execution-scoped run token. File inputs use stable execution-scoped references. Calls with tools request a complete provider response to avoid lost stream indices in openai_api_compatible 0.0.68; plain calls remain streamed. No model credentials are sent to the agent service.'
+  evidence: [server/Tests/CollabTests/AgentModelWireTests.swift, server/Tests/CollabTests/AgentModelGatewayRouteTests.swift, server/Tests/CollabTests/AgentModelCancelTests.swift, server/Tests/CollabTests/AgentModelIntegrationTests.swift]
+  ours: [server/Sources/CollabServer/AgentModelGateway.swift, server/Sources/CollabServer/AgentServiceClient.swift, server/Sources/CollabRuntime/ModelRuntime.swift, docs/agent-model-gateway.md, e2e/agent_model_gateway/README.md]
+
+- id: run.agent-v2-inline-config
+  area: run
+  title: 'Agent v2: private inline composer and immutable config bindings'
+  dify: [api/services/agent/composer_service.py, api/models/agent_config_entities.py, api/core/workflow/nodes/agent_v2/output_failure_orchestrator.py]
+  status: partial
+  reason: 'Private inline Soul snapshots, graph-bound task/output config, encrypted environment references, atomic collaborative composer saves, immutable publication bindings and field output policies are implemented. Agent execution and client/MCP integration remain disabled until their dependent layers are complete.'
+  deviation: 'The composer requires expected_seq and a UUID idempotency_key to preserve collaboration. Snapshot IDs are scoped to the owning app and node; this is not a roster or Agent App implementation. The backend loop is the dify-sf Dart extension.'
+  evidence: [server/Tests/CollabTests/AgentComposerTests.swift, server/Tests/CollabTests/AgentInlineConfigTests.swift, server/Tests/CollabTests/AgentOutputPolicyTests.swift, server/Tests/CollabTests/AgentOutputEngineTests.swift, server/Tests/CollabTests/AgentPromptTests.swift]
+  ours: [server/Sources/CollabStore/AgentConfigs.swift, server/Sources/CollabServer/AgentComposerRoutes.swift, server/Sources/CollabRuntime/AgentInlineConfig.swift, server/Sources/CollabRuntime/AgentV2Node.swift, server/Sources/CollabRuntime/AgentOutputPolicy.swift, docs/agent-inline-config.md]

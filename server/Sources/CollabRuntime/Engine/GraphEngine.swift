@@ -636,7 +636,9 @@ struct Dispatcher {
         case .succeeded(_, let nodeId, _, _, let result):
             completeNode(frameId, event, result: result, followBranch: graph.executionType(nodeId) == .branch)
         case .exception(_, let nodeId, _, _, let result, _):
-            let strategy = graph.nodes[nodeId]?.base.errorStrategy
+            let strategy = graph.nodes[nodeId]?.nodeType == "agent"
+                ? result.metadata[MetadataKey.errorStrategy]?.string.flatMap(ErrorStrategy.init(rawValue:)) ?? graph.nodes[nodeId]?.base.errorStrategy
+                : graph.nodes[nodeId]?.base.errorStrategy
             completeNode(frameId, event, result: result, followBranch: strategy == .failBranch)
         case .failed(let x, let nodeId, let startAt, let finishedAt, let result, let message):
             exceptionsCount += 1
@@ -654,7 +656,12 @@ struct Dispatcher {
                 }
                 return
             }
-            switch node.base.errorStrategy {
+            // Agent output policies are authoritative per field. Their explicit stop must not fall through a generic
+            // node default_value policy, and their fail_branch does not require a second node-wide setting.
+            let outputPolicy = node.nodeType == "agent" && ["output_type_check_failed", "output_type_check_failed_fail_branch"].contains(result.errorType)
+            let strategy: ErrorStrategy? = outputPolicy
+                ? (result.errorType == "output_type_check_failed_fail_branch" ? .failBranch : nil) : node.base.errorStrategy
+            switch strategy {
             case nil:
                 // _handle_abort: inside a container the frame records the failure, else the run fails with the node's error.
                 if frames[frameId]!.container != nil {
@@ -667,7 +674,7 @@ struct Dispatcher {
             case .failBranch?:
                 var r = NodeRunResult(status: .exception, inputs: result.inputs, processData: result.processData,
                                       outputs: ["error_message": .string(result.error), "error_type": .string(result.errorType)],
-                                      metadata: [MetadataKey.errorStrategy: .string(ErrorStrategy.failBranch.rawValue)])
+                                      metadata: result.metadata.merging([MetadataKey.errorStrategy: .string(ErrorStrategy.failBranch.rawValue)]))
                 r.edgeSourceHandle = "fail-branch"
                 dispatchEvent(frameId, .exception(executionId: x, nodeId: nodeId, startAt: startAt, finishedAt: finishedAt, result: r, error: message), post)
             case .defaultValue?:

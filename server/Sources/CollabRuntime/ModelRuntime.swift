@@ -13,11 +13,18 @@ public enum PromptMessageContent: Sendable, Hashable {
     case text(String)
 
     case image(base64Data: String, format: String, mimeType: String, filename: String, detail: String)
+    /// Other Dify file modalities; byte resolution stays in the trusted server adapter.
+    case media(type: String, base64Data: String, format: String, mimeType: String, filename: String)
 
-    public var type: String { if case .image = self { return "image" }; return "text" }
+    public var type: String {
+        switch self { case .text: return "text"; case .image: return "image"; case .media(let type, _, _, _, _): return type }
+    }
     public var json: JSONValue {
         switch self {
         case .text(let s): return ["type": "text", "data": .string(s)]
+        case .media(let type, let bytes, let format, let mime, let name):
+            return ["type": .string(type), "base64_data": .string(bytes), "url": "", "format": .string(format),
+                    "mime_type": .string(mime), "filename": .string(name)]
         case .image(let bytes, let format, let mime, let name, let detail):
             return ["type": "image", "base64_data": .string(bytes), "url": "", "format": .string(format),
                     "mime_type": .string(mime), "filename": .string(name), "detail": .string(detail)]
@@ -55,8 +62,11 @@ public struct PromptMessage: Sendable, Hashable {
         public var type: String
         public var name: String
         public var arguments: String
+        /// Position in a streamed multi-tool delta; not part of the completed prompt message.
+        public var index: Int?
 
-        public init(id: String, type: String = "function", name: String, arguments: String) {
+        public init(id: String, type: String = "function", name: String, arguments: String, index: Int? = nil) {
+            self.index = index
             self.id = id
             self.type = type
             self.name = name
@@ -77,6 +87,7 @@ public struct PromptMessage: Sendable, Hashable {
             type = j["type"]?.string ?? ""
             name = j["function"]?["name"]?.string ?? ""
             arguments = j["function"]?["arguments"]?.string ?? ""
+            index = j["index"]?.int
         }
     }
 
@@ -85,8 +96,11 @@ public struct PromptMessage: Sendable, Hashable {
     public var name: String?
     public var toolCalls: [ToolCall] = []
     public var toolCallId: String?
+    /// Provider reasoning needed by some multi-turn models; kept separate from the visible answer.
+    public var reasoningContent: String?
 
-    public init(role: PromptMessageRole, content: Content, name: String? = nil, toolCalls: [ToolCall] = [], toolCallId: String? = nil) {
+    public init(role: PromptMessageRole, content: Content, name: String? = nil, toolCalls: [ToolCall] = [], toolCallId: String? = nil, reasoningContent: String? = nil) {
+        self.reasoningContent = reasoningContent
         self.role = role
         self.content = content
         self.name = name
@@ -131,6 +145,7 @@ public struct PromptMessage: Sendable, Hashable {
         o["name"] = name.map(JSONValue.string) ?? .null
         if role == .assistant { o["tool_calls"] = .array(toolCalls.map(\.json)) }
         if role == .tool { o["tool_call_id"] = .string(toolCallId ?? "") }
+        if let reasoningContent { o["reasoning_content"] = .string(reasoningContent) }
         return .object(o)
     }
 }
@@ -225,6 +240,10 @@ public struct LLMUsage: Sendable, Hashable, Codable {
     public var latency = 0.0
     public var timeToFirstToken: Double?
     public var timeToGenerate: Double?
+    /// Detail counters are subsets of the provider totals, never added to totalTokens.
+    /// nil means the provider did not report a detail (not a measured zero).
+    public var reasoningTokens: Int?
+    public var cachedTokens: Int?
 
     public init() {}
 
@@ -242,6 +261,8 @@ public struct LLMUsage: Sendable, Hashable, Codable {
         u.totalTokens = totalTokens + other.totalTokens
         u.totalPrice = totalPrice + other.totalPrice
         u.latency = latency + other.latency
+        u.reasoningTokens = reasoningTokens.flatMap { a in other.reasoningTokens.map { a + $0 } }
+        u.cachedTokens = cachedTokens.flatMap { a in other.cachedTokens.map { a + $0 } }
         return u
     }
 
@@ -261,11 +282,14 @@ public struct LLMUsage: Sendable, Hashable, Codable {
         latency = json["latency"]?.double ?? 0
         timeToFirstToken = json["time_to_first_token"]?.double
         timeToGenerate = json["time_to_generate"]?.double
+        reasoningTokens = (json["reasoning_tokens"] ?? json["completion_tokens_details"]?["reasoning_tokens"]
+            ?? json["thoughts_tokens"] ?? json["thoughtsTokens"])?.int
+        cachedTokens = (json["cached_tokens"] ?? json["prompt_tokens_details"]?["cached_tokens"])?.int
     }
 
     /// `jsonable_encoder(usage)`: pydantic's JSON mode (decimals as strings), field order kept.
     public var json: JSONValue {
-        .object([
+        var fields: JSONObject = [
             "prompt_tokens": .int(promptTokens),
             "prompt_unit_price": .string(promptUnitPrice.text),
             "prompt_price_unit": .string(promptPriceUnit.text),
@@ -280,7 +304,10 @@ public struct LLMUsage: Sendable, Hashable, Codable {
             "latency": .double(latency),
             "time_to_first_token": timeToFirstToken.map(JSONValue.double) ?? .null,
             "time_to_generate": timeToGenerate.map(JSONValue.double) ?? .null,
-        ])
+        ]
+        if let reasoningTokens { fields["reasoning_tokens"] = .int(reasoningTokens) }
+        if let cachedTokens { fields["cached_tokens"] = .int(cachedTokens) }
+        return .object(fields)
     }
 }
 
@@ -296,9 +323,11 @@ public struct LLMResultChunk: Sendable, Hashable {
     public var structuredOutput: JSONObject?
     /// `delta.message.tool_calls` (deltas: merged by id, see `LLMResultAccumulator`).
     public var toolCalls: [PromptMessage.ToolCall] = []
+    public var reasoningContent: String?
 
     public init(model: String, index: Int = 0, content: PromptMessage.Content, usage: LLMUsage? = nil, finishReason: String? = nil,
-                structuredOutput: JSONObject? = nil, toolCalls: [PromptMessage.ToolCall] = []) {
+                structuredOutput: JSONObject? = nil, toolCalls: [PromptMessage.ToolCall] = [], reasoningContent: String? = nil) {
+        self.reasoningContent = reasoningContent
         self.toolCalls = toolCalls
         self.model = model
         self.index = index
@@ -324,8 +353,31 @@ public struct LLMResultChunk: Sendable, Hashable {
         }
         if let u = delta["usage"], u != .null { usage = LLMUsage(json: u) } else { usage = nil }
         finishReason = delta["finish_reason"]?.string
+        reasoningContent = (delta["message"]?["reasoning_content"] ?? delta["reasoning_content"])?.string
         structuredOutput = json["structured_output"]?.object
         toolCalls = (delta["message"]?["tool_calls"]?.array ?? []).map(PromptMessage.ToolCall.init(json:))
+    }
+
+    /// Streaming callback envelope. Tool indexes remain on deltas; completed prompt messages omit them.
+    public var json: JSONValue {
+        var message: JSONObject = ["role": "assistant", "content": .null, "tool_calls": .array(toolCalls.map { tool in
+            var fields = tool.json.object ?? [:]
+            if let index = tool.index { fields["index"] = .int(index) }
+            return .object(fields)
+        })]
+        switch content {
+        case .none: break
+        case .text(let text): message["content"] = .string(text)
+        case .parts(let parts): message["content"] = .array(parts.map(\.json))
+        }
+        if let reasoningContent { message["reasoning_content"] = .string(reasoningContent) }
+        var fields: JSONObject = [
+            "model": .string(model),
+            "delta": ["index": .int(index), "message": .object(message),
+                      "usage": usage?.json ?? .null, "finish_reason": finishReason.map(JSONValue.string) ?? .null],
+        ]
+        if let structuredOutput { fields["structured_output"] = .object(structuredOutput) }
+        return .object(fields)
     }
 }
 
@@ -424,6 +476,7 @@ public struct LLMResultAccumulator: Sendable {
     public var toolCalls: [PromptMessage.ToolCall] = []
     public var usage = LLMUsage.empty
     public var finishReason: String?
+    private var toolPositions: [Int: Int] = [:]
 
     public init() {}
 
@@ -434,9 +487,13 @@ public struct LLMResultAccumulator: Sendable {
         case .parts(let ps): for case .text(let s) in ps { text += s }
         }
         for var delta in chunk.toolCalls {
-            if !delta.name.isEmpty && delta.id.isEmpty { delta.id = "chatcmpl-tool-" + UUIDHex.make() }
+            if !delta.name.isEmpty && delta.id.isEmpty && delta.index.flatMap({ toolPositions[$0] }) == nil {
+                delta.id = "chatcmpl-tool-" + UUIDHex.make()
+            }
             var index: Int
-            if delta.id.isEmpty {
+            if delta.id.isEmpty, let position = delta.index, let existing = toolPositions[position] {
+                index = existing
+            } else if delta.id.isEmpty {
                 guard !toolCalls.isEmpty else {
                     throw NodeError("ValueError", "tool_call_id is empty but no existing tool call is available to apply the delta")
                 }
@@ -447,6 +504,7 @@ public struct LLMResultAccumulator: Sendable {
                 toolCalls.append(PromptMessage.ToolCall(id: delta.id, type: "function", name: "", arguments: ""))
                 index = toolCalls.count - 1
             }
+            if let position = delta.index { toolPositions[position] = index }
             if !delta.id.isEmpty { toolCalls[index].id = delta.id }
             if !delta.type.isEmpty { toolCalls[index].type = delta.type }
             if !delta.name.isEmpty { toolCalls[index].name = delta.name }
