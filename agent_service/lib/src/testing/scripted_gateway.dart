@@ -11,6 +11,7 @@
 ///   {"delay_ms": 0,                 // before the first chunk (pings sent)
 ///    "chunk_delay_ms": 0,           // between chunks
 ///    "http_status": 200,            // non-200: a JSON error body instead
+///    "http_body": {…},              // that body (default scripted_http_error)
 ///    "chunks": [{"text": "…", "reasoning": "…", "tool_calls": […],
 ///                "usage": {…}, "finish_reason": "stop", "delay_ms": 0}
 ///               /* or {"raw": <LLMResultChunk>} */],
@@ -82,6 +83,7 @@ class ScriptedCall {
     this.delayMs = 0,
     this.chunkDelayMs = 0,
     this.httpStatus = 200,
+    this.httpBody,
     this.error,
     this.hang = false,
   });
@@ -90,6 +92,9 @@ class ScriptedCall {
   final int delayMs;
   final int chunkDelayMs;
   final int httpStatus;
+
+  /// The JSON body of a non-200 answer.
+  final Map<String, Object?>? httpBody;
   final Map<String, Object?>? error;
   final bool hang;
 
@@ -132,6 +137,7 @@ class ScriptedCall {
     delayMs: j['delay_ms'] as int? ?? 0,
     chunkDelayMs: j['chunk_delay_ms'] as int? ?? 0,
     httpStatus: j['http_status'] as int? ?? 200,
+    httpBody: (j['http_body'] as Map?)?.cast<String, Object?>(),
     error: (j['error'] as Map?)?.cast<String, Object?>(),
     hang: j['hang'] as bool? ?? false,
   );
@@ -161,6 +167,33 @@ Map<String, Object?> toolCallDelta({
   'type': 'function',
   'function': {'name': name ?? '', 'arguments': arguments ?? ''},
 };
+
+/// One exchange with the gateway in arrival order, with what it answered:
+/// a JSON body, the SSE envelopes of a model call, or file bytes.
+class RecordedExchange {
+  RecordedExchange(this.method, this.path, this.query, this.headers, this.body);
+
+  final String method;
+  final String path;
+  final Map<String, String> query;
+
+  /// Request headers (lower-case names).
+  final Map<String, String> headers;
+
+  /// The JSON body, or the UTF-8 text of an upload PUT; null without a body.
+  final Object? body;
+
+  int? status;
+
+  /// A JSON response body, or the text of a file download.
+  Object? responseBody;
+
+  /// The `data` envelopes of a model call's event stream, in sending order.
+  List<Map<String, Object?>>? events;
+
+  /// Whether the agent service closed a model call's stream before its end.
+  bool closedByClient = false;
+}
 
 /// One request seen by the gateway.
 class RecordedRequest {
@@ -212,6 +245,9 @@ class ScriptedGateway {
   final void Function(String)? log;
 
   final List<RecordedRequest> requests = [];
+
+  /// Every exchange (also file downloads and upload PUTs) in arrival order.
+  final List<RecordedExchange> exchanges = [];
   final List<CallObservation> observations = [];
   final Set<String> _invocationIds = {};
   final Map<String, List<int>> uploads = {};
@@ -240,16 +276,39 @@ class ScriptedGateway {
 
   Future<void> _handle(HttpRequest request) async {
     final res = request.response;
+    final headers = <String, String>{};
+    request.headers.forEach((k, v) => headers[k] = v.join(','));
     try {
       final path = request.uri.path;
       if (request.method == 'GET' && path.startsWith('/files/')) {
-        res.headers.contentType = ContentType.binary;
         final content = files[path.substring('/files/'.length)]?['content'];
-        res.add(utf8.encode(content is String ? content : 'fake-bytes'));
+        final text = content is String ? content : 'fake-bytes';
+        exchanges.add(
+          RecordedExchange(
+              'GET',
+              path,
+              request.uri.queryParameters,
+              headers,
+              null,
+            )
+            ..status = 200
+            ..responseBody = text,
+        );
+        res.headers.contentType = ContentType.binary;
+        res.add(utf8.encode(text));
         return await res.close();
       }
       if (request.method == 'PUT' && path.startsWith('/uploads/')) {
         final bytes = await request.fold<List<int>>([], (a, b) => a..addAll(b));
+        exchanges.add(
+          RecordedExchange(
+            'PUT',
+            path,
+            request.uri.queryParameters,
+            headers,
+            utf8.decode(bytes, allowMalformed: true),
+          )..status = uploadStatus,
+        );
         if (uploadStatus >= 200 && uploadStatus < 300) {
           uploads[path.substring('/uploads/'.length)] = bytes;
         }
@@ -260,22 +319,32 @@ class ScriptedGateway {
       final body = text.isEmpty
           ? <String, Object?>{}
           : (jsonDecode(text) as Map).cast<String, Object?>();
-      final headers = <String, String>{};
-      request.headers.forEach((k, v) => headers[k] = v.join(','));
       requests.add(RecordedRequest(path, headers, body));
+      final exchange = RecordedExchange(
+        request.method,
+        path,
+        request.uri.queryParameters,
+        headers,
+        text.isEmpty ? null : body,
+      );
+      exchanges.add(exchange);
       log?.call('${request.method} $path');
       if (serviceKey != null &&
           request.headers.value('authorization') != 'Bearer $serviceKey') {
-        return await _jsonResponse(res, 401, {'error': 'unauthorized'});
+        return await _jsonResponse(res, 401, {
+          'error': 'unauthorized',
+        }, exchange);
       }
       switch (path) {
         case '/inner/agent/llm/invoke':
-          return await _invoke(res, body);
+          return await _invoke(res, body, exchange);
         case '/inner/agent/files/download-request':
           final id = body['file_id'];
           final f = files[id];
           if (f == null) {
-            return await _jsonResponse(res, 404, {'error': 'file_not_found'});
+            return await _jsonResponse(res, 404, {
+              'error': 'file_not_found',
+            }, exchange);
           }
           return await _jsonResponse(res, 200, {
             'url': '$url/files/$id?sig=${requests.length}',
@@ -285,15 +354,17 @@ class ScriptedGateway {
                 .toIso8601String(),
             'mime_type': f['mime_type'] ?? 'application/octet-stream',
             'size': f['size'] ?? 0,
-          });
+          }, exchange);
         case '/inner/agent/files/upload-request':
           final id = 'up${requests.length}';
           return await _jsonResponse(res, 200, {
             'url': '$url/uploads/$id',
             'upload_id': id,
-          });
+          }, exchange);
         default:
-          return await _jsonResponse(res, 404, {'error': 'not_found'});
+          return await _jsonResponse(res, 404, {
+            'error': 'not_found',
+          }, exchange);
       }
     } catch (e) {
       log?.call('fake gateway error: $e');
@@ -306,8 +377,12 @@ class ScriptedGateway {
   Future<void> _jsonResponse(
     HttpResponse res,
     int status,
-    Map<String, Object?> body,
-  ) async {
+    Map<String, Object?> body, [
+    RecordedExchange? exchange,
+  ]) async {
+    exchange
+      ?..status = status
+      ..responseBody = body;
     res
       ..statusCode = status
       ..headers.contentType = ContentType.json
@@ -315,7 +390,11 @@ class ScriptedGateway {
     await res.close();
   }
 
-  Future<void> _invoke(HttpResponse res, Map<String, Object?> body) async {
+  Future<void> _invoke(
+    HttpResponse res,
+    Map<String, Object?> body,
+    RecordedExchange exchange,
+  ) async {
     final caller = (body['caller'] as Map?) ?? const {};
     final target = (body['target'] as Map?) ?? const {};
     final invocationId = caller['invocation_id'] as String? ?? '';
@@ -323,7 +402,7 @@ class ScriptedGateway {
       return _jsonResponse(res, 409, {
         'error': 'invocation_repeated',
         'message': 'invocation_id $invocationId was already used',
-      });
+      }, exchange);
     }
     // Files in prompt messages must be `dify-sf-file:<id>` references to
     // files of the execution, as the Swift gateway checks them.
@@ -340,7 +419,7 @@ class ScriptedGateway {
           return _jsonResponse(res, 422, {
             'error': 'file_error',
             'message': 'not a file of this execution: $u',
-          });
+          }, exchange);
         }
       }
     }
@@ -352,17 +431,24 @@ class ScriptedGateway {
         obs,
         ScriptedCall(error: {'code': -500, 'message': 'script exhausted'}),
         '',
+        exchange,
       );
     }
     final call = _calls.removeAt(0);
     if (call.httpStatus != 200) {
       obs.completed = true;
-      return _jsonResponse(res, call.httpStatus, {
-        'error': 'scripted_http_error',
-        'message': 'scripted HTTP ${call.httpStatus}',
-      });
+      return _jsonResponse(
+        res,
+        call.httpStatus,
+        call.httpBody ??
+            {
+              'error': 'scripted_http_error',
+              'message': 'scripted HTTP ${call.httpStatus}',
+            },
+        exchange,
+      );
     }
-    return _sse(res, obs, call, target['model'] as String? ?? '');
+    return _sse(res, obs, call, target['model'] as String? ?? '', exchange);
   }
 
   Future<void> _sse(
@@ -370,7 +456,11 @@ class ScriptedGateway {
     CallObservation obs,
     ScriptedCall call,
     String model,
+    RecordedExchange exchange,
   ) async {
+    exchange
+      ..status = 200
+      ..events = [];
     res.statusCode = 200;
     res.headers
       ..contentType = ContentType('text', 'event-stream')
@@ -381,8 +471,12 @@ class ScriptedGateway {
     final socket = await res.detachSocket(writeHeaders: true);
     var closed = false;
     void markClosed() {
+      if (closed) return;
       closed = true;
+      // Our half of the connection, too; an open one keeps the isolate alive.
+      socket.destroy();
       if (!obs.completed && !obs.closedByClient.isCompleted) {
+        exchange.closedByClient = true;
         obs.closedByClient.complete();
       }
     }
@@ -421,14 +515,19 @@ class ScriptedGateway {
       return !closed;
     }
 
-    String envelope(int code, String message, Object? data) =>
-        'data: ${jsonEncode({'code': code, 'message': message, 'data': data})}\n\n';
+    // An envelope is recorded when it is written to an open connection.
+    Future<bool> envelope(int code, String message, Object? data) async {
+      if (closed) return false;
+      final e = {'code': code, 'message': message, 'data': data};
+      exchange.events!.add(e);
+      return send('data: ${jsonEncode(e)}\n\n');
+    }
 
     if (!await wait(call.delayMs)) return;
     for (var i = 0; i < call.chunks.length; i++) {
       final c = call.chunks[i];
       if (i > 0 && !await wait(call.chunkDelayMs + c.delayMs)) return;
-      if (!await send(envelope(0, '', c.toChunk(model, i)))) return;
+      if (!await envelope(0, '', c.toChunk(model, i))) return;
     }
     final error = call.error;
     if (error != null) {
@@ -436,7 +535,7 @@ class ScriptedGateway {
         'error_type': error['error_type'] ?? 'ScriptedError',
         'message': error['message'] ?? 'scripted error',
       });
-      if (!await send(envelope(error['code'] as int? ?? -500, message, null))) {
+      if (!await envelope(error['code'] as int? ?? -500, message, null)) {
         return;
       }
     }

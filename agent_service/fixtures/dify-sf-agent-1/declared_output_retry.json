@@ -1,0 +1,1432 @@
+{
+  "description": "Declared outputs: an invalid `final_output` (score is a string) ends `succeeded` with `candidate_errors`; the Swift server retries with `output_retry` (`E1:1:0`) and the feedback; the second candidate is valid. The retry request carries the full history.",
+  "fixture": "declared_output_retry",
+  "gateway_script": {
+    "calls": [
+      {
+        "chunks": [
+          {
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"text\":\"A relaxed weekend.\",\"score\":\"high\"}",
+                  "name": "final_output"
+                },
+                "id": "fo_1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "finish_reason": "tool_calls",
+            "usage": {
+              "completion_tokens": 5,
+              "currency": "USD",
+              "latency": 0.1,
+              "prompt_tokens": 10,
+              "total_tokens": 15
+            }
+          }
+        ]
+      },
+      {
+        "chunks": [
+          {
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"text\":\"A relaxed weekend.\",\"score\":0.9}",
+                  "name": "final_output"
+                },
+                "id": "fo_2",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "finish_reason": "tool_calls",
+            "usage": {
+              "completion_tokens": 5,
+              "currency": "USD",
+              "latency": 0.1,
+              "prompt_tokens": 10,
+              "total_tokens": 15
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "inner": [
+    {
+      "request": {
+        "body": {
+          "caller": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "call_index": 1,
+            "invocation_id": "run_000000000000000000000001:1",
+            "invoke_from": "debugger",
+            "node_execution_id": "E1",
+            "node_id": "N1",
+            "operation_id": "E1:0:0",
+            "run_id": "run_000000000000000000000001",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "target": {
+            "model": "test-model",
+            "model_parameters": {
+              "temperature": 0.7
+            },
+            "prompt_messages": [
+              {
+                "content": "You are a travel planner.",
+                "name": null,
+                "role": "system"
+              },
+              {
+                "content": "Plan a weekend in Kyoto.",
+                "name": null,
+                "role": "user"
+              }
+            ],
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+            "stop": null,
+            "stream": true,
+            "tools": [
+              {
+                "description": "The final response which ends this conversation",
+                "name": "final_output",
+                "parameters": {
+                  "properties": {
+                    "score": {
+                      "type": "number"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "score"
+                  ],
+                  "title": "final_output",
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        },
+        "headers": {
+          "accept": "text/event-stream",
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/llm/invoke"
+      },
+      "response": {
+        "closed_by_client": false,
+        "events": [
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 0,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": [
+                    {
+                      "function": {
+                        "arguments": "{\"text\":\"A relaxed weekend.\",\"score\":\"high\"}",
+                        "name": "final_output"
+                      },
+                      "id": "fo_1",
+                      "type": "function"
+                    }
+                  ]
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": "tool_calls",
+                "index": 1,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": {
+                  "completion_tokens": 5,
+                  "currency": "USD",
+                  "latency": 0.1,
+                  "prompt_tokens": 10,
+                  "total_tokens": 15
+                }
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          }
+        ],
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": {
+          "caller": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "call_index": 1,
+            "invocation_id": "run_000000000000000000000002:1",
+            "invoke_from": "debugger",
+            "node_execution_id": "E1",
+            "node_id": "N1",
+            "operation_id": "E1:1:0",
+            "run_id": "run_000000000000000000000002",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "target": {
+            "model": "test-model",
+            "model_parameters": {
+              "temperature": 0.7
+            },
+            "prompt_messages": [
+              {
+                "content": "You are a travel planner.",
+                "name": null,
+                "role": "system"
+              },
+              {
+                "content": "Plan a weekend in Kyoto.",
+                "name": null,
+                "role": "user"
+              },
+              {
+                "content": "",
+                "name": null,
+                "role": "assistant",
+                "tool_calls": [
+                  {
+                    "function": {
+                      "arguments": "{\"text\":\"A relaxed weekend.\",\"score\":\"high\"}",
+                      "name": "final_output"
+                    },
+                    "id": "fo_1",
+                    "type": "function"
+                  }
+                ]
+              },
+              {
+                "content": "Final result processed.",
+                "name": "final_output",
+                "role": "tool",
+                "tool_call_id": "fo_1"
+              },
+              {
+                "content": "Your previous output failed validation:\n- score: expected number, got string\nReply again with the complete JSON output conforming to the schema.",
+                "name": null,
+                "role": "user"
+              }
+            ],
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+            "stop": null,
+            "stream": true,
+            "tools": [
+              {
+                "description": "The final response which ends this conversation",
+                "name": "final_output",
+                "parameters": {
+                  "properties": {
+                    "score": {
+                      "type": "number"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "score"
+                  ],
+                  "title": "final_output",
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        },
+        "headers": {
+          "accept": "text/event-stream",
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/llm/invoke"
+      },
+      "response": {
+        "closed_by_client": false,
+        "events": [
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 0,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": [
+                    {
+                      "function": {
+                        "arguments": "{\"text\":\"A relaxed weekend.\",\"score\":0.9}",
+                        "name": "final_output"
+                      },
+                      "id": "fo_2",
+                      "type": "function"
+                    }
+                  ]
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": "tool_calls",
+                "index": 1,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": {
+                  "completion_tokens": 5,
+                  "currency": "USD",
+                  "latency": 0.1,
+                  "prompt_tokens": 10,
+                  "total_tokens": 15
+                }
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          }
+        ],
+        "status": 200
+      },
+      "step": "start_output_retry"
+    }
+  ],
+  "protocol": "dify-sf-agent/1",
+  "sandbox": null,
+  "steps": [
+    {
+      "request": {
+        "body": {
+          "continuation": null,
+          "env": {},
+          "execution": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "execution_id": "E1",
+            "invoke_from": "debugger",
+            "node_id": "N1",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "files": [],
+          "generation": 1,
+          "limits": {
+            "max_turns": 10,
+            "timeout_seconds": 600
+          },
+          "model": {
+            "name": "test-model",
+            "parameters": {
+              "temperature": 0.7
+            },
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+          },
+          "operation_id": "E1:0:0",
+          "output_schema": {
+            "properties": {
+              "score": {
+                "type": "number"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "score"
+            ],
+            "type": "object"
+          },
+          "protocol": "dify-sf-agent/1",
+          "system_prompt": "You are a travel planner.",
+          "task": [
+            {
+              "text": "Plan a weekend in Kyoto.",
+              "type": "text"
+            }
+          ],
+          "tools": {
+            "ask_human": false,
+            "shell": false
+          }
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json",
+          "X-Agent-Run-Token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/v1/operations"
+      },
+      "response": {
+        "body": {
+          "protocol": "dify-sf-agent/1",
+          "run_id": "run_000000000000000000000001",
+          "status": "running"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 202
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001/events"
+      },
+      "response": {
+        "content_type": "text/event-stream; charset=utf-8",
+        "events": [
+          {
+            "data": {
+              "call_index_base": 0,
+              "model": {
+                "name": "test-model",
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              }
+            },
+            "event": "run_started",
+            "id": 1
+          },
+          {
+            "data": {
+              "invocation_id": "run_000000000000000000000001:1",
+              "usage": {
+                "completion_tokens": 5,
+                "prompt_tokens": 10,
+                "reasoning_tokens": null,
+                "total_tokens": 15
+              }
+            },
+            "event": "model_call",
+            "id": 2
+          },
+          {
+            "data": {
+              "id": "fo_1",
+              "input": {
+                "score": "high",
+                "text": "A relaxed weekend."
+              },
+              "name": "final_output",
+              "phase": "started"
+            },
+            "event": "tool_call",
+            "id": 3
+          },
+          {
+            "data": {
+              "id": "fo_1",
+              "name": "final_output",
+              "output": "Final result processed.",
+              "phase": "finished"
+            },
+            "event": "tool_call",
+            "id": 4
+          },
+          {
+            "data": {
+              "candidate": {
+                "score": "high",
+                "text": "A relaxed weekend."
+              },
+              "candidate_errors": [
+                {
+                  "error": "Value `high` is not of type `number`",
+                  "field": "score"
+                }
+              ],
+              "snapshot": {
+                "agent_config_snapshot_id": "cfg-1",
+                "envelope": "dify-sf-agent-session/1",
+                "file_ids": [],
+                "genkit": "1.0.1",
+                "messages": [
+                  {
+                    "content": [
+                      {
+                        "text": "You are a travel planner."
+                      }
+                    ],
+                    "role": "system"
+                  },
+                  {
+                    "content": [
+                      {
+                        "text": "Plan a weekend in Kyoto."
+                      }
+                    ],
+                    "role": "user"
+                  },
+                  {
+                    "content": [
+                      {
+                        "metadata": {
+                          "dify_sf_arguments": "{\"text\":\"A relaxed weekend.\",\"score\":\"high\"}"
+                        },
+                        "toolRequest": {
+                          "input": {
+                            "score": "high",
+                            "text": "A relaxed weekend."
+                          },
+                          "name": "final_output",
+                          "ref": "fo_1"
+                        }
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  {
+                    "content": [
+                      {
+                        "toolResponse": {
+                          "name": "final_output",
+                          "output": "Final result processed.",
+                          "ref": "fo_1"
+                        }
+                      }
+                    ],
+                    "role": "tool"
+                  }
+                ],
+                "model": {
+                  "name": "test-model",
+                  "parameters": {
+                    "temperature": 0.7
+                  },
+                  "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+                },
+                "output_attempt": 0,
+                "pending": null,
+                "resume_sequence": 0,
+                "revision": 1,
+                "tool_definitions_digest": "e012a2867ce99953248d18e93f9fc384ef081f093c52f57e1a27c0d8a66a8b02",
+                "workspace_ref": null
+              },
+              "usage": {
+                "completion_tokens": 5,
+                "prompt_tokens": 10,
+                "reasoning_tokens": null,
+                "total_tokens": 15
+              }
+            },
+            "event": "succeeded",
+            "id": 5
+          }
+        ],
+        "status": 200
+      },
+      "step": "events"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001"
+      },
+      "response": {
+        "body": {
+          "acknowledged": false,
+          "last_event_id": 5,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "candidate": {
+              "score": "high",
+              "text": "A relaxed weekend."
+            },
+            "candidate_errors": [
+              {
+                "error": "Value `high` is not of type `number`",
+                "field": "score"
+              }
+            ],
+            "snapshot": {
+              "agent_config_snapshot_id": "cfg-1",
+              "envelope": "dify-sf-agent-session/1",
+              "file_ids": [],
+              "genkit": "1.0.1",
+              "messages": [
+                {
+                  "content": [
+                    {
+                      "text": "You are a travel planner."
+                    }
+                  ],
+                  "role": "system"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Plan a weekend in Kyoto."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"text\":\"A relaxed weekend.\",\"score\":\"high\"}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "score": "high",
+                          "text": "A relaxed weekend."
+                        },
+                        "name": "final_output",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "final_output",
+                        "output": "Final result processed.",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                }
+              ],
+              "model": {
+                "name": "test-model",
+                "parameters": {
+                  "temperature": 0.7
+                },
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              },
+              "output_attempt": 0,
+              "pending": null,
+              "resume_sequence": 0,
+              "revision": 1,
+              "tool_definitions_digest": "e012a2867ce99953248d18e93f9fc384ef081f093c52f57e1a27c0d8a66a8b02",
+              "workspace_ref": null
+            },
+            "usage": {
+              "completion_tokens": 5,
+              "prompt_tokens": 10,
+              "reasoning_tokens": null,
+              "total_tokens": 15
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "succeeded"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "status"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1",
+          "result_event_id": 5
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/runs/run_000000000000000000000001/ack"
+      },
+      "response": {
+        "body": {
+          "acknowledged": true,
+          "last_event_id": 5,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "candidate": {
+              "score": "high",
+              "text": "A relaxed weekend."
+            },
+            "candidate_errors": [
+              {
+                "error": "Value `high` is not of type `number`",
+                "field": "score"
+              }
+            ],
+            "snapshot": {
+              "agent_config_snapshot_id": "cfg-1",
+              "envelope": "dify-sf-agent-session/1",
+              "file_ids": [],
+              "genkit": "1.0.1",
+              "messages": [
+                {
+                  "content": [
+                    {
+                      "text": "You are a travel planner."
+                    }
+                  ],
+                  "role": "system"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Plan a weekend in Kyoto."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"text\":\"A relaxed weekend.\",\"score\":\"high\"}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "score": "high",
+                          "text": "A relaxed weekend."
+                        },
+                        "name": "final_output",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "final_output",
+                        "output": "Final result processed.",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                }
+              ],
+              "model": {
+                "name": "test-model",
+                "parameters": {
+                  "temperature": 0.7
+                },
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              },
+              "output_attempt": 0,
+              "pending": null,
+              "resume_sequence": 0,
+              "revision": 1,
+              "tool_definitions_digest": "e012a2867ce99953248d18e93f9fc384ef081f093c52f57e1a27c0d8a66a8b02",
+              "workspace_ref": null
+            },
+            "usage": {
+              "completion_tokens": 5,
+              "prompt_tokens": 10,
+              "reasoning_tokens": null,
+              "total_tokens": 15
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "succeeded"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "ack"
+    },
+    {
+      "request": {
+        "body": {
+          "continuation": {
+            "feedback": [
+              {
+                "error": "expected number, got string",
+                "field": "score"
+              }
+            ],
+            "kind": "output_retry",
+            "snapshot": {
+              "agent_config_snapshot_id": "cfg-1",
+              "envelope": "dify-sf-agent-session/1",
+              "file_ids": [],
+              "genkit": "1.0.1",
+              "messages": [
+                {
+                  "content": [
+                    {
+                      "text": "You are a travel planner."
+                    }
+                  ],
+                  "role": "system"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Plan a weekend in Kyoto."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"text\":\"A relaxed weekend.\",\"score\":\"high\"}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "score": "high",
+                          "text": "A relaxed weekend."
+                        },
+                        "name": "final_output",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "final_output",
+                        "output": "Final result processed.",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                }
+              ],
+              "model": {
+                "name": "test-model",
+                "parameters": {
+                  "temperature": 0.7
+                },
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              },
+              "output_attempt": 0,
+              "pending": null,
+              "resume_sequence": 0,
+              "revision": 1,
+              "tool_definitions_digest": "e012a2867ce99953248d18e93f9fc384ef081f093c52f57e1a27c0d8a66a8b02",
+              "workspace_ref": null
+            }
+          },
+          "env": {},
+          "execution": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "execution_id": "E1",
+            "invoke_from": "debugger",
+            "node_id": "N1",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "files": [],
+          "generation": 1,
+          "limits": {
+            "max_turns": 10,
+            "timeout_seconds": 600
+          },
+          "model": {
+            "name": "test-model",
+            "parameters": {
+              "temperature": 0.7
+            },
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+          },
+          "operation_id": "E1:1:0",
+          "output_schema": {
+            "properties": {
+              "score": {
+                "type": "number"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "score"
+            ],
+            "type": "object"
+          },
+          "protocol": "dify-sf-agent/1",
+          "system_prompt": "You are a travel planner.",
+          "task": [
+            {
+              "text": "Plan a weekend in Kyoto.",
+              "type": "text"
+            }
+          ],
+          "tools": {
+            "ask_human": false,
+            "shell": false
+          }
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json",
+          "X-Agent-Run-Token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/v1/operations"
+      },
+      "response": {
+        "body": {
+          "protocol": "dify-sf-agent/1",
+          "run_id": "run_000000000000000000000002",
+          "status": "running"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 202
+      },
+      "step": "start_output_retry"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000002/events"
+      },
+      "response": {
+        "content_type": "text/event-stream; charset=utf-8",
+        "events": [
+          {
+            "data": {
+              "call_index_base": 0,
+              "model": {
+                "name": "test-model",
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              }
+            },
+            "event": "run_started",
+            "id": 1
+          },
+          {
+            "data": {
+              "invocation_id": "run_000000000000000000000002:1",
+              "usage": {
+                "completion_tokens": 5,
+                "prompt_tokens": 10,
+                "reasoning_tokens": null,
+                "total_tokens": 15
+              }
+            },
+            "event": "model_call",
+            "id": 2
+          },
+          {
+            "data": {
+              "id": "fo_2",
+              "input": {
+                "score": 0.9,
+                "text": "A relaxed weekend."
+              },
+              "name": "final_output",
+              "phase": "started"
+            },
+            "event": "tool_call",
+            "id": 3
+          },
+          {
+            "data": {
+              "id": "fo_2",
+              "name": "final_output",
+              "output": "Final result processed.",
+              "phase": "finished"
+            },
+            "event": "tool_call",
+            "id": 4
+          },
+          {
+            "data": {
+              "candidate": {
+                "score": 0.9,
+                "text": "A relaxed weekend."
+              },
+              "candidate_errors": [],
+              "snapshot": {
+                "agent_config_snapshot_id": "cfg-1",
+                "envelope": "dify-sf-agent-session/1",
+                "file_ids": [],
+                "genkit": "1.0.1",
+                "messages": [
+                  {
+                    "content": [
+                      {
+                        "text": "You are a travel planner."
+                      }
+                    ],
+                    "role": "system"
+                  },
+                  {
+                    "content": [
+                      {
+                        "text": "Plan a weekend in Kyoto."
+                      }
+                    ],
+                    "role": "user"
+                  },
+                  {
+                    "content": [
+                      {
+                        "metadata": {
+                          "dify_sf_arguments": "{\"text\":\"A relaxed weekend.\",\"score\":\"high\"}"
+                        },
+                        "toolRequest": {
+                          "input": {
+                            "score": "high",
+                            "text": "A relaxed weekend."
+                          },
+                          "name": "final_output",
+                          "ref": "fo_1"
+                        }
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  {
+                    "content": [
+                      {
+                        "toolResponse": {
+                          "name": "final_output",
+                          "output": "Final result processed.",
+                          "ref": "fo_1"
+                        }
+                      }
+                    ],
+                    "role": "tool"
+                  },
+                  {
+                    "content": [
+                      {
+                        "text": "Your previous output failed validation:\n- score: expected number, got string\nReply again with the complete JSON output conforming to the schema."
+                      }
+                    ],
+                    "role": "user"
+                  },
+                  {
+                    "content": [
+                      {
+                        "metadata": {
+                          "dify_sf_arguments": "{\"text\":\"A relaxed weekend.\",\"score\":0.9}"
+                        },
+                        "toolRequest": {
+                          "input": {
+                            "score": 0.9,
+                            "text": "A relaxed weekend."
+                          },
+                          "name": "final_output",
+                          "ref": "fo_2"
+                        }
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  {
+                    "content": [
+                      {
+                        "toolResponse": {
+                          "name": "final_output",
+                          "output": "Final result processed.",
+                          "ref": "fo_2"
+                        }
+                      }
+                    ],
+                    "role": "tool"
+                  }
+                ],
+                "model": {
+                  "name": "test-model",
+                  "parameters": {
+                    "temperature": 0.7
+                  },
+                  "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+                },
+                "output_attempt": 1,
+                "pending": null,
+                "resume_sequence": 0,
+                "revision": 2,
+                "tool_definitions_digest": "e012a2867ce99953248d18e93f9fc384ef081f093c52f57e1a27c0d8a66a8b02",
+                "workspace_ref": null
+              },
+              "usage": {
+                "completion_tokens": 5,
+                "prompt_tokens": 10,
+                "reasoning_tokens": null,
+                "total_tokens": 15
+              }
+            },
+            "event": "succeeded",
+            "id": 5
+          }
+        ],
+        "status": 200
+      },
+      "step": "retry_events"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000002"
+      },
+      "response": {
+        "body": {
+          "acknowledged": false,
+          "last_event_id": 5,
+          "operation_id": "E1:1:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "candidate": {
+              "score": 0.9,
+              "text": "A relaxed weekend."
+            },
+            "candidate_errors": [],
+            "snapshot": {
+              "agent_config_snapshot_id": "cfg-1",
+              "envelope": "dify-sf-agent-session/1",
+              "file_ids": [],
+              "genkit": "1.0.1",
+              "messages": [
+                {
+                  "content": [
+                    {
+                      "text": "You are a travel planner."
+                    }
+                  ],
+                  "role": "system"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Plan a weekend in Kyoto."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"text\":\"A relaxed weekend.\",\"score\":\"high\"}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "score": "high",
+                          "text": "A relaxed weekend."
+                        },
+                        "name": "final_output",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "final_output",
+                        "output": "Final result processed.",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Your previous output failed validation:\n- score: expected number, got string\nReply again with the complete JSON output conforming to the schema."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"text\":\"A relaxed weekend.\",\"score\":0.9}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "score": 0.9,
+                          "text": "A relaxed weekend."
+                        },
+                        "name": "final_output",
+                        "ref": "fo_2"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "final_output",
+                        "output": "Final result processed.",
+                        "ref": "fo_2"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                }
+              ],
+              "model": {
+                "name": "test-model",
+                "parameters": {
+                  "temperature": 0.7
+                },
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              },
+              "output_attempt": 1,
+              "pending": null,
+              "resume_sequence": 0,
+              "revision": 2,
+              "tool_definitions_digest": "e012a2867ce99953248d18e93f9fc384ef081f093c52f57e1a27c0d8a66a8b02",
+              "workspace_ref": null
+            },
+            "usage": {
+              "completion_tokens": 5,
+              "prompt_tokens": 10,
+              "reasoning_tokens": null,
+              "total_tokens": 15
+            }
+          },
+          "run_id": "run_000000000000000000000002",
+          "status": "succeeded"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "retry_status"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1",
+          "result_event_id": 5
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/runs/run_000000000000000000000002/ack"
+      },
+      "response": {
+        "body": {
+          "acknowledged": true,
+          "last_event_id": 5,
+          "operation_id": "E1:1:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "candidate": {
+              "score": 0.9,
+              "text": "A relaxed weekend."
+            },
+            "candidate_errors": [],
+            "snapshot": {
+              "agent_config_snapshot_id": "cfg-1",
+              "envelope": "dify-sf-agent-session/1",
+              "file_ids": [],
+              "genkit": "1.0.1",
+              "messages": [
+                {
+                  "content": [
+                    {
+                      "text": "You are a travel planner."
+                    }
+                  ],
+                  "role": "system"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Plan a weekend in Kyoto."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"text\":\"A relaxed weekend.\",\"score\":\"high\"}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "score": "high",
+                          "text": "A relaxed weekend."
+                        },
+                        "name": "final_output",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "final_output",
+                        "output": "Final result processed.",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Your previous output failed validation:\n- score: expected number, got string\nReply again with the complete JSON output conforming to the schema."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"text\":\"A relaxed weekend.\",\"score\":0.9}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "score": 0.9,
+                          "text": "A relaxed weekend."
+                        },
+                        "name": "final_output",
+                        "ref": "fo_2"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "final_output",
+                        "output": "Final result processed.",
+                        "ref": "fo_2"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                }
+              ],
+              "model": {
+                "name": "test-model",
+                "parameters": {
+                  "temperature": 0.7
+                },
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              },
+              "output_attempt": 1,
+              "pending": null,
+              "resume_sequence": 0,
+              "revision": 2,
+              "tool_definitions_digest": "e012a2867ce99953248d18e93f9fc384ef081f093c52f57e1a27c0d8a66a8b02",
+              "workspace_ref": null
+            },
+            "usage": {
+              "completion_tokens": 5,
+              "prompt_tokens": 10,
+              "reasoning_tokens": null,
+              "total_tokens": 15
+            }
+          },
+          "run_id": "run_000000000000000000000002",
+          "status": "succeeded"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "retry_ack"
+    }
+  ]
+}

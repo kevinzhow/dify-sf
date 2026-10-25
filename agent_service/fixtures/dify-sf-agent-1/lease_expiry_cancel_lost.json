@@ -1,0 +1,308 @@
+{
+  "description": "A running operation whose lease (1 second) is not renewed: the run ends `failed` with `cancel_lost` and the gateway connection is closed.",
+  "fixture": "lease_expiry_cancel_lost",
+  "gateway_script": {
+    "calls": [
+      {
+        "chunks": [
+          {
+            "reasoning": "Thinking."
+          }
+        ],
+        "hang": true
+      }
+    ]
+  },
+  "inner": [
+    {
+      "request": {
+        "body": {
+          "caller": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "call_index": 1,
+            "invocation_id": "run_000000000000000000000001:1",
+            "invoke_from": "debugger",
+            "node_execution_id": "E1",
+            "node_id": "N1",
+            "operation_id": "E1:0:0",
+            "run_id": "run_000000000000000000000001",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "target": {
+            "model": "test-model",
+            "model_parameters": {
+              "temperature": 0.7
+            },
+            "prompt_messages": [
+              {
+                "content": "You are a travel planner.",
+                "name": null,
+                "role": "system"
+              },
+              {
+                "content": "Plan a weekend in Kyoto.",
+                "name": null,
+                "role": "user"
+              }
+            ],
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+            "stop": null,
+            "stream": true,
+            "tools": null
+          }
+        },
+        "headers": {
+          "accept": "text/event-stream",
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/llm/invoke"
+      },
+      "response": {
+        "closed_by_client": true,
+        "events": [
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 0,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "reasoning_content": "Thinking.",
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          }
+        ],
+        "status": 200
+      },
+      "step": "start"
+    }
+  ],
+  "protocol": "dify-sf-agent/1",
+  "sandbox": null,
+  "steps": [
+    {
+      "request": {
+        "body": {
+          "continuation": null,
+          "env": {},
+          "execution": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "execution_id": "E1",
+            "invoke_from": "debugger",
+            "node_id": "N1",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "files": [],
+          "generation": 1,
+          "limits": {
+            "max_turns": 10,
+            "timeout_seconds": 600
+          },
+          "model": {
+            "name": "test-model",
+            "parameters": {
+              "temperature": 0.7
+            },
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+          },
+          "operation_id": "E1:0:0",
+          "output_schema": null,
+          "protocol": "dify-sf-agent/1",
+          "system_prompt": "You are a travel planner.",
+          "task": [
+            {
+              "text": "Plan a weekend in Kyoto.",
+              "type": "text"
+            }
+          ],
+          "tools": {
+            "ask_human": false,
+            "shell": false
+          }
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json",
+          "X-Agent-Run-Token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/v1/operations"
+      },
+      "response": {
+        "body": {
+          "protocol": "dify-sf-agent/1",
+          "run_id": "run_000000000000000000000001",
+          "status": "running"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 202
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1",
+          "ttl_seconds": 1
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/executions/E1/lease"
+      },
+      "response": {
+        "body": {
+          "execution_id": "E1",
+          "expires_at": "2026-01-01T00:00:00.000Z",
+          "generation": 1,
+          "protocol": "dify-sf-agent/1"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "lease"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001/events"
+      },
+      "response": {
+        "content_type": "text/event-stream; charset=utf-8",
+        "events": [
+          {
+            "data": {
+              "call_index_base": 0,
+              "model": {
+                "name": "test-model",
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              }
+            },
+            "event": "run_started",
+            "id": 1
+          },
+          {
+            "data": {
+              "text": "Thinking."
+            },
+            "event": "thought",
+            "id": 2
+          },
+          {
+            "data": {
+              "error_type": "cancel_lost",
+              "message": "the execution lease expired; the run was cancelled",
+              "usage": {
+                "completion_tokens": 0,
+                "prompt_tokens": 0,
+                "reasoning_tokens": null,
+                "total_tokens": 0
+              }
+            },
+            "event": "failed",
+            "id": 3
+          }
+        ],
+        "status": 200
+      },
+      "step": "events"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001"
+      },
+      "response": {
+        "body": {
+          "acknowledged": false,
+          "last_event_id": 3,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "error_type": "cancel_lost",
+            "message": "the execution lease expired; the run was cancelled",
+            "usage": {
+              "completion_tokens": 0,
+              "prompt_tokens": 0,
+              "reasoning_tokens": null,
+              "total_tokens": 0
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "failed"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "status"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1",
+          "result_event_id": 3
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/runs/run_000000000000000000000001/ack"
+      },
+      "response": {
+        "body": {
+          "acknowledged": true,
+          "last_event_id": 3,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "error_type": "cancel_lost",
+            "message": "the execution lease expired; the run was cancelled",
+            "usage": {
+              "completion_tokens": 0,
+              "prompt_tokens": 0,
+              "reasoning_tokens": null,
+              "total_tokens": 0
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "failed"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "ack"
+    }
+  ]
+}
