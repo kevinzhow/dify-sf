@@ -22,6 +22,7 @@ struct Routes: Sendable {
     let logger: Logger
     let blobs: any BlobStore
     let uploadBudget = UploadBudget()
+    let agentModelScopes = AgentModelScopes()
 
     static let maxBodyBytes = 1 << 20
     static let maxOpsPerRequest = 100
@@ -68,6 +69,7 @@ struct Routes: Sendable {
         r.get("v1", "docs", ":doc", "events") { req in await handle(req) { try await events(req, doc: try docId(req)) } }
         registerComments(on: r)
         registerModels(on: r)
+        registerAgentModels(on: r)
         registerTools(on: r)
         registerHelpers(on: r)
         registerApps(on: r)

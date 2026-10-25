@@ -97,6 +97,7 @@ public struct ServerConfig: Sendable {
     public var annotationWeaviateURL: String
     public var annotationWeaviateKey: String
     public var runtimeServices: RuntimeServicesConfig
+    public var agentService: AgentServiceConfig
 
     /// The tenant id when `COLLAB_PLUGIN_DAEMON_TENANT` is unset (one workspace per server).
     public static let defaultPluginDaemonTenant = "00000000-0000-0000-0000-000000000001"
@@ -152,6 +153,7 @@ public struct ServerConfig: Sendable {
         annotationWeaviateURL = reader.string(forKey: "collab.annotation.weaviateURL", default: "")
         annotationWeaviateKey = reader.string(forKey: "collab.annotation.weaviateKey", isSecret: true, default: "")
         runtimeServices = RuntimeServicesConfig(reader: reader)
+        agentService = AgentServiceConfig(reader: reader)
     }
 }
 
