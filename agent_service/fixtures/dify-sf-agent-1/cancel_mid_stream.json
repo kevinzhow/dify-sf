@@ -1,0 +1,567 @@
+{
+  "description": "A model call streams three reasoning chunks and stays open. While it runs: the resend answers 200 `running`, status, the active list, ack answers `409 run_active`. Cancel answers 202; the run ends `cancelled` and the gateway connection is closed by the agent service. A second cancel answers `409 run_ended` with the result; an ack of another event id answers `409 result_mismatch`.",
+  "fixture": "cancel_mid_stream",
+  "gateway_script": {
+    "calls": [
+      {
+        "chunks": [
+          {
+            "reasoning": "Step 1. "
+          },
+          {
+            "reasoning": "Step 2. "
+          },
+          {
+            "reasoning": "Step 3. "
+          }
+        ],
+        "hang": true
+      }
+    ]
+  },
+  "inner": [
+    {
+      "request": {
+        "body": {
+          "caller": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "call_index": 1,
+            "invocation_id": "run_000000000000000000000001:1",
+            "invoke_from": "debugger",
+            "node_execution_id": "E1",
+            "node_id": "N1",
+            "operation_id": "E1:0:0",
+            "run_id": "run_000000000000000000000001",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "target": {
+            "model": "test-model",
+            "model_parameters": {
+              "temperature": 0.7
+            },
+            "prompt_messages": [
+              {
+                "content": "You are a travel planner.",
+                "name": null,
+                "role": "system"
+              },
+              {
+                "content": "Plan a weekend in Kyoto.",
+                "name": null,
+                "role": "user"
+              }
+            ],
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+            "stop": null,
+            "stream": true,
+            "tools": null
+          }
+        },
+        "headers": {
+          "accept": "text/event-stream",
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/llm/invoke"
+      },
+      "response": {
+        "closed_by_client": true,
+        "events": [
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 0,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "reasoning_content": "Step 1. ",
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 1,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "reasoning_content": "Step 2. ",
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 2,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "reasoning_content": "Step 3. ",
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          }
+        ],
+        "status": 200
+      },
+      "step": "start"
+    }
+  ],
+  "protocol": "dify-sf-agent/1",
+  "sandbox": null,
+  "steps": [
+    {
+      "request": {
+        "body": {
+          "continuation": null,
+          "env": {},
+          "execution": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "execution_id": "E1",
+            "invoke_from": "debugger",
+            "node_id": "N1",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "files": [],
+          "generation": 1,
+          "limits": {
+            "max_turns": 10,
+            "timeout_seconds": 600
+          },
+          "model": {
+            "name": "test-model",
+            "parameters": {
+              "temperature": 0.7
+            },
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+          },
+          "operation_id": "E1:0:0",
+          "output_schema": null,
+          "protocol": "dify-sf-agent/1",
+          "system_prompt": "You are a travel planner.",
+          "task": [
+            {
+              "text": "Plan a weekend in Kyoto.",
+              "type": "text"
+            }
+          ],
+          "tools": {
+            "ask_human": false,
+            "shell": false
+          }
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json",
+          "X-Agent-Run-Token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/v1/operations"
+      },
+      "response": {
+        "body": {
+          "protocol": "dify-sf-agent/1",
+          "run_id": "run_000000000000000000000001",
+          "status": "running"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 202
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": {
+          "continuation": null,
+          "env": {},
+          "execution": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "execution_id": "E1",
+            "invoke_from": "debugger",
+            "node_id": "N1",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "files": [],
+          "generation": 1,
+          "limits": {
+            "max_turns": 10,
+            "timeout_seconds": 600
+          },
+          "model": {
+            "name": "test-model",
+            "parameters": {
+              "temperature": 0.7
+            },
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+          },
+          "operation_id": "E1:0:0",
+          "output_schema": null,
+          "protocol": "dify-sf-agent/1",
+          "system_prompt": "You are a travel planner.",
+          "task": [
+            {
+              "text": "Plan a weekend in Kyoto.",
+              "type": "text"
+            }
+          ],
+          "tools": {
+            "ask_human": false,
+            "shell": false
+          }
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json",
+          "X-Agent-Run-Token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/v1/operations"
+      },
+      "response": {
+        "body": {
+          "acknowledged": false,
+          "last_event_id": 4,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": null,
+          "run_id": "run_000000000000000000000001",
+          "status": "running"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "resend_while_running"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001"
+      },
+      "response": {
+        "body": {
+          "acknowledged": false,
+          "last_event_id": 4,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": null,
+          "run_id": "run_000000000000000000000001",
+          "status": "running"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "status_running"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs",
+        "query": {
+          "state": "active"
+        }
+      },
+      "response": {
+        "body": {
+          "protocol": "dify-sf-agent/1",
+          "runs": [
+            {
+              "acknowledged": false,
+              "execution_id": "E1",
+              "generation": 1,
+              "last_event_id": 4,
+              "operation_id": "E1:0:0",
+              "run_id": "run_000000000000000000000001",
+              "status": "running"
+            }
+          ]
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "active_runs"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1",
+          "result_event_id": 4
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/runs/run_000000000000000000000001/ack"
+      },
+      "response": {
+        "body": {
+          "error": "run_active",
+          "message": "run run_000000000000000000000001 has not ended",
+          "protocol": "dify-sf-agent/1"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 409
+      },
+      "step": "ack_running"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1"
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/runs/run_000000000000000000000001/cancel"
+      },
+      "response": {
+        "body": {
+          "protocol": "dify-sf-agent/1",
+          "run_id": "run_000000000000000000000001",
+          "status": "running"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 202
+      },
+      "step": "cancel"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001/events"
+      },
+      "response": {
+        "content_type": "text/event-stream; charset=utf-8",
+        "events": [
+          {
+            "data": {
+              "call_index_base": 0,
+              "model": {
+                "name": "test-model",
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              }
+            },
+            "event": "run_started",
+            "id": 1
+          },
+          {
+            "data": {
+              "text": "Step 1. "
+            },
+            "event": "thought",
+            "id": 2
+          },
+          {
+            "data": {
+              "text": "Step 2. "
+            },
+            "event": "thought",
+            "id": 3
+          },
+          {
+            "data": {
+              "text": "Step 3. "
+            },
+            "event": "thought",
+            "id": 4
+          },
+          {
+            "data": {
+              "usage": {
+                "completion_tokens": 0,
+                "prompt_tokens": 0,
+                "reasoning_tokens": null,
+                "total_tokens": 0
+              }
+            },
+            "event": "cancelled",
+            "id": 5
+          }
+        ],
+        "status": 200
+      },
+      "step": "events"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001"
+      },
+      "response": {
+        "body": {
+          "acknowledged": false,
+          "last_event_id": 5,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "usage": {
+              "completion_tokens": 0,
+              "prompt_tokens": 0,
+              "reasoning_tokens": null,
+              "total_tokens": 0
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "cancelled"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "status"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1"
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/runs/run_000000000000000000000001/cancel"
+      },
+      "response": {
+        "body": {
+          "error": "run_ended",
+          "message": "run run_000000000000000000000001 already ended",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "usage": {
+              "completion_tokens": 0,
+              "prompt_tokens": 0,
+              "reasoning_tokens": null,
+              "total_tokens": 0
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "cancelled"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 409
+      },
+      "step": "cancel_again"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1",
+          "result_event_id": 4
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/runs/run_000000000000000000000001/ack"
+      },
+      "response": {
+        "body": {
+          "error": "result_mismatch",
+          "message": "result_event_id 4 is not the terminal event 5",
+          "protocol": "dify-sf-agent/1"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 409
+      },
+      "step": "ack_wrong_event"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1",
+          "result_event_id": 5
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/runs/run_000000000000000000000001/ack"
+      },
+      "response": {
+        "body": {
+          "acknowledged": true,
+          "last_event_id": 5,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "usage": {
+              "completion_tokens": 0,
+              "prompt_tokens": 0,
+              "reasoning_tokens": null,
+              "total_tokens": 0
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "cancelled"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "ack"
+    }
+  ]
+}

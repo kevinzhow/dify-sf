@@ -1,0 +1,1420 @@
+{
+  "description": "Reasoning as `<think>` in the content, split across chunks: `thought` events, kept out of the answer. The first turn calls ask_human with invalid arguments (a tool error goes back to the model), so the second request carries the history: the reasoning is sent back as `<think>\\n…\\n</think>` before the assistant content. The second call reports `reasoning_tokens`.",
+  "fixture": "reasoning_think_tag",
+  "gateway_script": {
+    "calls": [
+      {
+        "chunks": [
+          {
+            "text": "<thi"
+          },
+          {
+            "text": "nk>\nThe user wants a plan."
+          },
+          {
+            "text": "\n</th"
+          },
+          {
+            "text": "ink>",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{}",
+                  "name": "ask_human"
+                },
+                "id": "c1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "finish_reason": "tool_calls",
+            "usage": {
+              "completion_tokens": 5,
+              "currency": "USD",
+              "latency": 0.1,
+              "prompt_tokens": 10,
+              "total_tokens": 15
+            }
+          }
+        ]
+      },
+      {
+        "chunks": [
+          {
+            "text": "<think>No question then.</think>Saturday: temples. "
+          },
+          {
+            "text": "Sunday: markets."
+          },
+          {
+            "finish_reason": "stop",
+            "usage": {
+              "completion_tokens": 7,
+              "currency": "USD",
+              "latency": 0.1,
+              "prompt_tokens": 20,
+              "reasoning_tokens": 3,
+              "total_tokens": 27
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "inner": [
+    {
+      "request": {
+        "body": {
+          "caller": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "call_index": 1,
+            "invocation_id": "run_000000000000000000000001:1",
+            "invoke_from": "debugger",
+            "node_execution_id": "E1",
+            "node_id": "N1",
+            "operation_id": "E1:0:0",
+            "run_id": "run_000000000000000000000001",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "target": {
+            "model": "test-model",
+            "model_parameters": {
+              "temperature": 0.7
+            },
+            "prompt_messages": [
+              {
+                "content": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits.",
+                "name": null,
+                "role": "system"
+              },
+              {
+                "content": "Plan a weekend in Kyoto.",
+                "name": null,
+                "role": "user"
+              }
+            ],
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+            "stop": null,
+            "stream": true,
+            "tools": [
+              {
+                "description": "Ask a human for missing information or a decision that is required to continue. Use this only when the answer cannot be inferred from the conversation, available tools, or current context. Provide concise instructions, structured fields, and clear actions for the human.",
+                "name": "ask_human",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "actions": {
+                      "default": [],
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "label": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "style": {
+                            "default": "default",
+                            "enum": [
+                              "default",
+                              "primary",
+                              "destructive"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "label"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "fields": {
+                      "default": [],
+                      "items": {
+                        "oneOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "default": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "default": null
+                              },
+                              "label": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "name": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "placeholder": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "default": null
+                              },
+                              "required": {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "const": "paragraph",
+                                "default": "paragraph",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "default": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "default": null
+                              },
+                              "label": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "name": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "options": {
+                                "items": {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "label": {
+                                      "minLength": 1,
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "minLength": 1,
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "value",
+                                    "label"
+                                  ],
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
+                              "required": {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "const": "select",
+                                "default": "select",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "label": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "name": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "required": {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "const": "file",
+                                "default": "file",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "label": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "max_files": {
+                                "anyOf": [
+                                  {
+                                    "minimum": 1,
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "default": null
+                              },
+                              "name": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "required": {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "const": "file-list",
+                                "default": "file-list",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label"
+                            ],
+                            "type": "object"
+                          }
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    "markdown": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "question": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "title": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "urgency": {
+                      "default": "normal",
+                      "enum": [
+                        "normal",
+                        "high"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "question"
+                  ],
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        },
+        "headers": {
+          "accept": "text/event-stream",
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/llm/invoke"
+      },
+      "response": {
+        "closed_by_client": false,
+        "events": [
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 0,
+                "message": {
+                  "content": "<thi",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 1,
+                "message": {
+                  "content": "nk>\nThe user wants a plan.",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 2,
+                "message": {
+                  "content": "\n</th",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 3,
+                "message": {
+                  "content": "ink>",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": [
+                    {
+                      "function": {
+                        "arguments": "{}",
+                        "name": "ask_human"
+                      },
+                      "id": "c1",
+                      "type": "function"
+                    }
+                  ]
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": "tool_calls",
+                "index": 4,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": {
+                  "completion_tokens": 5,
+                  "currency": "USD",
+                  "latency": 0.1,
+                  "prompt_tokens": 10,
+                  "total_tokens": 15
+                }
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          }
+        ],
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": {
+          "caller": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "call_index": 2,
+            "invocation_id": "run_000000000000000000000001:2",
+            "invoke_from": "debugger",
+            "node_execution_id": "E1",
+            "node_id": "N1",
+            "operation_id": "E1:0:0",
+            "run_id": "run_000000000000000000000001",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "target": {
+            "model": "test-model",
+            "model_parameters": {
+              "temperature": 0.7
+            },
+            "prompt_messages": [
+              {
+                "content": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits.",
+                "name": null,
+                "role": "system"
+              },
+              {
+                "content": "Plan a weekend in Kyoto.",
+                "name": null,
+                "role": "user"
+              },
+              {
+                "content": "<think>\nThe user wants a plan.\n</think>",
+                "name": null,
+                "role": "assistant",
+                "tool_calls": [
+                  {
+                    "function": {
+                      "arguments": "{}",
+                      "name": "ask_human"
+                    },
+                    "id": "c1",
+                    "type": "function"
+                  }
+                ]
+              },
+              {
+                "content": "Invalid ask_human arguments: question must be a non-empty string. Fix the errors and try again.",
+                "name": "ask_human",
+                "role": "tool",
+                "tool_call_id": "c1"
+              }
+            ],
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+            "stop": null,
+            "stream": true,
+            "tools": [
+              {
+                "description": "Ask a human for missing information or a decision that is required to continue. Use this only when the answer cannot be inferred from the conversation, available tools, or current context. Provide concise instructions, structured fields, and clear actions for the human.",
+                "name": "ask_human",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "actions": {
+                      "default": [],
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "label": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "style": {
+                            "default": "default",
+                            "enum": [
+                              "default",
+                              "primary",
+                              "destructive"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "label"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "fields": {
+                      "default": [],
+                      "items": {
+                        "oneOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "default": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "default": null
+                              },
+                              "label": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "name": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "placeholder": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "default": null
+                              },
+                              "required": {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "const": "paragraph",
+                                "default": "paragraph",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "default": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "default": null
+                              },
+                              "label": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "name": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "options": {
+                                "items": {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "label": {
+                                      "minLength": 1,
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "minLength": 1,
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "value",
+                                    "label"
+                                  ],
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
+                              "required": {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "const": "select",
+                                "default": "select",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "label": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "name": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "required": {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "const": "file",
+                                "default": "file",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "label": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "max_files": {
+                                "anyOf": [
+                                  {
+                                    "minimum": 1,
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "default": null
+                              },
+                              "name": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "required": {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              "type": {
+                                "const": "file-list",
+                                "default": "file-list",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label"
+                            ],
+                            "type": "object"
+                          }
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    "markdown": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "question": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "title": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "urgency": {
+                      "default": "normal",
+                      "enum": [
+                        "normal",
+                        "high"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "question"
+                  ],
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        },
+        "headers": {
+          "accept": "text/event-stream",
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/llm/invoke"
+      },
+      "response": {
+        "closed_by_client": false,
+        "events": [
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 0,
+                "message": {
+                  "content": "<think>No question then.</think>Saturday: temples. ",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 1,
+                "message": {
+                  "content": "Sunday: markets.",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": "stop",
+                "index": 2,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": {
+                  "completion_tokens": 7,
+                  "currency": "USD",
+                  "latency": 0.1,
+                  "prompt_tokens": 20,
+                  "reasoning_tokens": 3,
+                  "total_tokens": 27
+                }
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          }
+        ],
+        "status": 200
+      },
+      "step": "start"
+    }
+  ],
+  "protocol": "dify-sf-agent/1",
+  "sandbox": null,
+  "steps": [
+    {
+      "request": {
+        "body": {
+          "continuation": null,
+          "env": {},
+          "execution": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "execution_id": "E1",
+            "invoke_from": "debugger",
+            "node_id": "N1",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "files": [],
+          "generation": 1,
+          "limits": {
+            "max_turns": 10,
+            "timeout_seconds": 600
+          },
+          "model": {
+            "name": "test-model",
+            "parameters": {
+              "temperature": 0.7
+            },
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+          },
+          "operation_id": "E1:0:0",
+          "output_schema": null,
+          "protocol": "dify-sf-agent/1",
+          "system_prompt": "You are a travel planner.",
+          "task": [
+            {
+              "text": "Plan a weekend in Kyoto.",
+              "type": "text"
+            }
+          ],
+          "tools": {
+            "ask_human": true,
+            "shell": false
+          }
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json",
+          "X-Agent-Run-Token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/v1/operations"
+      },
+      "response": {
+        "body": {
+          "protocol": "dify-sf-agent/1",
+          "run_id": "run_000000000000000000000001",
+          "status": "running"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 202
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001/events"
+      },
+      "response": {
+        "content_type": "text/event-stream; charset=utf-8",
+        "events": [
+          {
+            "data": {
+              "call_index_base": 0,
+              "model": {
+                "name": "test-model",
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              }
+            },
+            "event": "run_started",
+            "id": 1
+          },
+          {
+            "data": {
+              "text": "\nThe user wants a plan."
+            },
+            "event": "thought",
+            "id": 2
+          },
+          {
+            "data": {
+              "text": "\n"
+            },
+            "event": "thought",
+            "id": 3
+          },
+          {
+            "data": {
+              "invocation_id": "run_000000000000000000000001:1",
+              "usage": {
+                "completion_tokens": 5,
+                "prompt_tokens": 10,
+                "reasoning_tokens": null,
+                "total_tokens": 15
+              }
+            },
+            "event": "model_call",
+            "id": 4
+          },
+          {
+            "data": {
+              "id": "c1",
+              "input": {},
+              "name": "ask_human",
+              "phase": "started"
+            },
+            "event": "tool_call",
+            "id": 5
+          },
+          {
+            "data": {
+              "error": "question must be a non-empty string",
+              "id": "c1",
+              "name": "ask_human",
+              "phase": "finished"
+            },
+            "event": "tool_call",
+            "id": 6
+          },
+          {
+            "data": {
+              "text": "No question then."
+            },
+            "event": "thought",
+            "id": 7
+          },
+          {
+            "data": {
+              "invocation_id": "run_000000000000000000000001:2",
+              "usage": {
+                "completion_tokens": 7,
+                "prompt_tokens": 20,
+                "reasoning_tokens": 3,
+                "total_tokens": 27
+              }
+            },
+            "event": "model_call",
+            "id": 8
+          },
+          {
+            "data": {
+              "candidate": {
+                "text": "Saturday: temples. Sunday: markets."
+              },
+              "candidate_errors": [],
+              "snapshot": {
+                "agent_config_snapshot_id": "cfg-1",
+                "envelope": "dify-sf-agent-session/1",
+                "file_ids": [],
+                "genkit": "1.0.1",
+                "messages": [
+                  {
+                    "content": [
+                      {
+                        "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                      }
+                    ],
+                    "role": "system"
+                  },
+                  {
+                    "content": [
+                      {
+                        "text": "Plan a weekend in Kyoto."
+                      }
+                    ],
+                    "role": "user"
+                  },
+                  {
+                    "content": [
+                      {
+                        "metadata": {
+                          "dify_sf_reasoning_form": "think_tag"
+                        },
+                        "reasoning": "The user wants a plan."
+                      },
+                      {
+                        "metadata": {
+                          "dify_sf_arguments": "{}"
+                        },
+                        "toolRequest": {
+                          "input": {},
+                          "name": "ask_human",
+                          "ref": "c1"
+                        }
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  {
+                    "content": [
+                      {
+                        "metadata": {
+                          "dify_sf_error": "question must be a non-empty string"
+                        },
+                        "toolResponse": {
+                          "name": "ask_human",
+                          "output": "Invalid ask_human arguments: question must be a non-empty string. Fix the errors and try again.",
+                          "ref": "c1"
+                        }
+                      }
+                    ],
+                    "role": "tool"
+                  },
+                  {
+                    "content": [
+                      {
+                        "metadata": {
+                          "dify_sf_reasoning_form": "think_tag"
+                        },
+                        "reasoning": "No question then."
+                      },
+                      {
+                        "text": "Saturday: temples. Sunday: markets."
+                      }
+                    ],
+                    "role": "model"
+                  }
+                ],
+                "model": {
+                  "name": "test-model",
+                  "parameters": {
+                    "temperature": 0.7
+                  },
+                  "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+                },
+                "output_attempt": 0,
+                "pending": null,
+                "resume_sequence": 0,
+                "revision": 1,
+                "tool_definitions_digest": "3684bfc6714b1ee547fa494b44e6a244ebefd2ff197de29bb64435ae1ca86fea",
+                "workspace_ref": null
+              },
+              "usage": {
+                "completion_tokens": 12,
+                "prompt_tokens": 30,
+                "reasoning_tokens": 3,
+                "total_tokens": 42
+              }
+            },
+            "event": "succeeded",
+            "id": 9
+          }
+        ],
+        "status": 200
+      },
+      "step": "events"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001"
+      },
+      "response": {
+        "body": {
+          "acknowledged": false,
+          "last_event_id": 9,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "candidate": {
+              "text": "Saturday: temples. Sunday: markets."
+            },
+            "candidate_errors": [],
+            "snapshot": {
+              "agent_config_snapshot_id": "cfg-1",
+              "envelope": "dify-sf-agent-session/1",
+              "file_ids": [],
+              "genkit": "1.0.1",
+              "messages": [
+                {
+                  "content": [
+                    {
+                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                    }
+                  ],
+                  "role": "system"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Plan a weekend in Kyoto."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_reasoning_form": "think_tag"
+                      },
+                      "reasoning": "The user wants a plan."
+                    },
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{}"
+                      },
+                      "toolRequest": {
+                        "input": {},
+                        "name": "ask_human",
+                        "ref": "c1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_error": "question must be a non-empty string"
+                      },
+                      "toolResponse": {
+                        "name": "ask_human",
+                        "output": "Invalid ask_human arguments: question must be a non-empty string. Fix the errors and try again.",
+                        "ref": "c1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_reasoning_form": "think_tag"
+                      },
+                      "reasoning": "No question then."
+                    },
+                    {
+                      "text": "Saturday: temples. Sunday: markets."
+                    }
+                  ],
+                  "role": "model"
+                }
+              ],
+              "model": {
+                "name": "test-model",
+                "parameters": {
+                  "temperature": 0.7
+                },
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              },
+              "output_attempt": 0,
+              "pending": null,
+              "resume_sequence": 0,
+              "revision": 1,
+              "tool_definitions_digest": "3684bfc6714b1ee547fa494b44e6a244ebefd2ff197de29bb64435ae1ca86fea",
+              "workspace_ref": null
+            },
+            "usage": {
+              "completion_tokens": 12,
+              "prompt_tokens": 30,
+              "reasoning_tokens": 3,
+              "total_tokens": 42
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "succeeded"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "status"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1",
+          "result_event_id": 9
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/runs/run_000000000000000000000001/ack"
+      },
+      "response": {
+        "body": {
+          "acknowledged": true,
+          "last_event_id": 9,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "candidate": {
+              "text": "Saturday: temples. Sunday: markets."
+            },
+            "candidate_errors": [],
+            "snapshot": {
+              "agent_config_snapshot_id": "cfg-1",
+              "envelope": "dify-sf-agent-session/1",
+              "file_ids": [],
+              "genkit": "1.0.1",
+              "messages": [
+                {
+                  "content": [
+                    {
+                      "text": "You are a travel planner.\n\nYou may call the external tool 'ask_human' only when human input is required to continue. Do not ask a human for information that can be inferred from the conversation, current context, or other tools.\n\nAsk-human guardrails:\n- Allowed field types: paragraph, select.\n- File upload fields are disabled.\n- Use at most 8 field(s).\n- Use at most 4 action(s).\n- Keep 'question' under 1000 characters.\n- Keep 'markdown' under 8000 characters.\n- Keep each field label under 120 characters.\n- Keep each action label under 80 characters.\n- If you omit actions, the system will add one primary action: Submit.\nPrefer concise, structured requests that stay comfortably within these limits."
+                    }
+                  ],
+                  "role": "system"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Plan a weekend in Kyoto."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_reasoning_form": "think_tag"
+                      },
+                      "reasoning": "The user wants a plan."
+                    },
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{}"
+                      },
+                      "toolRequest": {
+                        "input": {},
+                        "name": "ask_human",
+                        "ref": "c1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_error": "question must be a non-empty string"
+                      },
+                      "toolResponse": {
+                        "name": "ask_human",
+                        "output": "Invalid ask_human arguments: question must be a non-empty string. Fix the errors and try again.",
+                        "ref": "c1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_reasoning_form": "think_tag"
+                      },
+                      "reasoning": "No question then."
+                    },
+                    {
+                      "text": "Saturday: temples. Sunday: markets."
+                    }
+                  ],
+                  "role": "model"
+                }
+              ],
+              "model": {
+                "name": "test-model",
+                "parameters": {
+                  "temperature": 0.7
+                },
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              },
+              "output_attempt": 0,
+              "pending": null,
+              "resume_sequence": 0,
+              "revision": 1,
+              "tool_definitions_digest": "3684bfc6714b1ee547fa494b44e6a244ebefd2ff197de29bb64435ae1ca86fea",
+              "workspace_ref": null
+            },
+            "usage": {
+              "completion_tokens": 12,
+              "prompt_tokens": 30,
+              "reasoning_tokens": 3,
+              "total_tokens": 42
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "succeeded"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "ack"
+    }
+  ]
+}

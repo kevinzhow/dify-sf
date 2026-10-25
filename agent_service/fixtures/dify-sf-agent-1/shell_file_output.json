@@ -1,0 +1,1472 @@
+{
+  "description": "The shell (fake supervisor and shellctl): `files[]` is materialized through `files/download-request` and the signed URL, `shell_run` runs, and the declared file outputs are uploaded through `files/upload-request` and a PUT each: the top-level `report` and the array `bundle.pages` nested in an object; each is replaced in place by its upload. `extra.notes` names a missing file: a `candidate_errors` entry for `extra`, which keeps the model's value. The snapshot's `workspace_ref` is the sandbox.",
+  "fixture": "shell_file_output",
+  "gateway_script": {
+    "calls": [
+      {
+        "chunks": [
+          {
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"script\":\"python3 make_report.py inputs/cities.txt > out/report.csv\"}",
+                  "name": "shell_run"
+                },
+                "id": "c1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "finish_reason": "tool_calls",
+            "usage": {
+              "completion_tokens": 5,
+              "currency": "USD",
+              "latency": 0.1,
+              "prompt_tokens": 10,
+              "total_tokens": 15
+            }
+          }
+        ]
+      },
+      {
+        "chunks": [
+          {
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"text\":\"The report is ready.\",\"report\":\"out/report.csv\",\"bundle\":{\"title\":\"Kyoto\",\"pages\":[\"out/day1.txt\",\"out/day2.txt\"]},\"extra\":{\"notes\":\"out/missing.txt\"}}",
+                  "name": "final_output"
+                },
+                "id": "fo_1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "finish_reason": "tool_calls",
+            "usage": {
+              "completion_tokens": 5,
+              "currency": "USD",
+              "latency": 0.1,
+              "prompt_tokens": 10,
+              "total_tokens": 15
+            }
+          }
+        ]
+      }
+    ],
+    "files": {
+      "f1": {
+        "content": "Kyoto\n",
+        "mime_type": "text/plain",
+        "size": 6
+      }
+    }
+  },
+  "inner": [
+    {
+      "request": {
+        "body": {
+          "caller": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "call_index": 1,
+            "invocation_id": "run_000000000000000000000001:1",
+            "invoke_from": "debugger",
+            "node_execution_id": "E1",
+            "node_id": "N1",
+            "operation_id": "E1:0:0",
+            "run_id": "run_000000000000000000000001",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "target": {
+            "model": "test-model",
+            "model_parameters": {
+              "temperature": 0.7
+            },
+            "prompt_messages": [
+              {
+                "content": "You can run commands in an isolated shell workspace.\n\nAvailable shell tools:\n\n1. shell_run\n   Starts a new shell job in the current workspace.\n   Use it to run commands or scripts.\n\n2. shell_wait\n   Waits for more output or completion from an existing shell job.\n   Use it when shell_run returns done=false.\n\n3. shell_input\n   Sends stdin text to a running shell job, then waits for new output.\n   Use it only when an interactive command is waiting for input.\n\n4. shell_interrupt\n   Interrupts a running shell job.\n   Use it to stop a long-running, stuck, or no-longer-needed command.\n\nCommon arguments:\n\n- script:\n  Command or script to execute. Used by shell_run.\n\n- job_id:\n  Shell job id returned by shell_run.\n  Use it with shell_wait, shell_input, and shell_interrupt.\n  Never invent a job_id.\n\n- timeout:\n  Maximum time in seconds to wait for output or completion for this tool call.\n  A timeout does not necessarily mean the job has stopped; if done=false, use shell_wait again.\n\n- text:\n  Text to send to the running process stdin. Used by shell_input.\n  Include \"\\n\" if the process expects Enter.\n\n- grace_seconds:\n  Time to wait after interrupting before forceful cleanup. Used by shell_interrupt.\n\nUsage rules:\n\n- Start with shell_run.\n- If shell_run returns done=false, call shell_wait with the returned job_id.\n- Use shell_input only when the job is running and waiting for stdin.\n- Use shell_interrupt when a job is stuck or should be stopped.\n\nFilesystem spaces:\n\n- `$HOME` is the system space for reusable tools and state.\n- The current working directory (`cwd`) is the active Workspace and temporary working space.\n- Relative paths and the standard temp environment variables (`TMPDIR`, `TMP`, and `TEMP`) resolve directly to `cwd`.\n- Do not use `/tmp`.\n\nshell_run script rules:\n\n- The script argument can be a normal shell script or a shebang script.\n- If the first line is a shebang, the shell executes the script directly.\n\nTips:\n\n- Python 3.12, uv, pip, Node.js, pnpm, and pnx are preinstalled in the local sandbox.\n- For one-off Python dependencies, prefer a uv script with a PEP 723 dependency header or:\n  `uv run --with <package> python <script-or--c>`.\n- For reusable Python CLI tools, use `uv tool install <tool>`; installed commands land in `$HOME/.local/bin`.\n  Run them by full path or add `$HOME/.local/bin` to PATH in the command that needs them.\n- `python3 -m pip install --user <package>` also installs into `$HOME/.local`; add `$HOME/.local/bin` to PATH\n  when you need console scripts.\n- For reusable Node.js CLIs, use user-level global installs:\n  `PNPM_HOME=$HOME/.local/share/pnpm PATH=$HOME/.local/share/pnpm/bin:$PATH pnpm add -g <package>`.\n  Installed commands land in `$PNPM_HOME/bin`; run them by full path or with the same PATH prefix.\n- For one-off Node.js CLIs, prefer `pnx <command> [args]`.\n- Do not install new packages into system or image tool paths such as `/usr/local`, `/usr`, or `/opt/dify-agent-tools`.\n- If you need MCP, install the MCP server in the shell environment and start that server when you use it.\n\nExample shell_run script:\n\n[begin script]\n#!/usr/bin/env -S uv run --quiet --script\n# /// script\n# requires-python = \">=3.12\"\n# dependencies = [\n#   \"httpx==0.28.1\",\n#   \"rich>=13.8.0\",\n# ]\n# ///\n\nimport httpx\nfrom rich import print\n\nresponse = httpx.get(\"https://example.com\", timeout=10)\nprint(f\"[green]status:[/green] {response.status_code}\")\n[end script]\n\nWorking location:\n\n- Prefer `cwd` for your work.\n- Changes in `$HOME` or `cwd` do not update the saved Agent state.\n\nYou are a travel planner.\n\nEnvironment variables may contain API keys, tokens, or credentials.\nYou may refer to environment variable names when needed.",
+                "name": null,
+                "role": "system"
+              },
+              {
+                "content": "Plan a weekend in Kyoto.",
+                "name": null,
+                "role": "user"
+              }
+            ],
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+            "stop": null,
+            "stream": true,
+            "tools": [
+              {
+                "description": "The final response which ends this conversation",
+                "name": "final_output",
+                "parameters": {
+                  "properties": {
+                    "bundle": {
+                      "properties": {
+                        "pages": {
+                          "items": {
+                            "description": "Path of a file in the shell workspace, relative to the workspace.",
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "extra": {
+                      "properties": {
+                        "notes": {
+                          "description": "Path of a file in the shell workspace, relative to the workspace.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "report": {
+                      "description": "Path of a file in the shell workspace, relative to the workspace.",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "report"
+                  ],
+                  "title": "final_output",
+                  "type": "object"
+                }
+              },
+              {
+                "description": "Start a shell job in the current workspace and return its output and status.",
+                "name": "shell_run",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "script": {
+                      "type": "string"
+                    },
+                    "timeout": {
+                      "default": 30.0,
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "script"
+                  ],
+                  "type": "object"
+                }
+              },
+              {
+                "description": "Wait for more output or completion from an existing shell job.",
+                "name": "shell_wait",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "timeout": {
+                      "default": 30.0,
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "job_id"
+                  ],
+                  "type": "object"
+                }
+              },
+              {
+                "description": "Send text to a running shell job and wait for its next output.",
+                "name": "shell_input",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "timeout": {
+                      "default": 30.0,
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "job_id",
+                    "text"
+                  ],
+                  "type": "object"
+                }
+              },
+              {
+                "description": "Interrupt a running shell job and return its final status.",
+                "name": "shell_interrupt",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "grace_seconds": {
+                      "default": 10.0,
+                      "type": "number"
+                    },
+                    "job_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "job_id"
+                  ],
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        },
+        "headers": {
+          "accept": "text/event-stream",
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/llm/invoke"
+      },
+      "response": {
+        "closed_by_client": false,
+        "events": [
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 0,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": [
+                    {
+                      "function": {
+                        "arguments": "{\"script\":\"python3 make_report.py inputs/cities.txt > out/report.csv\"}",
+                        "name": "shell_run"
+                      },
+                      "id": "c1",
+                      "type": "function"
+                    }
+                  ]
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": "tool_calls",
+                "index": 1,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": {
+                  "completion_tokens": 5,
+                  "currency": "USD",
+                  "latency": 0.1,
+                  "prompt_tokens": 10,
+                  "total_tokens": 15
+                }
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          }
+        ],
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": {
+          "file_id": "f1"
+        },
+        "headers": {
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/files/download-request"
+      },
+      "response": {
+        "body": {
+          "expires_at": "2026-01-01T00:00:00.000Z",
+          "mime_type": "text/plain",
+          "size": 6,
+          "url": "http://inner-gateway.invalid/files/f1?sig=2"
+        },
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "headers": {},
+        "method": "GET",
+        "path": "/files/f1",
+        "query": {
+          "sig": "2"
+        }
+      },
+      "response": {
+        "body": "Kyoto\n",
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": {
+          "caller": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "call_index": 2,
+            "invocation_id": "run_000000000000000000000001:2",
+            "invoke_from": "debugger",
+            "node_execution_id": "E1",
+            "node_id": "N1",
+            "operation_id": "E1:0:0",
+            "run_id": "run_000000000000000000000001",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "target": {
+            "model": "test-model",
+            "model_parameters": {
+              "temperature": 0.7
+            },
+            "prompt_messages": [
+              {
+                "content": "You can run commands in an isolated shell workspace.\n\nAvailable shell tools:\n\n1. shell_run\n   Starts a new shell job in the current workspace.\n   Use it to run commands or scripts.\n\n2. shell_wait\n   Waits for more output or completion from an existing shell job.\n   Use it when shell_run returns done=false.\n\n3. shell_input\n   Sends stdin text to a running shell job, then waits for new output.\n   Use it only when an interactive command is waiting for input.\n\n4. shell_interrupt\n   Interrupts a running shell job.\n   Use it to stop a long-running, stuck, or no-longer-needed command.\n\nCommon arguments:\n\n- script:\n  Command or script to execute. Used by shell_run.\n\n- job_id:\n  Shell job id returned by shell_run.\n  Use it with shell_wait, shell_input, and shell_interrupt.\n  Never invent a job_id.\n\n- timeout:\n  Maximum time in seconds to wait for output or completion for this tool call.\n  A timeout does not necessarily mean the job has stopped; if done=false, use shell_wait again.\n\n- text:\n  Text to send to the running process stdin. Used by shell_input.\n  Include \"\\n\" if the process expects Enter.\n\n- grace_seconds:\n  Time to wait after interrupting before forceful cleanup. Used by shell_interrupt.\n\nUsage rules:\n\n- Start with shell_run.\n- If shell_run returns done=false, call shell_wait with the returned job_id.\n- Use shell_input only when the job is running and waiting for stdin.\n- Use shell_interrupt when a job is stuck or should be stopped.\n\nFilesystem spaces:\n\n- `$HOME` is the system space for reusable tools and state.\n- The current working directory (`cwd`) is the active Workspace and temporary working space.\n- Relative paths and the standard temp environment variables (`TMPDIR`, `TMP`, and `TEMP`) resolve directly to `cwd`.\n- Do not use `/tmp`.\n\nshell_run script rules:\n\n- The script argument can be a normal shell script or a shebang script.\n- If the first line is a shebang, the shell executes the script directly.\n\nTips:\n\n- Python 3.12, uv, pip, Node.js, pnpm, and pnx are preinstalled in the local sandbox.\n- For one-off Python dependencies, prefer a uv script with a PEP 723 dependency header or:\n  `uv run --with <package> python <script-or--c>`.\n- For reusable Python CLI tools, use `uv tool install <tool>`; installed commands land in `$HOME/.local/bin`.\n  Run them by full path or add `$HOME/.local/bin` to PATH in the command that needs them.\n- `python3 -m pip install --user <package>` also installs into `$HOME/.local`; add `$HOME/.local/bin` to PATH\n  when you need console scripts.\n- For reusable Node.js CLIs, use user-level global installs:\n  `PNPM_HOME=$HOME/.local/share/pnpm PATH=$HOME/.local/share/pnpm/bin:$PATH pnpm add -g <package>`.\n  Installed commands land in `$PNPM_HOME/bin`; run them by full path or with the same PATH prefix.\n- For one-off Node.js CLIs, prefer `pnx <command> [args]`.\n- Do not install new packages into system or image tool paths such as `/usr/local`, `/usr`, or `/opt/dify-agent-tools`.\n- If you need MCP, install the MCP server in the shell environment and start that server when you use it.\n\nExample shell_run script:\n\n[begin script]\n#!/usr/bin/env -S uv run --quiet --script\n# /// script\n# requires-python = \">=3.12\"\n# dependencies = [\n#   \"httpx==0.28.1\",\n#   \"rich>=13.8.0\",\n# ]\n# ///\n\nimport httpx\nfrom rich import print\n\nresponse = httpx.get(\"https://example.com\", timeout=10)\nprint(f\"[green]status:[/green] {response.status_code}\")\n[end script]\n\nWorking location:\n\n- Prefer `cwd` for your work.\n- Changes in `$HOME` or `cwd` do not update the saved Agent state.\n\nYou are a travel planner.\n\nEnvironment variables may contain API keys, tokens, or credentials.\nYou may refer to environment variable names when needed.",
+                "name": null,
+                "role": "system"
+              },
+              {
+                "content": "Plan a weekend in Kyoto.",
+                "name": null,
+                "role": "user"
+              },
+              {
+                "content": "",
+                "name": null,
+                "role": "assistant",
+                "tool_calls": [
+                  {
+                    "function": {
+                      "arguments": "{\"script\":\"python3 make_report.py inputs/cities.txt > out/report.csv\"}",
+                      "name": "shell_run"
+                    },
+                    "id": "c1",
+                    "type": "function"
+                  }
+                ]
+              },
+              {
+                "content": "<metadata>\n{\"job_id\":\"job5\",\"status\":\"exited\",\"done\":true,\"exit_code\":0,\"output_path\":\"/home/dify/.local/share/shellctl/jobs/job5/output.log\"}\n</metadata>\n\n<output>\nwrote out/report.csv\r\n\n</output>",
+                "name": "shell_run",
+                "role": "tool",
+                "tool_call_id": "c1"
+              }
+            ],
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+            "stop": null,
+            "stream": true,
+            "tools": [
+              {
+                "description": "The final response which ends this conversation",
+                "name": "final_output",
+                "parameters": {
+                  "properties": {
+                    "bundle": {
+                      "properties": {
+                        "pages": {
+                          "items": {
+                            "description": "Path of a file in the shell workspace, relative to the workspace.",
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "extra": {
+                      "properties": {
+                        "notes": {
+                          "description": "Path of a file in the shell workspace, relative to the workspace.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "report": {
+                      "description": "Path of a file in the shell workspace, relative to the workspace.",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "report"
+                  ],
+                  "title": "final_output",
+                  "type": "object"
+                }
+              },
+              {
+                "description": "Start a shell job in the current workspace and return its output and status.",
+                "name": "shell_run",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "script": {
+                      "type": "string"
+                    },
+                    "timeout": {
+                      "default": 30.0,
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "script"
+                  ],
+                  "type": "object"
+                }
+              },
+              {
+                "description": "Wait for more output or completion from an existing shell job.",
+                "name": "shell_wait",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "timeout": {
+                      "default": 30.0,
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "job_id"
+                  ],
+                  "type": "object"
+                }
+              },
+              {
+                "description": "Send text to a running shell job and wait for its next output.",
+                "name": "shell_input",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "timeout": {
+                      "default": 30.0,
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "job_id",
+                    "text"
+                  ],
+                  "type": "object"
+                }
+              },
+              {
+                "description": "Interrupt a running shell job and return its final status.",
+                "name": "shell_interrupt",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "grace_seconds": {
+                      "default": 10.0,
+                      "type": "number"
+                    },
+                    "job_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "job_id"
+                  ],
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        },
+        "headers": {
+          "accept": "text/event-stream",
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/llm/invoke"
+      },
+      "response": {
+        "closed_by_client": false,
+        "events": [
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": null,
+                "index": 0,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": [
+                    {
+                      "function": {
+                        "arguments": "{\"text\":\"The report is ready.\",\"report\":\"out/report.csv\",\"bundle\":{\"title\":\"Kyoto\",\"pages\":[\"out/day1.txt\",\"out/day2.txt\"]},\"extra\":{\"notes\":\"out/missing.txt\"}}",
+                        "name": "final_output"
+                      },
+                      "id": "fo_1",
+                      "type": "function"
+                    }
+                  ]
+                },
+                "usage": null
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          },
+          {
+            "code": 0,
+            "data": {
+              "delta": {
+                "finish_reason": "tool_calls",
+                "index": 1,
+                "message": {
+                  "content": "",
+                  "name": null,
+                  "role": "assistant",
+                  "tool_calls": []
+                },
+                "usage": {
+                  "completion_tokens": 5,
+                  "currency": "USD",
+                  "latency": 0.1,
+                  "prompt_tokens": 10,
+                  "total_tokens": 15
+                }
+              },
+              "model": "test-model",
+              "prompt_messages": [],
+              "system_fingerprint": null
+            },
+            "message": ""
+          }
+        ],
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": {
+          "filename": "report.csv",
+          "mime_type": "text/csv",
+          "size": 23
+        },
+        "headers": {
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/files/upload-request"
+      },
+      "response": {
+        "body": {
+          "upload_id": "up4",
+          "url": "http://inner-gateway.invalid/uploads/up4"
+        },
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": "city,month\nKyoto,April\n",
+        "headers": {
+          "content-type": "text/csv"
+        },
+        "method": "PUT",
+        "path": "/uploads/up4"
+      },
+      "response": {
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": {
+          "filename": "day1.txt",
+          "mime_type": "text/plain",
+          "size": 9
+        },
+        "headers": {
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/files/upload-request"
+      },
+      "response": {
+        "body": {
+          "upload_id": "up5",
+          "url": "http://inner-gateway.invalid/uploads/up5"
+        },
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": "Temples.\n",
+        "headers": {
+          "content-type": "text/plain"
+        },
+        "method": "PUT",
+        "path": "/uploads/up5"
+      },
+      "response": {
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": {
+          "filename": "day2.txt",
+          "mime_type": "text/plain",
+          "size": 9
+        },
+        "headers": {
+          "authorization": "Bearer fixture-service-key",
+          "content-type": "application/json; charset=utf-8",
+          "x-agent-run-token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/inner/agent/files/upload-request"
+      },
+      "response": {
+        "body": {
+          "upload_id": "up6",
+          "url": "http://inner-gateway.invalid/uploads/up6"
+        },
+        "status": 200
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "body": "Markets.\n",
+        "headers": {
+          "content-type": "text/plain"
+        },
+        "method": "PUT",
+        "path": "/uploads/up6"
+      },
+      "response": {
+        "status": 200
+      },
+      "step": "start"
+    }
+  ],
+  "protocol": "dify-sf-agent/1",
+  "sandbox": {
+    "job_output": "wrote out/report.csv\r\n",
+    "workspace_files": {
+      "/workspace/out/day1.txt": "Temples.\n",
+      "/workspace/out/day2.txt": "Markets.\n",
+      "/workspace/out/report.csv": "city,month\nKyoto,April\n"
+    }
+  },
+  "steps": [
+    {
+      "request": {
+        "body": {
+          "continuation": null,
+          "env": {
+            "REGION": "kansai"
+          },
+          "execution": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "execution_id": "E1",
+            "invoke_from": "debugger",
+            "node_id": "N1",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "files": [
+            {
+              "file_id": "f1",
+              "path": "inputs/cities.txt"
+            }
+          ],
+          "generation": 1,
+          "limits": {
+            "max_turns": 10,
+            "timeout_seconds": 600
+          },
+          "model": {
+            "name": "test-model",
+            "parameters": {
+              "temperature": 0.7
+            },
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+          },
+          "operation_id": "E1:0:0",
+          "output_schema": {
+            "properties": {
+              "bundle": {
+                "properties": {
+                  "pages": {
+                    "items": {
+                      "type": "string",
+                      "x-dify-sf-file": {
+                        "mime_types": [
+                          "text/*"
+                        ]
+                      }
+                    },
+                    "type": "array"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "extra": {
+                "properties": {
+                  "notes": {
+                    "type": "string",
+                    "x-dify-sf-file": {}
+                  }
+                },
+                "type": "object"
+              },
+              "report": {
+                "type": "string",
+                "x-dify-sf-file": {
+                  "extensions": [
+                    ".csv"
+                  ]
+                }
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "report"
+            ],
+            "type": "object"
+          },
+          "protocol": "dify-sf-agent/1",
+          "system_prompt": "You are a travel planner.",
+          "task": [
+            {
+              "text": "Plan a weekend in Kyoto.",
+              "type": "text"
+            }
+          ],
+          "tools": {
+            "ask_human": false,
+            "shell": true
+          }
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json",
+          "X-Agent-Run-Token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/v1/operations"
+      },
+      "response": {
+        "body": {
+          "protocol": "dify-sf-agent/1",
+          "run_id": "run_000000000000000000000001",
+          "status": "running"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 202
+      },
+      "step": "start"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001/events"
+      },
+      "response": {
+        "content_type": "text/event-stream; charset=utf-8",
+        "events": [
+          {
+            "data": {
+              "call_index_base": 0,
+              "model": {
+                "name": "test-model",
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              }
+            },
+            "event": "run_started",
+            "id": 1
+          },
+          {
+            "data": {
+              "invocation_id": "run_000000000000000000000001:1",
+              "usage": {
+                "completion_tokens": 5,
+                "prompt_tokens": 10,
+                "reasoning_tokens": null,
+                "total_tokens": 15
+              }
+            },
+            "event": "model_call",
+            "id": 2
+          },
+          {
+            "data": {
+              "id": "c1",
+              "input": {
+                "script": "python3 make_report.py inputs/cities.txt > out/report.csv"
+              },
+              "name": "shell_run",
+              "phase": "started"
+            },
+            "event": "tool_call",
+            "id": 3
+          },
+          {
+            "data": {
+              "id": "c1",
+              "name": "shell_run",
+              "output": "<metadata>\n{\"job_id\":\"job5\",\"status\":\"exited\",\"done\":true,\"exit_code\":0,\"output_path\":\"/home/dify/.local/share/shellctl/jobs/job5/output.log\"}\n</metadata>\n\n<output>\nwrote out/report.csv\r\n\n</output>",
+              "phase": "finished"
+            },
+            "event": "tool_call",
+            "id": 4
+          },
+          {
+            "data": {
+              "invocation_id": "run_000000000000000000000001:2",
+              "usage": {
+                "completion_tokens": 5,
+                "prompt_tokens": 10,
+                "reasoning_tokens": null,
+                "total_tokens": 15
+              }
+            },
+            "event": "model_call",
+            "id": 5
+          },
+          {
+            "data": {
+              "id": "fo_1",
+              "input": {
+                "bundle": {
+                  "pages": [
+                    "out/day1.txt",
+                    "out/day2.txt"
+                  ],
+                  "title": "Kyoto"
+                },
+                "extra": {
+                  "notes": "out/missing.txt"
+                },
+                "report": "out/report.csv",
+                "text": "The report is ready."
+              },
+              "name": "final_output",
+              "phase": "started"
+            },
+            "event": "tool_call",
+            "id": 6
+          },
+          {
+            "data": {
+              "id": "fo_1",
+              "name": "final_output",
+              "output": "Final result processed.",
+              "phase": "finished"
+            },
+            "event": "tool_call",
+            "id": 7
+          },
+          {
+            "data": {
+              "candidate": {
+                "bundle": {
+                  "pages": [
+                    {
+                      "filename": "day1.txt",
+                      "mime_type": "text/plain",
+                      "size": 9,
+                      "upload_id": "up5"
+                    },
+                    {
+                      "filename": "day2.txt",
+                      "mime_type": "text/plain",
+                      "size": 9,
+                      "upload_id": "up6"
+                    }
+                  ],
+                  "title": "Kyoto"
+                },
+                "extra": {
+                  "notes": "out/missing.txt"
+                },
+                "report": {
+                  "filename": "report.csv",
+                  "mime_type": "text/csv",
+                  "size": 23,
+                  "upload_id": "up4"
+                },
+                "text": "The report is ready."
+              },
+              "candidate_errors": [
+                {
+                  "error": "extra.notes: out/missing.txt does not exist in the workspace",
+                  "field": "extra"
+                }
+              ],
+              "snapshot": {
+                "agent_config_snapshot_id": "cfg-1",
+                "envelope": "dify-sf-agent-session/1",
+                "file_ids": [
+                  "f1"
+                ],
+                "genkit": "1.0.1",
+                "messages": [
+                  {
+                    "content": [
+                      {
+                        "text": "You can run commands in an isolated shell workspace.\n\nAvailable shell tools:\n\n1. shell_run\n   Starts a new shell job in the current workspace.\n   Use it to run commands or scripts.\n\n2. shell_wait\n   Waits for more output or completion from an existing shell job.\n   Use it when shell_run returns done=false.\n\n3. shell_input\n   Sends stdin text to a running shell job, then waits for new output.\n   Use it only when an interactive command is waiting for input.\n\n4. shell_interrupt\n   Interrupts a running shell job.\n   Use it to stop a long-running, stuck, or no-longer-needed command.\n\nCommon arguments:\n\n- script:\n  Command or script to execute. Used by shell_run.\n\n- job_id:\n  Shell job id returned by shell_run.\n  Use it with shell_wait, shell_input, and shell_interrupt.\n  Never invent a job_id.\n\n- timeout:\n  Maximum time in seconds to wait for output or completion for this tool call.\n  A timeout does not necessarily mean the job has stopped; if done=false, use shell_wait again.\n\n- text:\n  Text to send to the running process stdin. Used by shell_input.\n  Include \"\\n\" if the process expects Enter.\n\n- grace_seconds:\n  Time to wait after interrupting before forceful cleanup. Used by shell_interrupt.\n\nUsage rules:\n\n- Start with shell_run.\n- If shell_run returns done=false, call shell_wait with the returned job_id.\n- Use shell_input only when the job is running and waiting for stdin.\n- Use shell_interrupt when a job is stuck or should be stopped.\n\nFilesystem spaces:\n\n- `$HOME` is the system space for reusable tools and state.\n- The current working directory (`cwd`) is the active Workspace and temporary working space.\n- Relative paths and the standard temp environment variables (`TMPDIR`, `TMP`, and `TEMP`) resolve directly to `cwd`.\n- Do not use `/tmp`.\n\nshell_run script rules:\n\n- The script argument can be a normal shell script or a shebang script.\n- If the first line is a shebang, the shell executes the script directly.\n\nTips:\n\n- Python 3.12, uv, pip, Node.js, pnpm, and pnx are preinstalled in the local sandbox.\n- For one-off Python dependencies, prefer a uv script with a PEP 723 dependency header or:\n  `uv run --with <package> python <script-or--c>`.\n- For reusable Python CLI tools, use `uv tool install <tool>`; installed commands land in `$HOME/.local/bin`.\n  Run them by full path or add `$HOME/.local/bin` to PATH in the command that needs them.\n- `python3 -m pip install --user <package>` also installs into `$HOME/.local`; add `$HOME/.local/bin` to PATH\n  when you need console scripts.\n- For reusable Node.js CLIs, use user-level global installs:\n  `PNPM_HOME=$HOME/.local/share/pnpm PATH=$HOME/.local/share/pnpm/bin:$PATH pnpm add -g <package>`.\n  Installed commands land in `$PNPM_HOME/bin`; run them by full path or with the same PATH prefix.\n- For one-off Node.js CLIs, prefer `pnx <command> [args]`.\n- Do not install new packages into system or image tool paths such as `/usr/local`, `/usr`, or `/opt/dify-agent-tools`.\n- If you need MCP, install the MCP server in the shell environment and start that server when you use it.\n\nExample shell_run script:\n\n[begin script]\n#!/usr/bin/env -S uv run --quiet --script\n# /// script\n# requires-python = \">=3.12\"\n# dependencies = [\n#   \"httpx==0.28.1\",\n#   \"rich>=13.8.0\",\n# ]\n# ///\n\nimport httpx\nfrom rich import print\n\nresponse = httpx.get(\"https://example.com\", timeout=10)\nprint(f\"[green]status:[/green] {response.status_code}\")\n[end script]\n\nWorking location:\n\n- Prefer `cwd` for your work.\n- Changes in `$HOME` or `cwd` do not update the saved Agent state.\n\nYou are a travel planner.\n\nEnvironment variables may contain API keys, tokens, or credentials.\nYou may refer to environment variable names when needed."
+                      }
+                    ],
+                    "role": "system"
+                  },
+                  {
+                    "content": [
+                      {
+                        "text": "Plan a weekend in Kyoto."
+                      }
+                    ],
+                    "role": "user"
+                  },
+                  {
+                    "content": [
+                      {
+                        "metadata": {
+                          "dify_sf_arguments": "{\"script\":\"python3 make_report.py inputs/cities.txt > out/report.csv\"}"
+                        },
+                        "toolRequest": {
+                          "input": {
+                            "script": "python3 make_report.py inputs/cities.txt > out/report.csv"
+                          },
+                          "name": "shell_run",
+                          "ref": "c1"
+                        }
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  {
+                    "content": [
+                      {
+                        "toolResponse": {
+                          "name": "shell_run",
+                          "output": "<metadata>\n{\"job_id\":\"job5\",\"status\":\"exited\",\"done\":true,\"exit_code\":0,\"output_path\":\"/home/dify/.local/share/shellctl/jobs/job5/output.log\"}\n</metadata>\n\n<output>\nwrote out/report.csv\r\n\n</output>",
+                          "ref": "c1"
+                        }
+                      }
+                    ],
+                    "role": "tool"
+                  },
+                  {
+                    "content": [
+                      {
+                        "metadata": {
+                          "dify_sf_arguments": "{\"text\":\"The report is ready.\",\"report\":\"out/report.csv\",\"bundle\":{\"title\":\"Kyoto\",\"pages\":[\"out/day1.txt\",\"out/day2.txt\"]},\"extra\":{\"notes\":\"out/missing.txt\"}}"
+                        },
+                        "toolRequest": {
+                          "input": {
+                            "bundle": {
+                              "pages": [
+                                "out/day1.txt",
+                                "out/day2.txt"
+                              ],
+                              "title": "Kyoto"
+                            },
+                            "extra": {
+                              "notes": "out/missing.txt"
+                            },
+                            "report": "out/report.csv",
+                            "text": "The report is ready."
+                          },
+                          "name": "final_output",
+                          "ref": "fo_1"
+                        }
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  {
+                    "content": [
+                      {
+                        "toolResponse": {
+                          "name": "final_output",
+                          "output": "Final result processed.",
+                          "ref": "fo_1"
+                        }
+                      }
+                    ],
+                    "role": "tool"
+                  }
+                ],
+                "model": {
+                  "name": "test-model",
+                  "parameters": {
+                    "temperature": 0.7
+                  },
+                  "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+                },
+                "output_attempt": 0,
+                "pending": null,
+                "resume_sequence": 0,
+                "revision": 1,
+                "tool_definitions_digest": "0b383c4673f556809df11187bc6c84bc310a2812778a364e58457acdf5f4b692",
+                "workspace_ref": "sbx1"
+              },
+              "usage": {
+                "completion_tokens": 10,
+                "prompt_tokens": 20,
+                "reasoning_tokens": null,
+                "total_tokens": 30
+              }
+            },
+            "event": "succeeded",
+            "id": 8
+          }
+        ],
+        "status": 200
+      },
+      "step": "events"
+    },
+    {
+      "request": {
+        "headers": {
+          "Authorization": "Bearer fixture-service-key"
+        },
+        "method": "GET",
+        "path": "/v1/runs/run_000000000000000000000001"
+      },
+      "response": {
+        "body": {
+          "acknowledged": false,
+          "last_event_id": 8,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "candidate": {
+              "bundle": {
+                "pages": [
+                  {
+                    "filename": "day1.txt",
+                    "mime_type": "text/plain",
+                    "size": 9,
+                    "upload_id": "up5"
+                  },
+                  {
+                    "filename": "day2.txt",
+                    "mime_type": "text/plain",
+                    "size": 9,
+                    "upload_id": "up6"
+                  }
+                ],
+                "title": "Kyoto"
+              },
+              "extra": {
+                "notes": "out/missing.txt"
+              },
+              "report": {
+                "filename": "report.csv",
+                "mime_type": "text/csv",
+                "size": 23,
+                "upload_id": "up4"
+              },
+              "text": "The report is ready."
+            },
+            "candidate_errors": [
+              {
+                "error": "extra.notes: out/missing.txt does not exist in the workspace",
+                "field": "extra"
+              }
+            ],
+            "snapshot": {
+              "agent_config_snapshot_id": "cfg-1",
+              "envelope": "dify-sf-agent-session/1",
+              "file_ids": [
+                "f1"
+              ],
+              "genkit": "1.0.1",
+              "messages": [
+                {
+                  "content": [
+                    {
+                      "text": "You can run commands in an isolated shell workspace.\n\nAvailable shell tools:\n\n1. shell_run\n   Starts a new shell job in the current workspace.\n   Use it to run commands or scripts.\n\n2. shell_wait\n   Waits for more output or completion from an existing shell job.\n   Use it when shell_run returns done=false.\n\n3. shell_input\n   Sends stdin text to a running shell job, then waits for new output.\n   Use it only when an interactive command is waiting for input.\n\n4. shell_interrupt\n   Interrupts a running shell job.\n   Use it to stop a long-running, stuck, or no-longer-needed command.\n\nCommon arguments:\n\n- script:\n  Command or script to execute. Used by shell_run.\n\n- job_id:\n  Shell job id returned by shell_run.\n  Use it with shell_wait, shell_input, and shell_interrupt.\n  Never invent a job_id.\n\n- timeout:\n  Maximum time in seconds to wait for output or completion for this tool call.\n  A timeout does not necessarily mean the job has stopped; if done=false, use shell_wait again.\n\n- text:\n  Text to send to the running process stdin. Used by shell_input.\n  Include \"\\n\" if the process expects Enter.\n\n- grace_seconds:\n  Time to wait after interrupting before forceful cleanup. Used by shell_interrupt.\n\nUsage rules:\n\n- Start with shell_run.\n- If shell_run returns done=false, call shell_wait with the returned job_id.\n- Use shell_input only when the job is running and waiting for stdin.\n- Use shell_interrupt when a job is stuck or should be stopped.\n\nFilesystem spaces:\n\n- `$HOME` is the system space for reusable tools and state.\n- The current working directory (`cwd`) is the active Workspace and temporary working space.\n- Relative paths and the standard temp environment variables (`TMPDIR`, `TMP`, and `TEMP`) resolve directly to `cwd`.\n- Do not use `/tmp`.\n\nshell_run script rules:\n\n- The script argument can be a normal shell script or a shebang script.\n- If the first line is a shebang, the shell executes the script directly.\n\nTips:\n\n- Python 3.12, uv, pip, Node.js, pnpm, and pnx are preinstalled in the local sandbox.\n- For one-off Python dependencies, prefer a uv script with a PEP 723 dependency header or:\n  `uv run --with <package> python <script-or--c>`.\n- For reusable Python CLI tools, use `uv tool install <tool>`; installed commands land in `$HOME/.local/bin`.\n  Run them by full path or add `$HOME/.local/bin` to PATH in the command that needs them.\n- `python3 -m pip install --user <package>` also installs into `$HOME/.local`; add `$HOME/.local/bin` to PATH\n  when you need console scripts.\n- For reusable Node.js CLIs, use user-level global installs:\n  `PNPM_HOME=$HOME/.local/share/pnpm PATH=$HOME/.local/share/pnpm/bin:$PATH pnpm add -g <package>`.\n  Installed commands land in `$PNPM_HOME/bin`; run them by full path or with the same PATH prefix.\n- For one-off Node.js CLIs, prefer `pnx <command> [args]`.\n- Do not install new packages into system or image tool paths such as `/usr/local`, `/usr`, or `/opt/dify-agent-tools`.\n- If you need MCP, install the MCP server in the shell environment and start that server when you use it.\n\nExample shell_run script:\n\n[begin script]\n#!/usr/bin/env -S uv run --quiet --script\n# /// script\n# requires-python = \">=3.12\"\n# dependencies = [\n#   \"httpx==0.28.1\",\n#   \"rich>=13.8.0\",\n# ]\n# ///\n\nimport httpx\nfrom rich import print\n\nresponse = httpx.get(\"https://example.com\", timeout=10)\nprint(f\"[green]status:[/green] {response.status_code}\")\n[end script]\n\nWorking location:\n\n- Prefer `cwd` for your work.\n- Changes in `$HOME` or `cwd` do not update the saved Agent state.\n\nYou are a travel planner.\n\nEnvironment variables may contain API keys, tokens, or credentials.\nYou may refer to environment variable names when needed."
+                    }
+                  ],
+                  "role": "system"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Plan a weekend in Kyoto."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"script\":\"python3 make_report.py inputs/cities.txt > out/report.csv\"}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "script": "python3 make_report.py inputs/cities.txt > out/report.csv"
+                        },
+                        "name": "shell_run",
+                        "ref": "c1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "shell_run",
+                        "output": "<metadata>\n{\"job_id\":\"job5\",\"status\":\"exited\",\"done\":true,\"exit_code\":0,\"output_path\":\"/home/dify/.local/share/shellctl/jobs/job5/output.log\"}\n</metadata>\n\n<output>\nwrote out/report.csv\r\n\n</output>",
+                        "ref": "c1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"text\":\"The report is ready.\",\"report\":\"out/report.csv\",\"bundle\":{\"title\":\"Kyoto\",\"pages\":[\"out/day1.txt\",\"out/day2.txt\"]},\"extra\":{\"notes\":\"out/missing.txt\"}}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "bundle": {
+                            "pages": [
+                              "out/day1.txt",
+                              "out/day2.txt"
+                            ],
+                            "title": "Kyoto"
+                          },
+                          "extra": {
+                            "notes": "out/missing.txt"
+                          },
+                          "report": "out/report.csv",
+                          "text": "The report is ready."
+                        },
+                        "name": "final_output",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "final_output",
+                        "output": "Final result processed.",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                }
+              ],
+              "model": {
+                "name": "test-model",
+                "parameters": {
+                  "temperature": 0.7
+                },
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              },
+              "output_attempt": 0,
+              "pending": null,
+              "resume_sequence": 0,
+              "revision": 1,
+              "tool_definitions_digest": "0b383c4673f556809df11187bc6c84bc310a2812778a364e58457acdf5f4b692",
+              "workspace_ref": "sbx1"
+            },
+            "usage": {
+              "completion_tokens": 10,
+              "prompt_tokens": 20,
+              "reasoning_tokens": null,
+              "total_tokens": 30
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "succeeded"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "status"
+    },
+    {
+      "request": {
+        "body": {
+          "generation": 1,
+          "protocol": "dify-sf-agent/1",
+          "result_event_id": 8
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/v1/runs/run_000000000000000000000001/ack"
+      },
+      "response": {
+        "body": {
+          "acknowledged": true,
+          "last_event_id": 8,
+          "operation_id": "E1:0:0",
+          "protocol": "dify-sf-agent/1",
+          "result": {
+            "candidate": {
+              "bundle": {
+                "pages": [
+                  {
+                    "filename": "day1.txt",
+                    "mime_type": "text/plain",
+                    "size": 9,
+                    "upload_id": "up5"
+                  },
+                  {
+                    "filename": "day2.txt",
+                    "mime_type": "text/plain",
+                    "size": 9,
+                    "upload_id": "up6"
+                  }
+                ],
+                "title": "Kyoto"
+              },
+              "extra": {
+                "notes": "out/missing.txt"
+              },
+              "report": {
+                "filename": "report.csv",
+                "mime_type": "text/csv",
+                "size": 23,
+                "upload_id": "up4"
+              },
+              "text": "The report is ready."
+            },
+            "candidate_errors": [
+              {
+                "error": "extra.notes: out/missing.txt does not exist in the workspace",
+                "field": "extra"
+              }
+            ],
+            "snapshot": {
+              "agent_config_snapshot_id": "cfg-1",
+              "envelope": "dify-sf-agent-session/1",
+              "file_ids": [
+                "f1"
+              ],
+              "genkit": "1.0.1",
+              "messages": [
+                {
+                  "content": [
+                    {
+                      "text": "You can run commands in an isolated shell workspace.\n\nAvailable shell tools:\n\n1. shell_run\n   Starts a new shell job in the current workspace.\n   Use it to run commands or scripts.\n\n2. shell_wait\n   Waits for more output or completion from an existing shell job.\n   Use it when shell_run returns done=false.\n\n3. shell_input\n   Sends stdin text to a running shell job, then waits for new output.\n   Use it only when an interactive command is waiting for input.\n\n4. shell_interrupt\n   Interrupts a running shell job.\n   Use it to stop a long-running, stuck, or no-longer-needed command.\n\nCommon arguments:\n\n- script:\n  Command or script to execute. Used by shell_run.\n\n- job_id:\n  Shell job id returned by shell_run.\n  Use it with shell_wait, shell_input, and shell_interrupt.\n  Never invent a job_id.\n\n- timeout:\n  Maximum time in seconds to wait for output or completion for this tool call.\n  A timeout does not necessarily mean the job has stopped; if done=false, use shell_wait again.\n\n- text:\n  Text to send to the running process stdin. Used by shell_input.\n  Include \"\\n\" if the process expects Enter.\n\n- grace_seconds:\n  Time to wait after interrupting before forceful cleanup. Used by shell_interrupt.\n\nUsage rules:\n\n- Start with shell_run.\n- If shell_run returns done=false, call shell_wait with the returned job_id.\n- Use shell_input only when the job is running and waiting for stdin.\n- Use shell_interrupt when a job is stuck or should be stopped.\n\nFilesystem spaces:\n\n- `$HOME` is the system space for reusable tools and state.\n- The current working directory (`cwd`) is the active Workspace and temporary working space.\n- Relative paths and the standard temp environment variables (`TMPDIR`, `TMP`, and `TEMP`) resolve directly to `cwd`.\n- Do not use `/tmp`.\n\nshell_run script rules:\n\n- The script argument can be a normal shell script or a shebang script.\n- If the first line is a shebang, the shell executes the script directly.\n\nTips:\n\n- Python 3.12, uv, pip, Node.js, pnpm, and pnx are preinstalled in the local sandbox.\n- For one-off Python dependencies, prefer a uv script with a PEP 723 dependency header or:\n  `uv run --with <package> python <script-or--c>`.\n- For reusable Python CLI tools, use `uv tool install <tool>`; installed commands land in `$HOME/.local/bin`.\n  Run them by full path or add `$HOME/.local/bin` to PATH in the command that needs them.\n- `python3 -m pip install --user <package>` also installs into `$HOME/.local`; add `$HOME/.local/bin` to PATH\n  when you need console scripts.\n- For reusable Node.js CLIs, use user-level global installs:\n  `PNPM_HOME=$HOME/.local/share/pnpm PATH=$HOME/.local/share/pnpm/bin:$PATH pnpm add -g <package>`.\n  Installed commands land in `$PNPM_HOME/bin`; run them by full path or with the same PATH prefix.\n- For one-off Node.js CLIs, prefer `pnx <command> [args]`.\n- Do not install new packages into system or image tool paths such as `/usr/local`, `/usr`, or `/opt/dify-agent-tools`.\n- If you need MCP, install the MCP server in the shell environment and start that server when you use it.\n\nExample shell_run script:\n\n[begin script]\n#!/usr/bin/env -S uv run --quiet --script\n# /// script\n# requires-python = \">=3.12\"\n# dependencies = [\n#   \"httpx==0.28.1\",\n#   \"rich>=13.8.0\",\n# ]\n# ///\n\nimport httpx\nfrom rich import print\n\nresponse = httpx.get(\"https://example.com\", timeout=10)\nprint(f\"[green]status:[/green] {response.status_code}\")\n[end script]\n\nWorking location:\n\n- Prefer `cwd` for your work.\n- Changes in `$HOME` or `cwd` do not update the saved Agent state.\n\nYou are a travel planner.\n\nEnvironment variables may contain API keys, tokens, or credentials.\nYou may refer to environment variable names when needed."
+                    }
+                  ],
+                  "role": "system"
+                },
+                {
+                  "content": [
+                    {
+                      "text": "Plan a weekend in Kyoto."
+                    }
+                  ],
+                  "role": "user"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"script\":\"python3 make_report.py inputs/cities.txt > out/report.csv\"}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "script": "python3 make_report.py inputs/cities.txt > out/report.csv"
+                        },
+                        "name": "shell_run",
+                        "ref": "c1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "shell_run",
+                        "output": "<metadata>\n{\"job_id\":\"job5\",\"status\":\"exited\",\"done\":true,\"exit_code\":0,\"output_path\":\"/home/dify/.local/share/shellctl/jobs/job5/output.log\"}\n</metadata>\n\n<output>\nwrote out/report.csv\r\n\n</output>",
+                        "ref": "c1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                },
+                {
+                  "content": [
+                    {
+                      "metadata": {
+                        "dify_sf_arguments": "{\"text\":\"The report is ready.\",\"report\":\"out/report.csv\",\"bundle\":{\"title\":\"Kyoto\",\"pages\":[\"out/day1.txt\",\"out/day2.txt\"]},\"extra\":{\"notes\":\"out/missing.txt\"}}"
+                      },
+                      "toolRequest": {
+                        "input": {
+                          "bundle": {
+                            "pages": [
+                              "out/day1.txt",
+                              "out/day2.txt"
+                            ],
+                            "title": "Kyoto"
+                          },
+                          "extra": {
+                            "notes": "out/missing.txt"
+                          },
+                          "report": "out/report.csv",
+                          "text": "The report is ready."
+                        },
+                        "name": "final_output",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "model"
+                },
+                {
+                  "content": [
+                    {
+                      "toolResponse": {
+                        "name": "final_output",
+                        "output": "Final result processed.",
+                        "ref": "fo_1"
+                      }
+                    }
+                  ],
+                  "role": "tool"
+                }
+              ],
+              "model": {
+                "name": "test-model",
+                "parameters": {
+                  "temperature": 0.7
+                },
+                "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+              },
+              "output_attempt": 0,
+              "pending": null,
+              "resume_sequence": 0,
+              "revision": 1,
+              "tool_definitions_digest": "0b383c4673f556809df11187bc6c84bc310a2812778a364e58457acdf5f4b692",
+              "workspace_ref": "sbx1"
+            },
+            "usage": {
+              "completion_tokens": 10,
+              "prompt_tokens": 20,
+              "reasoning_tokens": null,
+              "total_tokens": 30
+            }
+          },
+          "run_id": "run_000000000000000000000001",
+          "status": "succeeded"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 200
+      },
+      "step": "ack"
+    }
+  ]
+}

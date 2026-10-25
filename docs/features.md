@@ -46,7 +46,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Node: Loop & Exit Loop](#node-loop) | 2 |  |  |  |  | 2 |
 | [Node: Doc Extractor](#node-doc-extractor) | 1 |  |  |  |  | 1 |
 | [Node: List Operator](#node-list-operator) | 1 |  |  |  |  | 1 |
-| [Node: Agent (v1 and v2)](#node-agent) |  | 4 |  |  |  | 4 |
+| [Node: Agent (v1 and v2)](#node-agent) |  | 5 |  |  |  | 5 |
 | [Node: Human Input](#node-human-input) | 2 | 1 |  |  |  | 3 |
 | [Nodes: triggers & workflow start](#node-triggers) | 3 | 2 | 1 |  |  | 6 |
 | [Nodes: knowledge pipeline (data source, knowledge base)](#node-pipeline) |  | 2 | 1 |  |  | 3 |
@@ -66,7 +66,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 7 | 9 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 5 | 3 | 1 | 1 |  | 10 |
-| **Total** | **182** | **51** | **30** | **17** | **15** | **295** |
+| **Total** | **182** | **52** | **30** | **17** | **15** | **296** |
 
 <a id="canvas"></a>
 
@@ -414,6 +414,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Agent (v1) panel: agent strategy selector and its parameters, memory, output | partial | The panel is ported, but agent strategies are plugins: with no plugin service there are no strategies to pick. | spec `workflow/nodes/agent`, spec `workflow/nodes/agent/components`, spec `workflow/block-selector/tool-picker.spec.tsx` |
 | Agent v2 panel: roster binding, inline agent, output variables | partial | The node panel and save-inline-agent dialog include emoji icon selection, stable source snapshots and reopen behavior. Image uploads exist in M2a, but this agent dialog still needs the agent console host to persist roster icons; the inline-agent configure workspace (orchestrate, build/preview chat, drafts) requires the absent agent console host service. | spec `workflow/nodes/agent-v2`, spec `workflow/nodes/agent-v2/components`, spec `workflow/nodes/agent-v2/components/agent-output-variables`, `app/test/design/emoji_search_test.dart`, `app/test/design/app_icon_picker_test.dart` |
 | Agent icon picker: image selection, square crop and upload | partial | File selection and square cropping are implemented with an injectable upload callback. M2a supplies authenticated file upload for app/site icons and avatars. The agent roster host is still absent, so its upload callback is not connected and no fake file ID is generated. | `app/test/design/app_icon_picker_test.dart`, `app/test/dify_spec/workflow/nodes_panel/llm/agent_v2_misc_test.dart` |
+| Agent v2 backend: agent loop service, shell sandboxes and the dify-sf-agent/1 contract | partial | The agent service implements the inline Agent v2 loop: operations, durable results, ask_human pause and resume of the original tool call, declared outputs through final_output, cancel and leases, per-execution shell sandboxes from the official local_sandbox image and declared file outputs. The Swift node, composer, forms and client are separate layers; the public Agent run capability remains disabled. Deviation: The loop is a Dart service on Genkit Dart 1.0.1 instead of Dify's Python agent_backend; its HTTP protocol (dify-sf-agent/1, docs/agent-v2.md) is a dify-sf design. Each execution that uses the shell gets its own container and network from a supervisor instead of sharing one shellctl daemon. Declared file outputs are workspace paths uploaded by the service. | `agent_service/test/operations_test.dart`, `agent_service/test/ask_human_test.dart`, `agent_service/test/outputs_test.dart`, `agent_service/test/cancel_test.dart`, `agent_service/test/sandbox_test.dart`, `agent_service/test/supervisor_test.dart`, `agent_service/test/fixtures_test.dart`, `agent_service/tool/compose_smoke.sh` |
 
 <a id="node-human-input"></a>
 

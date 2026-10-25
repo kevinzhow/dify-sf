@@ -93,3 +93,38 @@ Configuration-failure checks recreate only that fixture's server, preserve its P
 ## Browser result regression
 
 `OutputPanel` passes JSON values directly to the shared code editor, which performs serialization once. Both object responses and stored JSON-text responses are covered by assertions against the rendered/copied editor text, including nested HTTP JSON strings that must stay strings. The phase-1 browser check runs the frozen Wasm client against isolated real services: missing-daemon refusal creates no fake run, restored configuration produces an actual local-model request and persisted outputs, and a new backend process exposes the stored history. The populated trial is checked without signing into a user account or creating fixture data there.
+
+## Agent service
+
+Profile `agent` adds the Agent v2 agent service ([agent-v2.md](agent-v2.md)) with its shell sandboxes:
+
+```sh
+DOCKER_GID=$(stat -c %g /var/run/docker.sock) docker compose --profile agent up -d --build
+```
+
+| Service | Image | Memory cap | CPU cap | Networks |
+|---|---|---:|---:|---|
+| agent_service | `agent_service/` build | 512 MiB | 1 | `default`, plus each sandbox network |
+| sandbox_supervisor | same image, entrypoint `sandbox_supervisor` | 128 MiB | 0.2 | `default` |
+| agent_sandbox_proxy | Ubuntu Squid digest | 128 MiB | 0.2 | `default`, plus each sandbox network (at `.2`) |
+| one sandbox per execution | `langgenius/dify-agent-local-sandbox:1.17.1` | 1024 MiB | 1 | its own network only |
+
+Only `sandbox_supervisor` mounts the Docker socket (read-write; `DOCKER_GID` is the socket's group: with a wrong group
+it cannot start and its health check fails). It creates and removes sandbox containers with a fixed image, limits and
+label; nothing in a request can change them. Each sandbox gets its own internal network with no host address
+(`inhibit_ipv4`), a /28 of `AGENT_SANDBOX_SUBNET_POOL` (default `10.213.0.0/16`; existing Docker networks are skipped,
+host routes such as VPNs are not visible to the supervisor, so pick a pool they do not use). The supervisor attaches
+exactly this project's `agent_service` and `agent_sandbox_proxy` (found by their compose labels) to it and removes it
+with the sandbox. A sandbox reaches only the agent service (key-protected) and the proxy, whose allowlist is
+`docker/agent_sandbox_proxy/allowlist.txt` (npm and PyPI by default); it cannot reach other sandboxes or the host.
+Pull the sandbox image before the first run; the supervisor never pulls. Set `COLLAB_AGENT_SERVICE_KEY` and
+`AGENT_SANDBOX_SUPERVISOR_KEY` in a protected environment file for real deployments. `agent_service` and
+`sandbox_supervisor` have health checks (`--healthcheck`); `agent_service` waits for a healthy supervisor.
+
+Sandboxes are kept while their execution is paused and removed by `DELETE /v1/executions/{id}`, lease expiry, or a
+supervisor start-up sweep (labelled containers missing from its state volume, and their networks). `docker compose down`
+does not remove running sandboxes or their networks; they are labelled `dify-sf.agent-sandbox=<project>`. After the
+agent service or proxy container is recreated, the next use of a sandbox attaches the new container again.
+
+`agent_service/tool/compose_smoke.sh SUBNET [POOL]` runs this profile end to end under its own project name (see
+`agent_service/README.md`).

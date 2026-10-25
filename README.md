@@ -14,6 +14,8 @@ storage. Built-in and published workflow tools, durable Chatflow and published w
 * `docs/architecture.md` - how the server works and why.
 * [`docs/migration-plan.md`](docs/migration-plan.md) - remaining delivery sequence, dependencies and acceptance criteria.
 * [`docs/five-step-delivery-20261024.md`](docs/five-step-delivery-20261024.md) - delivered HTTPS/tools/public runtime/helpers, clean-install and upgrade checks, complete 450-case visual results and remaining gaps.
+* [`docs/agent-v2.md`](docs/agent-v2.md) - Agent v2 inline agents: scope, agent service protocol, sandbox isolation.
+* [`agent_service/README.md`](agent_service/README.md) - the Agent v2 agent service (Dart, Genkit): running, configuration and tests.
 * `docs/step1-report.md` - what was built, results, failures found, known limits.
 * `server/` - the SwiftPM package (`CollabCore`, `CollabServer`, `CollabStore`, simulator, harness).
 * `bench/` - chaos and storm runners.
@@ -21,12 +23,12 @@ storage. Built-in and published workflow tools, durable Chatflow and published w
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-295 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
+296 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
 
 | Status | Features |
 |---|---|
 | ported | 182 |
-| partial | 51 |
+| partial | 52 |
 | not ported | 30 |
 | n/a | 17 |
 | dify-sf only | 15 |

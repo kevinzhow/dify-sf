@@ -1,0 +1,5 @@
+# Destinations the agent sandboxes may reach through agent_sandbox_proxy (Squid dstdomain syntax, one per line;
+# a leading dot also matches subdomains). Default: the npm and PyPI registries only.
+registry.npmjs.org
+pypi.org
+files.pythonhosted.org
