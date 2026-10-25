@@ -63,6 +63,11 @@ void main() {
     expect(r['error_type'], 'model_quota');
   });
 
+  test('HTTP 413 (file budget) from the gateway maps to file_error', () async {
+    final r = await failedResult([ScriptedCall(httpStatus: 413)], operation());
+    expect(r['error_type'], 'file_error');
+  });
+
   test('the shell tool is unavailable without a sandbox', () async {
     final r = await failedResult(const [], operation(shell: true));
     expect(r['error_type'], 'sandbox_unavailable');

@@ -336,7 +336,9 @@ closes the gateway's HTTP connection to the plugin; it does not prove that the v
 Files in `prompt_messages` (Dify image/document content parts) carry `"url": "dify-sf-file:<file_id>"` and an empty
 `base64_data`. The Swift server checks the file against the files of the run token's execution and reads it from
 storage; a URL that is not a file of the execution is rejected before the stream starts with
-`422 {"error": "file_error", "message"}`, which ends the run `failed` (`file_error`). The model path never uses
+`422 {"error": "file_error", "message"}`, which ends the run `failed` (`file_error`). Files of one request beyond the
+gateway's byte budget answer `422 file_error` or `413`; both end the run `file_error`. The Swift server checks the
+run's file budget before it starts the node. The model path never uses
 `files/download-request`.
 
 ### File requests

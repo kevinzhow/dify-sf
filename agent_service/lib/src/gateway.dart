@@ -80,6 +80,8 @@ class InnerClient {
       throw GatewayException(switch (response.statusCode) {
         429 => 'model_quota',
         422 when _errorCode(text) == 'file_error' => 'file_error',
+        // The request's files exceed the gateway's byte budget.
+        413 => 'file_error',
         _ => 'model_error',
       }, 'model gateway answered HTTP ${response.statusCode}: ${_short(text)}');
     }
