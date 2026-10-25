@@ -23,8 +23,13 @@ window.__difyStartupLabels = {"ar-TN":{"loading":"جاري التحميل","retr
   message.textContent = labels.loading;
   retry.textContent = labels.retry;
   const system = matchMedia('(prefers-color-scheme: dark)');
-  const mode = query.get('theme') || stored('theme') || 'system';
-  const applyTheme = () => root.dataset.startupTheme = ['light', 'dark'].includes(mode) ? mode : system.matches ? 'dark' : 'light';
+  const validMode = value => ['light', 'dark', 'system'].includes(value) ? value : null;
+  const mode = validMode(query.get('theme')) || validMode(stored('theme')) || 'system';
+  const applyTheme = () => {
+    root.dataset.startupTheme = mode === 'system' ? system.matches ? 'dark' : 'light' : mode;
+    const chrome = document.querySelector('meta[name="theme-color"]');
+    if (chrome) chrome.content = getComputedStyle(root).getPropertyValue('--background-default').trim();
+  };
   applyTheme();
   system.addEventListener('change', applyTheme);
   // Flutter fetches these as assets, not CSS fonts. Matching fetch/CORS mode lets
@@ -69,6 +74,7 @@ window.__difyStartupLabels = {"ar-TN":{"loading":"جاري التحميل","retr
   retry.addEventListener('click', () => location.reload());
   slow = setTimeout(() => { if (state.phase !== 'ready') retry.hidden = false; }, 30000);
   window.addEventListener('flutter-first-frame', () => {
+    if (window.__difyWebRuntime?.phase === 'fallback') return;
     mark('ready'); clearTimeout(slow);
     system.removeEventListener('change', applyTheme);
     window.removeEventListener('unhandledrejection', rejected);

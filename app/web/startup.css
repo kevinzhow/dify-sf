@@ -10,7 +10,12 @@
   --components-button-primary-bg: #0033ff;
   --components-button-primary-bg-hover: #002cde;
   --components-button-primary-text: #ffffff;
-  --text-accent-secondary: #085afc;
+  --components-button-primary-border: rgba(16, 24, 40, 0.04);
+  --components-button-primary-border-hover: rgba(16, 24, 40, 0.08);
+  --state-accent-solid: #0033ff;
+  --shadow-shadow3: rgba(9, 9, 11, 0.05);
+  --shadow-shadow5: rgba(9, 9, 11, 0.08);
+  --shadow-shadow10: rgba(9, 9, 11, 0.05);
 /* END light tokens */
 }
 :root[data-startup-theme="dark"] {
@@ -23,7 +28,12 @@
   --components-button-primary-bg: #085afc;
   --components-button-primary-bg-hover: #3072ff;
   --components-button-primary-text: rgba(255, 255, 255, 0.95);
-  --text-accent-secondary: #3072ff;
+  --components-button-primary-border: rgba(255, 255, 255, 0.12);
+  --components-button-primary-border-hover: rgba(255, 255, 255, 0.2);
+  --state-accent-solid: #3072ff;
+  --shadow-shadow3: rgba(0, 0, 0, 0.1);
+  --shadow-shadow5: rgba(0, 0, 0, 0.16);
+  --shadow-shadow10: rgba(0, 0, 0, 0.4);
 /* END dark tokens */
 }
 html, body { margin: 0; min-height: 100%; background: var(--background-default); }
@@ -46,13 +56,22 @@ html, body { margin: 0; min-height: 100%; background: var(--background-default);
 @keyframes dify-startup-pulse { 0% { opacity: 0; } 25% { opacity: .1; } 50% { opacity: .2; } 75% { opacity: .5; } 100% { opacity: 1; } }
 #dify-startup[data-failed] .startup-spinner { display: none; }
 #dify-startup[data-failed] .startup-status { color: var(--text-destructive); }
+/* Dify primary/medium: button/index.tsx and styles.css shadow-primary-button. */
 #dify-startup-retry {
-  appearance: none; cursor: pointer; min-height: 32px; padding: 6px 12px;
-  border: 0; border-radius: 8px; font: inherit; font-weight: 500;
+  appearance: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  height: 32px; padding: 0 14px; box-sizing: border-box; white-space: nowrap;
+  border: 0; border-radius: 8px; font: inherit; font-weight: 500; line-height: 16px;
   background: var(--components-button-primary-bg); color: var(--components-button-primary-text);
+  box-shadow: inset 0 0 0 .5px var(--components-button-primary-border),
+    0 2px 2px -1px rgba(0,0,0,.12), 0 1px 1px -1px rgba(0,0,0,.12),
+    0 0 0 .5px var(--shadow-shadow10), inset 0 -6px 12px -4px var(--shadow-shadow5),
+    inset 0 0 1px rgba(255,255,255,.16), inset 0 .5px 0 rgba(255,255,255,.08);
 }
-#dify-startup-retry:hover { background: var(--components-button-primary-bg-hover); }
-#dify-startup-retry:focus-visible { outline: 2px solid var(--text-accent-secondary); outline-offset: 2px; }
+#dify-startup-retry:hover {
+  background: var(--components-button-primary-bg-hover);
+  box-shadow: inset 0 0 0 .5px var(--components-button-primary-border-hover), 0 1px 2px var(--shadow-shadow3);
+}
+#dify-startup-retry:focus-visible { outline: 2px solid var(--state-accent-solid); outline-offset: 0; }
 #dify-startup [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .startup-spinner rect { animation: none; } }
 
@@ -66,7 +85,12 @@ html, body { margin: 0; min-height: 100%; background: var(--background-default);
   --components-button-primary-bg: #085afc;
   --components-button-primary-bg-hover: #3072ff;
   --components-button-primary-text: rgba(255, 255, 255, 0.95);
-  --text-accent-secondary: #3072ff;
+  --components-button-primary-border: rgba(255, 255, 255, 0.12);
+  --components-button-primary-border-hover: rgba(255, 255, 255, 0.2);
+  --state-accent-solid: #3072ff;
+  --shadow-shadow3: rgba(0, 0, 0, 0.1);
+  --shadow-shadow5: rgba(0, 0, 0, 0.16);
+  --shadow-shadow10: rgba(0, 0, 0, 0.4);
 /* END dark tokens */
 }
 }

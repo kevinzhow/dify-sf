@@ -14,7 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 TOKENS = ROOT / 'app/lib/src/design/dify_tokens.g.dart'
 NAMES = ['backgroundDefault', 'textTertiary', 'textLogoText', 'textDestructive',
          'componentsButtonPrimaryBg', 'componentsButtonPrimaryBgHover', 'componentsButtonPrimaryText',
-         'textAccentSecondary']
+         'componentsButtonPrimaryBorder', 'componentsButtonPrimaryBorderHover',
+         'stateAccentSolid', 'shadowShadow3', 'shadowShadow5', 'shadowShadow10']
 
 
 def css_color(value):
@@ -53,7 +54,7 @@ def outputs():
         labels[path.name] = {'loading': json.loads(app.read_text()).get('loading', 'Loading'),
                             'retry': json.loads(common.read_text()).get('operation.retry', 'Retry')}
     statement = 'window.__difyStartupLabels = ' + json.dumps(labels, ensure_ascii=False, separators=(',', ':')) + ';'
-    content = re.sub(r'window\.__difyStartupLabels = .*?;', lambda _: statement, js.read_text(), count=1)
+    content = re.sub(r'window\.__difyStartupLabels = [^\n]+;', lambda _: statement, js.read_text(), count=1)
     css = ROOT / 'app/web/startup.css'
     style = css.read_text()
     for theme in ['light', 'dark']:
