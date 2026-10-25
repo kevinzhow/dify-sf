@@ -3,6 +3,9 @@ import 'settings.dart';
 /// Options given on the command line (desktop) or in the URL query (web: `?server=…&doc=…&demo=1&view=…`).
 class LaunchOptions {
   const LaunchOptions({
+    this.mcpPort,
+    this.mcpTokenFile,
+    this.mcpProfile,
     this.server,
     this.doc,
     this.invite,
@@ -64,6 +67,9 @@ class LaunchOptions {
   }
 
   factory LaunchOptions.parse(List<String> args) {
+    int? mcpPort;
+    String? mcpTokenFile;
+    String? mcpProfile;
     String? server;
     String? doc;
     String? invite;
@@ -79,6 +85,12 @@ class LaunchOptions {
     for (var i = 0; i < args.length; i++) {
       String? value() => i + 1 < args.length ? args[++i] : null;
       switch (args[i]) {
+        case '--mcp-port':
+          mcpPort = int.parse(value() ?? '');
+        case '--mcp-token-file':
+          mcpTokenFile = value();
+        case '--mcp-profile':
+          mcpProfile = value();
         case '--server':
           server = value();
         case '--doc':
@@ -106,6 +118,9 @@ class LaunchOptions {
       }
     }
     return LaunchOptions(
+      mcpPort: mcpPort,
+      mcpTokenFile: mcpTokenFile,
+      mcpProfile: mcpProfile,
       server: server,
       doc: doc,
       invite: invite,
@@ -127,6 +142,11 @@ class LaunchOptions {
     final uri = Uri.tryParse(arg);
     return uri?.queryParameters['token'] ?? arg;
   }
+
+  /// Native-only opt-in; never taken from browser URL parameters.
+  final int? mcpPort;
+  final String? mcpTokenFile;
+  final String? mcpProfile;
 
   final String? server;
   final String? doc;
