@@ -1,0 +1,55 @@
+# Inline Agent workflow persistence
+
+The Swift workflow adapter is opt-in (`COLLAB_AGENT_INLINE_ENABLED`, default false). It calls the separate Dart agent
+service described in [agent-v2.md](agent-v2.md); it does not depend on a browser or an SSE subscriber. This is a dify-sf
+extension around the inline subset of Dify 1.17.1, not a complete Agent App/roster implementation.
+
+An execution binds the workflow run, node execution, private agent and immutable configuration snapshot. Draft changes
+cannot change a paused execution's prompt, model, credentials, contacts or file configuration. The private node session
+stores a monotonically fenced ownership generation. Callbacks validate both the current operation and live database
+ownership. Model credentials remain in Swift; secret environment values are reconstructed for a request and are not
+written into the operation ledger.
+
+## Commit and recovery order
+
+1. Before starting a remote operation, persist its identity and request digest. Retrying an uncertain POST retains that
+   identity; a new human answer or output retry gets its own identity.
+2. Poll the durable result independently from UI connections. Receiving a result is not a committed workflow pause.
+3. For a question, commit the original execution's continuation, question identity, native form, pause snapshot and usage
+   in one transaction. A later question is a new form on the same execution. Answering an older form cannot answer it.
+4. For a final result, commit the node trace, accepted outputs and private outcome before returning completion to the
+   graph engine. Downstream work cannot race an uncommitted result. Late empty finish stubs cannot overwrite it.
+5. Those transactions add acknowledgement work to a persistent outbox. Cleanup waits for all acknowledgements of that
+   execution and generation. Failed acknowledgements, cancellation and cleanup retry with bounded backoff; no fixed
+   retry count silently discards work.
+
+The database lease, remote control lease, recovery scan and outbox have independent loops, so a slow HTTP call cannot
+block lease renewal. Paused sessions can be adopted after the previous lease expires. A worker lost during active work
+fails the execution and schedules cancellation/cleanup; it does not replay commands with uncertain side effects.
+Admission counts paused sessions as well as active ones. A terminal workflow transaction prevents late callback writes.
+
+Native forms keep the original provider tool-call identity in the agent continuation. A question timeout becomes that
+call's timeout result. It does not invent a workflow `__timeout` edge for an Agent node. Long native action identifiers
+use dify-sf's existing SHA-256 shortened form identifiers, while the original action ID is restored for the agent.
+
+Agent output file paths are handled by the Dart service. Swift accepts file outputs only through matching, completely
+received upload receipts belonging to that execution. Nested objects and arrays are checked recursively. A bare model
+file object or another execution's upload cannot become a native file. File persistence precedes the receipt, and the
+receipt precedes result acknowledgement and sandbox cleanup.
+
+## Evidence and remaining acceptance
+
+`AgentRuntimeIntegrationTests` uses a real PostgreSQL database, Swift HTTP server, Dart agent service and signed official
+model provider plugin with a synthetic model endpoint. It follows two consecutive native questions through the final
+workflow event, checks one node-execution identity, preserved pinned configuration after a draft edit, and cumulative
+usage of 8/16/24 tokens. It does not exercise a shell command in that scenario.
+
+`AgentExecutionStoreTests` exercises transaction rollback, ownership fencing, generation adoption and upload receipts.
+`AgentOutboxTests` makes a real HTTP endpoint refuse acknowledgement once and verifies persistent retry and cleanup
+ordering. `AgentQuestionTests` checks action mapping and defaults. Ordinary human-input, event and chat-store regressions
+run alongside the adapter tests.
+
+These tests do not yet establish a full independent-process restart, actual shell side-effect counting, all nested file
+round trips or production readiness. Client configuration/checklist integration and private-resource import/copy/export
+are separate delivery work. Keep the public run capability off until those acceptance steps are complete. Merging this
+adapter does not deploy or enable it.

@@ -122,6 +122,28 @@ struct AgentComposerTests {
             #expect(try await store.version(foreign, id: foreignVersionID) == nil)
         }
     }
+
+    @Test func anAtomicReaderCanReadItsExactPrivateConfigAfterTheDraftNodeWasDeleted() async throws {
+        try await withServer { api, store, registry in
+            let (token, _, app) = try await Self.seed(api, store)
+            let saved = try await api.put(Self.path(app), Self.payload(task: "Frozen task").compactJSON(), token: token)
+            #expect(saved.status == 200)
+            let pinned = try #require(try await store.currentAgentConfig(doc: app, node: Self.nodeID))
+            _ = try await registry.sequencer(app).replace(client: "delete-for-atomic-reader", cseq: 1) { _, _ in
+                (.init(ops: [.removeNode(Self.nodeID)], metadata: nil, secrets: [:]), true)
+            }
+            let current = try await api.get(Self.path(app), token: token)
+            #expect(current.status == 404)
+            let identity = "?agent_id=\(pinned.agentId)&snapshot_id=\(pinned.id)"
+            let historical = try await api.get(Self.path(app) + identity, token: token)
+            #expect(historical.status == 200, "\(historical.text)")
+            #expect(try JSONValue.parse(historical.text)["node_job"]?["workflow_prompt"] == "Frozen task")
+            let foreign = UUID().uuidString.lowercased()
+            _ = try await store.createDocument(id: foreign, initial: Document())
+            #expect(try await api.get(Self.path(foreign) + identity, token: token).status == 404)
+            #expect(try await api.get(Self.path(app) + "?agent_id=" + pinned.agentId, token: token).status == 400)
+        }
+    }
 }
 
 @Suite("Agent composer concurrent revisions", .enabled(if: testDbHost != nil))

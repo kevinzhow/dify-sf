@@ -234,6 +234,17 @@ extension PostgresStore {
                     _ = try await tx.query(query, logger: self.logger)
                     try await self.commitAgentOutcome(change, tx: tx)
                 }
+            } else if e.nodeType == "agent", let run = e.workflowRunId {
+                try await self.client.withTransaction(logger: self.logger) { tx in
+                    try await self.lockRun(run, tx)
+                    if e.outputs == nil {
+                        for try await _ in try await tx.query("""
+                            SELECT 1 FROM agent_node_sessions s JOIN workflow_node_executions n ON n.id = s.execution_id
+                            WHERE s.execution_id = \(e.id) AND s.status IN ('completed', 'failed')
+                            """, logger: self.logger) { return }
+                    }
+                    _ = try await tx.query(query, logger: self.logger)
+                }
             } else { _ = try await self.client.query(query, logger: self.logger) }
         }
     }

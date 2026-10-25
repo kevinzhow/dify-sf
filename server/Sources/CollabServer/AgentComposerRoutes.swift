@@ -98,6 +98,18 @@ extension Routes {
         let app = try await appOfMode(req, p, ["workflow"])
         let id = try nodeId(req)
         let snapshot = try await registry.sequencer(app.id).currentSnapshot()
+        let parameters = query(req)
+        // A reader checking an atomic older graph supplies both immutable identities. The current draft may have
+        // removed/replaced that node; its mutable task and binding must not be mixed into the historical config.
+        if let agent = parameters["agent_id"], let configID = parameters["snapshot_id"] {
+            guard let stored = try await store.agentConfig(doc: app.id, node: id, agent: agent, snapshot: configID) else {
+                throw ServerError.missing("Agent config not found in this workflow node")
+            }
+            return rawJSON(Self.agentComposerResponse(app: app.id, node: id, title: snapshot.doc.nodes[id]?.title ?? "Agent",
+                head: snapshot.seq, config: stored, soul: try JSONValue.parse(stored.soul).object ?? [:],
+                job: try JSONValue.parse(stored.nodeJob).object ?? [:]))
+        }
+        if parameters["agent_id"] != nil { throw Self.invalidParam("A historical agent identity needs snapshot_id") }
         guard let node = snapshot.doc.nodes[id] else { throw ServerError.missing("Node not found") }
         let graph = try Self.agentNodeConfig(node)
         let stored = try await pinnedAgentConfig(app: app.id, node: id, graph: graph, snapshotOverride: query(req)["snapshot_id"])

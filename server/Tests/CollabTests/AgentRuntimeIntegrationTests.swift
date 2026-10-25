@@ -9,7 +9,7 @@ import Vapor
 import VaporTesting
 @testable import CollabServer
 
-@Suite("Agent workflow questions through real service and sandbox", .enabled(if: testDbHost != nil && ProcessInfo.processInfo.environment["AGENT_RUNTIME_SERVICE_URL"] != nil))
+@Suite("Agent workflow questions through real service", .enabled(if: testDbHost != nil && ProcessInfo.processInfo.environment["AGENT_RUNTIME_SERVICE_URL"] != nil))
 struct AgentRuntimeIntegrationTests {
     static let yaml = """
     app: {mode: workflow, name: Agent integration}
@@ -117,7 +117,9 @@ struct AgentRuntimeIntegrationTests {
                     #expect(answer.status == 200, "\(answer.text)")
                     let wire = try await following.value
                     let events = HumanInputRunTests.frames(String(buffer: wire))
-                    #expect(events.filter { $0["event"] == "human_input_form_filled" }.count == 2)
+                    let filled = events.filter { $0["event"] == "human_input_form_filled" }
+                    #expect(filled.count == 2)
+                    #expect(filled.first?["data"]?["rendered_content"]?.string?.contains("First answer") == true)
                     #expect(events.last?["data"]?["status"] == "succeeded", "\(events.last?.compactJSON() ?? "")")
                     let final = try #require(try await store.workflowRun(id: run))
                     #expect(final.status == "succeeded" && final.totalTokens == 24)

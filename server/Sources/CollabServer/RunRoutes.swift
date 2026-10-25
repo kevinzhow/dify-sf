@@ -760,8 +760,12 @@ final class RunExecution: Sendable {
                 for form in decisions where !form.questionID.isEmpty && form.status == .submitted {
                     let inputs = (try? JSONValue.parse(form.submittedInputs ?? "{}"))?.object ?? [:]
                     let actions = (try? JSONValue.parse(form.actions))?.array ?? []
+                    let definition = try? HumanInputFormConfig(["title": .string(form.nodeTitle), "form_content": .string(form.formContent),
+                        "inputs": (try? JSONValue.parse(form.inputs)) ?? [], "user_actions": (try? JSONValue.parse(form.actions)) ?? []])
+                    let completion = try? definition?.completion(action: form.submittedAction ?? "", values: inputs, renderedContent: form.renderedContent)
+                    let rendered = completion?.outputs[HumanInputFormConfig.renderedContentField]?.string ?? form.renderedContent
                     frames.append(encoderBox.withLock { enc in enc.humanInputFormFilled(nodeId: form.nodeId, nodeTitle: form.nodeTitle,
-                        renderedContent: form.renderedContent, actionId: form.submittedAction ?? "",
+                        renderedContent: rendered, actionId: form.submittedAction ?? "",
                         actionText: actions.first { $0["id"] == .string(form.submittedAction ?? "") }?["title"]?.string ?? "", submittedData: inputs) })
                     filledPublished.insert(form.executionId)
                 }

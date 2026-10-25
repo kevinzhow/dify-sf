@@ -1,6 +1,7 @@
 import CollabRuntime
 import CollabStore
 import Foundation
+import HTTPTypes
 import PostgresNIO
 import Synchronization
 import Testing
@@ -13,7 +14,7 @@ struct AgentOutboxTests {
     @Test func cleanup503IsRetriedOnlyAfterTheCommittedAck() async throws {
         let calls = Mutex<[String]>([])
         try await withApp(configure: { app in
-            func reply(_ status: HTTPResponse.Status) -> Response {
+            @Sendable func reply(_ status: HTTPResponse.Status) -> Response {
                 Response(status: status, body: .init(string: #"{"protocol":"dify-sf-agent/1"}"#))
             }
             app.routes.post("v1", "runs", ":run", "ack") { _ in calls.withLock { $0.append("ack") }; return reply(.ok) }
@@ -26,7 +27,7 @@ struct AgentOutboxTests {
             try await service.testing(.running, options: .live(port: 21309)) { _ in
                 var config = ServerConfig.defaults
                 config.agentService.url = "http://127.0.0.1:21309"; config.agentService.key = "fake-agent-key"
-                try await withServerAndRoutes(config: config) { api, store, _, routes in
+                try await withServerAndRoutes(config: config) { api, store, routes in
                     let session = try await AgentExecutionStoreTests.result(try await AgentExecutionStoreTests.seed(api, store), store)
                     try await store.commitAgentRetry(.init(session: session, status: "retry", outputAttempt: 1))
                     _ = try await AgentExecutionStoreTests.finish(store, session.workflowRunID, status: "stopped")
