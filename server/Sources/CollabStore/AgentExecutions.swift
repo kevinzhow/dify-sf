@@ -118,7 +118,7 @@ extension PostgresStore {
                 for try await n in try await tx.query("""
                     SELECT count(*) FROM agent_node_sessions WHERE status IN ('prepared', 'running', 'result_ready', 'retry')
                     """, logger: self.logger).decode(Int.self) { count = n }
-                guard maxConcurrent > 0, count < maxConcurrent else { throw StoreError.notCommitted("Agent execution concurrency limit reached") }
+                guard maxConcurrent > 0, count < maxConcurrent else { throw StoreError.agentCapacityFull }
                 var inserted = false
                 for try await _ in try await tx.query("""
                     INSERT INTO agent_node_sessions(execution_id, workflow_run_id, doc_id, node_id, agent_id, config_snapshot_id,
@@ -170,7 +170,7 @@ extension PostgresStore {
                     SELECT count(*) FROM agent_node_sessions WHERE execution_id <> \(session.executionID)
                       AND status IN ('prepared', 'running', 'result_ready', 'retry')
                     """, logger: self.logger).decode(Int.self) { executing = count }
-                guard maxConcurrent > 0, executing < maxConcurrent else { throw StoreError.notCommitted("Agent execution concurrency limit reached") }
+                guard maxConcurrent > 0, executing < maxConcurrent else { throw StoreError.agentCapacityFull }
                 var active = false
                 for try await _ in try await tx.query("""
                     UPDATE agent_node_sessions SET status = 'running', operation_id = \(operation), agent_run_id = NULL,

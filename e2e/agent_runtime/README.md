@@ -43,3 +43,6 @@ finished node logs through the ordinary authenticated node-executions endpoint a
 
 The initial and restarted paused node-start data must also match exactly, including the custom fixture title,
 index, timestamp and scope fields. Both paths use the same runtime encoder.
+
+Before running a workflow, the harness waits for the scripted provider HTTP endpoint and the authenticated isolated
+sandbox health response. Container creation alone is not treated as readiness.

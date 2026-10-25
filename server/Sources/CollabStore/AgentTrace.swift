@@ -23,29 +23,62 @@ extension PostgresStore {
         }
     }
 
-    /// Private replay archive and public log projection share the owner/operation fence. No event is acknowledged first.
-    public func appendAgentEvent(session: StoredAgentSession, event: String, record: String, log: String?) async throws {
+
+    /// One immutable row per event. Hold a shared ownership lock until insertion commits so a concurrent
+    /// outcome/owner change cannot acknowledge a result before this event is durable. Duplicate delivery is harmless.
+    @discardableResult
+    public func appendAgentEvent(session: StoredAgentSession, event: String, record: String, log: String?) async throws -> Bool {
         try await bounded {
-            for try await _ in try await self.client.query("""
-                UPDATE agent_node_sessions s SET usage = jsonb_set(
-                    jsonb_set(usage, '{agent_events}', coalesce(usage->'agent_events','[]'::jsonb) || \(record)::jsonb),
-                    '{agent_log}', coalesce(usage->'agent_log','[]'::jsonb) || coalesce(\(log)::jsonb,'[]'::jsonb)), updated_at = now()
-                WHERE execution_id = \(session.executionID) AND generation = \(session.generation)
-                  AND owner_id = \(session.ownerID) AND operation_id = \(session.operationID) AND status = 'running' AND lease_until > now()
-                  AND NOT coalesce(usage->'agent_events','[]'::jsonb) @> jsonb_build_array(jsonb_build_object('event_key',\(event)::text))
-                  AND jsonb_array_length(coalesce(usage->'agent_events','[]'::jsonb)) < 4096
-                  AND octet_length(usage::text) + octet_length(\(record)) + coalesce(octet_length(\(log)),0) < 8388608
-                RETURNING execution_id
-                """, logger: self.logger) { return }
-            // Replay after a lost commit response is valid; a changed owner or exhausted archive is not.
-            var duplicate = false
-            for try await _ in try await self.client.query("""
-                SELECT execution_id FROM agent_node_sessions WHERE execution_id = \(session.executionID)
-                  AND generation = \(session.generation) AND owner_id = \(session.ownerID) AND operation_id = \(session.operationID)
-                  AND status = 'running' AND lease_until > now()
-                  AND usage->'agent_events' @> jsonb_build_array(jsonb_build_object('event_key',\(event)::text))
-                """, logger: self.logger) { duplicate = true }
-            guard duplicate else { throw StoreError.notCommitted("Agent event ownership or archive limit changed") }
+            try await self.client.withTransaction(logger: self.logger) { tx in
+                var owned = false
+                for try await _ in try await tx.query("""
+                    SELECT execution_id FROM agent_node_sessions WHERE execution_id = \(session.executionID)
+                      AND generation = \(session.generation) AND owner_id = \(session.ownerID) AND operation_id = \(session.operationID)
+                      AND status = 'running' AND lease_until > now() FOR SHARE
+                    """, logger: self.logger) { owned = true }
+                guard owned else { throw StoreError.notCommitted("Agent event ownership changed") }
+                for try await _ in try await tx.query("""
+                    INSERT INTO agent_event_records(execution_id, operation_id, event_key, record, log)
+                    VALUES (\(session.executionID), \(session.operationID), \(event), \(record), \(log))
+                    ON CONFLICT(execution_id, event_key) DO NOTHING RETURNING ordinal
+                    """, logger: self.logger) { return true }
+                return false
+            }
         }
     }
+
+
+    /// The sandbox capability belongs to an execution, not to each answer/resume or transient health probe.
+    public func pinAgentShell(session: StoredAgentSession, enabled: Bool) async throws -> Bool {
+        try await bounded {
+            for try await value in try await self.client.query("""
+                UPDATE agent_node_sessions SET usage = jsonb_set(usage, '{shell_enabled}',
+                    coalesce(usage->'shell_enabled', to_jsonb(\(enabled)::boolean)))
+                WHERE execution_id = \(session.executionID) AND generation = \(session.generation)
+                  AND owner_id = \(session.ownerID) AND lease_until > now()
+                  AND status IN ('prepared', 'paused', 'retry') RETURNING (usage->>'shell_enabled')::boolean
+                """, logger: self.logger).decode(Bool.self) { return value }
+            throw StoreError.notCommitted("Agent capability ownership changed")
+        }
+    }
+
+    /// Keyset paging keeps the download and preview bounded even for arbitrarily long reasoning histories.
+    public func agentEventRecords(execution: String, after: Int = 0, limit: Int = 128) async throws -> [StoredAgentEvent] {
+        try await bounded {
+            var rows: [StoredAgentEvent] = []
+            for try await (ordinal, record, log) in try await self.client.query("""
+                SELECT ordinal, record, log FROM agent_event_records WHERE execution_id = \(execution) AND ordinal > \(after)
+                ORDER BY ordinal LIMIT \(max(1, min(limit, 256)))
+                """, logger: self.logger).decode((Int, String, String?).self) {
+                rows.append(.init(ordinal: ordinal, record: record, log: log))
+            }
+            return rows
+        }
+    }
+}
+
+public struct StoredAgentEvent: Sendable {
+    public let ordinal: Int
+    public let record: String
+    public let log: String?
 }

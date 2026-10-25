@@ -182,7 +182,7 @@ extension Routes {
                 frames.append(RunExecution.sse(["event": "node_started", "workflow_run_id": .string(run.id),
                                                "task_id": .string(run.id), "data": started]))
             }
-            for log in usage["agent_log"]?.array ?? [] {
+            for log in try await agentLogPreview(session).array ?? [] {
                 frames.append(RunExecution.sse(["event": "agent_log", "workflow_run_id": .string(run.id), "data": log]))
             }
         }

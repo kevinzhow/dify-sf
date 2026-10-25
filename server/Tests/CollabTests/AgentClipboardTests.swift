@@ -59,11 +59,66 @@ struct AgentClipboardTests {
             let log = #"[{"message_id":"remote:1","node_id":"inline-agent","label":"thought","status":"success","data":{"text":"retained"}}]"#
             try await store.appendAgentEvent(session: session, event: "remote:1", record: record, log: log)
             try await store.appendAgentEvent(session: session, event: "remote:1", record: record, log: log)
-            let saved = try #require(try await store.agentSession(execution: session.executionID))
-            #expect(try JSONValue.parse(saved.usage)["agent_log"]?.array?.count == 1)
+            #expect(try await store.agentEventRecords(execution: session.executionID).count == 1)
             var stale = session; stale.generation += 1
             do { try await store.appendAgentEvent(session: stale, event: "remote:2", record: record, log: log); Issue.record("A stale Agent owner appended an event") } catch { }
             #expect(try await store.pendingAgentJobs().isEmpty)
         }
     }
+    @Test func shellCapabilityIsPinnedAndLegacyEventsMigrateWithoutChangingOtherExecutionUsage() async throws {
+        try await withServer { api, store, _ in
+            let s = try await AgentExecutionStoreTests.seed(api, store)
+            #expect(try await store.pinAgentShell(session: s, enabled: false) == false)
+            #expect(try await store.pinAgentShell(session: s, enabled: true) == false)
+            let legacy = #"{"shell_enabled":false,"total_tokens":9,"agent_events":[{"event_key":"legacy:1","event":"thought","data":{"text":"preserved"}}],"agent_log":[{"message_id":"legacy:1","data":{"text":"preserved"}}]}"#
+            _ = try await store.client.query("UPDATE agent_node_sessions SET usage = \(legacy)::jsonb WHERE execution_id = \(s.executionID)", logger: store.logger)
+            try await store.migrate()
+            try await store.migrate()
+            let rows = try await store.agentEventRecords(execution: s.executionID)
+            #expect(rows.count == 1 && rows[0].log?.contains("preserved") == true)
+            let usage = try JSONValue.parse(try #require(try await store.agentSession(execution: s.executionID)).usage)
+            #expect(usage["shell_enabled"] == false && usage["total_tokens"] == 9)
+            #expect(usage["agent_events"] == nil && usage["agent_log"] == nil)
+        }
+    }
+
+    @Test func copyingDuringCollaborationChecksOnlyTheSelectedNodesAndSupportsUnconfiguredPlaceholders() async throws {
+        try await withServer { api, store, registry in
+            let (token, _, app) = try await AgentComposerTests.seed(api, store)
+            _ = try await api.put(AgentComposerTests.path(app), AgentComposerTests.payload().compactJSON(), token: token)
+            let sequencer = await registry.sequencer(app)
+            _ = try await sequencer.replace(client: "clipboard-placeholders", cseq: 1) { _, _ in
+                (.init(ops: [.addNode(Node(id: "empty", type: "agent", config: ["version": .string("2"), "agent_node_kind": .string("dify_agent")])),
+                    .addNode(Node(id: "roster", type: "agent", config: ["version": .string("2"), "agent_node_kind": .string("dify_agent"),
+                        "agent_binding": .map(["binding_type": .string("roster_agent"), "agent_id": .string("private-roster"), "current_snapshot_id": .string("private-roster-snapshot")])]))], metadata: nil, secrets: [:]), true)
+            }
+            let before = try await sequencer.currentSnapshot()
+            let selected = [AgentComposerTests.nodeID, "empty", "roster"]
+            let baseline = try JSONObject(selected.map { ($0, try JSONValue.parse(try WireJSON.encode(before.doc.nodes[$0]!))) })
+            _ = try await sequencer.replace(client: "unrelated-collaborator", cseq: 1) { _, _ in
+                (.init(ops: [.addNode(Node(id: "unrelated", type: "start"))], metadata: nil, secrets: [:]), true)
+            }
+            let request: JSONObject = ["expected_seq": .int(before.seq), "node_ids": .array(selected.map(JSONValue.string)), "expected_nodes": .object(baseline)]
+            let exported = try await api.post(Self.base(app) + "/export", JSONValue.object(request).compactJSON(), token: token)
+            #expect(exported.status == 200, "\(exported.text)")
+            #expect(!exported.text.contains("private-roster"))
+            let portable = try JSONValue.parse(exported.text)
+            let mapping = Dictionary(uniqueKeysWithValues: selected.map { ($0, "copy-" + $0) })
+            let nodes = (portable["nodes"]?.array ?? []).map { value -> JSONValue in
+                var node = value.object!; node["id"] = .string(mapping[node["id"]!.string!]!); return .object(node)
+            }
+            let head = try await sequencer.currentSnapshot().seq
+            let pasted = try await api.post(Self.base(app) + "/paste", JSONValue.object(["expected_seq": .int(head),
+                "idempotency_key": .string(UUID().uuidString.lowercased()), "nodes": .array(nodes), "edges": [],
+                "agent_packages": portable["agent_packages"]!, "id_mapping": .object(JSONObject(mapping.map { ($0.key, .string($0.value)) }))]).compactJSON(), token: token)
+            #expect(pasted.status == 200, "\(pasted.text)")
+            #expect(try await store.currentAgentConfig(doc: app, node: "copy-" + AgentComposerTests.nodeID) != nil)
+            #expect(try await store.currentAgentConfig(doc: app, node: "copy-empty") == nil)
+            _ = try await sequencer.replace(client: "selected-collaborator", cseq: 1) { _, _ in
+                (.init(ops: [.setField(AgentComposerTests.nodeID, .config(["agent_task"]), .string("changed"))], metadata: nil, secrets: [:]), true)
+            }
+            #expect(try await api.post(Self.base(app) + "/export", JSONValue.object(request).compactJSON(), token: token).status == 409)
+        }
+    }
+
 }

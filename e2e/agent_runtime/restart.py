@@ -119,6 +119,16 @@ try:
     create(SERVICE, DART_IMAGE, '384m', '.5', common + ['-e', 'AGENT_SERVICE_KEY=fixture-agent-service-key', '-e', 'AGENT_DATA_DIR=/tmp/state',
         '-e', 'AGENT_INNER_URL=http://' + ALIAS + ':8080', '-e', 'AGENT_SANDBOX_SUPERVISOR_URL=http://' + SUPERVISOR + ':5060',
         '-e', 'AGENT_SANDBOX_SUPERVISOR_KEY=fixture-supervisor-key'], ['/tools/' + CORE_BIN])
+    # A created container is not a ready HTTP endpoint, especially under bounded CPU during the full suite.
+    def http_ready(url, isolated=False):
+        code = ('import json,sys,urllib.request; '
+                'req=urllib.request.Request(sys.argv[1],headers={"Authorization":"Bearer fixture-agent-service-key"}); '
+                'value=json.load(urllib.request.urlopen(req,timeout=2)); '
+                'assert sys.argv[2]!="isolated" or value.get("sandbox")=="isolated"')
+        return subprocess.run(['docker', 'exec', PROVIDER, 'python', '-c', code, url,
+                               'isolated' if isolated else 'http'], capture_output=True).returncode == 0
+    wait_until(lambda: http_ready('http://127.0.0.1:8000/v1/models'))
+    wait_until(lambda: http_ready(f'http://{SERVICE}:5050/v1/health', isolated=True))
     api(PREFIX + '-a')
     TOKEN = request('/v1/setup', {'email': 'agent-restart@example.test', 'name': 'Agent restart fixture', 'password': 'fixture-password-1234'}, token=False)['access_token']
     request('/v1/workspace/model-providers/langgenius/openai_api_compatible/openai_api_compatible/models/credentials',
@@ -206,7 +216,7 @@ workflow:
     final_logs = trace['execution_metadata']['agent_log']
     assert final_logs[:len(initial_logs)] == initial_logs and len(final_logs) > len(initial_logs)
     assert len({log['message_id'] for log in final_logs}) == len(final_logs), 'Persisted log IDs must be unique'
-    archived_logs = json.loads(sql("SELECT usage->'agent_log' FROM agent_node_sessions WHERE execution_id='" + execution + "'"))
+    archived_logs = json.loads(sql("SELECT coalesce(jsonb_agg(item ORDER BY ordinal), '[]'::jsonb) FROM agent_event_records, LATERAL jsonb_array_elements(log::jsonb) item WHERE execution_id='" + execution + "' AND log IS NOT NULL"))
     assert final_logs == archived_logs, 'Finished node detail must retain the same durable logs'
     outputs = result['outputs']
     if isinstance(outputs, str): outputs = json.loads(outputs)

@@ -95,7 +95,7 @@ extension Routes {
         return job
     }
 
-    func agentExportValue(_ document: Document, metadata: Value, secrets: [String: String]?, app: String) async throws -> Value {
+    func agentExportValue(_ document: Document, metadata: Value, secrets: [String: String]?, app: String, allowClipboardPlaceholders: Bool = false) async throws -> Value {
         let exported = try DifyDSL.exportValue(document, metadata: metadata, secrets: secrets)
         if !document.nodes.values.contains(where: { $0.type == "agent" && $0.config["version"] == .string("2") }) { return exported }
         var root = try JSONValue.parse(try WireJSON.encode(exported)).object ?? [:]
@@ -106,6 +106,12 @@ extension Routes {
             guard var node = nodes[index].object, let id = node["id"]?.string,
                   let source = document.nodes[id], source.type == "agent", source.config["version"] == .string("2") else { continue }
             var data = node["data"]?.object ?? [:]
+            if allowClipboardPlaceholders, data["agent_binding"]?["binding_type"] == "roster_agent" {
+                data["agent_binding"] = ["binding_type": "roster_agent"]
+                data["agent_job"] = nil
+                node["data"] = .object(data); nodes[index] = .object(node)
+                continue
+            }
             let config = try Self.agentNodeConfig(source)
             guard let stored = try await pinnedAgentConfig(app: app, node: id, graph: config) else { continue }
             let key: String
@@ -160,7 +166,7 @@ extension Routes {
     /// Materialize node-owned identities before the existing create/replace transaction. Its rollback also rolls back
     /// the private snapshots. Same-app restores may explicitly preserve their already-owned immutable bindings.
     func agentImportPlan(_ document: Document, metadata: Value, app: String, user: String,
-                         preserveLocalBindings: Bool = false) async throws -> AgentPackagePlan {
+                         preserveLocalBindings: Bool = false, allowClipboardPlaceholders: Bool = false) async throws -> AgentPackagePlan {
         if !document.nodes.values.contains(where: { $0.type == "agent" && $0.config["version"] == .string("2") }),
            case .map(let top) = metadata, top["agent_packages"] == nil { return AgentPackagePlan(metadata: metadata) }
         var meta = try JSONValue.parse(try WireJSON.encode(metadata)).object ?? [:]
@@ -171,6 +177,7 @@ extension Routes {
         for (_, value) in packages { try Self.validateAgentPackage(value) }
         var plan = AgentPackagePlan(metadata: try Self.agentCoreValue(.object(meta)))
         for node in document.nodes.values.sorted(by: { $0.id < $1.id }) where node.type == "agent" && node.config["version"] == .string("2") {
+            if allowClipboardPlaceholders, node.config["agent_binding"] == .map(["binding_type": .string("roster_agent")]) { continue }
             let graph = try Self.agentNodeConfig(node)
             let binding = graph["agent_binding"]?.object ?? [:]
             guard let reference = binding["package_ref"]?.string else {

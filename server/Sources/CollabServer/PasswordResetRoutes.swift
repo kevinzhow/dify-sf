@@ -181,7 +181,7 @@ extension Routes {
                               human_input_email: config.humanInputWebEnabled && config.humanInputEmailEnabled && mail) : nil
         return try json(Features(is_email_setup: mail, enable_file_upload: config.files.isConfigured, enable_change_email: mail, workflow_runtime: runtime,
             inline_agent: config.agentService.inlineEnabled && config.agentService.isConfigured,
-            inline_agent_shell: config.agentService.inlineEnabled && config.agentService.isConfigured ? await AgentServiceClient(config: config.agentService).shellAvailable() : false))
+            inline_agent_shell: config.agentService.inlineEnabled && config.agentService.isConfigured ? await agentShellAvailable() : false))
     }
 
     // MARK: - Forgot password (Dify's /forgot-password, /forgot-password/validity, /forgot-password/resets)

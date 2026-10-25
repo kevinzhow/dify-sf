@@ -94,12 +94,22 @@ extension Routes {
     func recoverAgentExecutions() async {
         do {
             // Recover a remote accepted run that crashed before its ID reached the local operation ledger.
-            // Unknown remote executions can belong to another database, so this only fills an exact expired local match.
+            // Cancel an orphan only after the remote tenant/app/run identity resolves to this database.
             do {
                 for remote in try await AgentServiceClient(config: config.agentService).activeRuns() {
                     guard let execution = remote["execution_id"]?.string, let operation = remote["operation_id"]?.string,
                           case .int(let generation)? = remote["generation"], let id = remote["run_id"]?.string else { continue }
-                    try await store.reconcileExpiredAgentRun(execution: execution, operation: operation, generation: generation, run: id)
+                    if let local = try await store.agentSession(execution: execution) {
+                        guard local.operationID == operation, local.generation == generation else { continue }
+                        try await store.reconcileExpiredAgentRun(execution: execution, operation: operation, generation: generation, run: id)
+                    } else if remote["tenant_id"] == .string(config.pluginDaemonTenant),
+                              remote["node_id"]?.string?.isEmpty == false,
+                              let app = remote["app_id"]?.string, let workflow = remote["workflow_run_id"]?.string,
+                              try await store.workflowRun(doc: app, id: workflow) != nil {
+                        let service = AgentServiceClient(config: config.agentService)
+                        try await service.cancel(run: id, generation: generation)
+                        try await service.cleanup(execution: execution, generation: generation)
+                    }
                 }
             } catch { logger.warning("agent service reconciliation will retry; local recovery continues") }
             // Adoption is independent from answering the question. Otherwise a restarted server would let the

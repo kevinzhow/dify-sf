@@ -27,9 +27,9 @@ struct ServerAgentRuntime: AgentRuntime {
         let (_, soul) = try await configuration(nodeID, data)
         guard let provider = soul.provider, let model = soul.model,
               let models = routes.runtimeServices(appId: appID, userId: userID).models else { throw ServiceNotConfigured(service: .models) }
-        guard AgentModelCompatibility.isCompatible(label: model) else { throw NodeError("AgentModelUnsupported", "This model is not supported by inline Agent v2") }
         let credentials = try await routes.agentCredentials(provider: provider, model: model, reference: soul.json["model"]?["credential_ref"])
         guard let schema = try await models.modelSchema(provider: provider, model: model, modelType: "llm", credentials: credentials),
+              AgentModelCompatibility.isCompatible(label: schema.json["label"]?["en_US"]?.string ?? model),
               (schema.features ?? []).contains(where: { ["tool-call", "multi-tool-call"].contains($0) }) else {
             throw NodeError("AgentModelUnsupported", "The agent model must support tool calls")
         }
@@ -41,6 +41,16 @@ struct ServerAgentRuntime: AgentRuntime {
 
     func run(nodeID: String, data: AgentNodeData, context: NodeRunContext) async throws -> AgentNodeDecision {
         let activeStarted = ContinuousClock.now
+        let deadline = Date().addingTimeInterval(Double(routes.config.agentService.timeoutSeconds))
+        func admitted<T>(_ work: () async throws -> T) async throws -> T {
+            while true {
+                try Task.checkCancellation()
+                if context.isAborted() { throw CancellationError() }
+                guard Date() < deadline else { throw NodeError("AgentTimeout", "Agent admission exceeded its deadline") }
+                do { return try await work() }
+                catch StoreError.agentCapacityFull { try await Task.sleep(for: .milliseconds(250)) }
+            }
+        }
         guard let execution = context.executionId else { throw NodeError("AgentExecutionMissing", "Agent nodes require a workflow execution") }
         let (stored, soul) = try await configuration(nodeID, data)
         let prompt = try await AgentPromptBuilder.build(node: data, config: soul, pool: context.pool, files: files,
@@ -70,14 +80,15 @@ struct ServerAgentRuntime: AgentRuntime {
             continuation = ["kind": "answer", "snapshot": try JSONValue.parse(snapshot), "question_id": .string(questionID),
                 "result": try await question.answer(form, files: files)]
         } else {
-            session = try await routes.store.createAgentSession(.init(executionID: execution, workflowRunID: runID, docID: appID,
+            session = try await admitted { try await routes.store.createAgentSession(.init(executionID: execution, workflowRunID: runID, docID: appID,
                 nodeID: nodeID, agentID: data.agentID, configSnapshotID: data.snapshotID, ownerID: routes.agentOwner),
-                maxConcurrent: routes.config.agentService.maxConcurrent)
+                maxConcurrent: routes.config.agentService.maxConcurrent) }
         }
         let service = AgentServiceClient(config: routes.config.agentService)
         let startedData = try await pending.agentCommits.startedData(execution)
-        let shellAvailable = await service.shellAvailable()
-        let deadline = Date().addingTimeInterval(Double(routes.config.agentService.timeoutSeconds))
+        let shellAvailable: Bool
+        if let pinned = try JSONValue.parse(session.usage)["shell_enabled"]?.bool { shellAvailable = pinned }
+        else { shellAvailable = try await routes.store.pinAgentShell(session: session, enabled: await routes.agentShellAvailable()) }
         var roundUsage = LLMUsage.empty
         var recordedUsage = try JSONValue.parse(session.usage)
         var cumulative = LLMUsage(json: recordedUsage)
@@ -90,8 +101,7 @@ struct ServerAgentRuntime: AgentRuntime {
             var json = cumulative.json.object ?? [:]
             json["active_elapsed_time"] = .double(activeElapsed())
             json["node_started"] = recordedUsage["node_started"] ?? .null
-            json["agent_events"] = recordedUsage["agent_events"] ?? []
-            json["agent_log"] = recordedUsage["agent_log"] ?? []
+            json["shell_enabled"] = .bool(shellAvailable)
             return JSONValue.object(json).compactJSON()
         }
         var inputs = JSONObject(); inputs["task"] = .string(data.task)
@@ -125,8 +135,8 @@ struct ServerAgentRuntime: AgentRuntime {
                 endUserID: endUserID, modelParameters: soul.modelParameters, credentialReference: soul.json["model"]?["credential_ref"], durableOwner: routes.agentOwner)
             let token = try await routes.agentModelScopes.activate(scope)
             do {
-                try await routes.store.startAgentOperation(session: session, operation: operation,
-                    digest: Self.operationDigest(body), tokenHash: Tokens.sha256(token), startedData: startedData.compactJSON(), maxConcurrent: routes.config.agentService.maxConcurrent)
+                try await admitted { try await routes.store.startAgentOperation(session: session, operation: operation,
+                    digest: Self.operationDigest(body), tokenHash: Tokens.sha256(token), startedData: startedData.compactJSON(), maxConcurrent: routes.config.agentService.maxConcurrent) }
                 session = try requireAgentSession(try await routes.store.agentSession(execution: execution))
                 try await service.lease(execution: execution, generation: session.generation)
                 let remote = try await service.start(body, token: token)
@@ -181,7 +191,7 @@ struct ServerAgentRuntime: AgentRuntime {
                     let succeeded = decision.action == .succeeded
                     var value = NodeRunResult(status: succeeded ? .succeeded : .failed, inputs: inputs,
                         processData: ["agent_id": .string(data.agentID), "agent_config_snapshot_id": .string(data.snapshotID), "workflow_agent_binding_id": data.bindingID.map(JSONValue.string) ?? .null, "agent_output_checks": .array(decision.checks.map(\.json))], outputs: decision.outputs,
-                        metadata: ["agent_config_snapshot_id": .string(data.snapshotID), "total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_log": recordedUsage["agent_log"] ?? []], llmUsage: roundUsage,
+                        metadata: ["agent_config_snapshot_id": .string(data.snapshotID), "total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_log": try await routes.agentLogPreview(session)], llmUsage: roundUsage,
                         error: succeeded ? "" : "Declared agent outputs failed validation",
                         errorType: succeeded ? "" : (decision.action == .failBranch ? "output_type_check_failed_fail_branch" : "output_type_check_failed"))
                     value.edgeSourceHandle = "source"
@@ -193,7 +203,7 @@ struct ServerAgentRuntime: AgentRuntime {
                     let errorType = result["error_type"]?.string ?? "cancel_lost"
                     let known: Set<String> = ["model_error", "model_quota", "max_turns", "timeout", "ask_human_invalid", "sandbox_unavailable", "sandbox_error", "file_error", "cancel_lost", "internal"]
                     pending.addAgentOutcome(.init(session: session, status: "failed", usage: usageJSON()))
-                    let value = NodeRunResult(status: .failed, inputs: inputs, metadata: ["total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_log": recordedUsage["agent_log"] ?? []], llmUsage: roundUsage,
+                    let value = NodeRunResult(status: .failed, inputs: inputs, metadata: ["total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_log": try await routes.agentLogPreview(session)], llmUsage: roundUsage,
                         error: "The agent operation did not complete", errorType: known.contains(errorType) ? errorType : "internal")
                     try await pending.agentCommits.commit(execution, result: value)
                     return .completed(value)

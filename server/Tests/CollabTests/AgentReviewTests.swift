@@ -22,6 +22,8 @@ struct AgentReviewTests {
         let projection = AgentTrace.project(run: "run", node: "node", event: event.id, name: event.name, data: event.data, secrets: ["secret-value"])
         #expect(projection.log?["message_id"] == "run:3")
         #expect(!projection.record.compactJSON().contains("secret-value"))
+        let keys = AgentTrace.project(run: "run", node: "node", event: 5, name: "tool_call", data: ["arguments": ["secret-value": "safe", "also-secret-value": "safe"]], secrets: ["secret-value"])
+        #expect(!keys.record.compactJSON().contains("secret-value"))
         #expect(try AgentServiceClient.parseEvent(": keep-alive") == nil)
         let terminal = AgentTrace.project(run: "run", node: "node", event: 4, name: "succeeded", data: ["snapshot": ["messages": ["private prompt"]], "status": "succeeded"], secrets: [])
         #expect(terminal.record["data"]?["snapshot"] == nil)

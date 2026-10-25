@@ -90,14 +90,31 @@ received upload owned by that execution and generation; configured defaults use 
 The Swift adapter consumes the service's durable SSE stream with `after=<last committed event>`. It stores event
 projections and thought/tool/usage logs in the private execution ledger before broadcasting `agent_log` or advancing
 the cursor. A result cannot enqueue its acknowledgement until the terminal cursor agrees with durable service
-state. Replayed events have stable run/event identities and are deduplicated. A 410 is an explicit lost-history
-failure, not an empty successful log. Final node metadata retains the log; paused reconnect snapshots reconstruct
+state. Replayed events have stable run/event identities and are deduplicated. When a cursor expires (410), the adapter
+recovers the final result through GET and stores an explicit history-gap record before ACK; it never claims a complete
+old event history. A persistence failure leaves the HTTP retry path immediately. Final node metadata retains the log; paused reconnect snapshots reconstruct
 it from the private execution ledger. The original node-start payload is committed with each operation, using the
 same encoder as live events, so reconnects preserve its title, index, timestamp and iteration/loop scope. Terminal service snapshots are not copied into the public log. Environment
 values are redacted from event projections, and operation audit digests omit environment values.
 
 The running admission budget excludes unanswered pauses. Resuming work checks the same database-wide running
-budget. Paused execution ownership and remote workspace leases continue to renew independently of browser/SSE
+budget, waiting and retrying admission until the deadline rather than failing when another execution occupies it. Paused execution ownership and remote workspace leases continue to renew independently of browser/SSE
 connections. Active elapsed time accumulates across answering rounds and output retries, excluding time spent
 waiting for a human. ACK/cancel/cleanup retries treat already removed or superseded remote work as resolved;
 transient cleanup failures remain in the durable outbox.
+
+
+## Long records and capabilities
+
+The private redacted archive uses one immutable database row per event, fenced by the execution owner and operation.
+It has no 4096-event or 8 MB execution-failure threshold and does not rewrite the accumulated session JSON for each
+chunk. Finished-node and reconnect previews contain at most 256 KiB of complete JSON/UTF-8 records. A truncation
+marker references `GET /v1/apps/{app}/workflow-runs/{run}/agent-records/{execution}.jsonl`; this downloads the full
+redacted record as a paged JSONL stream with ordinary member authentication and app/run ownership checks. It is
+not a public file link. Thoughts, tool calls and the service's `model_call` usage records share this archive.
+
+Shell availability uses a two-second health probe shared across concurrent feature requests and cached for fifteen
+seconds, including failures. The first capability decision is pinned to the execution, so a resumed human question
+cannot gain or lose tools because of a later configuration or health change. Remote orphan cancellation requires a
+matching tenant and an app/run present in this database; an older service that omits that identity grants no authority
+to cancel unknown work.

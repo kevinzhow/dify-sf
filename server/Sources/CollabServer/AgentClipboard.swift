@@ -21,13 +21,21 @@ extension Routes {
               !rawIDs.isEmpty, rawIDs.count <= 200, rawIDs.allSatisfy({ $0.string != nil }) else { throw Self.invalidParam("Invalid Agent clipboard selection") }
         let ids = Set(rawIDs.compactMap(\.string))
         let snapshot = try await registry.sequencer(app.id).currentSnapshot()
-        guard snapshot.seq == expected, ids.allSatisfy({ snapshot.doc.nodes[$0] != nil }) else {
+        let baseline = payload["expected_nodes"]?.object
+        let matches = try ids.allSatisfy { id in
+            guard let node = snapshot.doc.nodes[id] else { return false }
+            guard let baseline else { return snapshot.seq == expected }
+            let actual = try JSONValue.parse(try WireJSON.encode(node))
+            guard let before = baseline[id]?.object else { return false }
+            return ["type", "title", "config"].allSatisfy { (before[$0] ?? .null) == (actual[$0] ?? .null) }
+        }
+        guard expected <= snapshot.seq, matches else {
             throw ServerError.http(status: 409, code: "agent_document_changed", message: "The clipboard selection changed")
         }
         let selected = Document(nodes: ids.sorted().compactMap { snapshot.doc.nodes[$0] },
             edges: snapshot.doc.edges.values.filter { ids.contains($0.source) && ids.contains($0.target) })
         let exported = try JSONValue.parse(try WireJSON.encode(try await agentExportValue(selected,
-            metadata: DifyDSL.defaultMetadata(name: "Clipboard"), secrets: nil, app: app.id)))
+            metadata: DifyDSL.defaultMetadata(name: "Clipboard"), secrets: nil, app: app.id, allowClipboardPlaceholders: true)))
         return rawJSON(["document_seq": .int(snapshot.seq), "nodes": exported["workflow"]?["graph"]?["nodes"] ?? [],
             "edges": exported["workflow"]?["graph"]?["edges"] ?? [], "agent_packages": exported["agent_packages"] ?? [:]])
     }
@@ -84,7 +92,7 @@ extension Routes {
             guard head == expected else { throw ServerError.http(status: 409, code: "agent_document_changed", message: "The workflow changed before paste") }
             guard imported.document.nodes.keys.allSatisfy({ current.nodes[$0] == nil && current.deletedNodes[$0] == nil }),
                   imported.document.edges.keys.allSatisfy({ current.edges[$0] == nil && current.deletedEdges[$0] == nil }) else { throw Self.invalidParam("Clipboard target IDs are already used") }
-            var plan = try await routes.agentImportPlan(imported.document, metadata: imported.metadata, app: app.id, user: user.id)
+            var plan = try await routes.agentImportPlan(imported.document, metadata: imported.metadata, app: app.id, user: user.id, allowClipboardPlaceholders: true)
             for (target, rawSource) in payload["local_sources"]?.object ?? [:] {
                 guard imported.document.nodes[target] != nil, let source = rawSource["node_id"]?.string,
                       ids[source] == target, let node = current.nodes[source],

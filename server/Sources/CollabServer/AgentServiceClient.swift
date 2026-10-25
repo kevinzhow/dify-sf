@@ -36,7 +36,7 @@ struct AgentServiceClient: Sendable {
         NodeError("AgentServiceProtocolError", "The agent service returned an invalid response")
     }
 
-    func request(_ method: HTTPMethod, path: String, body: JSONObject? = nil, runToken: String? = nil, query: [String: String] = [:]) async throws -> (Int, JSONValue) {
+    func request(_ method: HTTPMethod, path: String, body: JSONObject? = nil, runToken: String? = nil, query: [String: String] = [:], timeoutSeconds: Int64 = 30) async throws -> (Int, JSONValue) {
         var destination = URLComponents(string: try endpoint(path))!
         if !query.isEmpty { destination.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) } }
         var request = HTTPClientRequest(url: destination.url!.absoluteString)
@@ -50,7 +50,7 @@ struct AgentServiceClient: Sendable {
             request.headers.add(name: "Content-Type", value: "application/json")
             request.body = .bytes(ByteBuffer(string: bytes))
         }
-        let response = try await client.execute(request, timeout: .seconds(30))
+        let response = try await client.execute(request, timeout: .seconds(timeoutSeconds))
         let bytes = try await response.body.collect(upTo: 8 << 20)
         let value = try JSONValue.parse(Array(bytes.readableBytesView))
         guard value["protocol"] == .string(Self.protocolName) else { throw Self.invalidResponse() }
@@ -60,7 +60,7 @@ struct AgentServiceClient: Sendable {
     /// Opt-in is necessary even when the sandbox supervisor is present. A failed probe grants no shell.
     func shellAvailable() async -> Bool {
         guard config.shellEnabled else { return false }
-        guard let (status, value) = try? await request(.GET, path: "/v1/health") else { return false }
+        guard let (status, value) = try? await request(.GET, path: "/v1/health", timeoutSeconds: 2) else { return false }
         return status == 200 && value["sandbox"] == "isolated"
     }
 
@@ -80,7 +80,8 @@ struct AgentServiceClient: Sendable {
                     throw NodeError("AgentOperationRejected", "The agent service rejected this operation (HTTP \(status))")
                 }
                 return try Self.pathID(run)
-            } catch let error as NodeError { throw error }
+            } catch let error as AgentEventCommitFailure { throw error.underlying }
+            catch let error as NodeError { throw error }
             catch is CancellationError { throw CancellationError() }
             catch {
                 lastError = error
@@ -97,15 +98,18 @@ struct AgentServiceClient: Sendable {
                 onEvent: @Sendable (Int, String, JSONObject) async throws -> Void = { _, _, _ in }) async throws -> JSONValue {
         let id = try Self.pathID(run)
         var cursor = 0, failures = 0
+        var historyExpired = false
         while Date() < deadline {
             try Task.checkCancellation()
             if isAborted() { throw CancellationError() }
             do {
+                if !historyExpired {
                 var req = HTTPClientRequest(url: try endpoint("/v1/runs/\(id)/events") + "?after=\(cursor)")
                 req.headers.add(name: "Authorization", value: "Bearer " + config.key)
                 req.headers.add(name: "Accept", value: "text/event-stream")
                 let response = try await client.execute(req, timeout: .seconds(max(1, Int64(deadline.timeIntervalSinceNow))))
-                guard response.status.code != 410 else { throw NodeError("AgentEventHistoryLost", "Agent event history is no longer available") }
+                if response.status.code == 410 { historyExpired = true }
+                else {
                 guard response.status.code == 200 else {
                     if response.status.code == 503 { throw AgentTransientTransport() }
                     throw Self.invalidResponse()
@@ -123,22 +127,30 @@ struct AgentServiceClient: Sendable {
                         guard let event = try Self.parseEvent(frame) else { continue }
                         if event.id <= cursor { continue }
                         guard event.id == cursor + 1 else { throw Self.invalidResponse() }
-                        try await onEvent(event.id, event.name, event.data)
+                        do { try await onEvent(event.id, event.name, event.data) }
+                        catch { throw AgentEventCommitFailure(underlying: error) }
                         cursor = event.id // Advance only after the database commit succeeded.
                         failures = 0
                     }
+                }
+                }
                 }
                 let (status, value) = try await request(.GET, path: "/v1/runs/\(id)")
                 guard status == 200, value["run_id"] == .string(run), value["operation_id"] == .string(operation),
                       let state = value["status"]?.string else { throw Self.invalidResponse() }
                 if ["succeeded", "paused", "failed", "cancelled"].contains(state) {
-                    guard value["result"]?.object != nil, case .int(let last)? = value["last_event_id"], last > 0, cursor == last else {
+                    guard value["result"]?.object != nil, case .int(let last)? = value["last_event_id"], last > 0, historyExpired || cursor == last else {
                         throw Self.invalidResponse()
+                    }
+                    if historyExpired {
+                        do { try await onEvent(last, "error", ["error_type": "cursor_expired", "message": "Event history expired; final result recovered", "status": .string(state)]) }
+                        catch { throw AgentEventCommitFailure(underlying: error) }
                     }
                     return value
                 }
                 guard ["running", "accepted", "cancelling"].contains(state) else { throw Self.invalidResponse() }
-            } catch let error as NodeError { throw error }
+            } catch let error as AgentEventCommitFailure { throw error.underlying }
+            catch let error as NodeError { throw error }
             catch is CancellationError { throw CancellationError() }
             catch {
                 failures += 1
@@ -194,3 +206,5 @@ struct AgentServiceClient: Sendable {
 }
 
 private struct AgentTransientTransport: Error {}
+
+private struct AgentEventCommitFailure: Error { let underlying: any Error }

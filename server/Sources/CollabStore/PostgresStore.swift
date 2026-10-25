@@ -6,6 +6,8 @@ import PostgresNIO
 public enum StoreError: Error, Sendable {
     /// The row-lock/revision check failed: another writer changed the document since this state was built.
     case revisionMismatch
+    /// Admission is temporarily full; no operation was inserted or started.
+    case agentCapacityFull
     case corrupt(String)
     /// The transaction definitely did NOT commit (it failed or was rolled back before COMMIT was sent).
     case notCommitted(String)

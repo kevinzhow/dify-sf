@@ -994,8 +994,7 @@ final class RunExecution: Sendable {
         var processData = r.processData
         var metadata = r.metadata
         if nodeType == "agent", let session = try? await routes.store.agentSession(execution: executionId) {
-            let usage = (try? JSONValue.parse(session.usage)) ?? [:]
-            if metadata["agent_log"] == nil { metadata["agent_log"] = usage["agent_log"] ?? [] }
+            if metadata["agent_log"] == nil { metadata["agent_log"] = try? await routes.agentLogPreview(session) }
             processData["agent_id"] = .string(session.agentID)
             processData["agent_config_snapshot_id"] = .string(session.configSnapshotID)
         }
@@ -1031,8 +1030,8 @@ final class RunExecution: Sendable {
         for (x, s) in running {
             var metadata: String? = nil
             if s.nodeType == "agent", let session = try? await routes.store.agentSession(execution: x),
-               let usage = try? JSONValue.parse(session.usage) {
-                metadata = JSONValue.object(["agent_log": usage["agent_log"] ?? []]).compactJSON()
+               let logs = try? await routes.agentLogPreview(session) {
+                metadata = JSONValue.object(["agent_log": logs]).compactJSON()
             }
             let e = StoredNodeExecution(
                 id: x, docId: appId, workflowRunId: runId, triggeredFrom: triggeredFrom, docSeq: docSeq, index: s.index, predecessorNodeId: nil,

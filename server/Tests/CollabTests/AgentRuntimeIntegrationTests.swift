@@ -41,7 +41,7 @@ struct AgentRuntimeIntegrationTests {
         let daemon = try #require(ProcessInfo.processInfo.environment["AGENT_PLUGIN_DAEMON_URL"])
         let provider = try #require(ProcessInfo.processInfo.environment["AGENT_MODEL_PROVIDER_URL"])
         var config = humanInputTestConfig(runtimeConfig(daemon: daemon, key: "fixture-daemon-key", tenant: "00000000-0000-0000-0000-000000000001"))
-        config.agentService.url = endpoint; config.agentService.key = "fixture-agent-service-key"; config.agentService.inlineEnabled = true
+        config.agentService.url = endpoint; config.agentService.key = "fixture-agent-service-key"; config.agentService.inlineEnabled = true; config.agentService.maxConcurrent = 1
         config.files.directory = FileManager.default.temporaryDirectory.appendingPathComponent("agent-runtime-files-" + UUID().uuidString).path
         config.files.signingKey = String(repeating: "fixture-only-signing-key", count: 2)
         config.files.internalURL = "http://winnie-agent-swift-tests:21306"; config.files.externalURL = "http://127.0.0.1:21306"
@@ -90,7 +90,7 @@ struct AgentRuntimeIntegrationTests {
                     #expect(restored.first { $0["event"] == "node_started" && $0["data"]?["id"] == .string(first.executionId) }?["data"] == originalStarted)
                     #expect(originalStarted["index"] == 1)
                     let traceSession = try #require(try await store.agentSession(execution: first.executionId))
-                    #expect(!(try JSONValue.parse(traceSession.usage)["agent_log"]?.array ?? []).isEmpty, "Thoughts and tool calls must be durable before a question is acknowledged")
+                    #expect(!(try await store.agentEventRecords(execution: traceSession.executionID)).isEmpty, "Thoughts and tool calls must be durable before a question is acknowledged")
 
                     #expect(first.questionID == first.executionId + ":q1")
                     let initial = try #require(try await store.agentSession(execution: first.executionId))
@@ -109,8 +109,18 @@ struct AgentRuntimeIntegrationTests {
                     let follow = try await HTTPClient.shared.execute(request, timeout: .seconds(30))
                     #expect(follow.status.code == 200)
                     let following = Task { try await follow.body.collect(upTo: 4 << 20) }
+                    let blockerRun = UUID().uuidString.lowercased()
+                    let originalRun = try #require(try await store.workflowRun(id: run))
+                    try await store.insertWorkflowRun(.init(id: blockerRun, docId: appID, docSeq: 3, workflowId: appID, type: "workflow", triggeredFrom: "debugging",
+                        version: "draft", graph: "{}", inputs: "{}", status: "running", createdBy: originalRun.createdBy, createdAt: Date()))
+                    let blocker = try await store.createAgentSession(.init(executionID: UUID().uuidString.lowercased(), workflowRunID: blockerRun, docID: appID,
+                        nodeID: initial.nodeID, agentID: initial.agentID, configSnapshotID: initial.configSnapshotID, ownerID: "admission-blocker"), maxConcurrent: 1)
                     let submitted = try await api.post("/v1/form/human_input/\(firstToken)", #"{"action":"submit","inputs":{"answer":"First answer"}}"#, token: token)
                     #expect(submitted.status == 200, "\(submitted.text)")
+                    try await Task.sleep(for: .milliseconds(700))
+                    #expect(try await store.workflowRun(id: run)?.status == "running", "Full admission must not fail an answered workflow")
+                    #expect(try await store.agentSession(execution: first.executionId)?.status == "paused")
+                    try await store.abandonAgentExecution(execution: blocker.executionID, owner: blocker.ownerID, generation: blocker.generation)
                     var second: StoredHumanInputForm?
                     for _ in 0..<300 {
                         second = try await store.humanInputForms(workflowRunId: run).first { $0.questionID == first.executionId + ":q2" }

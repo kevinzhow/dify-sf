@@ -18,6 +18,28 @@ enum AgentExecutionSchema {
                 REFERENCES agent_config_snapshots(id, doc_id, node_id, agent_id)
         )
         """,
+        """
+        CREATE TABLE IF NOT EXISTS agent_event_records (
+            ordinal bigserial PRIMARY KEY,
+            execution_id text NOT NULL REFERENCES agent_node_sessions(execution_id) ON DELETE CASCADE,
+            operation_id text NOT NULL, event_key text NOT NULL, record text NOT NULL, log text,
+            created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(execution_id, event_key)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS agent_event_records_execution ON agent_event_records(execution_id, ordinal)",
+        // Upgrade the earlier bounded JSON archive once; durable rows survive result ACK and process restart.
+        """
+        INSERT INTO agent_event_records(execution_id, operation_id, event_key, record, log)
+        SELECT s.execution_id, coalesce(s.operation_id, s.execution_id || ':legacy'), e.value->>'event_key',
+            jsonb_build_array(e.value)::text,
+            (SELECT jsonb_build_array(l.value)::text FROM jsonb_array_elements(coalesce(s.usage->'agent_log','[]'::jsonb)) l(value)
+                WHERE l.value->>'message_id' = e.value->>'event_key' LIMIT 1)
+        FROM agent_node_sessions s, LATERAL jsonb_array_elements(coalesce(s.usage->'agent_events','[]'::jsonb)) WITH ORDINALITY e(value, position)
+        WHERE s.usage ? 'agent_events' AND e.value->>'event_key' IS NOT NULL
+        ORDER BY s.execution_id, e.position
+        ON CONFLICT(execution_id, event_key) DO NOTHING
+        """,
+        "UPDATE agent_node_sessions SET usage = usage - 'agent_events' - 'agent_log' WHERE usage ? 'agent_events' OR usage ? 'agent_log'",
         "CREATE INDEX IF NOT EXISTS agent_node_sessions_recovery ON agent_node_sessions(status, lease_until)",
         """
         CREATE TABLE IF NOT EXISTS agent_operations (
