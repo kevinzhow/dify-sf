@@ -123,6 +123,54 @@ class InnerClient {
     'size': size,
   });
 
+  /// Resolves a URL from a file request against the inner base URL.
+  Uri resolveFileUrl(String url) => baseUrl.resolve(url);
+
+  /// GETs the bytes behind a signed download URL (at most [maxBytes]).
+  Future<List<int>> downloadBytes(String url, int maxBytes) async {
+    final http.StreamedResponse response;
+    try {
+      response = await _client.send(http.Request('GET', resolveFileUrl(url)));
+    } on http.ClientException catch (e) {
+      throw GatewayException('file_error', 'download failed: ${e.message}');
+    }
+    if (response.statusCode != 200) {
+      await response.stream.drain<void>();
+      throw GatewayException(
+        'file_error',
+        'download answered HTTP ${response.statusCode}',
+      );
+    }
+    final out = <int>[];
+    await for (final chunk in response.stream) {
+      out.addAll(chunk);
+      if (out.length > maxBytes) {
+        throw GatewayException('file_error', 'file exceeds $maxBytes bytes');
+      }
+    }
+    return out;
+  }
+
+  /// PUTs [bytes] to the URL of an upload request.
+  Future<void> uploadBytes(String url, List<int> bytes, String mimeType) async {
+    final http.Response response;
+    try {
+      response = await _client.put(
+        resolveFileUrl(url),
+        headers: {'Content-Type': mimeType},
+        body: bytes,
+      );
+    } on http.ClientException catch (e) {
+      throw GatewayException('file_error', 'upload failed: ${e.message}');
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw GatewayException(
+        'file_error',
+        'upload answered HTTP ${response.statusCode}: ${_short(response.body)}',
+      );
+    }
+  }
+
   Future<Map<String, Object?>> _postJson(
     String path,
     Map<String, Object?> body,

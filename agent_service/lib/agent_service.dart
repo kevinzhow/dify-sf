@@ -10,3 +10,7 @@ export 'src/output_tool.dart';
 export 'src/protocol.dart';
 export 'src/run_store.dart';
 export 'src/server.dart';
+export 'src/file_outputs.dart';
+export 'src/sandbox/sandbox.dart';
+export 'src/sandbox/shell_tools.dart';
+export 'src/sandbox/shellctl.dart';

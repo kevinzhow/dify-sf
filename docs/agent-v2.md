@@ -118,15 +118,18 @@ Starts one operation. Every operation is a separate request; there is no separat
   `description` becomes the `final_output` tool description.
 - `tools.ask_human` is derived by the Swift server from the inline agent's `human.contacts` (Dify's Soul config:
   questions are enabled only when contacts are configured). The agent service treats it as a plain flag; form
-  delivery and recipients stay entirely in the Swift server. `tools.shell: true` fails the run with
-  `sandbox_unavailable` until the sandbox exists (phase 3).
+  delivery and recipients stay entirely in the Swift server. `tools.shell: true` gives the model Dify's shell tools
+  (`shell_run`, `shell_wait`, `shell_input`, `shell_interrupt`: Dify's arguments, defaults, prompt and output text) and
+  requires them: without an isolated sandbox the run fails with `sandbox_unavailable`. There is no optional shell.
 - The `X-Agent-Run-Token` header is required for a new operation (`400 invalid_request` otherwise). The service keeps
   it in memory only.
 - Files are referenced by stable `file_id`; snapshots and model requests never contain URLs. Model inputs carry
   `dify-sf-file:<file_id>` (see the inner gateway); only components that need the bytes (the sandbox) ask for a fresh
-  signed URL.
+  signed URL. `files[].path` is relative to the workspace (`..`, absolute paths outside `/workspace` and repeats are
+  `400 invalid_request`); a new sandbox gets each file at `/workspace/<path>`.
 - `env` reaches only the sandbox environment and never a prompt. Reserved names (`HOME`, `PATH`, `TMPDIR`, `TMP`,
-  `TEMP`, every `SHELLCTL_*`, `*_PROXY` and `NO_PROXY` in either case) are rejected with `400 reserved_env`.
+  `TEMP`, every `SHELLCTL_*`, `*_PROXY` and `NO_PROXY` in either case) are rejected with `400 reserved_env`, and
+  refused again by the sandbox layer.
 - `continuation` is `null` for the first run. Otherwise it is one of:
   - `{"kind": "answer", "snapshot": <envelope>, "question_id": "…", "result": <ask_human result>}` after a question.
   - `{"kind": "output_retry", "snapshot": <envelope>, "feedback": [{"field": "score", "error": "…"}]}` after the Swift
@@ -235,14 +238,15 @@ their descendants, then ends the run with `cancelled`. Returns `202`; a run that
 
 `{"protocol", "generation", "ttl_seconds": 120}`. The Swift server renews the lease of every execution it is running or
 has paused. If a running operation's lease expires, the service cancels it (`cancel_lost`). Paused executions only
-hold kept files and workspaces, which expire with the human-input form's global deadline. Observing events is not a
-lease.
+hold kept files and workspaces, which expire with the human-input form's global deadline. When a lease expires, the
+execution's sandbox is also released. Observing events is not a lease.
 
 ### `DELETE /v1/executions/{execution_id}`
 
-`{"protocol", "generation"}`. Removes everything kept for the execution: workspaces, homes and run records. The service
-derives every path from its own records; nothing in the request is used as a path. Idempotent. Running operations of
-the execution are cancelled first. A tombstone remains, so a late operation or lease for it answers
+`{"protocol", "generation"}`. Removes everything kept for the execution: its sandbox (workspace and home, through the
+supervisor) and run records. The service derives every path and sandbox from its own records; nothing in the request
+is used as a path. Idempotent. Running operations of the execution are cancelled first. If the supervisor fails, the
+answer is `503 cleanup_failed`, the records stay and the Swift server retries. A tombstone remains, so a late operation or lease for it answers
 `410 execution_deleted`. The Swift server calls
 it once the execution's node reaches a final state, after output files were received.
 
@@ -253,7 +257,8 @@ reconcile: it cancels or adopts every operation left from before its restart and
 
 ### `GET /v1/health`
 
-`{"protocol", "status": "ok" | "degraded", "sandbox": "isolated" | "unavailable" | "disabled", "version"}`.
+`{"protocol", "status": "ok" | "degraded", "sandbox": "isolated" | "unavailable" | "disabled", "version"}`. `sandbox`
+is `disabled` without a supervisor, `unavailable` after the latest probe or supervisor call failed, else `isolated`.
 
 ### Failure contract
 
@@ -276,12 +281,13 @@ The snapshot passed back in `continuation` is a versioned envelope, not a bare G
  "agent_config_snapshot_id": "…", "tool_definitions_digest": "…", "model": {"provider": "…", "name": "…", "parameters": {…}},
  "output_attempt": 0, "resume_sequence": 1,
  "pending": {"question_id": "E1:q2", "tool_call_id": "ask_human:0"},
- "file_ids": ["…"], "workspace_ref": "…",
+ "file_ids": ["…"], "workspace_ref": "<sandbox_id> | null",
  "messages": [ /* Genkit Message JSON */ ]}
 ```
 
 A snapshot whose envelope, Genkit major version, config snapshot or tool definitions differ from the request is
-rejected (`422 snapshot_incompatible`), never resumed with a different configuration.
+rejected (`422 snapshot_incompatible`), never resumed with a different configuration. `workspace_ref` is the
+execution's sandbox (null until the shell is used); a resume whose sandbox was replaced fails with `sandbox_error`.
 
 ## Agent loop
 
@@ -345,8 +351,9 @@ run's file budget before it starts the node. The model path never uses
 
 - `POST /inner/agent/files/download-request` `{"file_id"}` → `{"url", "expires_at", "mime_type", "size"}`, for
   components that need the bytes (the sandbox). Only files that belong to the execution's inputs or uploads.
-- `POST /inner/agent/files/upload-request` `{"filename", "mime_type", "size"}` → `{"url", "upload_id"}`; the uploaded
-  file belongs to the execution. The Swift server confirms receipt before the node succeeds; only then is the workspace
+- `POST /inner/agent/files/upload-request` `{"filename", "mime_type", "size"}` → `{"url", "upload_id"}`; the agent
+  service then `PUT`s the bytes to `url` with that `Content-Type` (any 2xx is success). The uploaded file belongs to
+  the execution. The Swift server confirms receipt before the node succeeds; only then is the workspace
   removed.
 
 ## Declared outputs
@@ -358,6 +365,15 @@ The Swift server is the only place that decides declared-output strategies, foll
   `not_produced`).
 - While a failed field has retry budget left, it starts an `output_retry` operation with per-field feedback.
 - When budgets are spent, strategies combine as `fail_branch > stop > default_value`.
+
+File outputs (a dify-sf choice; Dify's model uploads through its CLI instead): a top-level property, or the `items` of
+an array property, carrying `"x-dify-sf-file": {"extensions"?: ["csv"], "mime_types"?: ["text/csv", "image/*"]}`. The
+keyword is removed from the schema the model sees. The model gives a path relative to the workspace. The agent service
+checks that it stays inside `/workspace` after resolving symlinks, is a regular file of at most 64 MiB and meets the
+constraints (MIME type by extension, else `file --mime-type`); otherwise that field gets a `candidate_errors` entry and
+keeps the model's value. A good file is uploaded and replaced in the candidate by
+`{"upload_id", "filename", "mime_type", "size"}` (a list of them for an array). A failed upload ends the run `failed`
+(`file_error`); the workspace is kept.
 
 Node outputs follow Dify: `text` plus declared outputs; `process_data` carries `agent_id`, `agent_config_snapshot_id`
 and `workflow_agent_binding_id`; `metadata.agent_log` is an object.
@@ -375,24 +391,53 @@ and `workflow_agent_binding_id`; `metadata.agent_log` is an object.
 
 ## Sandbox
 
-Phase 3. The image is Dify's `langgenius/dify-agent-local-sandbox:1.17.1`. Dify itself shares one `shellctl` daemon
-between executions, separating them by home and workspace directories under Landlock. That is not a hard boundary for
-dify-sf: `shellctl` runs commands when Landlock cannot be enabled, Landlock V1 rules leave `/proc` readable, and the
-home and writable paths come from environment variables.
+The image is Dify's `langgenius/dify-agent-local-sandbox:1.17.1`. Dify itself shares one `shellctl` daemon between
+executions, separating them by home and workspace directories under Landlock. That is not a hard boundary for dify-sf:
+`shellctl` runs commands when Landlock cannot be enabled (it only warns), Landlock V1 rules leave `/proc` readable, and
+the home and writable paths come from environment variables.
 
 dify-sf therefore gives each execution that enables the shell its own container from that image:
 
-- created on first shell use, removed with the execution (`DELETE /v1/executions/{id}`);
+- created on first shell use, removed with the execution (`DELETE /v1/executions/{id}`) or when its lease expires;
 - internal network only; egress through the sandbox proxy, enforced by network rules, not by proxy variables;
 - memory, CPU, PID and disk limits; stop kills every descendant process;
 - reserved environment variables cannot be set by users;
 - containers are created by a small supervisor, the only component with access to the container runtime, which
   accepts only "create sandbox for execution X with the fixed image and limits" and "remove it".
 
-Landlock stays as an additional layer inside the container. Before the first command the service runs probes (write
-outside the workspace, read the daemon's job records, reach the internet directly). A failed probe makes the sandbox
-`unavailable`; the run then has no shell tool, or fails with `sandbox_unavailable` if the node requires the shell.
-The probes check the setup; they do not replace the container boundary.
+Supervisor (`agent_service/bin/sandbox_supervisor.dart`, Docker Engine API on the unix socket, bearer key):
+`POST /v1/sandboxes {"execution_key"}` → `{"sandbox_id", "url", "token", "created"}`, idempotent per key (a stopped
+container is replaced, with a new ID); `DELETE /v1/sandboxes/{id}`; `GET /v1/sandboxes`. Any other request field is
+`400`. Containers carry its label and only labelled containers are listed, swept at start (labelled but unknown) or
+removed. Each container gets a fresh random `SHELLCTL_AUTH_TOKEN` and, from the supervisor's configuration only:
+
+| Concern | Docker option |
+|---|---|
+| Memory (tmpfs pages count here too), no swap | `Memory` = `MemorySwap` (default 1024 MiB) |
+| CPU | `NanoCpus` (default 1 CPU) |
+| Processes | `PidsLimit` (default 256) |
+| Disk | `ReadonlyRootfs`; `Tmpfs` `/home/dify` (256 MiB) and `/workspace` (512 MiB), `rw,exec,nosuid,nodev,mode=0700` |
+| Privileges | `CapDrop: ["ALL"]`, `SecurityOpt: ["no-new-privileges:true"]`, not privileged, no binds or mounts |
+| Network | `NetworkMode` = the configured internal network (created by compose, never by the supervisor) |
+| Readiness | a Docker health check on shellctl `/healthz`; the supervisor waits for `healthy` |
+
+The compose network is `internal` with `com.docker.network.bridge.inhibit_ipv4`: on an internal network without it,
+the host's bridge address (and every host service listening on all interfaces) was reachable from a sandbox. Sandboxes
+share that network with the agent service, the proxy and each other; shellctl ports are protected by per-sandbox
+tokens and the agent service by its key. The proxy (Squid) allows only the domains in its allowlist (default: the npm
+and PyPI registries) and refuses private addresses.
+
+Jobs run with `HOME=/home/dify/agent` and `cwd=/workspace`, so shellctl's own state (`/home/dify/.local/share/shellctl`)
+is outside the paths Landlock grants. Landlock stays as an additional layer. Before the first command in each process
+the service runs probes, each of which must fail: write outside the workspace and job home (`/home/dify`, `/tmp`,
+`/var/tmp`, `/dev/shm`, `/`), read the daemon's state or another process's environment, connect to 1.1.1.1:443 or
+8.8.8.8:443. A probe that succeeds makes the sandbox `unavailable`: it is removed and the run fails with
+`sandbox_unavailable`. The probes check the setup; they do not replace the container boundary.
+
+At the end of every run (succeeded, paused, failed or cancelled) the service terminates and deletes the run's jobs and
+then kills every remaining process in the container except the shellctl daemon (shellctl's terminate alone leaves
+`setsid` and `nohup` descendants running). If that cannot be done, e.g. with the PID limit exhausted, the sandbox is
+removed.
 
 ## Swift server summary
 

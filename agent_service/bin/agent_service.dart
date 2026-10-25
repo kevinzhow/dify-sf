@@ -9,6 +9,8 @@ import 'package:agent_service/agent_service.dart';
 ///   AGENT_SERVICE_PORT default 5050
 ///   AGENT_INNER_URL    base URL of the Swift server's inner endpoints
 ///   AGENT_LOG_LEVEL    debug | info | warning | error (default info)
+///   AGENT_SANDBOX_SUPERVISOR_URL / AGENT_SANDBOX_SUPERVISOR_KEY
+///                      the sandbox supervisor; unset = no shell
 Future<void> main() async {
   final env = Platform.environment;
   String? required(String name) {
@@ -39,11 +41,27 @@ Future<void> main() async {
     );
   }
 
+  final supervisorText = env['AGENT_SANDBOX_SUPERVISOR_URL'] ?? '';
+  final supervisorKey = env['AGENT_SANDBOX_SUPERVISOR_KEY'] ?? '';
+  if (supervisorText.isNotEmpty && supervisorKey.isEmpty) {
+    stderr.writeln('AGENT_SANDBOX_SUPERVISOR_KEY is required with the URL');
+    exit(64);
+  }
+  final supervisor = supervisorText.isEmpty
+      ? null
+      : SupervisorClient(Uri.parse(supervisorText), supervisorKey);
+  if (supervisor == null) {
+    stderr.writeln(
+      'AGENT_SANDBOX_SUPERVISOR_URL is not set: the shell is disabled',
+    );
+  }
+
   final service = AgentService(
     serviceKey: key,
     dataDir: dataDir,
     innerUrl: inner,
     logLevel: level,
+    supervisor: supervisor,
   );
   await service.start(address: InternetAddress.anyIPv4, port: port);
 

@@ -16,7 +16,7 @@
 ///               /* or {"raw": <LLMResultChunk>} */],
 ///    "error": {"code": -429, "message": "…"},   // after the chunks
 ///    "hang": false}],               // keep the stream open after the chunks
-///  "files": {"<file_id>": {"mime_type": "image/png", "size": 3}}}
+///  "files": {"<file_id>": {"mime_type": "image/png", "size": 3, "content": "…"}}}
 /// ```
 library;
 
@@ -215,6 +215,9 @@ class ScriptedGateway {
   final List<CallObservation> observations = [];
   final Set<String> _invocationIds = {};
   final Map<String, List<int>> uploads = {};
+
+  /// Status answered to upload PUTs (a failing upload when not 2xx).
+  int uploadStatus = 200;
   HttpServer? _server;
 
   Uri get url => Uri.parse('http://127.0.0.1:${_server!.port}');
@@ -241,13 +244,16 @@ class ScriptedGateway {
       final path = request.uri.path;
       if (request.method == 'GET' && path.startsWith('/files/')) {
         res.headers.contentType = ContentType.binary;
-        res.add(utf8.encode('fake-bytes'));
+        final content = files[path.substring('/files/'.length)]?['content'];
+        res.add(utf8.encode(content is String ? content : 'fake-bytes'));
         return await res.close();
       }
       if (request.method == 'PUT' && path.startsWith('/uploads/')) {
         final bytes = await request.fold<List<int>>([], (a, b) => a..addAll(b));
-        uploads[path.substring('/uploads/'.length)] = bytes;
-        res.statusCode = 200;
+        if (uploadStatus >= 200 && uploadStatus < 300) {
+          uploads[path.substring('/uploads/'.length)] = bytes;
+        }
+        res.statusCode = uploadStatus;
         return await res.close();
       }
       final text = await utf8.decodeStream(request);

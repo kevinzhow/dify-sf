@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 import 'output_tool.dart';
+import 'sandbox/paths.dart';
 
 /// Protocol name and version sent in every request and response body.
 const protocolName = 'dify-sf-agent/1';
@@ -205,6 +206,13 @@ class TaskFile extends TaskPart {
   final String? mimeType;
 }
 
+/// One element of `files`: a file materialized at a workspace-relative path.
+class FileRef {
+  FileRef(this.fileId, this.path);
+  final String fileId;
+  final String path;
+}
+
 /// `continuation` of an operation request.
 sealed class Continuation {
   Continuation(this.snapshot);
@@ -282,7 +290,7 @@ class OperationRequest {
     required this.askHuman,
     required this.shell,
     required this.env,
-    required this.fileIds,
+    required this.files,
     required this.maxTurns,
     required this.timeoutSeconds,
     required this.continuation,
@@ -301,7 +309,7 @@ class OperationRequest {
   final bool askHuman;
   final bool shell;
   final Map<String, String> env;
-  final List<String> fileIds;
+  final List<FileRef> files;
   final int maxTurns;
   final int timeoutSeconds;
   final Continuation? continuation;
@@ -309,6 +317,8 @@ class OperationRequest {
   final int resumeSequence;
 
   String get digest => requestDigest(json);
+
+  List<String> get fileIds => [for (final f in files) f.fileId];
 
   /// Validates [json]; throws [ApiError] (400) on a malformed request.
   static OperationRequest parse(Map<String, Object?> json) {
@@ -374,14 +384,24 @@ class OperationRequest {
         env[k] = v;
       });
     }
-    final fileIds = <String>[];
+    final files = <FileRef>[];
     final rawFiles = json['files'];
     if (rawFiles != null) {
       if (rawFiles is! List) throw invalidRequest('files must be a list');
+      final paths = <String>{};
       for (var i = 0; i < rawFiles.length; i++) {
-        fileIds.add(
-          _string(_object(rawFiles[i], 'files[$i]'), 'file_id', 'files[$i]'),
-        );
+        final f = _object(rawFiles[i], 'files[$i]');
+        final path = _string(f, 'path', 'files[$i]');
+        final String normalized;
+        try {
+          normalized = normalizeWorkspacePath(path);
+        } on FormatException catch (e) {
+          throw invalidRequest('files[$i].path: ${e.message}');
+        }
+        if (!paths.add(normalized)) {
+          throw invalidRequest('files[$i].path repeats $normalized');
+        }
+        files.add(FileRef(_string(f, 'file_id', 'files[$i]'), normalized));
       }
     }
     final limits = json['limits'] == null
@@ -420,7 +440,7 @@ class OperationRequest {
       askHuman: tools['ask_human'] == true,
       shell: tools['shell'] == true,
       env: env,
-      fileIds: fileIds,
+      files: files,
       maxTurns: maxTurns,
       timeoutSeconds: timeoutSeconds,
       continuation: continuation,

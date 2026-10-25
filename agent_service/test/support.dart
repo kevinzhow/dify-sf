@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 const testKey = 'test-service-key';
 const runToken = 'test-run-token';
+const testSupervisorKey = 'test-supervisor-key';
 
 /// A server-sent event read from the agent service.
 class Sse {
@@ -35,12 +36,18 @@ class Harness {
   final TestClock clock;
   late AgentService service;
   final http.Client client = http.Client();
+  String _supervisorKey = testSupervisorKey;
 
   Uri get base => Uri.parse('http://127.0.0.1:${service.port}');
+
+  /// The sandbox supervisor the service uses (none: shell disabled).
+  Uri? supervisorUrl;
 
   static Future<Harness> start({
     List<ScriptedCall> calls = const [],
     Map<String, Map<String, Object?>> files = const {},
+    Uri? supervisorUrl,
+    String supervisorKey = testSupervisorKey,
   }) async {
     final gateway = ScriptedGateway(
       calls: calls,
@@ -48,7 +55,9 @@ class Harness {
       serviceKey: testKey,
     );
     await gateway.start();
-    final h = Harness._(gateway, newDataDir(), TestClock());
+    final h = Harness._(gateway, newDataDir(), TestClock())
+      ..supervisorUrl = supervisorUrl
+      .._supervisorKey = supervisorKey;
     await h._startService();
     return h;
   }
@@ -60,6 +69,9 @@ class Harness {
       innerUrl: gateway.url,
       clock: clock.now,
       logLevel: LogLevel.error,
+      supervisor: supervisorUrl == null
+          ? null
+          : SupervisorClient(supervisorUrl!, _supervisorKey),
     );
     await service.start(address: '127.0.0.1', port: 0);
   }
@@ -229,6 +241,7 @@ Map<String, Object?> operation({
   bool askHuman = true,
   bool shell = false,
   Map<String, Object?> env = const {},
+  List<Map<String, Object?>> files = const [],
   int maxTurns = 10,
   int timeoutSeconds = 60,
   Map<String, Object?>? continuation,
@@ -263,7 +276,7 @@ Map<String, Object?> operation({
   'output_schema': outputSchema,
   'tools': {'ask_human': askHuman, 'shell': shell},
   'env': env,
-  'files': <Object?>[],
+  'files': files,
   'limits': {'max_turns': maxTurns, 'timeout_seconds': timeoutSeconds},
   'continuation': continuation,
 };

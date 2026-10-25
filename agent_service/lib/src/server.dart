@@ -10,6 +10,7 @@ import 'leases.dart';
 import 'loop.dart';
 import 'protocol.dart';
 import 'run_store.dart';
+import 'sandbox/sandbox.dart';
 
 /// Request bodies are at most 8 MiB.
 const maxBodyBytes = 8 * 1024 * 1024;
@@ -26,8 +27,16 @@ class AgentService {
     this.logLevel = LogLevel.info,
     this.sweepInterval = const Duration(minutes: 1),
     this.keepAliveInterval = const Duration(seconds: 15),
+    SupervisorClient? supervisor,
+    SandboxLayout sandboxLayout = const SandboxLayout(),
   }) : store = RunStore(dataDir, clock: clock, eventRetention: eventRetention) {
     leases = LeaseManager(onExpired: _leaseExpired);
+    sandboxes = SandboxManager(
+      supervisor: supervisor,
+      store: store,
+      layout: sandboxLayout,
+      log: (m) => _log(LogLevel.warning, m),
+    );
   }
 
   final String serviceKey;
@@ -37,6 +46,7 @@ class AgentService {
   final Duration sweepInterval;
   final Duration keepAliveInterval;
   late final LeaseManager leases;
+  late final SandboxManager sandboxes;
 
   final Map<String, AgentRun> _live = {};
   HttpServer? _server;
@@ -81,15 +91,29 @@ class AgentService {
     await Future.wait(runs.map((r) => r.done))
         .timeout(const Duration(seconds: 5), onTimeout: () => const []);
     await _server?.close(force: true);
+    sandboxes.close();
   }
 
+  /// A lease expired: the Swift server lost the execution. Its running
+  /// operations end (`cancel_lost`) and its sandbox is released.
   void _leaseExpired(String executionId) {
-    for (final run in _live.values.toList()) {
-      if (run.record.executionId == executionId) {
-        _log(LogLevel.warning, 'lease of ${run.runId} expired; cancelling');
-        run.stop(StopReason.cancelLost);
-      }
+    final runs = [
+      for (final run in _live.values)
+        if (run.record.executionId == executionId) run,
+    ];
+    for (final run in runs) {
+      _log(LogLevel.warning, 'lease of ${run.runId} expired; cancelling');
+      run.stop(StopReason.cancelLost);
     }
+    unawaited(() async {
+      await Future.wait(runs.map((r) => r.done))
+          .timeout(const Duration(seconds: 40), onTimeout: () => const []);
+      try {
+        await sandboxes.release(executionId);
+      } catch (e) {
+        _log(LogLevel.error, 'release of $executionId sandbox failed: $e');
+      }
+    }());
   }
 
   // ---- request handling ---------------------------------------------------
@@ -207,7 +231,7 @@ class AgentService {
   Map<String, Object?> _health() => {
     'protocol': protocolName,
     'status': innerUrl == null ? 'degraded' : 'ok',
-    'sandbox': 'disabled',
+    'sandbox': sandboxes.health,
     'version': serviceVersion,
   };
 
@@ -259,6 +283,7 @@ class AgentService {
       innerBase: innerUrl,
       serviceKey: serviceKey,
       runToken: runToken,
+      sandboxes: sandboxes,
       log: (m) => _log(LogLevel.error, m),
     );
     _live[record.runId] = run;
@@ -453,7 +478,13 @@ class AgentService {
       r.stop(StopReason.cancel);
     }
     await Future.wait(running.map((r) => r.done))
-        .timeout(const Duration(seconds: 5), onTimeout: () => const []);
+        .timeout(const Duration(seconds: 40), onTimeout: () => const []);
+    try {
+      await sandboxes.release(executionId);
+    } on SandboxFailure catch (e) {
+      // Records stay so that a retried DELETE releases the sandbox.
+      throw ApiError(503, 'cleanup_failed', e.message);
+    }
     leases.remove(executionId);
     store.deleteExecution(executionId);
     _json(request.response, 200, {

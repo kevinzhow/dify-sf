@@ -9,11 +9,14 @@ import 'package:genkit/genkit.dart';
 import 'package:schemantic/schemantic.dart';
 
 import 'ask_human.dart';
+import 'file_outputs.dart';
 import 'gateway.dart';
 import 'model.dart';
 import 'output_tool.dart';
 import 'protocol.dart';
 import 'run_store.dart';
+import 'sandbox/sandbox.dart';
+import 'sandbox/shell_tools.dart';
 
 /// More than one `ask_human` call in one model turn (as in Dify).
 class AskHumanInvalid implements Exception {
@@ -61,9 +64,16 @@ List<Map<String, Object?>> toolDefinitions(OperationRequest r) => [
   if (r.outputSchema case final schema?)
     {
       'name': finalOutputToolName,
-      'description': finalOutputTool(schema).description,
-      'parameters': finalOutputTool(schema).parameters,
+      'description': finalOutputTool(modelFacingSchema(schema)).description,
+      'parameters': finalOutputTool(modelFacingSchema(schema)).parameters,
     },
+  if (r.shell)
+    for (final e in shellToolDefinitions.entries)
+      {
+        'name': e.key,
+        'description': e.value.description,
+        'parameters': e.value.parameters,
+      },
 ];
 
 String toolDefinitionsDigest(OperationRequest r) =>
@@ -201,6 +211,7 @@ class AgentRun {
     required this.innerBase,
     required this.serviceKey,
     required this.runToken,
+    this.sandboxes,
     this.log,
   });
 
@@ -212,6 +223,9 @@ class AgentRun {
 
   /// `X-Agent-Run-Token` of the operation request; kept in memory only.
   final String? runToken;
+
+  /// The service's sandboxes; null or disabled means no shell.
+  final SandboxManager? sandboxes;
   final void Function(String message)? log;
 
   final StreamController<RunEvent> _events = StreamController.broadcast(
@@ -222,6 +236,13 @@ class AgentRun {
   StopReason? _stopReason;
   InnerClient? _inner;
   final Usage usage = Usage();
+
+  /// The shell of this run, opened on the first shell tool call.
+  Future<ShellSession>? _sessionFuture;
+  ShellSession? _session;
+
+  /// The sandbox this run used (its `workspace_ref`).
+  String? _sandboxId;
 
   String get runId => record.runId;
   Stream<RunEvent> get events => _events.stream;
@@ -235,6 +256,7 @@ class AgentRun {
     _stopReason = reason;
     _cancel.cancel(reason.name);
     _inner?.close();
+    _session?.abort();
   }
 
   void _emit(String event, Map<String, Object?> data) {
@@ -255,6 +277,7 @@ class AgentRun {
       await _execute();
     } catch (e, st) {
       log?.call('run $runId failed internally: $e\n$st');
+      await _endShell();
       _finish('failed', {
         'error_type': 'internal',
         'message': 'internal error: $e',
@@ -300,7 +323,7 @@ class AgentRun {
       'model': {'provider': r.model.provider, 'name': r.model.name},
       'call_index_base': 0,
     });
-    if (r.shell) {
+    if (r.shell && !(sandboxes?.enabled ?? false)) {
       return _fail(
         'sandbox_unavailable',
         'the shell tool is not available: this agent service has no sandbox',
@@ -336,6 +359,7 @@ class AgentRun {
         ),
       );
       if (r.askHuman) _defineAskHuman(ai);
+      if (r.shell) _defineShellTools(ai);
       final outputSchema = r.outputSchema;
       if (outputSchema != null) _defineFinalOutput(ai, outputSchema);
       final events = ai.defineGenerateMiddleware<void>(
@@ -349,8 +373,10 @@ class AgentRun {
       final c = r.continuation;
       if (c == null) {
         final system = [
+          if (r.shell) shellPrefixPrompt,
           if (r.systemPrompt.trim().isNotEmpty) r.systemPrompt,
           if (r.askHuman) askHumanPromptHint(),
+          if (r.shell) shellSuffixPrompt,
         ].join('\n\n');
         messages = [
           if (system.isNotEmpty)
@@ -407,6 +433,7 @@ class AgentRun {
         toolNames: [
           if (r.askHuman) askHumanToolName,
           if (outputSchema != null) finalOutputToolName,
+          if (r.shell) ...shellToolNames,
         ],
         maxTurns: r.maxTurns,
         onChunk: (_) {},
@@ -421,8 +448,11 @@ class AgentRun {
           (_) => Future.delayed(const Duration(milliseconds: 300), () => null),
         ),
       ]);
+      // The run's jobs and their descendants end before the result exists.
+      await _endShell();
       await _complete(result, revision);
     } finally {
+      await _endShell();
       timer.cancel();
       inner.close();
       unawaited(ai.shutdown());
@@ -562,11 +592,20 @@ class AgentRun {
       'phase': 'finished',
       'output': finalResultProcessed,
     });
-    final Object? candidate;
-    final List<Map<String, Object?>> errors;
+    Object? candidate;
+    List<Map<String, Object?>> errors;
     if (input is Map) {
       candidate = input;
       errors = await candidateErrors(request.outputSchema!, input);
+      try {
+        (candidate, errors) = await _resolveFileOutputs(
+          input.cast<String, Object?>(),
+          errors,
+        );
+      } on SandboxFailure catch (e) {
+        // The workspace is kept: nothing is released on a failed upload.
+        return _fail(e.errorType, e.message);
+      }
     } else {
       candidate = null;
       errors = [
@@ -586,6 +625,7 @@ class AgentRun {
     for (var depth = 0; c != null && depth < 8; depth++) {
       if (c is GatewayException) return (c.errorType, c.message);
       if (c is AskHumanInvalid) return ('ask_human_invalid', c.message);
+      if (c is SandboxFailure) return (c.errorType, c.message);
       if (c is GenkitException) {
         if (c.cause == null) {
           if (c.status == StatusCode.notFound &&
@@ -629,7 +669,7 @@ class AgentRun {
           if (p is TaskFile) p.fileId,
         ...r.fileIds,
       }.toList(),
-      'workspace_ref': null,
+      'workspace_ref': _workspaceRef,
       'messages': [for (final m in messages) m.toJson()],
     };
   }
@@ -644,7 +684,7 @@ class AgentRun {
   }
 
   void _defineFinalOutput(Genkit ai, Map<String, Object?> schema) {
-    final tool = finalOutputTool(schema);
+    final tool = finalOutputTool(modelFacingSchema(schema));
     ai.defineTool<Object?, Object?>(
       name: finalOutputToolName,
       description: tool.description,
@@ -655,6 +695,199 @@ class AgentRun {
       // Never executed: the model middleware ends the run first.
       fn: (_, _) => throw StateError('final_output is not executed'),
     );
+  }
+
+  String? get _continuationRef {
+    final ref = request.continuation?.snapshot['workspace_ref'];
+    return ref is String && ref.isNotEmpty ? ref : null;
+  }
+
+  String? get _workspaceRef =>
+      _sandboxId ??
+      sandboxes?.sandboxIdOf(request.execution.executionId) ??
+      _continuationRef;
+
+  /// Opens the execution's sandbox (probes first; a new one gets `files[]`).
+  Future<ExecutionSandbox> _openSandbox() async {
+    final inner = _inner;
+    final manager = sandboxes;
+    if (inner == null || manager == null) {
+      throw SandboxFailure('sandbox_unavailable', 'no sandbox for this run');
+    }
+    final sandbox = await manager.open(
+      request,
+      inner,
+      expectedRef: _continuationRef,
+    );
+    _sandboxId = sandbox.sandboxId;
+    return sandbox;
+  }
+
+  Future<ShellSession> _shellSession() => _sessionFuture ??= () async {
+    final sandbox = await _openSandbox();
+    if (_stopReason != null) {
+      throw SandboxFailure('sandbox_error', 'the run was stopped');
+    }
+    final session = ShellSession(
+      sandbox,
+      request.env,
+      log: (m) => log?.call('run $runId: $m'),
+    );
+    return _session = session;
+  }();
+
+  /// Ends the shell session: terminates the run's jobs and kills what they
+  /// left; a sandbox whose processes cannot be stopped is removed.
+  Future<void> _endShell() async {
+    final pending = _sessionFuture;
+    if (pending == null) return;
+    final ShellSession session;
+    try {
+      session = await pending;
+    } catch (_) {
+      return;
+    }
+    if (_session == null) return;
+    _session = null;
+    final stopped = await session.close().timeout(
+      const Duration(seconds: 30),
+      onTimeout: () => false,
+    );
+    if (!stopped) {
+      log?.call(
+        'run $runId: processes of sandbox ${session.sandbox.sandboxId} could '
+        'not be stopped; removing the sandbox',
+      );
+      await sandboxes?.discard(
+        request.execution.executionId,
+        session.sandbox.sandboxId,
+      );
+    }
+  }
+
+  void _defineShellTools(Genkit ai) {
+    for (final entry in shellToolDefinitions.entries) {
+      final name = entry.key;
+      ai.defineTool<Object?, Object?>(
+        name: name,
+        description: entry.value.description,
+        inputSchema: SchemanticType.from<Object?>(
+          jsonSchema: entry.value.parameters,
+          parse: (j) => j,
+        ),
+        fn: (input, _) async {
+          // A sandbox that cannot be opened ends the run (SandboxFailure).
+          final session = await _shellSession();
+          final args = input is Map
+              ? input.cast<String, Object?>()
+              : <String, Object?>{};
+          final output = await session.call(name, args);
+          return ToolResult.response(
+            output,
+            metadata: output is Map ? {'dify_sf_error': output['error']} : null,
+          );
+        },
+      );
+    }
+  }
+
+  /// Uploads the declared file outputs of [candidate]. A path that is not a
+  /// usable workspace file is a candidate error for its field; a failed
+  /// upload throws [SandboxFailure] (`file_error`).
+  Future<(Map<String, Object?>, List<Map<String, Object?>>)>
+  _resolveFileOutputs(
+    Map<String, Object?> candidate,
+    List<Map<String, Object?>> errors,
+  ) async {
+    final specs = fileOutputFields(request.outputSchema!);
+    final present = {
+      for (final e in specs.entries)
+        if (candidate[e.key] != null) e.key: e.value,
+    };
+    if (present.isEmpty) return (candidate, errors);
+    final out = Map<String, Object?>.of(candidate);
+    final allErrors = List<Map<String, Object?>>.of(errors);
+    final failed = {for (final e in errors) e['field']};
+    final hasWorkspace = request.shell && _workspaceRef != null;
+    ExecutionSandbox? sandbox;
+    for (final MapEntry(key: field, value: spec) in present.entries) {
+      if (failed.contains(field)) continue;
+      if (!hasWorkspace) {
+        allErrors.add({
+          'field': field,
+          'error': request.shell
+              ? 'there is no workspace file: the shell was not used'
+              : 'file outputs come from the shell workspace; tools.shell is false',
+        });
+        continue;
+      }
+      final raw = candidate[field];
+      final paths = spec.isArray ? raw : [raw];
+      if (paths is! List || paths.any((p) => p is! String)) {
+        allErrors.add({
+          'field': field,
+          'error':
+              'expected ${spec.isArray ? 'a list of workspace paths' : 'a workspace path'}',
+        });
+        continue;
+      }
+      sandbox ??= await _openSandbox();
+      final resolved = <({String real, String name, String mime, int size})>[];
+      String? error;
+      for (final p in paths.cast<String>()) {
+        final st = await sandbox.statFile(p);
+        if (st.error != null) {
+          error = st.error;
+          break;
+        }
+        final name = st.realPath!.substring(st.realPath!.lastIndexOf('/') + 1);
+        final mime = outputMimeType(name, st.mimeType);
+        error = st.size > maxOutputFileBytes
+            ? '$name exceeds $maxOutputFileBytes bytes'
+            : spec.violation(name, mime);
+        if (error != null) break;
+        resolved.add((
+          real: st.realPath!,
+          name: name,
+          mime: mime,
+          size: st.size,
+        ));
+      }
+      if (error != null) {
+        allErrors.add({'field': field, 'error': error});
+        continue;
+      }
+      final uploaded = <Map<String, Object?>>[];
+      for (final f in resolved) {
+        final bytes = await sandbox.readFile(f.real, f.size);
+        try {
+          final up = await _inner!.uploadRequest(
+            filename: f.name,
+            mimeType: f.mime,
+            size: bytes.length,
+          );
+          final url = up['url'];
+          final uploadId = up['upload_id'];
+          if (url is! String || uploadId is! String) {
+            throw GatewayException('file_error', 'upload-request gave no url');
+          }
+          await _inner!.uploadBytes(url, bytes, f.mime);
+          uploaded.add({
+            'upload_id': uploadId,
+            'filename': f.name,
+            'mime_type': f.mime,
+            'size': bytes.length,
+          });
+        } on GatewayException catch (e) {
+          throw SandboxFailure(
+            'file_error',
+            'uploading ${f.name} for output $field failed: ${e.message}',
+          );
+        }
+      }
+      out[field] = spec.isArray ? uploaded : uploaded.single;
+    }
+    return (out, allErrors);
   }
 
   void _defineAskHuman(Genkit ai) {

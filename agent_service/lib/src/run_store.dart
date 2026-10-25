@@ -123,6 +123,9 @@ class ExecutionIndex {
   final Map<String, ({String runId, String digest})> operations = {};
   DateTime? deletedAt;
 
+  /// The supervisor's ID of the execution's sandbox (its `workspace_ref`).
+  String? sandboxId;
+
   Map<String, Object?> toJson() => {
     'execution_id': executionId,
     'max_generation': maxGeneration,
@@ -131,6 +134,7 @@ class ExecutionIndex {
         e.key: {'run_id': e.value.runId, 'digest': e.value.digest},
     },
     'deleted_at': deletedAt?.toIso8601String(),
+    'sandbox_id': sandboxId,
   };
 
   static ExecutionIndex fromJson(Map<String, Object?> j) {
@@ -138,7 +142,8 @@ class ExecutionIndex {
       ..maxGeneration = j['max_generation'] as int? ?? 0
       ..deletedAt = j['deleted_at'] == null
           ? null
-          : DateTime.parse(j['deleted_at'] as String);
+          : DateTime.parse(j['deleted_at'] as String)
+      ..sandboxId = j['sandbox_id'] as String?;
     final ops = (j['operations'] as Map?)?.cast<String, Object?>() ?? {};
     ops.forEach((k, v) {
       final m = (v as Map).cast<String, Object?>();
@@ -254,6 +259,14 @@ class RunStore {
       x.maxGeneration = generation;
       _writeExecution(x);
     }
+  }
+
+  /// Records (or clears) the execution's sandbox.
+  void setSandbox(String executionId, String? sandboxId) {
+    final x = _executionOrCreate(executionId);
+    if (x.sandboxId == sandboxId) return;
+    x.sandboxId = sandboxId;
+    _writeExecution(x);
   }
 
   // ---- runs ---------------------------------------------------------------
