@@ -65,7 +65,7 @@ python3 -I tool/runtime_provider_plugins.py --plugin langgenius/deepseek
 
 # If missing, explicitly install the exact locked, signed package; use a persistent disk cache.
 python3 -I tool/runtime_provider_plugins.py --plugin langgenius/deepseek \
-  --install --cache-dir /var/tmp/Winnie/provider-packages
+  --install --cache-dir /path/to/provider-packages
 ```
 
 The check exits nonzero when the exact locked version is absent. `--plugin` is repeatable. Installation checks the package SHA256, keeps daemon signature verification enabled, and confirms the resulting identity. It never changes provider credentials or invokes a model. Only explicitly selected plugins are installed; adding a catalog entry is not automatic authorization to download every provider.

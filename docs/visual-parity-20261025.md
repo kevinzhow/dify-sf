@@ -15,7 +15,7 @@
 
 旧版完整 450 场景为 171 pass、66 basic-pass、213 different。本轮为 **171 pass、68 basic-pass、211 different，缺图 0**。控件为 171／41／36，页面为 0／22／48，编辑器为 0／5／127（通过／基本通过／有差异）。只有浅色英文／中文的 Select 展开状态从 different 进入 basic-pass，严格通过数量没有增加。每个场景保留旧／新原图、原框架精确 RGBA Pixel 与平均 RGB 评分，以及已处理、剩余确认原因和未证明候选。
 
-[逐场景原因台账](https://k17.tail4653d.ts.net/reports/visual-parity-20261025/analysis.html) · [完整原图／叠图](https://k17.tail4653d.ts.net/reports/visual-parity-20261025/) · [CSV](evidence/visual-parity450.csv) · [JSON](evidence/visual-parity450.json)
+[逐场景原因台账](https://trial.example/reports/visual-parity-20261025/analysis.html) · [完整原图／叠图](https://trial.example/reports/visual-parity-20261025/) · [CSV](evidence/visual-parity450.csv) · [JSON](evidence/visual-parity450.json)
 
 公开工作流浅色场景的精确 Pixel 相似度由约 0.082 到 0.670，深色由 0.114 到 0.833；原始状态仍为 different。公开聊天的对应值为 0.085→0.239 和 0.270→0.590。它们说明布局差异缩小，不能据此把剩余颜色、文字和功能差异判为已解决，也不是仅产品改动的严格 A/B 实验。
 

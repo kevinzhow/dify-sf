@@ -9,7 +9,7 @@ All ten assets total about 47 MiB. The default SC pair costs about 13.76 MiB on 
 Rebuild in an isolated build environment (`fonttools[woff]==4.59.0`, `brotli==1.1.0`):
 
 ```sh
-python tool/fonts/build_cjk.py --cache /var/tmp/Winnie/<task>/upstream
+python tool/fonts/build_cjk.py --cache /path/to/font-cache
 ```
 
 The generator verifies pinned input bytes, preserves the upstream cmap and hhea metrics, and records output digests. Brotli quality 6 trades a little compression for substantially less build CPU; WOFF2 is lossless at every quality. The deployed app has no Python dependency.

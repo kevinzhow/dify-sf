@@ -4,6 +4,10 @@ Trial devices connect to Tailscale first, then open the machine's `https://<mach
 
 This is Serve within the tailnet. Do not enable Funnel. Access from devices outside the tailnet requires a separate explicit decision.
 
+Public examples use `https://trial.example` for the private deployment origin and placeholders for machine-local
+artifact directories. Obtain the active address and evidence locations from the deployment operator; never commit
+a machine-specific endpoint or user directory when adapting these instructions.
+
 ## Set up
 
 1. Build and verify the complete release Web package (`--wasm --no-web-resources-cdn`), including the repository's bootstrap policy. Freeze the output in a versioned directory and retain the previous directory.
@@ -53,4 +57,4 @@ For retained visual reports on this same HTTPS origin, render the gateway with `
 
 For a fresh empty database, use `/healthz` as process liveness and a successful `GET /v1/setup` as application/schema readiness before bootstrapping an account or admitting traffic. A liveness response alone does not prove that the initial schema migration has finished.
 
-The retained 450-case report is at [the same-origin report URL](https://k17.tail4653d.ts.net/reports/five-step-final-20261024/). Its 5,416 static files match SHA-256 over actual HTTPS. It uses an independent read-only mount, preserves the product/API/vector state and has desktop/390-width filtering and overlay checks. The viewer combines pass plus basic-pass into its Pass 237 badge; the delivery report preserves the original 171/66/213 split.
+The retained 450-case report is at [the same-origin report URL](https://trial.example/reports/five-step-final-20261024/). Its 5,416 static files match SHA-256 over actual HTTPS. It uses an independent read-only mount, preserves the product/API/vector state and has desktop/390-width filtering and overlay checks. The viewer combines pass plus basic-pass into its Pass 237 badge; the delivery report preserves the original 171/66/213 split.
