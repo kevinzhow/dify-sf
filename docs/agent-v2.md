@@ -230,8 +230,9 @@ not ended answers `409 run_active`; a `result_event_id` that is not the terminal
 
 ### `POST /v1/runs/{run_id}/cancel`
 
-`{"protocol", "generation"}`. Stops the model call in flight, the tool in flight and the run's sandbox jobs including
-their descendants, then ends the run with `cancelled`. Returns `202`; a run that already ended returns `409` with its
+`{"protocol", "generation"}`. Stops the model call in flight and the tool in flight, terminates the run's sandbox jobs
+and kills the processes they left in the sandbox container (see [Sandbox](#sandbox)), then ends the run with
+`cancelled`. Returns `202`; a run that already ended returns `409` with its
 `result`. If the result of a cancelled run arrives late, the first committed terminal result in the Swift server wins.
 
 ### `POST /v1/executions/{execution_id}/lease`
@@ -400,7 +401,7 @@ dify-sf therefore gives each execution that enables the shell its own container 
 
 - created on first shell use, removed with the execution (`DELETE /v1/executions/{id}`) or when its lease expires;
 - internal network only; egress through the sandbox proxy, enforced by network rules, not by proxy variables;
-- memory, CPU, PID and disk limits; stop kills every descendant process;
+- memory, CPU, PID and disk limits; at the end of a run the processes its jobs left in the container are killed;
 - reserved environment variables cannot be set by users;
 - containers are created by a small supervisor, the only component with access to the container runtime, which
   accepts only "create sandbox for execution X with the fixed image and limits" and "remove it".
@@ -437,7 +438,9 @@ the service runs probes, each of which must fail: write outside the workspace an
 At the end of every run (succeeded, paused, failed or cancelled) the service terminates and deletes the run's jobs and
 then kills every remaining process in the container except the shellctl daemon (shellctl's terminate alone leaves
 `setsid` and `nohup` descendants running). If that cannot be done, e.g. with the PID limit exhausted, the sandbox is
-removed.
+removed. Observed in the integration test: after a cancel no `sleep` started directly, with `setsid`, with `nohup` or
+under `sh -c` remained. This covers processes inside the container only; what a command already did outside it
+(e.g. a request through the proxy) is not undone, and nothing beyond the container is claimed.
 
 ## Swift server summary
 
