@@ -148,7 +148,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
     }
   }
 
-  Widget _text(String text, {bool error = false}) => Text(
+  Widget _text(String text, {bool error = false}) => DifyTextLine(
     text,
     style: difyTextStyle(
       DifyType.systemSmRegular,
@@ -164,7 +164,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
     size: DifyButtonSize.small,
     disabled: _locked,
     onPressed: action,
-    child: Text(DifyI18n.tr('common', 'operation.delete')),
+    child: DifyTextLine(DifyI18n.tr('common', 'operation.delete')),
   );
 
   Widget _environment(bool secret) {
@@ -217,7 +217,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
               rows.add({'name': '', 'value': ''});
               update();
             },
-            child: Text(
+            child: DifyTextLine(
               '${_label('advancedSettings.envEditor.add')} · ${_label('advancedSettings.envEditor.${secret ? 'scopeSecret' : 'scopePlain'}')}',
             ),
           ),
@@ -283,7 +283,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
               });
               update();
             },
-            child: Text(_a('inline.addContact')),
+            child: DifyTextLine(_a('inline.addContact')),
           ),
         ),
       ],
@@ -312,13 +312,13 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                     key: const ValueKey('inline-agent-retry'),
                     loading: _busy,
                     onPressed: () => _save('save_to_current_version'),
-                    child: Text(DifyI18n.tr('common', 'operation.retry')),
+                    child: DifyTextLine(DifyI18n.tr('common', 'operation.retry')),
                   ),
                 if (_payload == null)
                   DifyButton(
                     disabled: _busy,
                     onPressed: _reload,
-                    child: Text(_a('inline.reload')),
+                    child: DifyTextLine(_a('inline.reload')),
                   ),
               ],
             ),
@@ -388,7 +388,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                               disabled: _locked || widget.pickFile == null,
                               loading: _uploading,
                               onPressed: _upload,
-                              child: Text(_label('files.add')),
+                              child: DifyTextLine(_label('files.add')),
                             ),
                           ),
                         ],
@@ -427,12 +427,12 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                 disabled: _locked || _uploading || soul == null,
                 loading: _busy,
                 onPressed: () => _save('save_to_current_version'),
-                child: Text(DifyI18n.tr('common', 'operation.save')),
+                child: DifyTextLine(DifyI18n.tr('common', 'operation.save')),
               ),
               DifyButton(
                 disabled: _locked || _uploading || soul == null,
                 onPressed: () => _save('save_as_new_version'),
-                child: Text(_a('inline.saveNewVersion')),
+                child: DifyTextLine(_a('inline.saveNewVersion')),
               ),
             ],
           ),
