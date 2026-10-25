@@ -261,6 +261,27 @@ reconcile: it cancels or adopts every operation left from before its restart and
 `{"protocol", "status": "ok" | "degraded", "sandbox": "isolated" | "unavailable" | "disabled", "version"}`. `sandbox`
 is `disabled` without a supervisor, `unavailable` after the latest probe or supervisor call failed, else `isolated`.
 
+### Other responses
+
+Fixed while generating the fixtures (they record these exact bodies):
+
+| Request | Answer |
+|---|---|
+| any, missing or wrong service key | `401 unauthorized` |
+| unknown `run_id` | `404 run_not_found` |
+| `events` with a malformed `after` / `Last-Event-ID` | `400 invalid_cursor` |
+| `events` after ack | a cursor at the end answers `200` with no events; an older cursor `410 cursor_expired` |
+| `POST /v1/operations` with an older generation | `409 stale_generation` with the current `generation` |
+| `cancel` accepted | `202 {"protocol", "run_id", "status"}` |
+| `lease` | `200 {"protocol", "expires_at"}` |
+| `DELETE /v1/executions/{id}` | `200 {"protocol", "execution_id", "deleted": true}`; `503 cleanup_failed` to retry |
+| `GET /v1/runs?state=active` | each run: `run_id`, `operation_id`, `execution_id`, `generation`, `status`, `acknowledged`, `last_event_id` |
+
+`usage` of a `cancelled` or `cancel_lost` run counts only the model calls that finished; the gateway's own records are
+authoritative for billing. Such runs carry no snapshot. An `answer` continuation needs only `result.status`;
+`action`, `values` and `rendered_content` are present when the status is `submitted` (Dify's `AskHumanToolResult`).
+For a gateway `413` only the status matters; its body is not read.
+
 ### Failure contract
 
 | Situation | Behaviour |
