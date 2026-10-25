@@ -8,7 +8,8 @@ WORKDIR /src
 COPY pubspec.yaml pubspec.lock ./
 RUN dart pub get --enforce-lockfile
 COPY . .
-RUN dart pub get --offline --enforce-lockfile \
+RUN mkdir -p /out \
+ && dart pub get --offline --enforce-lockfile \
  && dart compile exe bin/agent_service.dart -o /out/agent_service \
  && dart compile exe bin/sandbox_supervisor.dart -o /out/sandbox_supervisor
 
