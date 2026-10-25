@@ -93,3 +93,30 @@ Configuration-failure checks recreate only that fixture's server, preserve its P
 ## Browser result regression
 
 `OutputPanel` passes JSON values directly to the shared code editor, which performs serialization once. Both object responses and stored JSON-text responses are covered by assertions against the rendered/copied editor text, including nested HTTP JSON strings that must stay strings. The phase-1 browser check runs the frozen Wasm client against isolated real services: missing-daemon refusal creates no fake run, restored configuration produces an actual local-model request and persisted outputs, and a new backend process exposes the stored history. The populated trial is checked without signing into a user account or creating fixture data there.
+
+## Agent service
+
+Profile `agent` adds the Agent v2 agent service ([agent-v2.md](agent-v2.md)) with its shell sandboxes:
+
+```sh
+DOCKER_GID=$(stat -c %g /var/run/docker.sock) docker compose --profile agent up -d --build
+```
+
+| Service | Image | Memory cap | CPU cap | Networks |
+|---|---|---:|---:|---|
+| agent_service | `agent_service/` build | 512 MiB | 1 | `default`, `agent_sandbox_network` |
+| sandbox_supervisor | same image, entrypoint `sandbox_supervisor` | 128 MiB | 0.2 | `default` |
+| agent_sandbox_proxy | Ubuntu Squid digest | 128 MiB | 0.2 | `agent_sandbox_network`, `default` |
+| one sandbox per execution | `langgenius/dify-agent-local-sandbox:1.17.1` | 1024 MiB | 1 | `agent_sandbox_network` only |
+
+Only `sandbox_supervisor` mounts the Docker socket (read-write; `DOCKER_GID` is the socket's group). It creates and
+removes sandbox containers with a fixed image, limits and label; nothing in a request can change them. The
+`agent_sandbox_network` (name `AGENT_SANDBOX_NETWORK`, default `dify-sf-agent-sandbox`) is internal and has no host
+address (`inhibit_ipv4`), so sandboxes reach only the agent service, each other's token-protected shellctl ports and
+`agent_sandbox_proxy`, whose allowlist is `docker/agent_sandbox_proxy/allowlist.txt` (npm and PyPI by default). Pull
+the sandbox image before the first run; the supervisor never pulls. Set `COLLAB_AGENT_SERVICE_KEY` and
+`AGENT_SANDBOX_SUPERVISOR_KEY` in a protected environment file for real deployments.
+
+Sandboxes are kept while their execution is paused and removed by `DELETE /v1/executions/{id}`, lease expiry, or a
+supervisor start-up sweep (labelled containers missing from its state volume). `docker compose down` does not remove
+running sandboxes; they are labelled `dify-sf.agent-sandbox=<project>`.

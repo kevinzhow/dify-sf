@@ -22,9 +22,16 @@ The contract it implements is [`docs/agent-v2.md`](../docs/agent-v2.md) (protoco
 - Declared outputs through the `final_output` tool, as in Dify: its arguments are the candidate, with per-field
   errors (the Swift server decides retries and defaults).
 
-Not yet: the shell tool and its sandbox (phase 3; `tools.shell: true` fails with `sandbox_unavailable` and health
-reports `"sandbox": "disabled"`), and uploads of declared file outputs (the upload-request client exists, nothing uses
-it yet).
+- The shell: Dify's `shell_run`, `shell_wait`, `shell_input` and `shell_interrupt` over one sandbox container per
+  execution (`lib/src/sandbox/`), created through the sandbox supervisor on first shell use, probed before the first
+  command, with `files[]` materialized into `/workspace`. Its ID is the envelope's `workspace_ref`; a resume reuses it.
+  Every run end terminates the run's jobs and kills what they left; DELETE and lease expiry release the sandbox.
+- Declared file outputs (`x-dify-sf-file`): workspace paths checked, uploaded and replaced by
+  `{"upload_id", "filename", "mime_type", "size"}`.
+- The sandbox supervisor, `bin/sandbox_supervisor.dart` (`lib/src/supervisor/`): the only component with Docker access.
+
+Without `AGENT_SANDBOX_SUPERVISOR_URL`, `tools.shell: true` fails with `sandbox_unavailable` and health reports
+`"sandbox": "disabled"`.
 
 ## Configuration
 
@@ -35,6 +42,27 @@ it yet).
 | `AGENT_SERVICE_PORT` | `5050` | Listening port (all interfaces) |
 | `AGENT_INNER_URL` | none | Base URL of the Swift server's inner endpoints; without it runs fail and health is `degraded` |
 | `AGENT_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` |
+| `AGENT_SANDBOX_SUPERVISOR_URL` | none | The sandbox supervisor; without it the shell is disabled |
+| `AGENT_SANDBOX_SUPERVISOR_KEY` | required with the URL | The supervisor's bearer key |
+
+The supervisor (`sandbox_supervisor`) reads:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SANDBOX_SUPERVISOR_KEY` | required | Bearer key of its API |
+| `SANDBOX_NETWORK` | required | Existing internal Docker network for sandboxes (never created by the supervisor) |
+| `SANDBOX_SUPERVISOR_PORT` | `5060` | Listening port |
+| `DOCKER_SOCKET` | `/var/run/docker.sock` | Docker Engine API socket (API v1.44) |
+| `SANDBOX_IMAGE` | `langgenius/dify-agent-local-sandbox:1.17.1` | Sandbox image (must be present; never pulled) |
+| `SANDBOX_LABEL` | `dify-sf.agent-sandbox=1` | `key=value` on every sandbox; only such containers are listed, swept or removed |
+| `SANDBOX_NAME_PREFIX` | `dify-sf-sandbox-` | Container names: prefix + 24 hex of SHA-256(execution key) |
+| `SANDBOX_MEMORY_MB`, `SANDBOX_CPUS`, `SANDBOX_PIDS_LIMIT` | `1024`, `1`, `256` | Limits (memory includes the tmpfs) |
+| `SANDBOX_HOME_MB`, `SANDBOX_WORKSPACE_MB` | `256`, `512` | tmpfs sizes of `/home/dify` and `/workspace` |
+| `SANDBOX_UID`, `SANDBOX_GID` | `1000` | Owner of the tmpfs mounts (the image's `dify` user) |
+| `SANDBOX_PROXY_URL`, `SANDBOX_NO_PROXY` | none, `localhost,127.0.0.1` | Proxy variables given to sandboxes |
+| `SANDBOX_ADDRESS` | `name` | Sandbox URLs by container `name` (Docker DNS) or `ip` |
+| `SANDBOX_STATE_FILE` | none | Known sandboxes; without it a restart sweeps every labelled container |
+| `SANDBOX_START_TIMEOUT` | `60` | Seconds to wait for a healthy shellctl |
 
 `SIGTERM` stops the service: running operations end `failed` (`internal`) and their results are stored.
 
@@ -47,8 +75,16 @@ dart format --set-exit-if-changed .
 dart test -j 2
 ```
 
-The tests are hermetic: they start the service and a scripted inner gateway in-process on `127.0.0.1` and use no real
-model. Test data goes to `.dart_tool/agent_service_test/`.
+The tests are hermetic: they start the service, a scripted inner gateway, a fake supervisor and fake shellctl
+daemons (`lib/src/testing/`) in-process on `127.0.0.1`, and a fake Docker Engine on a unix socket; they use no real
+model or container. Test data goes to `.dart_tool/agent_service_test/`.
+
+The real sandbox test uses this machine's Docker and the local sandbox image; it creates its own internal networks and
+containers labelled `dify-sf.test=<random>` and removes them at the end:
+
+```sh
+AGENT_SANDBOX_IT=1 dart test -j 1 test/sandbox_integration_test.dart
+```
 
 ## Running locally with the fake gateway
 
@@ -74,8 +110,10 @@ curl -N -H "Authorization: Bearer $AGENT_SERVICE_KEY" localhost:5050/v1/runs/<ru
 
 ## Container image
 
-`Dockerfile` builds the AOT binary with `dart:3.13` and runs it as a non-root user on `debian:bookworm-slim` with CA
-certificates; mount a volume at `/data`.
+`Dockerfile` builds both AOT binaries with `dart:3.13` and runs them as a non-root user on `debian:bookworm-slim` with
+CA certificates; mount a volume at `/data`. The default entrypoint is the agent service; the supervisor uses
+`--entrypoint /usr/local/bin/sandbox_supervisor`, the Docker socket and the socket's group (see the root
+`docker-compose.yml`, profile `agent`).
 
 ## Layout
 
@@ -90,4 +128,7 @@ certificates; mount a volume at `/data`.
 | `lib/src/ask_human.dart` | Dify's ask_human schema, guidance and limits |
 | `lib/src/output_tool.dart` | The `final_output` tool: schema checks, `$defs` inlining, pydantic-ai texts |
 | `lib/src/leases.dart` | Execution leases |
-| `lib/src/testing/` | Scripted inner gateway shared by tests and `bin/fake_gateway.dart` |
+| `lib/src/file_outputs.dart` | Declared file outputs: `x-dify-sf-file`, constraints, MIME types |
+| `lib/src/sandbox/` | Supervisor client, per-execution sandboxes (probes, reaper, files), shellctl client, shell tools |
+| `lib/src/supervisor/` | The sandbox supervisor and its Docker Engine client |
+| `lib/src/testing/` | Scripted inner gateway, fake supervisor and shellctl, shared by tests and `bin/fake_gateway.dart` |

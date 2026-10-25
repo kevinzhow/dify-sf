@@ -3,6 +3,8 @@
 # With the runtime services (Dify's plugin daemon for models and tools, its Redis, the code sandbox and the SSRF proxy;
 # see docs/runtime-services.md):
 #   docker compose -f docker-compose.yml -f docker-compose.runtime.yml --profile runtime up --build
+# With the Agent v2 agent service, its sandbox supervisor and sandbox proxy (docs/runtime-services.md, "Agent service"):
+#   docker compose --profile agent up --build
 services:
   postgres:
     image: postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81
@@ -200,12 +202,101 @@ services:
       - ssrf_proxy_network
       - default
 
+  # ---- profile `agent`: the Agent v2 agent service (docs/agent-v2.md, docs/runtime-services.md) ----
+
+  # Runs inline agents. Reaches the server's inner endpoints on `default` and its sandboxes on agent_sandbox_network.
+  agent_service:
+    profiles: [agent]
+    image: dify-sf-agent-service
+    build:
+      context: ./agent_service
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1
+    restart: unless-stopped
+    environment:
+      AGENT_SERVICE_KEY: ${COLLAB_AGENT_SERVICE_KEY:-dify-sf-local-agent-service-key}
+      AGENT_INNER_URL: http://server:8080
+      AGENT_SANDBOX_SUPERVISOR_URL: http://sandbox_supervisor:5060
+      AGENT_SANDBOX_SUPERVISOR_KEY: ${AGENT_SANDBOX_SUPERVISOR_KEY:-dify-sf-local-sandbox-supervisor-key}
+    volumes:
+      - agent_service_data:/data
+    depends_on:
+      sandbox_supervisor:
+        condition: service_started
+    networks:
+      - default
+      - agent_sandbox_network
+
+  # The only component with access to the container runtime: creates one sandbox container per execution from the
+  # fixed image, network and limits below, and removes it. The Docker socket is mounted here and nowhere else.
+  sandbox_supervisor:
+    profiles: [agent]
+    image: dify-sf-agent-service
+    build:
+      context: ./agent_service
+    entrypoint: ["/usr/local/bin/sandbox_supervisor"]
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.2
+    restart: unless-stopped
+    # The socket's group on the host (`stat -c %g /var/run/docker.sock`).
+    group_add:
+      - "${DOCKER_GID:-999}"
+    environment:
+      SANDBOX_SUPERVISOR_KEY: ${AGENT_SANDBOX_SUPERVISOR_KEY:-dify-sf-local-sandbox-supervisor-key}
+      SANDBOX_NETWORK: ${AGENT_SANDBOX_NETWORK:-dify-sf-agent-sandbox}
+      SANDBOX_IMAGE: langgenius/dify-agent-local-sandbox:1.17.1
+      SANDBOX_PROXY_URL: http://agent_sandbox_proxy:3128
+      SANDBOX_LABEL: dify-sf.agent-sandbox=${COMPOSE_PROJECT_NAME:-dify-sf}
+      SANDBOX_STATE_FILE: /data/sandboxes.json
+      SANDBOX_MEMORY_MB: "1024"
+      SANDBOX_CPUS: "1"
+      SANDBOX_PIDS_LIMIT: "256"
+      SANDBOX_HOME_MB: "256"
+      SANDBOX_WORKSPACE_MB: "512"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - sandbox_supervisor_state:/data
+    networks:
+      - default
+
+  # Squid forward proxy: the sandboxes' only way out, to the domains in docker/agent_sandbox_proxy/allowlist.txt.
+  agent_sandbox_proxy:
+    profiles: [agent]
+    image: ubuntu/squid:latest@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.2
+    restart: unless-stopped
+    volumes:
+      - ./docker/agent_sandbox_proxy/squid.conf:/etc/squid/squid.conf:ro
+      - ./docker/agent_sandbox_proxy/allowlist.txt:/etc/squid/allowlist.txt:ro
+    healthcheck:
+      test: ["CMD", "squid", "-k", "check"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - agent_sandbox_network
+      - default
+
 networks:
   # The sandbox's only network: no route out except through ssrf_proxy.
   ssrf_proxy_network:
     internal: true
+  # The agent sandboxes' only network (created here, never by the supervisor): no gateway, and no host address on the
+  # bridge (inhibit_ipv4), so a sandbox reaches only agent_service, the proxy and other sandboxes' token-protected
+  # shellctl ports.
+  agent_sandbox_network:
+    name: ${AGENT_SANDBOX_NETWORK:-dify-sf-agent-sandbox}
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.inhibit_ipv4: "true"
 
 volumes:
+  agent_service_data:
+  sandbox_supervisor_state:
   file_uploads:
   pgdata:
   plugin_storage:
