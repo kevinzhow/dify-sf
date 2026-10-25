@@ -2443,17 +2443,17 @@ features:
   title: 'Agent v2: portable packages and atomic private-resource clipboard'
   dify: [api/services/agent/dsl_entities.py, api/services/agent/dsl_service.py, web/app/components/workflow/utils/clipboard.ts]
   status: partial
-  reason: 'Inline packages omit workspace credential, secret and file locators while retaining missing definitions. Import and paste create private snapshots with the graph in one transaction; same-app duplicate validates and preserves owned references with fresh private identities. Client integration is delivered in the dependent client change. Review and acceptance of the combined runtime/client candidate are in progress; public execution remains disabled by default.'
+  reason: 'Inline packages omit workspace credential, secret and file locators while retaining missing definitions. Import and paste create private snapshots with the graph in one transaction; same-app duplicate validates and preserves owned references with fresh private identities. Shared editor/MCP checks block incomplete imported resources; the client waits for collaborative delivery before adding one undo step. Review and acceptance of the combined runtime/client candidate are in progress; public execution remains disabled by default.'
   deviation: 'dify-sf extensions: authenticated clipboard export/paste, immutable source identity fences, idempotent paste receipts and one collaborative undo step. Agent Apps, roster bindings, skills and external tool catalogs are not exposed.'
-  evidence: [server/Tests/CollabTests/AgentPackageTests.swift, server/Tests/CollabTests/AgentClipboardTests.swift]
-  ours: [server/Sources/CollabServer/AgentPackages.swift, server/Sources/CollabServer/AgentClipboard.swift, docs/agent-resource-portability.md]
+  evidence: [server/Tests/CollabTests/AgentPackageTests.swift, server/Tests/CollabTests/AgentClipboardTests.swift, app/test/agents/inline_clipboard_test.dart, app/test/agents/inline_clipboard_actions_test.dart, app/test/undo_manager_test.dart]
+  ours: [server/Sources/CollabServer/AgentPackages.swift, server/Sources/CollabServer/AgentClipboard.swift, app/lib/src/agents/inline_composer.dart, docs/agent-resource-portability.md]
 
 - id: run.agent-v2-inline-client
   area: run
   title: 'Agent v2: inline editor configuration and shared editor/MCP checks'
   dify: [web/app/components/workflow/nodes/agent-v2, web/app/components/agent/configure, api/services/agent/composer_service.py]
   status: partial
-  reason: 'The inline workflow form wires model parameters, prompt, uploads, environment secrets and human contacts through an authenticated collaborative composer. Editor and native MCP inspect the exact private snapshot from the frozen graph; missing configuration and unsupported contexts cannot pass the gate. Portable copy/import and full visual acceptance are being completed separately. Deployment execution stays disabled by default.'
+  reason: 'The inline workflow form wires model parameters, prompt, uploads, environment secrets and human contacts through an authenticated collaborative composer. Editor and native MCP inspect the exact private snapshot from the frozen graph; missing configuration and unsupported contexts cannot pass the gate. Portable clipboard packages, missing-resource repair, bounded connection retries, same-node conflict checks and draft preservation extend that form. Native layout captures cover two languages, themes and widths; original pixel parity is not claimed. Deployment execution stays disabled by default.'
   deviation: 'dify-sf extensions: revision-fenced saves with exact idempotent retry, the native read-only MCP endpoint and a tool-call capability diagnostic. Explicit save actions are used; complete Agent App/roster UI parity is not claimed.'
-  evidence: [packages/collab_client/test/agent_composer_api_test.dart, app/test/agents/inline_composer_test.dart, app/test/agents/inline_configure_test.dart, app/test/agents/inline_checks_test.dart]
+  evidence: [packages/collab_client/test/agent_composer_api_test.dart, app/test/agents/inline_composer_test.dart, app/test/agents/inline_configure_test.dart, app/test/agents/inline_checks_test.dart, app/test/agents/inline_shots_test.dart]
   ours: [app/lib/src/agents/inline_composer.dart, app/lib/src/agents/inline_configure.dart, app/lib/src/agents/inline_checks.dart, app/lib/src/mcp/host_io.dart, docs/agent-inline-client.md]

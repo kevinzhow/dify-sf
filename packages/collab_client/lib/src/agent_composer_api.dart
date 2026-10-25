@@ -18,3 +18,9 @@ abstract class AgentComposerApi {
     Map<String, Object?> body,
   );
 }
+
+/// dify-sf extension. Portable clipboard exports omit workspace resources; same-app duplicate uses private source identities.
+abstract class AgentClipboardApi {
+  Future<Map<String, Object?>> exportAgentClipboard(String appId, Map<String, Object?> body);
+  Future<Map<String, Object?>> pasteAgentClipboard(String appId, Map<String, Object?> body);
+}

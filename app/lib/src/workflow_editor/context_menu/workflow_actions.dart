@@ -39,6 +39,9 @@ class WorkflowMenuOptions {
     this.isSingleRunning,
     this.workflowAppHref,
     this.pluginInstallLocked,
+    this.exportAgentClipboard,
+    this.pasteAgentClipboard,
+    this.onAgentClipboardError,
   });
 
   /// accessControl.canEdit / canRun / canImportExportDSL.
@@ -93,6 +96,9 @@ class WorkflowMenuOptions {
 
   /// Whether a node waits for its plugin to be installed (node-control hides on hover).
   final bool Function(Node node)? pluginInstallLocked;
+  final Future<DifyJson> Function(List<String>)? exportAgentClipboard;
+  final Future<DifyJson> Function(DifyJson)? pasteAgentClipboard;
+  final VoidCallback? onAgentClipboardError;
 }
 
 /// selection-contextmenu.tsx AlignType.
@@ -324,7 +330,10 @@ class WorkflowActions {
   void handlePaneContextMenu() {
     unawaited(
       readWorkflowClipboard(options.appDslVersion).then((r) {
-        if (r.nodes.isNotEmpty) store.setClipboardData(nodes: r.nodes, edges: r.edges);
+        if (r.nodes.isNotEmpty) {
+          store.setClipboardData(nodes: r.nodes, edges: r.edges);
+          store.clipboardAgentPackages = r.agentPackages;
+        }
       }),
     );
     store.setContextMenuTarget(WorkflowContextMenuTarget.panel);
@@ -385,8 +394,8 @@ class WorkflowActions {
 
   /// handleNodesCopy: [nodeId], else the box-selected nodes (not those inside containers), else the selected node;
   /// containers bring their children, and the edges between copied nodes come along.
-  void copyNodes([String? nodeId]) {
-    if (nodesReadOnly) return;
+  Future<bool> copyNodes([String? nodeId]) async {
+    if (nodesReadOnly) return false;
     var toCopy = <Node>[];
     if (nodeId != null) {
       final n = doc.nodes[nodeId];
@@ -401,7 +410,7 @@ class WorkflowActions {
       }
       if (toCopy.isEmpty && selected.length == 1 && isNodeCopyable(selected.single)) toCopy = selected;
     }
-    if (toCopy.isEmpty) return;
+    if (toCopy.isEmpty) return false;
     final copied = {for (final n in toCopy) n.id: n};
     final queue = [
       for (final n in toCopy)
@@ -422,8 +431,26 @@ class WorkflowActions {
           if (copied.containsKey(e.source) && copied.containsKey(e.target)) difyEdgeOf(e, doc),
       ],
     );
-    store.setClipboardData(nodes: data.nodes, edges: data.edges);
-    unawaited(writeWorkflowClipboard(data, options.appDslVersion).catchError((Object _) {}));
+    var copiedData = data;
+    var packages = <String, Object?>{};
+    var sources = <String, Object?>{};
+    if (copied.values.any((n) => n.type == 'agent' && plainJson(n.config['version'] ?? const VNull()) == '2')) {
+      final export = options.exportAgentClipboard;
+      if (export == null) { options.onAgentClipboardError?.call(); return false; }
+      try {
+        final value = await export(copied.keys.toList());
+        copiedData = (nodes: (value['nodes'] as List).map((v) => (v as Map).cast<String, Object?>()).toList(),
+          edges: (value['edges'] as List).map((v) => (v as Map).cast<String, Object?>()).toList());
+        packages = (value['agent_packages'] as Map).cast<String, Object?>();
+        sources = {for (final n in copied.values) if (n.type == 'agent' && n.config['agent_binding'] is VMap)
+          n.id: {'node_id': n.id, ...(plainJson(n.config['agent_binding']!) as Map).cast<String, Object?>()}};
+      } on Object { options.onAgentClipboardError?.call(); return false; }
+    }
+    store.setClipboardData(nodes: copiedData.nodes, edges: copiedData.edges);
+    store.clipboardAgentPackages = packages;
+    store.clipboardAgentSources = sources;
+    unawaited(writeWorkflowClipboard(copiedData, options.appDslVersion, agentPackages: packages).catchError((Object _) {}));
+    return true;
   }
 
   /// Where pasted nodes go: the pointer's last position on the canvas.
@@ -435,11 +462,20 @@ class WorkflowActions {
   /// handleNodesPaste: the system clipboard (else the store's) is pasted with its top-left at the pointer, with new
   /// ids, titles made unique, containers with a new start node and their children, and the edges between pasted
   /// nodes; into the selected iteration or loop when one is selected and is not itself being pasted.
-  Future<void> pasteNodes() async {
+  Future<void> pasteNodes({bool localDuplicate = false}) async {
+    try { await _pasteNodes(localDuplicate: localDuplicate); }
+    on Object { options.onAgentClipboardError?.call(); }
+  }
+
+  Future<void> _pasteNodes({bool localDuplicate = false}) async {
     if (nodesReadOnly) return;
-    final read = await readWorkflowClipboard(options.appDslVersion);
+    final read = localDuplicate ? WorkflowClipboardReadResult.empty : await readWorkflowClipboard(options.appDslVersion);
     final fromSystem = read.nodes.isNotEmpty;
-    if (fromSystem) store.setClipboardData(nodes: read.nodes, edges: read.edges);
+    if (fromSystem) {
+      store.setClipboardData(nodes: read.nodes, edges: read.edges);
+      store.clipboardAgentPackages = read.agentPackages;
+      store.clipboardAgentSources = const {};
+    }
     final elements = (fromSystem ? read.nodes : store.clipboardElements.value).where(isClipboardNodeStructurallyValid);
     final clipEdges = (fromSystem ? read.edges : store.clipboardEdges.value).where(isClipboardEdgeStructurallyValid);
 
@@ -598,6 +634,20 @@ class WorkflowActions {
       final sh = e['sourceHandle'] as String? ?? 'source', th = e['targetHandle'] as String? ?? 'target';
       edges.add(Edge(id: '$s-$sh-$t-$th', source: s, sourceHandle: sh, target: t, targetHandle: th));
     }
+    if (pasted.any((n) => n.type == 'agent' && n.config['version'] == const VString('2'))) {
+      final paste = options.pasteAgentClipboard;
+      if (paste == null) { options.onAgentClipboardError?.call(); return; }
+      final saved = await paste({
+        'nodes': [for (final n in pasted) difyNodeOf(n)],
+        'edges': [for (final e in edges) difyEdgeOf(e, Document(nodes: pasted, edges: edges))],
+        'agent_packages': store.clipboardAgentPackages,
+        'id_mapping': idMapping,
+        if (localDuplicate) 'local_sources': {for (final e in idMapping.entries)
+          if (store.clipboardAgentSources[e.key] != null) e.value: store.clipboardAgentSources[e.key]},
+      });
+      controller.undo.recordCommittedAddition((saved['node_ids'] as List).cast<String>(), (saved['edge_ids'] as List).cast<String>());
+      return;
+    }
     _step(HistoryEvent.nodePaste, null, () {
       for (final n in pasted) {
         _submit(AddNode(n));
@@ -611,8 +661,8 @@ class WorkflowActions {
   /// handleNodesDuplicate: copy, then paste at the pointer.
   Future<void> duplicateNodes([String? nodeId]) async {
     if (nodesReadOnly) return;
-    copyNodes(nodeId);
-    await pasteNodes();
+    if (!await copyNodes(nodeId)) return;
+    await pasteNodes(localDuplicate: true);
   }
 
   // ----- delete -----

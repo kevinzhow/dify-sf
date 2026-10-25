@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:collab_client/collab_client.dart';
 
 import '../workflow/dify_json.dart';
@@ -7,12 +9,23 @@ bool isInlineAgentData(Map<String, Object?> data) =>
     data['version'] == '2' &&
     data['agent_node_kind'] == 'dify_agent';
 
+/// Same pinned upstream name filter as the Swift runtime, in addition to tool-call capability checks.
+bool inlineAgentModelCompatible(String model) => ![
+  RegExp(r'^chatgpt-', caseSensitive: false),
+  RegExp(r'^gpt-5(?:$|-|\.1$|\.2$)', caseSensitive: false),
+  RegExp(r'^gpt.*(?:min|chat)', caseSensitive: false),
+  RegExp(r'^gpt.*nano', caseSensitive: false),
+  RegExp(r'^gpt-4', caseSensitive: false),
+  RegExp(r'^gpt-3', caseSensitive: false),
+].any((pattern) => pattern.hasMatch(model));
+
 /// The private half of the editor's checklist, fetched by the immutable identities in the same graph snapshot.
 /// Only issue labels reach the checklist/MCP response; masked config and credential references stay internal.
 class InlineAgentChecks {
-  const InlineAgentChecks({this.souls = const {}, this.unavailable = const []});
+  const InlineAgentChecks({this.souls = const {}, this.unavailable = const [], this.retryable = false});
   final Map<String, Map<String, Object?>> souls;
   final List<String> unavailable;
+  final bool retryable;
 
   static String identities(Document doc) => [
     for (final node in doc.nodes.values)
@@ -22,6 +35,7 @@ class InlineAgentChecks {
   static Future<InlineAgentChecks> load(AgentComposerApi api, String app, Document doc) async {
     final souls = <String, Map<String, Object?>>{};
     final unavailable = <String>[];
+    var retryable = false;
     for (final node in doc.nodes.values) {
       final data = difyDataOf(node);
       if (!isInlineAgentData(data)) continue;
@@ -47,19 +61,52 @@ class InlineAgentChecks {
             soul is! Map) {
           throw const FormatException('agent_snapshot_identity');
         }
-        souls[node.id] = soul.cast<String, Object?>();
+        souls[node.id] = {
+          ...soul.cast<String, Object?>(),
+          '_missing_job_files': jsList(jsGet(jsGet(response['node_job'], 'metadata'), 'file_refs'))
+              .any(missingFileReference),
+        };
         if (hasUnsupported(souls[node.id]!)) unavailable.add('unsupported_agent_configuration:${node.id}');
       } on TransportException catch (error) {
         if (error.statusCode == 404) {
           souls[node.id] = {'_missing': true};
         } else {
           unavailable.add('agent_configuration:${node.id}');
+          retryable |= error.timeout || error.statusCode == null || error.statusCode == 429 || error.statusCode! >= 500;
         }
       } on Object {
         unavailable.add('agent_configuration:${node.id}');
       }
     }
-    return InlineAgentChecks(souls: souls, unavailable: unavailable);
+    return InlineAgentChecks(souls: souls, unavailable: unavailable, retryable: retryable);
+  }
+
+  static const omittedFileReference = 'dify-file-ref:eyJyZWNvcmRfaWQiOiJvbWl0dGVkIn0=';
+
+  static bool missingFileReference(Object? value) {
+    if (value is! Map || value['is_missing'] == true) return true;
+    Object? id = value['file_id'] ?? value['upload_file_id'] ?? value['related_id'] ?? value['id'];
+    final reference = value['reference'];
+    if (id == null && reference is String && reference.startsWith('dify-file-ref:')) {
+      try {
+        id = (jsonDecode(utf8.decode(base64Decode(reference.substring('dify-file-ref:'.length)))) as Map)['record_id'];
+      } on Object {
+        return true;
+      }
+    }
+    return id is! String || !RegExp(r'^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$').hasMatch(id);
+  }
+
+  static bool _missingDefault(Object? value, Object? shape) {
+    if (shape is! Map) return false;
+    if (shape['type'] == 'file') return value is Map && value['reference'] == omittedFileReference;
+    if (shape['type'] == 'array' && value is List) {
+      return value.any((item) => _missingDefault(item, shape['array_item']));
+    }
+    if (shape['type'] == 'object' && value is Map) {
+      return jsList(shape['children']).any((child) => child is Map && _missingDefault(value[child['name']], child));
+    }
+    return false;
   }
 
   static bool hasUnsupported(Map<String, Object?> soul) => [
@@ -73,6 +120,7 @@ class InlineAgentChecks {
   static List<({String namespace, String key})> issues(
     Map<String, Object?>? soul, {
     Map<String, List<String>>? modelFeatures,
+    List<Object?> declarations = const [],
   }) {
     if (soul == null || soul['_missing'] == true) return [(namespace: 'agent-v-2', key: 'inline.configUnavailable')];
     final model = soul['model'];
@@ -87,14 +135,23 @@ class InlineAgentChecks {
       if (jsList(soul['config_files'])
           .any((file) => jsGet(file, 'is_missing') == true || jsStr(jsGet(file, 'file_id'))?.isNotEmpty != true))
         (namespace: 'agent-v-2', key: 'agentDetail.configure.files.missing'),
-      if (jsList(jsGet(soul['env'], 'secret_refs')).any((entry) => jsStr(jsGet(entry, 'ref'))?.isNotEmpty != true))
+      if (jsList(jsGet(soul['env'], 'secret_refs')).any((entry) => jsStr(jsGet(entry, 'ref'))?.isNotEmpty != true || jsGet(entry, 'is_missing') == true))
         (namespace: 'agent-v-2', key: 'inline.secretMissing'),
+      if (model is Map && !inlineAgentModelCompatible('${model['model'] ?? ''}'))
+        (namespace: 'agent-v-2', key: 'inline.modelUnsupported'),
+      if (modelFeatures?.containsKey('__loading__') == true) (namespace: 'agent-v-2', key: 'inline.catalogUnavailable'),
       if (model is Map &&
           modelFeatures != null &&
+          !modelFeatures.containsKey('__loading__') &&
           !(modelFeatures['${model['plugin_id']}/${model['model_provider']}/${model['model']}'] ?? const []).any(
             (feature) => const ['tool-call', 'multi-tool-call'].contains(feature),
           ))
         (namespace: 'agent-v-2', key: 'inline.toolCallsRequired'),
+      if (soul['_missing_job_files'] == true) (namespace: 'agent-v-2', key: 'inline.taskFileMissing'),
+      if (declarations.any(
+        (field) => field is Map && _missingDefault(jsGet(field['failure_strategy'], 'default_value'), field),
+      ))
+        (namespace: 'agent-v-2', key: 'inline.defaultFileMissing'),
       if (hasUnsupported(soul)) (namespace: 'agent-v-2', key: 'inline.unsupported'),
     ];
   }

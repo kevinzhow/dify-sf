@@ -11,6 +11,7 @@ import '../audio/audio_player.dart';
 import '../agents/inline_composer.dart';
 import '../agents/inline_configure.dart';
 import '../agents/inline_checks.dart';
+import 'variable_panels/app_variables.dart' show toastError;
 import '../workflow_helpers/generator_dialog.dart';
 import '../workflow/dify_json.dart' show difyDataOf, plainOf;
 import 'node_panel/bodies/core/core_kit.dart' show CorePanelHost, CorePanelHostData;
@@ -478,6 +479,12 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     onAddNote: onAddNote,
     onChangeBlock: onChangeBlock,
     onExportDsl: widget.onExportDsl == null ? null : _exportDsl,
+    exportAgentClipboard: _inlineComposer?.exportClipboard,
+    pasteAgentClipboard: _inlineComposer?.pasteClipboard,
+    onAgentClipboardError: () {
+      final context = _inner;
+      if (context != null && context.mounted) toastError(context, DifyI18n.tr('agent-v-2', 'inline.clipboardFailed'));
+    },
     // Run this step / Stop: the node's single run (local run state in the store).
     isSingleRunning: (nodeId) {
       final context = _inner;
@@ -1001,14 +1008,15 @@ class _BoundHeaderState extends State<_BoundHeader> {
   EditorHeaderBinding? _binding;
   InlineAgentChecks _agents = const InlineAgentChecks();
   String? _agentIdentity;
-  int _agentLoad = 0;
+  int _agentLoad = 0, _agentRetryCount = 0;
   Timer? _agentRetry;
 
-  void _agentGraphChanged() {
+  void _agentGraphChanged({bool retry = false}) {
     final doc = widget.controller.doc;
     final identity = InlineAgentChecks.identities(doc);
     if (identity == _agentIdentity) return;
     _agentIdentity = identity;
+    if (!retry) _agentRetryCount = 0;
     _agentRetry?.cancel();
     final generation = ++_agentLoad;
     _agents = const InlineAgentChecks();
@@ -1019,11 +1027,11 @@ class _BoundHeaderState extends State<_BoundHeader> {
       if (!mounted || generation != _agentLoad) return;
       _agents = loaded;
       _binding?.refreshChecklist();
-      if (loaded.unavailable.isNotEmpty) {
+      if (loaded.retryable && _agentRetryCount++ < 3) {
         _agentRetry = Timer(const Duration(seconds: 5), () {
           if (!mounted || generation != _agentLoad) return;
           _agentIdentity = null;
-          _agentGraphChanged();
+          _agentGraphChanged(retry: true);
         });
       }
     }));
@@ -1037,7 +1045,6 @@ class _BoundHeaderState extends State<_BoundHeader> {
   final _users = ValueNotifier<List<OnlineUser>>(const []);
 
   /// The providers the checklist last saw: it is recomputed when they change.
-  List<Json>? _providers;
 
   @override
   void initState() {
@@ -1060,9 +1067,6 @@ class _BoundHeaderState extends State<_BoundHeader> {
   }
 
   void _modelsChanged() {
-    final providers = widget.models?.summary;
-    if (identical(providers, _providers)) return;
-    _providers = providers;
     _binding?.refreshChecklist();
   }
 
@@ -1080,7 +1084,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
       checklistEnv: () => checklist.ChecklistEnv(
         appMode: widget.meta.appMode,
         inlineAgentSouls: _agents.souls,
-        inlineAgentModelFeatures: widget.models == null ? null : {
+        inlineAgentModelFeatures: widget.models == null ? null : !widget.models!.isModelListLoaded('llm') ? {'__loading__': const []} : {
           for (final provider in widget.models!.catalog.textGenerationModelList)
             for (final model in provider.models) '${provider.provider}/${model.model}': model.features ?? const [],
         },

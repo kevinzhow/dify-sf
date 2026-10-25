@@ -120,4 +120,61 @@ void main() {
     expect(t.widget<EditableText>(prompt).readOnly, true);
     expect(f.api.requests, isEmpty);
   });
+  testWidgets('omitted task attachment is visible and removing it preserves the edit in the save', (t) async {
+    final f = Fixture();
+    addTearDown(f.changes.close);
+    f.api.response = {
+      ...composerReply(),
+      'node_job': {
+        'metadata': {
+          'file_refs': [
+            {'name': 'Missing task.txt', 'is_missing': true},
+          ],
+        },
+      },
+    };
+    f.api.write = (body) async {
+      expect(((body['node_job'] as Map)['metadata'] as Map)['file_refs'], isEmpty);
+      final next = {...binding, 'current_snapshot_id': 's2'};
+      f.change((document: document(selected: next), seq: 6, ready: true));
+      return composerReply(seq: 6, selected: next);
+    };
+    await mount(t, f);
+    final label = find.text('Missing task.txt · File not found');
+    await t.ensureVisible(label);
+    final row = find.ancestor(of: label, matching: find.byType(Row)).first;
+    await t.tap(find.descendant(of: row, matching: find.byType(DifyButton)).first);
+    await t.pump();
+    expect(label, findsNothing);
+    await t.tap(find.byKey(const ValueKey('inline-agent-save')));
+    for (var i = 0; i < 4; i++) {
+      await t.runAsync(() => Future<void>.delayed(Duration.zero));
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(f.api.requests.length, 1);
+  });
+
+  testWidgets('reload after a private conflict preserves the local prompt draft', (t) async {
+    final f = Fixture();
+    addTearDown(f.changes.close);
+    f.api.write = (_) async => throw const TransportException('conflict', statusCode: 409, code: 'agent_node_changed');
+    await mount(t, f);
+    final prompt = find.descendant(
+      of: find.byKey(const ValueKey('inline-agent-prompt')),
+      matching: find.byType(EditableText),
+    );
+    await t.enterText(prompt, 'My unsaved work');
+    await t.tap(find.byKey(const ValueKey('inline-agent-save')));
+    for (var i = 0; i < 4; i++) {
+      await t.runAsync(() => Future<void>.delayed(Duration.zero));
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    await t.tap(find.text('Reload baseline, keep my edits'));
+    for (var i = 0; i < 4; i++) {
+      await t.runAsync(() => Future<void>.delayed(Duration.zero));
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(t.widget<EditableText>(prompt).controller.text, 'My unsaved work');
+    expect(t.takeException(), isNull);
+  });
 }

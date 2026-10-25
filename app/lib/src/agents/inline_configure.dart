@@ -12,6 +12,7 @@ import '../workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart';
 import '../workflow_editor/prompt_editor/prompt_editor_types.dart' show extractPluginId;
 import '../workflow_editor/run/ui/before_run_form.dart' show RunFilePicker;
 import 'inline_composer.dart';
+import 'inline_checks.dart';
 
 typedef AgentJson = Map<String, Object?>;
 AgentJson _map(Object? value) => value is Map ? value.cast<String, Object?>() : {};
@@ -58,6 +59,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
 
   Future<void> _reload() async {
     final generation = ++_loadGeneration;
+    final draft = _soul, draftJob = _loaded?['node_job'];
     setState(() {
       _busy = true;
       _error = null;
@@ -66,10 +68,10 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
       final loaded = await widget.composer.load(widget.args.nodeId);
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
-        _loaded = loaded;
-        _soul = (jsonDecode(jsonEncode(loaded['agent_soul'])) as Map).cast<String, Object?>();
+        _loaded = {...loaded, 'node_job': ?draftJob};
+        _soul = draft ?? (jsonDecode(jsonEncode(loaded['agent_soul'])) as Map).cast<String, Object?>();
         _payload = null;
-        _note = '';
+        if (draft == null) _note = '';
       });
     } on Object {
       if (mounted && generation == _loadGeneration) setState(() => _error = 'inline.loadFailed');
@@ -103,7 +105,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
-        if (agentSaveUncertain(error)) {
+        if (agentSaveUncertain(error) && !(error is TransportException && error.code == 'secrets_key_missing')) {
           _error = 'inline.saveUncertain';
         } else {
           _payload = null;
@@ -121,7 +123,19 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
   AgentJson get _model => _map(_soul?['model']);
   AgentJson get _env => _map(_soul?['env']);
 
-  Future<void> _upload() async {
+  List<AgentJson> get _jobFiles => _rows(_map(_map(_loaded?['node_job'])['metadata'])['file_refs']);
+  void _setJobFiles(List<AgentJson> files) => setState(() {
+    final job = _map(_loaded?['node_job']);
+    _loaded = {
+      ...?_loaded,
+      'node_job': {
+        ...job,
+        'metadata': {..._map(job['metadata']), 'file_refs': files},
+      },
+    };
+  });
+
+  Future<void> _upload({bool task = false}) async {
     if (_locked || _uploading || widget.pickFile == null) return;
     setState(() => _uploading = true);
     try {
@@ -130,6 +144,13 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
       final id = file['upload_file_id'] ?? file['id'];
       final name = file['name'] ?? file['filename'];
       if (id is! String || name is! String) throw const FormatException('file_upload_receipt');
+      if (task) {
+        _setJobFiles([
+          ..._jobFiles,
+          {...file, 'name': name, 'is_missing': false},
+        ]);
+        return;
+      }
       _section('config_files', [
         ..._rows(_soul!['config_files']),
         {
@@ -193,7 +214,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
               ),
               Expanded(
                 child: DifyInput(
-                  value: '${row['value'] ?? ''}',
+                  value: secret && row['value'] == '********' ? '' : '${row['value'] ?? ''}',
                   readOnly: _locked,
                   obscureText: secret,
                   semanticLabel: '${_label('advancedSettings.envEditor.valueColumn')} ${index + 1}',
@@ -249,6 +270,11 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                   onChanged: (value) {
                     row.remove('channel');
                     row['method'] = value;
+                    if (value == 'email') {
+                      row['email'] = row['name'] ?? '';
+                    } else {
+                      row.remove('email');
+                    }
                     update();
                   },
                 ),
@@ -336,6 +362,9 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                         modelId: '${model['model'] ?? ''}',
                         completionParams: _map(model['model_settings']),
                         readonly: _locked,
+                        modelPredicate: (_, item) =>
+                            inlineAgentModelCompatible(item.model) &&
+                            (item.features ?? const []).any((v) => v == 'tool-call' || v == 'multi-tool-call'),
                         onModelChange: (choice) {
                           final id = extractPluginId(choice.provider);
                           _section('model', {
@@ -375,7 +404,12 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                             Row(
                               spacing: 8,
                               children: [
-                                Expanded(child: _text('${file['name'] ?? ''}')),
+                                Expanded(
+                                  child: _text(
+                                    '${file['name'] ?? ''}${file['is_missing'] == true ? ' · ${_label('files.missing')}' : ''}',
+                                    error: file['is_missing'] == true,
+                                  ),
+                                ),
                                 _remove(() {
                                   final files = _rows(soul['config_files'])..removeAt(index);
                                   _section('config_files', files);
@@ -388,6 +422,37 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                               disabled: _locked || widget.pickFile == null,
                               loading: _uploading,
                               onPressed: _upload,
+                              child: DifyTextLine(_label('files.add')),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _field(
+                      _a('inline.taskFiles'),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: 8,
+                        children: [
+                          for (final (index, file) in _jobFiles.indexed)
+                            Row(
+                              spacing: 8,
+                              children: [
+                                Expanded(
+                                  child: _text(
+                                    '${file['name'] ?? file['filename'] ?? ''}${file['is_missing'] == true ? ' · ${_label('files.missing')}' : ''}',
+                                    error: file['is_missing'] == true,
+                                  ),
+                                ),
+                                _remove(() => _setJobFiles(_jobFiles..removeAt(index))),
+                              ],
+                            ),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: DifyButton(
+                              disabled: _locked || widget.pickFile == null,
+                              loading: _uploading,
+                              onPressed: () => _upload(task: true),
                               child: DifyTextLine(_label('files.add')),
                             ),
                           ),

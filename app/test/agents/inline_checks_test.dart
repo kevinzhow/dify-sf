@@ -19,7 +19,7 @@ class _PinnedApi extends ComposerApi {
   }
 }
 
-Document workflow() => Document(
+Document workflow({Object? selected = binding}) => Document(
   nodes: [
     const Node(id: 'start', type: 'start', title: 'Start'),
     Node(
@@ -29,7 +29,7 @@ Document workflow() => Document(
       config: {
         'version': const VString('2'),
         'agent_node_kind': const VString('dify_agent'),
-        'agent_binding': Value.fromJson(binding),
+        'agent_binding': Value.fromJson(selected),
         'agent_task': const VString('Task in frozen graph'),
         'agent_declared_outputs': const VList([]),
       },
@@ -169,5 +169,65 @@ void main() {
     );
     expect(checkBeforePublish(workflow(), env), isNotNull);
     expect(computeChecklist(workflow(), env).single.errorMessages.length, 2);
+  });
+  test('portable task attachments and nested file defaults remain missing until repaired', () async {
+    final api = _PinnedApi()
+      ..response = {
+        ...composerReply(),
+        'agent_soul': configured,
+        'node_job': {
+          'metadata': {
+            'file_refs': [
+              {'name': 'Task file 1', 'is_missing': true},
+            ],
+          },
+        },
+      };
+    final loaded = await InlineAgentChecks.load(api, 'app', workflow());
+    final declarations = <Object?>[
+      {
+        'name': 'bundle',
+        'type': 'object',
+        'children': [
+          {
+            'name': 'artifacts',
+            'type': 'array',
+            'array_item': {'type': 'file'},
+          },
+        ],
+        'failure_strategy': {
+          'on_failure': 'default_value',
+          'default_value': {
+            'artifacts': [
+              {'transfer_method': 'tool_file', 'reference': InlineAgentChecks.omittedFileReference},
+            ],
+          },
+        },
+      },
+    ];
+    final issues = InlineAgentChecks.issues(loaded.souls['node'], declarations: declarations);
+    expect(issues.map((issue) => issue.key), containsAll(['inline.taskFileMissing', 'inline.defaultFileMissing']));
+    expect(InlineAgentChecks.missingFileReference({'upload_file_id': '00000000-0000-0000-0000-000000000001'}), false);
+    expect(InlineAgentChecks.missingFileReference({'reference': InlineAgentChecks.omittedFileReference}), true);
+  });
+
+  test('roster bindings and incompatible tool-capable models cannot pass either gate', () {
+    final roster = workflow(selected: {'binding_type': 'roster_agent', 'agent_id': 'other'});
+    final env = ChecklistEnv(appMode: 'workflow');
+    expect(computeChecklist(roster, env).single.errorMessages.join(), contains('inline.unsupported'));
+    expect(checkBeforePublish(roster, env), contains('inline.unsupported'));
+    final blocked = {
+      ...configured,
+      'model': {'plugin_id': 'vendor/plugin', 'model_provider': 'provider', 'model': 'gpt-4o'},
+    };
+    final issues = InlineAgentChecks.issues(
+      blocked,
+      modelFeatures: {
+        'vendor/plugin/provider/gpt-4o': ['tool-call'],
+      },
+    );
+    expect(issues.map((v) => v.key), contains('inline.modelUnsupported'));
+    expect(inlineAgentModelCompatible('claude-sonnet-4-5'), true);
+    expect(inlineAgentModelCompatible('GPT-4o'), false);
   });
 }

@@ -21,3 +21,23 @@ issues, not private prompts or secret references.
 These changes do not enable Agent execution in a deployment. The server's `COLLAB_AGENT_INLINE_ENABLED` switch defaults
 to false. Full original UI/pixel parity is not claimed; this form uses explicit save actions, while a broader Agent App
 editor would also require its own permissions, publishing and configuration lifecycle.
+
+## Review follow-up
+
+The model picker and both checks use the same pinned upstream name compatibility filter as the Swift adapter,
+in addition to tool-call capabilities. Roster bindings are explicitly rejected. An unloaded model catalog reports
+that context as unavailable rather than claiming that an otherwise compatible model lacks tools. Transient private
+configuration reads retry a bounded number of times; permanently unsupported contexts do not poll forever.
+
+Composer saves send `expected_node` with the pinned binding, task and declared outputs. Unrelated graph edits do
+not reject a save; a change to this node does. Older callers without that baseline retain strict `expected_seq`
+checking. Reload after a conflict updates the baseline while preserving the local prompt, attachments and version
+note. Uncertain saves retain the exact request and remain explicitly retryable.
+
+Local `inline.*` messages live in `app/assets/extension_i18n`, outside the upstream translation generator's output.
+Configure controls use shared Dify text/button/input primitives. The opt-in screenshot test covers English and
+Simplified Chinese, light/dark and 360/560 widths. For native `flutter_tester`, its optional OpenType font fixtures
+must be lossless decompressions of the bundled pinned WOFF2 glyphs; they do not change production fonts or metrics.
+These are native layout checks, not a claim of pixel parity with Dify or physical-device browser performance.
+
+See [resource portability](agent-resource-portability.md) for clipboard/import boundaries and atomic paste.

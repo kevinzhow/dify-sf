@@ -73,6 +73,7 @@ void main() {
     mutable['prompt'] = {'system_prompt': 'Typed later'};
     expect((payload['node_job'] as Map)['workflow_prompt'], 'Changed by another member');
     expect(payload['expected_seq'], 7);
+    expect((payload['expected_node'] as Map)['agent_task'], 'Changed by another member');
     expect((payload['agent_soul'] as Map)['prompt'], soul['prompt']);
     expect(
       payload['idempotency_key'],

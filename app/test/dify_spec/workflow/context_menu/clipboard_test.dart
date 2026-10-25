@@ -43,6 +43,13 @@ void main() {
     expect(r.isVersionMismatch, isFalse);
   }
 
+  test('portable Agent packages survive the system clipboard envelope', () async {
+    final packages = {'agent_1': {'schema_version': 1, 'soul': {'config_files': [{'name': 'missing.txt', 'is_missing': true}]}}};
+    await writeWorkflowClipboard((nodes: _nodes, edges: _edges), _version, agentPackages: packages);
+    expect((await readWorkflowClipboard(_version)).agentPackages, packages);
+    expect(text, isNot(contains('local_sources')));
+  });
+
   group('workflow clipboard storage', () {
     test('should return empty clipboard data when clipboard text is empty', () async {
       text = '';

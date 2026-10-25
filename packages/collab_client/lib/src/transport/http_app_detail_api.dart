@@ -1326,8 +1326,16 @@ class _PublicAppClient extends http.BaseClient {
 }
 
 /// Inline workflow Agent v2 composer, using the same authentication refresh and error projection as console APIs.
-class HttpAgentComposerApi extends HttpConsoleApi implements AgentComposerApi {
+class HttpAgentComposerApi extends HttpConsoleApi implements AgentComposerApi, AgentClipboardApi {
   HttpAgentComposerApi(super.baseUrl, {super.client, super.auth, super.timeout});
+
+  @override
+  Future<Map<String, Object?>> exportAgentClipboard(String appId, Map<String, Object?> body) async => HttpConsoleApi._map(
+    (await _send('POST', '${HttpConsoleApi._app(appId)}/workflows/draft/agent-clipboard/export', ok: const [200], body: body)).json);
+
+  @override
+  Future<Map<String, Object?>> pasteAgentClipboard(String appId, Map<String, Object?> body) async => HttpConsoleApi._map(
+    (await _send('POST', '${HttpConsoleApi._app(appId)}/workflows/draft/agent-clipboard/paste', ok: const [200], body: body)).json);
 
   static String _path(String app, String node) =>
       '${HttpConsoleApi._app(app)}/workflows/draft/nodes/${HttpConsoleApi._seg(node)}/agent-composer';

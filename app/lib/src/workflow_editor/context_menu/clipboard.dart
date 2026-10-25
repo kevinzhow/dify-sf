@@ -16,6 +16,7 @@ class WorkflowClipboardReadResult {
     this.edges = const [],
     this.sourceVersion,
     this.isVersionMismatch = false,
+    this.agentPackages = const {},
   });
 
   static const empty = WorkflowClipboardReadResult();
@@ -24,6 +25,7 @@ class WorkflowClipboardReadResult {
   final List<DifyJson> edges;
   final String? sourceVersion;
   final bool isVersionMismatch;
+  final DifyJson agentPackages;
 }
 
 bool isClipboardNodeStructurallyValid(Object? v) {
@@ -56,6 +58,9 @@ WorkflowClipboardReadResult parseWorkflowClipboardText(String text, String curre
         for (final e in parsed['edges'] as List)
           if (isClipboardEdgeStructurallyValid(e)) (e as Map).cast<String, Object?>(),
       ],
+      agentPackages: parsed['agent_packages'] is Map
+          ? (parsed['agent_packages'] as Map).cast<String, Object?>()
+          : const {},
       sourceVersion: version,
       isVersionMismatch: version != currentClipboardVersion,
     );
@@ -66,18 +71,23 @@ WorkflowClipboardReadResult parseWorkflowClipboardText(String text, String curre
 
 String stringifyWorkflowClipboardData(
   ({List<DifyJson> nodes, List<DifyJson> edges}) payload,
-  String currentClipboardVersion,
-) => jsonEncode({
+  String currentClipboardVersion, {
+  DifyJson agentPackages = const {},
+}) => jsonEncode({
   'kind': workflowClipboardKind,
   'version': currentClipboardVersion,
   'nodes': payload.nodes,
   'edges': payload.edges,
+  if (agentPackages.isNotEmpty) 'agent_packages': agentPackages,
 });
 
 Future<void> writeWorkflowClipboard(
   ({List<DifyJson> nodes, List<DifyJson> edges}) payload,
-  String currentClipboardVersion,
-) => Clipboard.setData(ClipboardData(text: stringifyWorkflowClipboardData(payload, currentClipboardVersion)));
+  String currentClipboardVersion, {
+  DifyJson agentPackages = const {},
+}) => Clipboard.setData(
+  ClipboardData(text: stringifyWorkflowClipboardData(payload, currentClipboardVersion, agentPackages: agentPackages)),
+);
 
 Future<WorkflowClipboardReadResult> readWorkflowClipboard(String currentClipboardVersion) async {
   try {

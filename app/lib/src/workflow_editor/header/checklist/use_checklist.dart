@@ -10,7 +10,7 @@
 library;
 
 import '../../../agents/inline_checks.dart';
-import '../../node_panel/bodies/llm/agent_v2_logic.dart' show hasValidInlineAgentBinding;
+import '../../node_panel/bodies/llm/agent_v2_logic.dart' show hasValidInlineAgentBinding, hasValidRosterAgentBinding;
 
 import 'package:collab_client/collab_client.dart';
 
@@ -585,13 +585,14 @@ List<ChecklistItem> computeChecklistOf(List<DifyFlowNode> nodes, List<DifyFlowEd
     if (isPluginMissing) {
       errors.add(t('workflow', 'nodes.common.pluginNotInstalled'));
     } else {
+      if (_isAgentV2(n.data) && (hasValidRosterAgentBinding(n.data) || env.appMode != 'workflow')) errors.add(t('agent-v-2', 'inline.unsupported'));
       if (c.llmProviderUnavailable(n)) errors.add(t('workflow', 'errorMsg.configureModel'));
       if (validator != null) {
         final e = validator(c.checkData(n), t, c.moreData(n));
         if (e.isNotEmpty) errors.add(e);
       }
       if (_isAgentV2(n.data) && hasValidInlineAgentBinding(n.data)) {
-        for (final issue in InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures)) {
+        for (final issue in InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, declarations: jsList(n.data['agent_declared_outputs']))) {
           errors.add(t(issue.namespace, issue.key));
         }
       }
@@ -611,7 +612,7 @@ List<ChecklistItem> computeChecklistOf(List<DifyFlowNode> nodes, List<DifyFlowEd
           unConnected: unConnected,
           errorMessages: errors,
           openInlineAgentPanel: _isAgentV2(n.data) && hasValidInlineAgentBinding(n.data) &&
-              InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures).isNotEmpty,
+              InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, declarations: jsList(n.data['agent_declared_outputs'])).isNotEmpty,
           canNavigate: !isPluginMissing,
           disableGoTo: isPluginMissing,
           isPluginMissing: isPluginMissing,
@@ -675,6 +676,7 @@ String? checkBeforePublishOf(List<DifyFlowNode> nodes, List<DifyFlowEdge> edges,
 
   for (final n in c.filtered) {
     final usedVars = c.usedVars(n);
+    if (_isAgentV2(n.data) && (hasValidRosterAgentBinding(n.data) || env.appMode != 'workflow')) return '[${n.title}] ${t('agent-v-2', 'inline.unsupported')}';
     if (c.llmProviderUnavailable(n)) return '[${n.title}] ${t('workflow', 'errorMsg.configureModel')}';
     final validator = _validatorOf(n.data, env);
     if (validator != null) {
@@ -682,7 +684,7 @@ String? checkBeforePublishOf(List<DifyFlowNode> nodes, List<DifyFlowEdge> edges,
       if (e.isNotEmpty) return '[${n.title}] $e';
     }
     if (_isAgentV2(n.data) && hasValidInlineAgentBinding(n.data)) {
-      final issues = InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures);
+      final issues = InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, declarations: jsList(n.data['agent_declared_outputs']));
       if (issues.isNotEmpty) return '[${n.title}] ${t(issues.first.namespace, issues.first.key)}';
     }
     final duplicates = c.duplicates[n.id] ?? const [];

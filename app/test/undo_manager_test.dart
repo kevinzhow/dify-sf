@@ -32,6 +32,20 @@ class _Doc {
 }
 
 void main() {
+  test('an atomic server paste is one undo step without a second AddNode', () {
+    final d = _Doc(restore: true);
+    d.theirs(const AddNode(Node(id: 'pasted', type: 'agent', title: 'Agent', config: {'agent_binding': VString('same-private-binding')})));
+    d.theirs(const AddEdge(Edge(id: 'pasted-edge', source: 'a', target: 'pasted')));
+    d.undo.recordCommittedAddition(['pasted'], ['pasted-edge']);
+    expect(d.undo.past, hasLength(1));
+    d.undo.undo();
+    expect(d.doc.nodes.containsKey('pasted'), false);
+    expect(d.doc.nodes.containsKey('a'), true);
+    d.undo.redo();
+    expect(d.doc.nodes['pasted']!.config['agent_binding'], const VString('same-private-binding'));
+    expect(d.doc.edges.values.any((e) => e.source == 'a' && e.target == 'pasted'), true);
+  });
+
   test('a drag is one step; undo moves back, redo moves again', () {
     final d = _Doc();
     d.undo.begin(HistoryEvent.nodeDragStop, nodeId: 'b');

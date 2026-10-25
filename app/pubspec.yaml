@@ -65,6 +65,7 @@ flutter:
       fonts:
         - asset: assets/fonts/DejaVuSansMono.ttf
   assets:
+    - assets/extension_i18n/
     - assets/emoji/
     - assets/i18n/languages.json
     - assets/i18n/ar-TN/

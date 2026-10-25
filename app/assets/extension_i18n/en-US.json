@@ -1,0 +1,28 @@
+{
+  "agent-v-2": {
+    "inline.model": "Model",
+    "inline.contacts": "Human contacts",
+    "inline.contact": "Contact",
+    "inline.webContact": "Web app",
+    "inline.emailContact": "Email",
+    "inline.addContact": "Add contact",
+    "inline.versionNote": "Version note",
+    "inline.saveNewVersion": "Save as new version",
+    "inline.reload": "Reload baseline, keep my edits",
+    "inline.loading": "Loading configuration…",
+    "inline.loadFailed": "Could not load the current configuration. Retry to reload it.",
+    "inline.saveFailed": "The configuration was rejected. Check the fields or reload before saving again.",
+    "inline.saveUncertain": "The save could not be confirmed. Retry the same save to confirm its result.",
+    "inline.changed": "The agent configuration changed in another session. Reload before saving.",
+    "inline.configUnavailable": "Agent configuration is unavailable.",
+    "inline.unsupported": "This agent uses configuration that is not supported yet.",
+    "inline.secretMissing": "An agent environment secret needs a value.",
+    "inline.toolCallsRequired": "The agent model must support tool calls.",
+    "inline.taskFiles": "Task attachments",
+    "inline.taskFileMissing": "An agent task attachment needs to be uploaded again.",
+    "inline.defaultFileMissing": "An output default file needs to be selected again.",
+    "inline.modelUnsupported": "This model is not supported by Agent v2.",
+    "inline.clipboardFailed": "Agent copy or paste could not be confirmed. Retry after reconnecting.",
+    "inline.catalogUnavailable": "The model catalog has not loaded; retry before publishing."
+  }
+}

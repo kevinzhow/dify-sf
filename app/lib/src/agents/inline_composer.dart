@@ -115,6 +115,9 @@ class InlineAgentComposer {
       jsonEncode({
         'variant': 'workflow',
         'expected_seq': current.seq,
+        'expected_node': {
+          for (final field in ['agent_binding', 'agent_task', 'agent_declared_outputs']) field: data[field],
+        },
         'idempotency_key': newUuid(),
         'binding': loaded['binding'] ?? {'binding_type': 'inline_agent'},
         'agent_soul': soul,
@@ -135,6 +138,35 @@ class InlineAgentComposer {
     await _until((s) => s.ready && s.seq >= seq);
     _sameBinding(nodeId, response['binding']);
     return response;
+  }
+
+  Map<String, Object?>? _pendingPaste;
+
+  Future<Map<String, Object?>> exportClipboard(List<String> nodes) async {
+    if (api is! AgentClipboardApi) throw const AgentComposerConflict('clipboard_unavailable');
+    await _until((s) => s.ready);
+    return (api as AgentClipboardApi).exportAgentClipboard(appId, {'expected_seq': state().seq, 'node_ids': nodes});
+  }
+
+  Future<Map<String, Object?>> pasteClipboard(Map<String, Object?> graph) async {
+    if (api is! AgentClipboardApi) throw const AgentComposerConflict('clipboard_unavailable');
+    await _until((s) => s.ready);
+    _pendingPaste ??= (jsonDecode(
+      jsonEncode({...graph, 'expected_seq': state().seq, 'idempotency_key': newUuid()}),
+    ) as Map).cast<String, Object?>();
+    try {
+      final saved = await (api as AgentClipboardApi).pasteAgentClipboard(appId, _pendingPaste!);
+      final seq = saved['document_seq'];
+      if (seq is! int || saved['node_ids'] is! List || saved['edge_ids'] is! List) {
+        throw const FormatException('agent_clipboard_receipt');
+      }
+      await _until((s) => s.ready && s.seq >= seq);
+      _pendingPaste = null;
+      return saved;
+    } on Object catch (error) {
+      if (!agentSaveUncertain(error)) _pendingPaste = null;
+      rethrow;
+    }
   }
 
   Future<Map<String, Object?>> create(String nodeId) async {

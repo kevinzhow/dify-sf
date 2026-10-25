@@ -157,11 +157,15 @@ class WorkflowStore {
   void setListeningTriggerIsAll(bool isAll) => listeningTriggerIsAll.value = isAll;
   late final clipboardElements = _v(const <DifyJson>[]);
   late final clipboardEdges = _v(const <DifyJson>[]);
+  DifyJson clipboardAgentPackages = const {};
+  DifyJson clipboardAgentSources = const {};
   void setClipboardElements(List<DifyJson> v) => clipboardElements.value = v;
   void setClipboardEdges(List<DifyJson> v) => clipboardEdges.value = v;
   void setClipboardData({required List<DifyJson> nodes, required List<DifyJson> edges}) {
     clipboardElements.value = nodes;
     clipboardEdges.value = edges;
+    clipboardAgentPackages = const {};
+    clipboardAgentSources = const {};
   }
 
   late final selection = _v<SelectionBox?>(null);
