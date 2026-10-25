@@ -977,17 +977,10 @@
           },
           {
             "data": {
-              "text": "The user did not say "
+              "text": "The user did not say which month."
             },
             "event": "thought",
             "id": 2
-          },
-          {
-            "data": {
-              "text": "which month."
-            },
-            "event": "thought",
-            "id": 3
           },
           {
             "data": {
@@ -1000,7 +993,7 @@
               }
             },
             "event": "model_call",
-            "id": 4
+            "id": 3
           },
           {
             "data": {
@@ -1012,7 +1005,7 @@
               "phase": "started"
             },
             "event": "tool_call",
-            "id": 5
+            "id": 4
           },
           {
             "data": {
@@ -1119,7 +1112,7 @@
               }
             },
             "event": "paused",
-            "id": 6
+            "id": 5
           }
         ],
         "status": 200
@@ -1137,7 +1130,7 @@
       "response": {
         "body": {
           "acknowledged": false,
-          "last_event_id": 6,
+          "last_event_id": 5,
           "operation_id": "E1:0:0",
           "protocol": "dify-sf-agent/1",
           "result": {
@@ -1256,7 +1249,7 @@
         "body": {
           "generation": 1,
           "protocol": "dify-sf-agent/1",
-          "result_event_id": 6
+          "result_event_id": 5
         },
         "headers": {
           "Authorization": "Bearer fixture-service-key",
@@ -1268,7 +1261,7 @@
       "response": {
         "body": {
           "acknowledged": true,
-          "last_event_id": 6,
+          "last_event_id": 5,
           "operation_id": "E1:0:0",
           "protocol": "dify-sf-agent/1",
           "result": {

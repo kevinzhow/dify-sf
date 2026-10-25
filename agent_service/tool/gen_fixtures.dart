@@ -760,7 +760,10 @@ final scenarios = <Scenario>[
     (s) async {
       final body = operation();
       final run = await s.start('start', body);
-      await s.waitForEvents(run, 4);
+      // Reasoning is buffered per model call: only run_started is out before
+      // the call ends; give the stream a moment to deliver the chunks.
+      await s.waitForEvents(run, 1);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       await s.request(
         'resend_while_running',
         'POST',
@@ -779,7 +782,7 @@ final scenarios = <Scenario>[
         'ack_running',
         'POST',
         '/v1/runs/$run/ack',
-        body: {'protocol': protocolName, 'generation': 1, 'result_event_id': 4},
+        body: {'protocol': protocolName, 'generation': 1, 'result_event_id': 1},
       );
       await s.request(
         'cancel',
@@ -822,7 +825,8 @@ final scenarios = <Scenario>[
     },
     (s) async {
       final run = await s.start('start', operation());
-      await s.waitForEvents(run, 2);
+      await s.waitForEvents(run, 1);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       await s.request(
         'lease',
         'POST',

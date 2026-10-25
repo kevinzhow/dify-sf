@@ -263,7 +263,7 @@
       "response": {
         "body": {
           "acknowledged": false,
-          "last_event_id": 4,
+          "last_event_id": 1,
           "operation_id": "E1:0:0",
           "protocol": "dify-sf-agent/1",
           "result": null,
@@ -286,7 +286,7 @@
       "response": {
         "body": {
           "acknowledged": false,
-          "last_event_id": 4,
+          "last_event_id": 1,
           "operation_id": "E1:0:0",
           "protocol": "dify-sf-agent/1",
           "result": null,
@@ -315,12 +315,16 @@
           "runs": [
             {
               "acknowledged": false,
+              "app_id": "A1",
               "execution_id": "E1",
               "generation": 1,
-              "last_event_id": 4,
+              "last_event_id": 1,
+              "node_id": "N1",
               "operation_id": "E1:0:0",
               "run_id": "run_000000000000000000000001",
-              "status": "running"
+              "status": "running",
+              "tenant_id": "T1",
+              "workflow_run_id": "W1"
             }
           ]
         },
@@ -334,7 +338,7 @@
         "body": {
           "generation": 1,
           "protocol": "dify-sf-agent/1",
-          "result_event_id": 4
+          "result_event_id": 1
         },
         "headers": {
           "Authorization": "Bearer fixture-service-key",
@@ -402,24 +406,10 @@
           },
           {
             "data": {
-              "text": "Step 1. "
+              "text": "Step 1. Step 2. Step 3. "
             },
             "event": "thought",
             "id": 2
-          },
-          {
-            "data": {
-              "text": "Step 2. "
-            },
-            "event": "thought",
-            "id": 3
-          },
-          {
-            "data": {
-              "text": "Step 3. "
-            },
-            "event": "thought",
-            "id": 4
           },
           {
             "data": {
@@ -431,7 +421,7 @@
               }
             },
             "event": "cancelled",
-            "id": 5
+            "id": 3
           }
         ],
         "status": 200
@@ -449,7 +439,7 @@
       "response": {
         "body": {
           "acknowledged": false,
-          "last_event_id": 5,
+          "last_event_id": 3,
           "operation_id": "E1:0:0",
           "protocol": "dify-sf-agent/1",
           "result": {
@@ -519,7 +509,7 @@
       "response": {
         "body": {
           "error": "result_mismatch",
-          "message": "result_event_id 4 is not the terminal event 5",
+          "message": "result_event_id 4 is not the terminal event 3",
           "protocol": "dify-sf-agent/1"
         },
         "content_type": "application/json; charset=utf-8",
@@ -532,7 +522,7 @@
         "body": {
           "generation": 1,
           "protocol": "dify-sf-agent/1",
-          "result_event_id": 5
+          "result_event_id": 3
         },
         "headers": {
           "Authorization": "Bearer fixture-service-key",
@@ -544,7 +534,7 @@
       "response": {
         "body": {
           "acknowledged": true,
-          "last_event_id": 5,
+          "last_event_id": 3,
           "operation_id": "E1:0:0",
           "protocol": "dify-sf-agent/1",
           "result": {

@@ -76,7 +76,9 @@ void main() {
         calls: [
           ScriptedCall(
             chunks: [
-              ScriptedChunk(reasoning: 'a'),
+              // One model call: reasoning is one `thought` per call, split
+              // only above thoughtPieceBytes -> two thoughts here.
+              ScriptedChunk(reasoning: 'a' * thoughtPieceBytes),
               ScriptedChunk(reasoning: 'b'),
               ScriptedChunk(text: 'done'),
               ScriptedChunk(usage: defaultUsage(), finishReason: 'stop'),
@@ -148,7 +150,7 @@ void main() {
       expect(list['runs'], isEmpty);
     });
 
-    test('active runs are listed with operation_id and generation', () async {
+    test('active runs are listed with their execution identity', () async {
       final h = await Harness.start(
         calls: [
           ScriptedCall(delayMs: 2000, chunks: [ScriptedChunk(text: 'x')]),
@@ -163,6 +165,10 @@ void main() {
           'run_id': runId,
           'operation_id': 'E1:0:0',
           'execution_id': 'E1',
+          'tenant_id': 'T1',
+          'app_id': 'A1',
+          'workflow_run_id': 'W1',
+          'node_id': 'N1',
           'generation': 2,
           'status': 'running',
           'acknowledged': false,
@@ -234,6 +240,21 @@ void main() {
       expect(status['status'], 'failed');
       expect((status['result'] as Map)['error_type'], 'internal');
       expect(h.gateway.llmRequests, hasLength(1));
+      // Unacknowledged, it stays listed with the identity it was started for.
+      final (_, list) = await h.get('/v1/runs?state=active');
+      expect((list['runs'] as List).single, {
+        'run_id': runId,
+        'operation_id': 'E1:0:0',
+        'execution_id': 'E1',
+        'tenant_id': 'T1',
+        'app_id': 'A1',
+        'workflow_run_id': 'W1',
+        'node_id': 'N1',
+        'generation': 1,
+        'status': 'failed',
+        'acknowledged': false,
+        'last_event_id': isA<int>(),
+      });
     });
 
     test('DELETE removes the execution and refuses late operations', () async {

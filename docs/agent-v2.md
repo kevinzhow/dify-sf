@@ -194,7 +194,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 | `event` | `data` |
 |---|---|
 | `run_started` | `{"model", "call_index_base"}`; `call_index_base` is 0 (call indexes of the run start at 1) |
-| `thought` | `{"text"}`: reasoning of the model; never part of the answer |
+| `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB of UTF-8 is split into several, cut only between code points |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
 | `model_call` | `{"invocation_id", "usage"}` after each model call |
 | `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage"}` |
@@ -253,8 +253,11 @@ it once the execution's node reaches a final state, after output files were rece
 
 ### `GET /v1/runs?state=active`
 
-Lists running and unacknowledged runs with their `operation_id` and `generation`. The Swift server uses it on start-up to
-reconcile: it cancels or adopts every operation left from before its restart and writes a final state for it.
+Lists running and unacknowledged runs with their `operation_id`, `generation` and the identity of the execution they
+were started for (`tenant_id`, `app_id`, `workflow_run_id`, `node_id`, `execution_id`). The Swift server uses it on
+start-up to reconcile: it cancels or adopts every operation left from before its restart and writes a final state for it.
+A Swift server touches only runs whose identity matches an execution in its own database; one agent service may serve
+several. Runs recorded before the identity was kept list it as `null`.
 
 ### `GET /v1/health`
 
@@ -275,7 +278,7 @@ Fixed while generating the fixtures (they record these exact bodies):
 | `cancel` accepted | `202 {"protocol", "run_id", "status"}` |
 | `lease` | `200 {"protocol", "expires_at"}` |
 | `DELETE /v1/executions/{id}` | `200 {"protocol", "execution_id", "deleted": true}`; `503 cleanup_failed` to retry |
-| `GET /v1/runs?state=active` | each run: `run_id`, `operation_id`, `execution_id`, `generation`, `status`, `acknowledged`, `last_event_id` |
+| `GET /v1/runs?state=active` | each run: `run_id`, `operation_id`, `execution_id`, `tenant_id`, `app_id`, `workflow_run_id`, `node_id`, `generation`, `status`, `acknowledged`, `last_event_id` |
 
 `usage` of a `cancelled` or `cancel_lost` run counts only the model calls that finished; the gateway's own records are
 authoritative for billing. Such runs carry no snapshot. An `answer` continuation needs only `result.status`;

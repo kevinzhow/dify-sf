@@ -995,17 +995,10 @@
           },
           {
             "data": {
-              "text": "\nThe user wants a plan."
+              "text": "\nThe user wants a plan.\n"
             },
             "event": "thought",
             "id": 2
-          },
-          {
-            "data": {
-              "text": "\n"
-            },
-            "event": "thought",
-            "id": 3
           },
           {
             "data": {
@@ -1018,7 +1011,7 @@
               }
             },
             "event": "model_call",
-            "id": 4
+            "id": 3
           },
           {
             "data": {
@@ -1028,7 +1021,7 @@
               "phase": "started"
             },
             "event": "tool_call",
-            "id": 5
+            "id": 4
           },
           {
             "data": {
@@ -1038,14 +1031,14 @@
               "phase": "finished"
             },
             "event": "tool_call",
-            "id": 6
+            "id": 5
           },
           {
             "data": {
               "text": "No question then."
             },
             "event": "thought",
-            "id": 7
+            "id": 6
           },
           {
             "data": {
@@ -1058,7 +1051,7 @@
               }
             },
             "event": "model_call",
-            "id": 8
+            "id": 7
           },
           {
             "data": {
@@ -1161,7 +1154,7 @@
               }
             },
             "event": "succeeded",
-            "id": 9
+            "id": 8
           }
         ],
         "status": 200
@@ -1179,7 +1172,7 @@
       "response": {
         "body": {
           "acknowledged": false,
-          "last_event_id": 9,
+          "last_event_id": 8,
           "operation_id": "E1:0:0",
           "protocol": "dify-sf-agent/1",
           "result": {
@@ -1294,7 +1287,7 @@
         "body": {
           "generation": 1,
           "protocol": "dify-sf-agent/1",
-          "result_event_id": 9
+          "result_event_id": 8
         },
         "headers": {
           "Authorization": "Bearer fixture-service-key",
@@ -1306,7 +1299,7 @@
       "response": {
         "body": {
           "acknowledged": true,
-          "last_event_id": 9,
+          "last_event_id": 8,
           "operation_id": "E1:0:0",
           "protocol": "dify-sf-agent/1",
           "result": {

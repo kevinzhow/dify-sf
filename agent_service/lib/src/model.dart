@@ -15,6 +15,44 @@ import 'protocol.dart';
 /// stable `file_id` only and model requests carry the same reference.
 const fileUrlScheme = 'dify-sf-file:';
 
+/// Largest `thought` text in UTF-8 bytes: longer reasoning of one model call
+/// is split.
+const thoughtPieceBytes = 16 * 1024;
+
+/// Collects the reasoning of one model call into `thought` texts of at most
+/// [maxBytes] UTF-8 bytes each, cut only between code points.
+class ThoughtBuffer {
+  ThoughtBuffer(this.emit, {this.maxBytes = thoughtPieceBytes});
+
+  final void Function(String text) emit;
+  final int maxBytes;
+  final _text = StringBuffer();
+  int _bytes = 0;
+
+  void add(String text) {
+    for (final rune in text.runes) {
+      // A lone surrogate is written as U+FFFD: 3 bytes.
+      final n = rune < 0x80
+          ? 1
+          : rune < 0x800
+          ? 2
+          : rune < 0x10000
+          ? 3
+          : 4;
+      if (_bytes + n > maxBytes) flush();
+      _text.writeCharCode(rune);
+      _bytes += n;
+    }
+  }
+
+  void flush() {
+    if (_text.isEmpty) return;
+    emit(_text.toString());
+    _text.clear();
+    _bytes = 0;
+  }
+}
+
 /// Metadata key on a [ReasoningPart] recording how the reasoning arrived.
 const reasoningFormKey = 'dify_sf_reasoning_form';
 
@@ -120,11 +158,15 @@ Future<ModelResponse> _call(
   };
 
   final acc = LlmAccumulator();
+  // Reasoning streams in many tiny pieces. The run record gets one `thought`
+  // per model call (split only above [thoughtPieceBytes]), not one per chunk.
+  final thought = ThoughtBuffer(c.onReasoning);
+
   void forward(List<LlmDelta> deltas) {
     for (final d in deltas) {
       switch (d) {
         case ReasoningDelta():
-          c.onReasoning(d.text);
+          thought.add(d.text);
           ctx.sendChunk(
             ModelResponseChunk(
               index: 0,
@@ -139,10 +181,14 @@ Future<ModelResponse> _call(
     }
   }
 
-  await for (final chunk in c.inner.invokeLlm(body)) {
-    forward(acc.add(chunk));
+  try {
+    await for (final chunk in c.inner.invokeLlm(body)) {
+      forward(acc.add(chunk));
+    }
+    forward(acc.flush());
+  } finally {
+    thought.flush();
   }
-  forward(acc.flush());
   acc.assignMissingIds();
 
   final usage = Usage.fromDify(acc.usage ?? const {});
