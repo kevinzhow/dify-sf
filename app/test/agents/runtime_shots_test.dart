@@ -28,6 +28,13 @@ void main() {
             final chinese = language == 'zh-Hans';
             await t.runAsync(() async {
               await useAppFonts();
+              final mono = FontLoader('DejaVu Sans Mono')..addFont(rootBundle.load('assets/fonts/DejaVuSansMono.ttf'));
+              await mono.load();
+              if (Platform.environment['AGENT_SHOT_EMOJI_FONT'] case final String emoji) {
+                final loader = FontLoader('Noto Color Emoji')
+                  ..addFont(File(emoji).readAsBytes().then(ByteData.sublistView));
+                await loader.load();
+              }
               await DifyFonts.loadFor(language);
               final dir = Platform.environment['AGENT_SHOT_FONT_DIR'];
               if (dir != null) {
