@@ -1,5 +1,8 @@
 // Supplemental states of the actual shared runtime widgets. These captures are
 // not original-Dify parity scores and do not change the fixed 450-scene matrix.
+// The code payload is a language-independent English event log. WidgetTester
+// does not expose the native OS CJK/emoji monospace cascade; real Web Unicode
+// shaping/input has separate actual-browser evidence, not this fixture.
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -95,12 +98,9 @@ void main() {
                         {'label': 'Tool', 'status': 'success'},
                       ],
                       'data': {
-                        'head': List.generate(
-                          40,
-                          (i) => chinese ? '步骤 $i：检查材料，值已脱敏。' : 'Step $i: inspected input; value redacted.',
-                        ),
-                        'gap': chinese ? '中间内容见完整归档' : 'See the complete archive for the omitted middle',
-                        'tail': 'completed · 中文 😀 e\u0301',
+                        'head': List.generate(40, (i) => 'Step $i: inspected input; value redacted.'),
+                        'gap': 'See the complete archive for the omitted middle',
+                        'tail': 'completed · original source retained · e\u0301',
                       },
                     },
                     onShowAgentOrToolLog: ([detail]) {},
@@ -145,7 +145,12 @@ void main() {
             if (kind == 'long-log') {
               final scroll = t.widget<re.CodeEditor>(find.byType(re.CodeEditor)).scrollController!.verticalScroller;
               expect(scroll.position.maxScrollExtent, greaterThan(0));
-              scroll.jumpTo(scroll.position.maxScrollExtent);
+              scroll.jumpTo(
+                (scroll.position.maxScrollExtent - scroll.position.viewportDimension).clamp(
+                  0,
+                  scroll.position.maxScrollExtent,
+                ),
+              );
               await t.pumpAndSettle();
               expect(scroll.offset, greaterThan(0));
               await capture('-tail');
