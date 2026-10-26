@@ -70,8 +70,16 @@ window.__difyStartupLabels = {"ar-TN":{"loading":"جاري التحميل","retr
   window.addEventListener('error', errored);
   retry.addEventListener('click', () => location.reload());
   slow = setTimeout(() => { if (state.phase !== 'ready') retry.hidden = false; }, 30000);
-  window.addEventListener('flutter-first-frame', () => {
+  window.addEventListener('flutter-first-frame', async () => {
     if (window.__difyWebRuntime?.phase === 'fallback') return;
+    performance.mark('dify-startup:first-frame');
+    // The first text layout may discover emoji or other fallback glyphs. Keep
+    // the document shell until those actual requests settle and their repaint
+    // reaches the next browser frame. No extra language/font preloads are used.
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (typeof window.difyFontIdle === 'function') await window.difyFontIdle();
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (state.phase === 'failed') return;
     mark('ready'); clearTimeout(slow);
     system.removeEventListener('change', applyTheme);
     window.removeEventListener('unhandledrejection', rejected);
