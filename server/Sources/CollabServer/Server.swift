@@ -72,6 +72,11 @@ public enum CollabServerMain {
         let startupWork = StartupRecovery(routes: routes, logger: logger)
         let databaseReady = DatabaseReadiness()
 
+        // A disabled optional service must not enter ServiceGroup and return
+        // immediately: its successful return otherwise aborts the whole server.
+        let agentMaintenanceServices: [ServiceGroupConfiguration.ServiceConfiguration] = config.agentService.isConfigured
+            ? [.init(service: Named(name: "agent-maintenance", base: AgentMaintenance(routes: routes, readiness: databaseReady), logger: logger))]
+            : []
         let group = ServiceGroup(
             configuration: .init(
                 services: [
@@ -80,7 +85,7 @@ public enum CollabServerMain {
                         staleRunSeconds: config.runtimeMaxTimeSeconds + 300, blobs: routes.blobs,
                         afterMigration: startupWork, readiness: databaseReady), logger: logger)),
                     .init(service: Named(name: "streams", base: StreamMaintenance(registry: registry, intervalSeconds: config.ssePingSeconds), logger: logger)),
-                    .init(service: Named(name: "agent-maintenance", base: AgentMaintenance(routes: routes, readiness: databaseReady), logger: logger)),
+                ] + agentMaintenanceServices + [
                     // Protocol 1.16: node and global human-input deadlines, scanned in the product, not only in tests.
                     .init(service: Named(name: "human-input-timeouts",
                                          base: HumanInputTimeouts(routes: routes, intervalSeconds: config.humanInputScanSeconds, logger: logger, readiness: databaseReady),
