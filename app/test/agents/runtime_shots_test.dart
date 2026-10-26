@@ -143,14 +143,15 @@ void main() {
 
             await capture('');
             if (kind == 'long-log') {
-              final scroll = t.widget<re.CodeEditor>(find.byType(re.CodeEditor)).scrollController!.verticalScroller;
+              final native = t.widget<re.CodeEditor>(find.byType(re.CodeEditor));
+              final scroll = native.scrollController!.verticalScroller;
               expect(scroll.position.maxScrollExtent, greaterThan(0));
-              scroll.jumpTo(
-                (scroll.position.maxScrollExtent - scroll.position.viewportDimension).clamp(
-                  0,
-                  scroll.position.maxScrollExtent,
-                ),
-              );
+              final lines = native.controller!.codeLines;
+              final tail = [
+                for (var i = 0; i < lines.length; i++)
+                  if (lines[i].text.contains('"tail"')) i,
+              ].single;
+              native.scrollController!.makeCenterIfInvisible(re.CodeLinePosition(index: tail, offset: 0));
               await t.pumpAndSettle();
               expect(scroll.offset, greaterThan(0));
               await capture('-tail');
