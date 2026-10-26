@@ -73,6 +73,9 @@ window.__difyStartupLabels = {"ar-TN":{"loading":"جاري التحميل","retr
   window.addEventListener('flutter-first-frame', async () => {
     if (window.__difyWebRuntime?.phase === 'fallback') return;
     performance.mark('dify-startup:first-frame');
+    // Flutter's first frame can be the authentication/metadata loading route.
+    // Wait for the actual initial page, whose layout discovers its own glyphs.
+    if (!window.__difyPageReady) await new Promise(resolve => window.addEventListener('dify-page-ready', resolve, {once:true}));
     // The first text layout may discover emoji or other fallback glyphs. Keep
     // the document shell until those actual requests settle and their repaint
     // reaches the next browser frame. No extra language/font preloads are used.

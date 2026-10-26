@@ -4,6 +4,8 @@
 /// found" for a token that resolves to nothing.
 library;
 
+import '../web/startup_ready.dart';
+
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/material.dart';
 
@@ -237,6 +239,7 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_state != _State.loading) markStartupReadyAfterFrame();
     final Widget body = switch (_state) {
       _State.loading => const DifyLoading(),
       _State.thanks => _card(
