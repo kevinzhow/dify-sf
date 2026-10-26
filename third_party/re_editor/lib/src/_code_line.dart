@@ -12,6 +12,8 @@ const List<String> _kClosureAndQuates = ['{}', '[]', '()', '\'\'', '""', '``'];
 
 class _CodeLineEditingControllerImpl extends ValueNotifier<CodeLineEditingValue> implements CodeLineEditingController {
   @override CodeParagraphBuilder? get paragraphBuilder => null;
+  @override TextEditingValue? get platformEditingValue => null;
+  @override void updatePlatformEditingValue(TextEditingValue value) => edit(value);
 
   @override
   final CodeLineOptions options;
@@ -2290,6 +2292,14 @@ class _CodeLineEditingControllerDelegate implements CodeLineEditingController {
   void dispose() {
     _listeners.clear();
     _delegate.dispose();
+  }
+
+  @override
+  TextEditingValue? get platformEditingValue => _delegate.platformEditingValue;
+
+  @override
+  void updatePlatformEditingValue(TextEditingValue value) {
+    _delegate.updatePlatformEditingValue(value);
   }
 
   @override

@@ -42,6 +42,14 @@ abstract class CodeLineEditingController extends ValueNotifier<CodeLineEditingVa
 
   CodeParagraphBuilder? get paragraphBuilder => null;
 
+  /// Optional complete-document platform buffer. Null retains upstream's
+  /// current-line delta input; a host may supply its canonical UTF-16 value.
+  TextEditingValue? get platformEditingValue => null;
+
+  /// Commit a complete-document platform update through the host's editing
+  /// policy, including its existing formatting and undo machinery.
+  void updatePlatformEditingValue(TextEditingValue value) => edit(value);
+
   /// Creates a controller for an editor field.
   ///
   /// This constructor treats an empty [codeLines] argument as if it were the empty

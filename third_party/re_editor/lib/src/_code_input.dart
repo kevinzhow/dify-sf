@@ -62,6 +62,12 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
       return;
     }
     _readOnly = value;
+    if (_focusNode.hasFocus) {
+      _closeInputConnectionIfNeeded();
+      if (!_readOnly || _controller.platformEditingValue != null) {
+        _openInputConnection();
+      }
+    }
   }
 
   set autocompleteSymbols(bool value) {
@@ -134,10 +140,24 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
 
   @override
   void updateEditingValueWithDeltas(List<TextEditingDelta> textEditingDeltas) {
+    if (_readOnly) return;
     if (_updateCausedByFloatingCursor) {
       // This is necessary because otherwise the content of the line where the floating cursor was started
       // will be pasted over to the line where the floating cursor was stopped.
       _updateCausedByFloatingCursor = false;
+      return;
+    }
+
+    if (_controller.platformEditingValue != null) {
+      var next = _remoteEditingValue!;
+      for (final delta in textEditingDeltas) {
+        next = delta.apply(next);
+      }
+      if (next != _remoteEditingValue) {
+        _remoteEditingValue = next;
+        _controller.updatePlatformEditingValue(next);
+        notifyListeners();
+      }
       return;
     }
 
@@ -168,7 +188,7 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     if (newValue == _remoteEditingValue) {
       return;
     }
-    if (newValue.text == _remoteEditingValue!.text) {
+    if (textEditingDeltas.every((delta) => delta is TextEditingDeltaNonTextUpdate)) {
       // A platform caret/selection/composition update is not a replacement of
       // the selected document range. The platform buffer describes the base
       // line, whereas a native selection may span several document lines.
@@ -410,11 +430,13 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     if (render == null) {
       return;
     }
+    final platformComposing = _controller.platformEditingValue == null
+        ? _remoteEditingValue?.composing : composing;
     final Offset? composingStart = render.calculateTextPositionViewportOffset(selection.base.copyWith(
-      offset: _remoteEditingValue?.composing.start
+      offset: platformComposing?.start
     ));
     final Offset? composingEnd = render.calculateTextPositionViewportOffset(selection.extent.copyWith(
-      offset: _remoteEditingValue?.composing.end
+      offset: platformComposing?.end
     ));
     if (composingStart != null && composingEnd != null) {
       _textInputConnection!.setComposingRect(Rect.fromPoints(composingStart, composingEnd + Offset(0, render.lineHeight)));
@@ -449,7 +471,7 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
   }
 
   void _openOrCloseInputConnectionIfNeeded() {
-    if (_focusNode.hasFocus && !_readOnly) {
+    if (_focusNode.hasFocus && (!_readOnly || _controller.platformEditingValue != null)) {
       if (_focusNode.consumeKeyboardToken()) {
         _openInputConnection();
       }
@@ -470,11 +492,10 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
       final TextInputConnection connection = TextInput.attach(this,
         _TextInputConfiguration(
           flutterViewId: View.maybeOf(context)?.viewId ?? 0,
-          // The pinned Flutter Web semantics strategy does not install the
-          // beforeinput/composition hooks needed to infer text deltas. Use the
-          // framework's ordinary full-state channel on Web (also with a11y).
-          // Native platforms keep Re-Editor's original delta channel.
-          enableDeltaModel: !kIsWeb,
+          // A complete-document host uses the ordinary full-state channel,
+          // including Web semantics (whose delta inference lacks beforeinput).
+          enableDeltaModel: _controller.platformEditingValue == null,
+          readOnly: _readOnly,
           inputAction: TextInputAction.newline,
           autocorrect: false,
           smartDashesType: SmartDashesType.disabled,
@@ -502,6 +523,8 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
   }
 
   TextEditingValue _buildTextEditingValue() {
+    final document = _controller.platformEditingValue;
+    if (document != null) return document;
     final TextSelection textSelection;
     if (selection.isSameLine) {
       textSelection = TextSelection(
@@ -769,6 +792,7 @@ class _TextInputConfiguration extends TextInputConfiguration {
   const _TextInputConfiguration({
     required this.flutterViewId,
     required super.enableDeltaModel,
+    required super.readOnly,
     required super.inputAction,
     super.autocorrect = false,
     super.smartDashesType = SmartDashesType.disabled,

@@ -50,11 +50,11 @@
     },
     "lib/src/_code_input.dart": {
       "upstream_sha256": "2346559b036b2668f503145ecee09c2360474b6a608dca1f2ef3e701fbbb455e",
-      "vendored_sha256": "262104647e0d11ef0b7fc23d66781e240f412afc44442a7d808431148603fe8d"
+      "vendored_sha256": "2398ed9248a35d7230b51b8da0ff029dadd61d9898720aefc3fb9503729996f7"
     },
     "lib/src/_code_line.dart": {
       "upstream_sha256": "e2eb7bab29617262dc5f9043bf6c158e878ce4ab21b6c92766e88859e7e72c3f",
-      "vendored_sha256": "13332de912c19a38873f565dd95d568550157baa670c2fe51e1ed7cbd5d56f7f"
+      "vendored_sha256": "0c92413d4cf7b88cf2c4061d7217f9384869fadb2a73f84072650918ac9c59b8"
     },
     "lib/src/_code_lines.dart": {
       "upstream_sha256": "6c248720c3c07b9a9f0bcbd6bce7579ae38839d3bc55feb15bd6355a6ac628ca",
@@ -114,7 +114,7 @@
     },
     "lib/src/code_line.dart": {
       "upstream_sha256": "0f0b61a61502226b176ea9b078fe9cd0218f464629e3d9786ab818fde61b50a1",
-      "vendored_sha256": "afe72fd01407f4b6f00a83105a2fa4680230afffe97000455835b56ae0262f0b"
+      "vendored_sha256": "938f4af8b6e9ddde17dc66bb46eae369afe6eba3c33cfb2fa8fa7b576db90c0c"
     },
     "lib/src/code_lines.dart": {
       "upstream_sha256": "d3db603e5f6fd8d27b4bc057ad08bacaea6f4e499420e143b0c84b41b5ac2d6b",

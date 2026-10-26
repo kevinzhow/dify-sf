@@ -803,6 +803,26 @@ class _NativeCodeController extends re.CodeLineEditingControllerDelegate {
   _NativeCodeController(this.owner, re.CodeLineEditingController source) : super(delegate: source);
   final CodeEditorViewState owner;
   @override
+  TextEditingValue get platformEditingValue => owner._global(value);
+
+  int _platformEditLine = -1;
+  @override
+  void updatePlatformEditingValue(TextEditingValue next) {
+    final before = owner._controller.value;
+    final formatted = _MonacoFormatter(owner).formatEditUpdate(before, next);
+    void apply() => owner._apply(formatted);
+    // Preserve upstream's same-line typing/composition group. Replacing a
+    // selection starts a distinct undo operation, including whole-document paste.
+    if (before.text != formatted.text &&
+        (_platformEditLine != selection.extentIndex || !before.selection.isCollapsed)) {
+      _platformEditLine = selection.extentIndex;
+      runRevocableOp(apply);
+    } else {
+      apply();
+    }
+  }
+
+  @override
   re.CodeParagraphBuilder? get paragraphBuilder =>
       (span, style, width, maxLength) => owner._geometry.forSpan(span);
   @override
