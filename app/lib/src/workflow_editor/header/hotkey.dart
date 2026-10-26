@@ -27,12 +27,7 @@ bool matchesHotkey(String hotkey, KeyEvent event, {DifyPlatform? platform}) {
 }
 
 /// Whether the focus is in a text field (TanStack's `ignoreInputs`).
-bool focusInTextInput() {
-  final ctx = FocusManager.instance.primaryFocus?.context;
-  if (ctx == null) return false;
-  if (ctx.widget is EditableText) return true;
-  return ctx.findAncestorWidgetOfExactType<EditableText>() != null;
-}
+bool focusInTextInput() => difyFocusInTextInput();
 
 /// TanStack's `useHotkey(hotkey, callback, { ignoreInputs })`: a page-wide shortcut while this widget is mounted.
 /// [enabled] false leaves the key to others.

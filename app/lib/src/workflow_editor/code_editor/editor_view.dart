@@ -711,7 +711,7 @@ class CodeEditorViewState extends State<CodeEditorView> {
         );
         return ListenableBuilder(
           listenable: Listenable.merge([_controller, _focus]),
-          child: field,
+          child: DifyTextInputScope(child: field),
           builder: (context, child) => _CodeEditorSemantics(
             selection: _controller.selection,
             properties: SemanticsProperties(
