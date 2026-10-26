@@ -1,3 +1,4 @@
+import 'support/code_editor_input.dart';
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/workflow_editor/dify_editor.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
@@ -6,7 +7,6 @@ import 'package:dify_sf_app/src/editor/editor_controller.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
-import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/node_panel.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter/material.dart';
@@ -111,8 +111,6 @@ Finder _outputInput(String name) => find.descendant(
   matching: find.byType(EditableText),
 );
 
-/// The text of the Code panel's code editor.
-final _codeEditor = find.descendant(of: find.byType(DifyCodeEditor), matching: find.byType(EditableText));
 
 void main() {
   editorTest('shows the document, the live status and the last seq', (t) async {
@@ -200,7 +198,7 @@ void main() {
 
     // The Code panel's code editor: typed text is one field.
     await select(t, 'code');
-    await t.enterText(_codeEditor, 'Say hi');
+    await enterCodeEditorText(t, 'Say hi');
     await settle(t, const Duration(seconds: 2));
     expect(demo.server.doc.nodes['code']!.config['code'], const VString('Say hi'));
 
@@ -305,7 +303,7 @@ void main() {
     await settle(t, const Duration(seconds: 1));
 
     await select(t, 'code');
-    await t.enterText(_codeEditor, 'my code');
+    await enterCodeEditorText(t, 'my code');
     await settle(t, const Duration(seconds: 2));
     expect(await text(t, 'pending-count'), '1 unsaved edit');
 
@@ -325,7 +323,7 @@ void main() {
     expect(await text(t, 'notice-message'), startsWith('Bo changed code'));
     expect(await text(t, 'notice-message'), endsWith('your change wasn\'t applied'));
     // The winning value is what's on screen, not the lost draft.
-    expect(t.widget<EditableText>(_codeEditor).controller.text, 'bo code');
+    expect(codeEditorText(t), 'bo code');
 
     await t.tap(find.byKey(const Key('reapply')));
     await settle(t);
@@ -359,7 +357,7 @@ void main() {
     demo.setOffline(true);
     await settle(t, const Duration(seconds: 1));
     await select(t, 'code');
-    await t.enterText(_codeEditor, 'unsaved work');
+    await enterCodeEditorText(t, 'unsaved work');
     await settle(t, const Duration(seconds: 2));
     expect(await text(t, 'pending-count'), '1 unsaved edit');
 
@@ -418,7 +416,7 @@ void main() {
     demo.setOffline(true);
     await settle(t, const Duration(seconds: 1));
     await select(t, 'code');
-    await t.enterText(_codeEditor, 'kept work');
+    await enterCodeEditorText(t, 'kept work');
     await settle(t, const Duration(seconds: 2));
     expect(await text(t, 'pending-count'), '1 unsaved edit');
 

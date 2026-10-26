@@ -67,6 +67,46 @@ void main() {
     await t.runAsync(() => DifyI18n.load('en-US'));
   });
 
+  testWidgets('Tab and Shift+Tab dismiss selection and traverse from its editable', (t) async {
+    final input = FocusNode(), before = FocusNode(), after = FocusNode();
+    final controller = TextEditingController(text: 'selected text');
+    addTearDown(input.dispose);
+    addTearDown(before.dispose);
+    addTearDown(after.dispose);
+    addTearDown(controller.dispose);
+    await t.pumpWidget(
+      DifyApplication(
+        theme: difyTheme(),
+        home: DifyPage(
+          body: Column(
+            children: [
+              DifyButton(focusNode: before, onPressed: () {}, child: const Text('Before')),
+              DifyTextField(controller: controller, focusNode: input),
+              DifyButton(focusNode: after, onPressed: () {}, child: const Text('After')),
+            ],
+          ),
+        ),
+      ),
+    );
+    for (final backward in [false, true]) {
+      await t.tap(find.byType(EditableText));
+      await t.pump();
+      controller.selection = const TextSelection(baseOffset: 0, extentOffset: 8);
+      await t.pump();
+      t.state<EditableTextState>(find.byType(EditableText)).showToolbar();
+      await t.pump();
+      await t.pump();
+      expect(find.byType(DifySelectionMenu), findsOneWidget);
+      if (backward) await t.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await t.sendKeyEvent(LogicalKeyboardKey.tab);
+      if (backward) await t.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await t.pump();
+      expect((backward ? before : after).hasPrimaryFocus, isTrue);
+      expect(find.byType(DifySelectionMenu), findsNothing);
+      expect(controller.text, 'selected text');
+    }
+  });
+
   testWidgets('selection popup stays inside narrow viewport and above the keyboard', (t) async {
     await t.binding.setSurfaceSize(const Size(320, 640));
     addTearDown(() => t.binding.setSurfaceSize(null));

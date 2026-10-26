@@ -105,6 +105,17 @@ class DifySelectionMenu extends StatelessWidget {
     focusParent?.requestFocus();
   }
 
+  void _traverse(bool forward) {
+    // The overlay is parented under the editable to retain its input connection.
+    // Remove those menu descendants before traversing from the original field.
+    _close();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final parent = focusParent;
+      if (parent?.context == null) return;
+      forward ? parent!.nextFocus() : parent!.previousFocus();
+    });
+  }
+
   void _activate(ContextMenuButtonItem item) {
     item.onPressed?.call();
     _close();
@@ -119,6 +130,8 @@ class DifySelectionMenu extends StatelessWidget {
     };
     return {
       const SingleActivator(LogicalKeyboardKey.escape): _close,
+      const SingleActivator(LogicalKeyboardKey.tab): () => _traverse(true),
+      const SingleActivator(LogicalKeyboardKey.tab, shift: true): () => _traverse(false),
       for (final item in buttonItems)
         if (item.onPressed != null && keys.containsKey(item.type)) ...{
           SingleActivator(keys[item.type]!, control: true): () => _activate(item),

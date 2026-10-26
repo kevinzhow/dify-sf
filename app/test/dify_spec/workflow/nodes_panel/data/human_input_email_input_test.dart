@@ -116,7 +116,12 @@ void main() {
         await t.sendKeyEvent(LogicalKeyboardKey.tab);
         await t.pump();
 
-        expect(focusIn(t, find.widgetWithText(DifyButton, 'Save')), isTrue);
+        expect(
+          focusIn(t, find.widgetWithText(DifyButton, 'Save')),
+          isTrue,
+          reason:
+              'value=$value; primary=${FocusManager.instance.primaryFocus}; chain=${FocusManager.instance.primaryFocus?.ancestors.map((n) => n.debugLabel).toList()}',
+        );
         expect(adds, hasLength(expectedAdds));
         if (expectedAdds > 0) expect(adds, [value]);
       }

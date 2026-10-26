@@ -1,3 +1,4 @@
+import '../../../support/code_editor_input.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 // dify-spec: web/app/components/workflow/variable-inspect/__tests__/value-content-sections.spec.tsx
 // dify-spec: web/app/components/workflow/variable-inspect/__tests__/display-content.spec.tsx
@@ -90,7 +91,7 @@ void main() {
         ),
       );
 
-      await t.enterText(find.byType(EditableText), '{"foo":1}');
+      await enterCodeEditorText(t, '{"foo":1}');
       expect(changes.last, '{"foo":1}');
       expect(find.text('Broken JSON'), findsOneWidget);
       expect(find.text('Too deep'), findsOneWidget);

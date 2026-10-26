@@ -1,3 +1,4 @@
+import 'support/code_editor_input.dart';
 import 'package:collab_client/collab_client.dart' show Node;
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifyBlurredBox;
@@ -165,7 +166,7 @@ void main() {
       await t.tap(find.text('payload'));
       await t.pump();
 
-      await t.enterText(find.byType(EditableText), '{"foo": 2}');
+      await enterCodeEditorText(t, '{"foo": 2}');
       await t.pump(const Duration(milliseconds: 600));
 
       DifyJson stored() => (h.store.nodesWithInspectVars.value.single['vars']! as List).single as DifyJson;
@@ -174,7 +175,7 @@ void main() {
       expect(find.text('WORKFLOW.DEBUG.VARIABLEINSPECT.EDITED'), findsOneWidget);
 
       // Invalid JSON is not kept, and says why.
-      await t.enterText(find.byType(EditableText), '{"foo": ');
+      await enterCodeEditorText(t, '{"foo": ');
       await t.pump(const Duration(milliseconds: 600));
       expect(stored()['value'], {'foo': 2});
       expect(find.text('Unexpected end of JSON input'), findsOneWidget);
