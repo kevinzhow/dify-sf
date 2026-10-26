@@ -21,6 +21,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -663,7 +664,7 @@ class CodeEditorViewState extends State<CodeEditorView> {
           },
           toolbarController: _toolbar,
         );
-        return Focus(
+        final field = Focus(
           onKeyEvent: _onKey,
           canRequestFocus: false,
           child: MouseRegion(
@@ -708,6 +709,40 @@ class CodeEditorViewState extends State<CodeEditorView> {
             ),
           ),
         );
+        return ListenableBuilder(
+          listenable: Listenable.merge([_controller, _focus]),
+          child: field,
+          builder: (context, child) => _CodeEditorSemantics(
+            selection: _controller.selection,
+            properties: SemanticsProperties(
+              identifier: 'dify-code-editor-input',
+              textField: true,
+              multiline: true,
+              focused: _focus.hasFocus,
+              readOnly: widget.readOnly,
+              value: _controller.text,
+              onTap: _focus.requestFocus,
+              onFocus: _focus.requestFocus,
+              onDidGainAccessibilityFocus: _focus.requestFocus,
+              onSetText: widget.readOnly
+                  ? null
+                  : (text) => _apply(
+                      TextEditingValue(
+                        text: text,
+                        selection: TextSelection.collapsed(offset: text.length),
+                      ),
+                    ),
+              onSetSelection: (selection) {
+                if (selection.start < 0 || selection.end > _controller.text.length) return;
+                _controller.selection = selection;
+              },
+              onCopy: _controller.selection.isCollapsed ? null : () => unawaited(_native.copy()),
+              onCut: widget.readOnly || _controller.selection.isCollapsed ? null : _native.cut,
+              onPaste: widget.readOnly ? null : _native.paste,
+            ),
+            child: child!,
+          ),
+        );
       },
     );
   }
@@ -718,6 +753,48 @@ class CodeEditorViewState extends State<CodeEditorView> {
     final end = line + 1 < _doc.lineCount ? _doc.lineStart(line + 1) : _doc.lineEnd(line);
     _focus.requestFocus();
     _controller.selection = TextSelection(baseOffset: start, extentOffset: end);
+  }
+}
+
+/// Publish selection on the same semantics node as its text-field flags/value,
+/// just as RenderEditable does. The public Semantics widget has no selection
+/// property, and a child proxy's selection is not absorbed into its parent.
+class _CodeEditorSemantics extends SingleChildRenderObjectWidget {
+  const _CodeEditorSemantics({required this.selection, required this.properties, required super.child});
+  final TextSelection selection;
+  final SemanticsProperties properties;
+  @override
+  _RenderCodeEditorSemantics createRenderObject(BuildContext context) => _RenderCodeEditorSemantics(
+    selection,
+    properties: properties,
+    textDirection: Directionality.of(context),
+  );
+  @override
+  void updateRenderObject(BuildContext context, _RenderCodeEditorSemantics renderObject) {
+    renderObject
+      ..properties = properties
+      ..textDirection = Directionality.of(context)
+      ..selection = selection;
+  }
+}
+
+class _RenderCodeEditorSemantics extends RenderSemanticsAnnotations {
+  _RenderCodeEditorSemantics(
+    this._selection, {
+    required super.properties,
+    required super.textDirection,
+  }) : super(container: true);
+  TextSelection _selection;
+  set selection(TextSelection value) {
+    if (value == _selection) return;
+    _selection = value;
+    markNeedsSemanticsUpdate();
+  }
+
+  @override
+  void describeSemanticsConfiguration(SemanticsConfiguration config) {
+    super.describeSemanticsConfiguration(config);
+    config.textSelection = _selection;
   }
 }
 
