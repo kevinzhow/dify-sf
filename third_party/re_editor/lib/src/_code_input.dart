@@ -453,7 +453,11 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
       final TextInputConnection connection = TextInput.attach(this,
         _TextInputConfiguration(
           flutterViewId: View.maybeOf(context)?.viewId ?? 0,
-          enableDeltaModel: true,
+          // The pinned Flutter Web semantics strategy does not install the
+          // beforeinput/composition hooks needed to infer text deltas. Use the
+          // framework's ordinary full-state channel on Web (also with a11y).
+          // Native platforms keep Re-Editor's original delta channel.
+          enableDeltaModel: !kIsWeb,
           inputAction: TextInputAction.newline,
           autocorrect: false,
           smartDashesType: SmartDashesType.disabled,
