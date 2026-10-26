@@ -114,6 +114,7 @@ struct AgentHealthReconciliationTests {
             }
             app.routes.post("v1", "runs", ":id", "cancel") { req in
                 calls.withLock { $0.append("cancel:" + (req.parameters.get("id") ?? "")) }
+                if req.parameters.get("id") == "broken-orphan" { return Response(status: .serviceUnavailable) }
                 return Response(status: .ok, body: .init(string: #"{"protocol":"dify-sf-agent/1"}"#))
             }
             app.routes.delete("v1", "executions", ":id") { req in
@@ -132,6 +133,7 @@ struct AgentHealthReconciliationTests {
                             "tenant_id": tenant, "app_id": .string(app), "workflow_run_id": .string(workflow), "node_id": .string(local.nodeID)]
                     }
                     remote.withLock { $0 = .array([
+                        record("broken-orphan", "broken-missing", tenant: .string(frozen.pluginDaemonTenant), app: local.docID, workflow: local.workflowRunID),
                         record("owned-orphan", "owned-missing", tenant: .string(frozen.pluginDaemonTenant), app: local.docID, workflow: local.workflowRunID),
                         record("unknown-old", "old-missing", tenant: .null, app: local.docID, workflow: local.workflowRunID),
                         record("other-tenant", "foreign-missing", tenant: "other-tenant", app: local.docID, workflow: local.workflowRunID),
@@ -139,7 +141,7 @@ struct AgentHealthReconciliationTests {
                         record("local-live", local.executionID, tenant: .string(frozen.pluginDaemonTenant), app: local.docID, workflow: local.workflowRunID),
                     ]) }
                     await routes.recoverAgentExecutions()
-                    #expect(calls.withLock { $0 } == ["cancel:owned-orphan", "cleanup:owned-missing"])
+                    #expect(calls.withLock { $0 } == ["cancel:broken-orphan", "cancel:owned-orphan", "cleanup:owned-missing"])
                     #expect(try await store.agentSession(execution: local.executionID)?.status == "prepared")
                 }
             }

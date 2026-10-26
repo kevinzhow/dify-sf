@@ -134,6 +134,7 @@ extension Routes {
     /// sign-up, and can send mail when it is configured (`is_email_setup`, which enables "Forgot your password?").
     private func systemFeatures() async throws -> Response {
         struct Features: Encodable {
+            var build: BuildIdentity
             var enable_email_code_login = false
             var enable_email_password_login = true
             var is_allow_register = false
@@ -179,7 +180,7 @@ extension Routes {
                               single_node_run: singleTypes, draft_run: draftTypes,
                               human_input: config.humanInputWebEnabled,
                               human_input_email: config.humanInputWebEnabled && config.humanInputEmailEnabled && mail) : nil
-        return try json(Features(is_email_setup: mail, enable_file_upload: config.files.isConfigured, enable_change_email: mail, workflow_runtime: runtime,
+        return try json(Features(build: BuildIdentity(revision: config.buildRevision), is_email_setup: mail, enable_file_upload: config.files.isConfigured, enable_change_email: mail, workflow_runtime: runtime,
             inline_agent: config.agentService.inlineEnabled && config.agentService.isConfigured,
             inline_agent_shell: config.agentService.inlineEnabled && config.agentService.isConfigured ? await agentShellAvailable() : false))
     }
