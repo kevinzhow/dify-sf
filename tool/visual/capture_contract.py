@@ -132,3 +132,16 @@ def observe_capture_health(page):
 def assert_capture_health(failures):
     if failures:
         raise AssertionError('Capture contains failed assets or Flutter exceptions: ' + str(failures))
+
+
+def wait_for_flutter_fonts(page):
+    """Admit actual Flutter glyph requests and repaint; do not alter capture pixels.
+
+    document.fonts.ready only covers CSS fonts. Both pinned Flutter renderers
+    publish their own font barrier. The ordinary reference path remains intact.
+    """
+    if page.evaluate("typeof window.difyFontIdle === 'function'"):
+        page.evaluate("async () => { await window.difyFontIdle(); await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame); }")
+        status=page.evaluate('window.difyFontStatus()')
+        if status != {'pending':0,'busy':False,'failed':0}:
+            raise AssertionError('Flutter font barrier did not settle cleanly: '+str(status))

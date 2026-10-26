@@ -7,7 +7,7 @@ from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlencode
 from playwright.sync_api import sync_playwright
-from capture_contract import install_display_fixtures, FIXED_TIME_ISO, observe_capture_health, assert_capture_health
+from capture_contract import wait_for_flutter_fonts, install_display_fixtures, FIXED_TIME_ISO, observe_capture_health, assert_capture_health
 
 class Quiet(SimpleHTTPRequestHandler):
     def log_message(self,*args): pass
@@ -71,6 +71,7 @@ def main():
                         assert env=={'width':640,'height':480,'dpr':2,'scale':1},env
                         dest=args.out/provider/(case['id']+'.png');dest.parent.mkdir(exist_ok=True)
                         assert_capture_health(health)
+                        wait_for_flutter_fonts(page)
                         page.screenshot(path=str(dest))
                         assert_capture_health(health)
                         with Image.open(dest) as raster:
