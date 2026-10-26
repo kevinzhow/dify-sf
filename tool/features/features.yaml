@@ -872,8 +872,8 @@ features:
   title: 'Code editor: Monaco python / javascript / JSON highlighting (Monarch tokenizers), chrome'
   dify: [web/app/components/workflow/nodes/_base/components/editor/code-editor]
   status: ported
-  deviation: A Dart port of Monaco 0.52.2's Monarch tokenizers and vs / vs-dark themes (identical token colours), not an embedded Monaco.
-  evidence: ['spec:web/app/components/workflow/nodes/_base/components/editor', 'spec:web/app/components/workflow/nodes/_base/components/editor/code-editor', app/test/code_editor]
+  deviation: Reuses a pinned native Re-Editor input engine with Monaco 0.52.2 document, commands, token themes and wrapping rules. One projected paragraph supplies painting, hit testing, caret, selection and IME geometry; continuation indentation and tab expansion never enter copied source text. Dify menus and scrollbar remain the shared design-system families.
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/editor', 'spec:web/app/components/workflow/nodes/_base/components/editor/code-editor', app/test/code_editor, docs/code-editor-wrapping.md, tool/check_editor_vendor.py, tool/design/check_reference.py]
   ours: [app/lib/src/workflow_editor/code_editor/code_editor.dart, app/lib/src/workflow_editor/code_editor/monarch/monarch.dart]
 
 # ---------------------------------------------------------------- nodes

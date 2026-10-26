@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/langgenius/dify",
+  "commit": "8387590ace4a094de812b7847fc6a4c3a27cd52b",
+  "tag": "1.17.1",
+  "design_package": "@langgenius/dify-ui",
+  "design_version": "0.0.1",
+  "web_dependency": "workspace:*",
+  "source_files": {
+    "web/package.json": "ca4ecb1f6f7e97f15f62e255da1779ff59c2fea01d013ef75ff4bffa21aeb2d6",
+    "packages/dify-ui/package.json": "677f07ae32012c99a575443b269be0999ab05ed64bcb052376c99a1407d9b5f8",
+    "packages/dify-ui/src/styles/styles.css": "4858b216761e6ad6443412b41b8d15da64792b6a30eb1aab9f5130cf56d02f70",
+    "packages/dify-ui/src/styles/utilities.css": "e1361a0cffc50941c85962cc4a6cdddd5bc048bea475e8499a8b0042fa2f15d4",
+    "packages/dify-ui/src/themes/light.css": "2a682fda1e785d33f7b7711221ea63ab25f4dd1ec64a4032d84a8572dc51797c",
+    "packages/dify-ui/src/themes/dark.css": "a6e4f2b0004b863a36c37a48374cecb193e970cdfbf4c00791c6d29e65e1e6cc",
+    "web/themes/manual-light.css": "bd5516f8380c01c1462a4c7525a412e74984cb275d70018e74636e1036854bb3",
+    "web/themes/manual-dark.css": "d4d037e8663ecc720c6aaae533ae4c01e0fe69d3ab8657beca12f63d9c0520a5"
+  }
+}

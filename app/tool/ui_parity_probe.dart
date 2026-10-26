@@ -2,6 +2,7 @@
 library;
 
 import 'dart:convert';
+import 'package:dify_sf_app/src/web/startup_ready.dart';
 
 import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
@@ -23,6 +24,7 @@ Future<void> main() async {
   cardFontFamily = 'Noto Sans';
   DifyColors.useDark(dark);
   await IconCache.preload([('assets/remix_icons/add-line.svg', DifyColors.componentsButtonSecondaryText)]);
+  markStartupReadyAfterFrame();
   runApp(
     DifyApplication(
       theme: difyTheme(

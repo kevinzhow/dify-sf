@@ -9,6 +9,8 @@ import 'dart:ui' as ui;
 
 import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
 import 'package:flutter/material.dart';
+import 'package:re_editor/re_editor.dart' as re;
+import 'package:dify_sf_app/src/workflow_editor/code_editor/editor_view.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -90,19 +92,12 @@ void main() {
 
     await shot('code_editor');
     // Focus with the cursor inside the dict literal: current line, bracket match, active guide, focused chrome.
-    final editable = find.byType(EditableText).first;
-    await t.tap(editable);
-    await t.pump();
-    final state = t.state<EditableTextState>(editable);
-    state.userUpdateTextEditingValue(
-      state.textEditingValue.copyWith(selection: const TextSelection.collapsed(offset: 175)),
-      SelectionChangedCause.tap,
-    );
+    final editor = t.widget<re.CodeEditor>(find.byType(re.CodeEditor).first);
+    editor.focusNode!.requestFocus();
+    final state = t.state<CodeEditorViewState>(find.byType(CodeEditorView).first);
+    state.controller.selection = const TextSelection.collapsed(offset: 175);
     await shot('code_editor_focused');
-    state.userUpdateTextEditingValue(
-      state.textEditingValue.copyWith(selection: const TextSelection(baseOffset: 60, extentOffset: 240)),
-      SelectionChangedCause.tap,
-    );
+    state.controller.selection = const TextSelection(baseOffset: 60, extentOffset: 240);
     await shot('code_editor_selection');
   });
 }

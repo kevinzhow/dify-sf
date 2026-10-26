@@ -569,6 +569,21 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.0"
+  re_editor:
+    dependency: "direct main"
+    description:
+      path: "../third_party/re_editor"
+      relative: true
+    source: path
+    version: "0.10.0"
+  re_highlight:
+    dependency: transitive
+    description:
+      name: re_highlight
+      sha256: "6c4ac3f76f939fb7ca9df013df98526634e17d8f7460e028bd23a035870024f2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.3"
   record_use:
     dependency: transitive
     description:

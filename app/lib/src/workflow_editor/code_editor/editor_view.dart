@@ -1,5 +1,6 @@
 /// The Monaco editor as Dify configures it (code-editor/index.tsx options on Monaco 0.52.2 defaults, `vs` theme,
-/// transparent backgrounds from code-editor/style.css), drawn the Flutter way: one [EditableText] holds the text
+/// transparent backgrounds from code-editor/style.css), using Re-Editor for native Flutter input and one source/view
+/// projection for drawing, caret, selections and input-method geometry. The unchanged source holds the text
 /// (input, IME, selection gestures, undo), its [TextSpan]s carry the token and bracket-pair colours, kept per line
 /// and rebuilt only for re-tokenized lines; two painters draw what Monaco renders around the text: the margin (glyph
 /// margin, line numbers, folding space), the current-line border, indent guides, bracket-match boxes, the selection
@@ -21,12 +22,15 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Colors;
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../design/dify_tokens.g.dart' show DifyColors;
 import 'document.dart';
+import 'paragraph.dart';
+
+import 'package:re_editor/re_editor.dart' as re;
+
 import 'editing.dart';
 import 'language.dart';
 import 'monarch/vs_theme.dart';
@@ -55,11 +59,31 @@ class CodeEditorMetrics {
 
   /// The platform's metrics, the text in the current theme's foreground (vs / vs-dark).
   factory CodeEditorMetrics.of(TargetPlatform platform) => _cache[(platform, DifyColors.isDark)] ??= () {
-    final (String family, List<String> fallback, double size, double ratio) = switch (platform) {
-      TargetPlatform.macOS || TargetPlatform.iOS => ('Menlo', const ['Monaco', 'Courier New', 'monospace'], 12.0, 1.5),
-      TargetPlatform.windows => ('Consolas', const ['Courier New', 'monospace'], 14.0, 1.35),
+    final (
+      String family,
+      List<String> fallback,
+      double size,
+      double ratio,
+    ) = switch (platform) {
+      TargetPlatform.macOS || TargetPlatform.iOS => (
+        'Menlo',
+        const ['Monaco', 'Courier New', 'monospace'],
+        12.0,
+        1.5,
+      ),
+      TargetPlatform.windows => (
+        'Consolas',
+        const ['Courier New', 'monospace'],
+        14.0,
+        1.35,
+      ),
       // 'Droid Sans Mono' is rarely installed; Chromium then takes fontconfig's monospace, DejaVu Sans Mono (bundled).
-      _ => (codeEditorFontFamily, const ['Droid Sans Mono', 'monospace'], 14.0, 1.35),
+      _ => (
+        codeEditorFontFamily,
+        const ['Droid Sans Mono', 'monospace'],
+        14.0,
+        1.35,
+      ),
     };
     final lineHeight = (size * ratio).roundToDouble();
     final style = TextStyle(
@@ -71,7 +95,10 @@ class CodeEditorMetrics {
       color: VsTheme.foreground,
       fontWeight: FontWeight.normal,
       letterSpacing: 0,
-      fontFeatures: const [FontFeature.disable('liga'), FontFeature.disable('calt')],
+      fontFeatures: const [
+        FontFeature.disable('liga'),
+        FontFeature.disable('calt'),
+      ],
     );
     final strut = StrutStyle(
       fontFamily: family,
@@ -81,7 +108,12 @@ class CodeEditorMetrics {
       leadingDistribution: TextLeadingDistribution.even,
       forceStrutHeight: true,
     );
-    return CodeEditorMetrics._(style, strut, lineHeight, platform == TargetPlatform.linux);
+    return CodeEditorMetrics._(
+      style,
+      strut,
+      lineHeight,
+      platform == TargetPlatform.linux,
+    );
   }();
 
   static final _cache = <(TargetPlatform, bool), CodeEditorMetrics>{};
@@ -117,14 +149,17 @@ class _CodeController extends TextEditingController {
   final _lineSpans = Expando<_LineSpan>();
   final _styles = <(Color, bool, bool), TextStyle>{};
 
-  TextStyle _style(Color c, TokenStyle t) => _styles.putIfAbsent((
-    c,
-    t.italic,
-    t.bold,
-  ), () => TextStyle(color: c, fontStyle: t.fontStyle, fontWeight: t.fontWeight));
+  TextStyle _style(Color c, TokenStyle t) => _styles.putIfAbsent(
+    (c, t.italic, t.bold),
+    () => TextStyle(color: c, fontStyle: t.fontStyle, fontWeight: t.fontWeight),
+  );
 
   @override
-  TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
     doc.setText(text);
     final lines = doc.lines;
     final composing = withComposing && value.isComposingRangeValid ? value.composing : null;
@@ -134,7 +169,9 @@ class _CodeController extends TextEditingController {
       final start = doc.lineStart(i);
       final end = start + lines[i].length;
       if (composing != null && composing.start <= end && composing.end >= start) {
-        children.add(_buildLine(i, (composing.start - start, composing.end - start)));
+        children.add(
+          _buildLine(i, (composing.start - start, composing.end - start)),
+        );
         continue;
       }
       final tokens = doc.tokensOf(i);
@@ -148,7 +185,9 @@ class _CodeController extends TextEditingController {
         continue;
       }
       final span = _buildLine(i, null);
-      if (tokens.isNotEmpty) _lineSpans[tokens] = _LineSpan(lines[i], levels, span);
+      if (tokens.isNotEmpty) {
+        _lineSpans[tokens] = _LineSpan(lines[i], levels, span);
+      }
       children.add(span);
     }
     return TextSpan(style: style, children: children);
@@ -172,7 +211,9 @@ class _CodeController extends TextEditingController {
       final tokenStyle = _style(ts.foreground, ts);
       final end = t + 1 < tokens.length ? tokens[t + 1].offset : text.length;
       var at = tokens[t].offset;
-      if (t == 0 && at > 0) add(0, _style(VsTheme.foreground, TokenStyle(VsTheme.foreground)));
+      if (t == 0 && at > 0) {
+        add(0, _style(VsTheme.foreground, TokenStyle(VsTheme.foreground)));
+      }
       add(at, tokenStyle);
       while (b < brackets.length && brackets[b].column < end) {
         final br = brackets[b++];
@@ -186,10 +227,15 @@ class _CodeController extends TextEditingController {
         at = br.column + 1;
       }
     }
-    if (tokens.isEmpty) add(0, _style(VsTheme.foreground, TokenStyle(VsTheme.foreground)));
+    if (tokens.isEmpty) {
+      add(0, _style(VsTheme.foreground, TokenStyle(VsTheme.foreground)));
+    }
     final cuts = <int>{
       for (final r in runs) r.$1,
-      if (underline != null) ...[underline.$1.clamp(0, text.length), underline.$2.clamp(0, text.length)],
+      if (underline != null) ...[
+        underline.$1.clamp(0, text.length),
+        underline.$2.clamp(0, text.length),
+      ],
       text.length,
     }.toList()..sort();
     final spans = <TextSpan>[];
@@ -220,24 +266,19 @@ class _LineSpan {
   final bool dark;
 }
 
-class _GestureDelegate implements TextSelectionGestureDetectorBuilderDelegate {
-  _GestureDelegate(this.editableTextKey);
-  @override
-  final GlobalKey<EditableTextState> editableTextKey;
-  @override
-  bool get forcePressEnabled => false;
-  @override
-  bool get selectionEnabled => true;
-}
-
 /// Turns typed characters into Monaco's interceptors (see [CodeEditing]).
 class _MonacoFormatter extends TextInputFormatter {
   _MonacoFormatter(this.state);
   final CodeEditorViewState state;
 
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    if (state._bypassFormatter || newValue.composing.isValid || oldValue.text == newValue.text) return newValue;
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.composing.isValid || oldValue.text == newValue.text) {
+      return newValue;
+    }
     final sel = oldValue.selection;
     if (!sel.isValid) return newValue;
     state._doc.setText(oldValue.text);
@@ -248,14 +289,23 @@ class _MonacoFormatter extends TextInputFormatter {
         newValue.selection.baseOffset == sel.start + insLen &&
         newValue.text.startsWith(oldValue.text.substring(0, sel.start)) &&
         newValue.text.endsWith(oldValue.text.substring(sel.end))) {
-      return editing.type(oldValue, newValue.text.substring(sel.start, sel.start + insLen), state._autoClosed) ??
+      return editing.type(
+            oldValue,
+            newValue.text.substring(sel.start, sel.start + insLen),
+            state._autoClosed,
+          ) ??
           newValue;
     }
     if (sel.isCollapsed &&
         sel.baseOffset > 0 &&
         newValue.selection.isCollapsed &&
         newValue.selection.baseOffset == sel.baseOffset - 1 &&
-        newValue.text == oldValue.text.replaceRange(sel.baseOffset - 1, sel.baseOffset, '')) {
+        newValue.text ==
+            oldValue.text.replaceRange(
+              sel.baseOffset - 1,
+              sel.baseOffset,
+              '',
+            )) {
       return editing.backspace(oldValue, state._autoClosed) ?? newValue;
     }
     return newValue;
@@ -287,75 +337,89 @@ class CodeEditorViewState extends State<CodeEditorView> {
   late CodeDocument _doc;
   late CodeEditing _editing;
   late _CodeController _controller;
+  late _NativeCodeController _native;
   final _autoClosed = AutoClosedPairs();
-  final _editableKey = GlobalKey<EditableTextState>();
-  late final _gestures = TextSelectionGestureDetectorBuilder(delegate: _GestureDelegate(_editableKey));
   final _scroll = ScrollController();
+  final _horizontal = ScrollController();
+  late final re.CodeScrollController _codeScroll = re.CodeScrollController(
+    verticalScroller: _scroll,
+    horizontalScroller: _horizontal,
+  );
   FocusNode? _ownFocus;
   FocusNode get _focus => widget.focusNode ?? (_ownFocus ??= FocusNode());
-  final _caretOn = ValueNotifier<bool>(false);
+  final _caretOn = ValueNotifier(false), _hovering = ValueNotifier(false);
   Timer? _blink;
-  final _hovering = ValueNotifier<bool>(false);
-  bool _bypassFormatter = false;
+  bool _syncing = false, _transaction = false;
   String _lastText = '';
-  CodeEditorMetrics get _metrics => CodeEditorMetrics.of(defaultTargetPlatform);
   double _viewportHeight = 0;
   final _layout = _LineLayout();
-
-  /// The editor's text.
+  final _geometry = _CodeGeometry();
+  late final _toolbar = _CodeToolbar(this);
+  CodeEditorMetrics get _metrics => CodeEditorMetrics.of(defaultTargetPlatform);
   String get text => _controller.text;
-
-  /// The document behind the editor (tokens, brackets, indentation).
   CodeDocument get document => _doc;
-
   TextEditingController get controller => _controller;
-
-  /// Monaco's `getContentHeight()`: all (wrapped) lines plus the room to scroll the last line to the top.
-  double get contentHeight {
-    final lh = _metrics.lineHeight;
-    final box = _editableKey.currentState?.renderEditable;
-    final lines = box != null && box.hasSize ? (box.size.height / lh).round() : _doc.lineCount;
-    return lines * lh + math.max(0, _viewportHeight - lh);
-  }
-
+  double get contentHeight => _geometry.size.height + math.max(0, _viewportHeight - _metrics.lineHeight);
   @override
   void initState() {
     super.initState();
-    _reset(widget.value);
+    _create(widget.value);
     _focus.addListener(_onFocus);
-    _focus.onKeyEvent = _onKey;
+    PaintingBinding.instance.systemFonts.addListener(_fontsChanged);
   }
 
-  void _reset(String value) {
-    final text = value.replaceAll(RegExp(r'\r\n?'), '\n');
-    _doc = CodeDocument(widget.language, text);
+  void _fontsChanged() {
+    CodeEditorMetrics._cache.clear();
+    _geometry.clear();
+    if (mounted) setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _native.forceRepaint();
+    });
+  }
+
+  void _create(String value) {
+    final normalized = value.replaceAll(RegExp(r'\r\n?'), '\n');
+    _doc = CodeDocument(widget.language, normalized);
     _editing = CodeEditing(_doc);
-    _controller = _CodeController(_doc, text)..addListener(_onValue);
-    _lastText = text;
+    _controller = _CodeController(_doc, normalized)..selection = const TextSelection.collapsed(offset: 0);
+    _lastText = normalized;
+    _native = _NativeCodeController(
+      this,
+      re.CodeLineEditingController.fromText(
+        normalized,
+        re.CodeLineOptions(indentSize: _doc.tabSize),
+      ),
+    );
+    _native.addListener(_nativeChanged);
+    _controller.addListener(_mirrorChanged);
   }
 
   @override
   void didUpdateWidget(CodeEditorView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final old = oldWidget;
-    if (old.focusNode != widget.focusNode) {
-      (old.focusNode ?? _ownFocus)?.removeListener(_onFocus);
+    if (oldWidget.focusNode != widget.focusNode) {
+      (oldWidget.focusNode ?? _ownFocus)?.removeListener(_onFocus);
       _focus.addListener(_onFocus);
-      _focus.onKeyEvent = _onKey;
     }
-    if (old.language != widget.language) {
-      final previous = _controller;
-      _reset(previous.text);
-      _controller.selection = previous.selection;
-      // EditableText lets go of the old controller in this frame's rebuild.
-      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+    if (oldWidget.language != widget.language) {
+      final previousNative = _native, previousMirror = _controller;
+      previousNative.removeListener(_nativeChanged);
+      previousMirror.removeListener(_mirrorChanged);
+      _create(widget.value);
+      _geometry.clear();
+      _autoClosed.clear();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        previousNative.dispose();
+        previousMirror.dispose();
+      });
     }
     final value = widget.value.replaceAll(RegExp(r'\r\n?'), '\n');
     if (value != _controller.text) {
-      // @monaco-editor/react: setValue when read-only (cursor to the start), else a full-range edit (cursor to its end).
       _controller.value = TextEditingValue(
         text: value,
-        selection: TextSelection.collapsed(offset: widget.readOnly ? 0 : value.length),
+        selection: TextSelection.collapsed(
+          offset: widget.readOnly ? 0 : value.length,
+        ),
       );
     }
   }
@@ -363,40 +427,137 @@ class CodeEditorViewState extends State<CodeEditorView> {
   @override
   void dispose() {
     _blink?.cancel();
+    PaintingBinding.instance.systemFonts.removeListener(_fontsChanged);
     _focus.removeListener(_onFocus);
-    _focus.onKeyEvent = null;
     _ownFocus?.dispose();
+    _native.removeListener(_nativeChanged);
+    _controller.removeListener(_mirrorChanged);
+    _native.dispose();
     _controller.dispose();
+    _codeScroll.dispose();
     _scroll.dispose();
+    _horizontal.dispose();
     _caretOn.dispose();
     _hovering.dispose();
+    _geometry.clear();
+    _toolbar.dispose();
     super.dispose();
   }
 
-  void _onValue() {
-    final text = _controller.text;
-    final sel = _controller.selection;
-    _autoClosed.update(_lastText, text, sel.isValid ? sel.extentOffset : -1);
+  TextEditingValue _global(re.CodeLineEditingValue value) {
+    final lines = value.codeLines;
+    int at(int line, int offset) {
+      var result = offset;
+      for (var i = 0; i < line; i++) {
+        result += lines[i].length + 1;
+      }
+      return result;
+    }
+
+    final selection = value.selection;
+    final composing = value.composing;
+    return TextEditingValue(
+      text: lines.asString(re.TextLineBreak.lf, false),
+      selection: TextSelection(
+        baseOffset: at(selection.baseIndex, selection.baseOffset),
+        extentOffset: at(selection.extentIndex, selection.extentOffset),
+        affinity: selection.extentAffinity,
+      ),
+      composing: composing.isValid
+          ? TextRange(
+              start: at(selection.baseIndex, composing.start),
+              end: at(selection.baseIndex, composing.end),
+            )
+          : TextRange.empty,
+    );
+  }
+
+  re.CodeLineEditingValue _local(TextEditingValue value) {
+    final lines = re.CodeLines.fromText(value.text);
+    ({int index, int offset}) at(int position) {
+      var offset = position.clamp(0, value.text.length);
+      var index = 0;
+      while (index + 1 < lines.length && offset > lines[index].length) {
+        offset -= lines[index].length + 1;
+        index++;
+      }
+      return (index: index, offset: offset);
+    }
+
+    final a = at(value.selection.isValid ? value.selection.baseOffset : 0),
+        b = at(value.selection.isValid ? value.selection.extentOffset : 0);
+    final c = value.composing;
+    var start = 0;
+    for (var i = 0; i < a.index; i++) {
+      start += lines[i].length + 1;
+    }
+    return re.CodeLineEditingValue(
+      codeLines: lines,
+      selection: re.CodeLineSelection(
+        baseIndex: a.index,
+        baseOffset: a.offset,
+        extentIndex: b.index,
+        extentOffset: b.offset,
+        baseAffinity: value.selection.affinity,
+        extentAffinity: value.selection.affinity,
+      ),
+      composing: c.isValid ? TextRange(start: c.start - start, end: c.end - start) : TextRange.empty,
+    );
+  }
+
+  void _mirrorChanged() {
+    if (!_syncing) {
+      _syncing = true;
+      _native.value = _local(_controller.value);
+      _syncing = false;
+    }
+    final current = _controller.value;
+    _autoClosed.update(
+      _lastText,
+      current.text,
+      current.selection.isValid ? current.selection.extentOffset : -1,
+    );
     final digits = _doc.lineCount.toString().length;
-    _lastText = text;
-    _doc.setText(text);
+    _lastText = current.text;
+    _doc.setText(current.text);
     _restartBlink();
-    // The painters and EditableText follow the controller; only the margin width needs a new layout.
-    if (_doc.lineCount.toString().length != digits) setState(() {});
+    if (mounted && digits != _doc.lineCount.toString().length) setState(() {});
+  }
+
+  void _nativeChanged() {
+    if (_syncing) return;
+    if (_transaction) {
+      _doc.setText(_native.text);
+      return;
+    }
+    final before = _controller.text;
+    _syncing = true;
+    _controller.value = _global(_native.value);
+    _syncing = false;
+    if (before != _controller.text) widget.onChanged?.call(_controller.text);
   }
 
   void _onFocus() => _restartBlink();
-
-  /// Monaco's cursor: visible, then toggling every 500 ms; solid when read-only; hidden without focus.
   void _restartBlink() {
     _blink?.cancel();
     _caretOn.value = _focus.hasFocus;
     if (!_focus.hasFocus || widget.readOnly) return;
-    _blink = Timer.periodic(const Duration(milliseconds: 500), (_) => _caretOn.value = !_caretOn.value);
+    _blink = Timer.periodic(
+      const Duration(milliseconds: 500),
+      (_) => _caretOn.value = !_caretOn.value,
+    );
+  }
+
+  void _apply(TextEditingValue value) {
+    if (value == _controller.value) return;
+    _native.value = _local(value);
+    _native.makeCursorCenterIfInvisible();
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (widget.readOnly || event is KeyUpEvent) return KeyEventResult.ignored;
+    if (widget.readOnly || event is KeyUpEvent) {
+      return KeyEventResult.ignored;
+    }
     final keys = HardwareKeyboard.instance;
     final mod = defaultTargetPlatform == TargetPlatform.macOS ? keys.isMetaPressed : keys.isControlPressed;
     TextEditingValue Function(TextEditingValue)? op;
@@ -410,163 +571,140 @@ class CodeEditorViewState extends State<CodeEditorView> {
     } else if (mod && key == LogicalKeyboardKey.bracketLeft) {
       op = (v) => _editing.shift(v, unshift: true);
     }
-    if (op == null) return KeyEventResult.ignored;
+    if (op == null) {
+      return KeyEventResult.ignored;
+    }
     _apply(op(_controller.value));
     return KeyEventResult.handled;
-  }
-
-  /// Applies a keyboard command's edit as user input (EditableText reports it to onChanged and its undo history).
-  void _apply(TextEditingValue value) {
-    if (value == _controller.value) return;
-    _bypassFormatter = true;
-    _editableKey.currentState?.userUpdateTextEditingValue(value, SelectionChangedCause.keyboard);
-    _bypassFormatter = false;
   }
 
   @override
   Widget build(BuildContext context) {
     final m = _metrics;
-    final lh = m.lineHeight;
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth.isFinite ? constraints.maxWidth : 400.0;
         _viewportHeight = constraints.maxHeight.isFinite ? constraints.maxHeight : 0;
-        final contentLeft = m.contentLeft(_doc.lineCount);
-        final contentWidth = math.max(0.0, width - contentLeft);
-        final columns = math.max(
-          1,
-          ((contentWidth - CodeEditorMetrics.verticalScrollbarWidth - 2) / m.charWidth).floor(),
-        );
-        // RenderEditable keeps 3 px (caret gap + width) beside the text; the rest wraps at Monaco's column.
-        final editableWidth = columns * m.charWidth + 3 + 0.5;
-        final extra = math.max(0.0, _viewportHeight - lh);
-        final editable = EditableText(
-          contextMenuBuilder: difySelectionToolbar,
-          key: _editableKey,
-          controller: _controller,
-          focusNode: _focus,
-          readOnly: widget.readOnly,
-          style: m.style,
-          strutStyle: m.strut,
-          textScaler: TextScaler.noScaling,
-          cursorColor: Colors.transparent,
-          backgroundCursorColor: Colors.transparent,
-          showCursor: false,
-          maxLines: null,
-          keyboardType: TextInputType.multiline,
-          textInputAction: TextInputAction.newline,
-          autocorrect: false,
-          enableSuggestions: false,
-          smartDashesType: SmartDashesType.disabled,
-          smartQuotesType: SmartQuotesType.disabled,
-          rendererIgnoresPointer: true,
-          scrollPadding: EdgeInsets.zero,
-          selectionHeightStyle: ui.BoxHeightStyle.strut,
-          inputFormatters: widget.readOnly ? null : [_MonacoFormatter(this)],
-          onChanged: widget.onChanged,
-          mouseCursor: SystemMouseCursors.text,
-        );
-        final paintState = _PaintState(this, contentLeft, width);
-        final content = SizedBox(
-          width: width,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: RepaintBoundary(
-                  child: CustomPaint(painter: _BackPainter(paintState, Listenable.merge([_controller, _focus]))),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.only(left: contentLeft),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.text,
-                  child: _gestures.buildGestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: extra),
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: SizedBox(width: editableWidth, child: editable),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: contentLeft,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapDown: (d) => _selectLineAt(d.localPosition.dy),
-                ),
-              ),
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: RepaintBoundary(
-                    child: CustomPaint(painter: _CaretPainter(paintState, Listenable.merge([_controller, _caretOn]))),
-                  ),
-                ),
-              ),
-            ],
+        final left = m.contentLeft(_doc.lineCount);
+        _geometry.prepare(
+          this,
+          math.max(
+            m.charWidth,
+            width - left - CodeEditorMetrics.verticalScrollbarWidth - 2,
           ),
         );
-        return MouseRegion(
-          onEnter: (_) => _hovering.value = true,
-          onExit: (_) => _hovering.value = false,
-          child: ClipRect(
-            child: Stack(
-              children: [
-                ValueListenableBuilder(
+        final state = _PaintState(this, left, width);
+        final repaint = Listenable.merge([_controller, _focus, _scroll]);
+        Widget paint(CustomPainter painter) => Positioned.fill(
+          child: IgnorePointer(
+            child: RepaintBoundary(
+              child: CustomPaint(painter: _ScrollPainter(painter, _scroll)),
+            ),
+          ),
+        );
+        final editor = re.CodeEditor(
+          controller: _native,
+          scrollController: _codeScroll,
+          focusNode: _focus,
+          readOnly: widget.readOnly,
+          autofocus: false,
+          wordWrap: true,
+          scrollBeyondLastLine: true,
+          chunkAnalyzer: const re.NonCodeChunkAnalyzer(),
+          autocompleteSymbols: false,
+          padding: EdgeInsets.only(
+            right: CodeEditorMetrics.verticalScrollbarWidth + 2,
+            bottom: 0,
+          ),
+          margin: EdgeInsets.zero,
+          verticalScrollbarWidth: CodeEditorMetrics.verticalScrollbarWidth,
+          style: re.CodeEditorStyle(
+            fontFamily: m.style.fontFamily,
+            fontFamilyFallback: m.style.fontFamilyFallback,
+            fontSize: m.style.fontSize,
+            fontHeight: m.style.height,
+            textColor: VsTheme.foreground,
+            backgroundColor: Colors.transparent,
+            selectionColor: Colors.transparent,
+            cursorColor: Colors.transparent,
+            cursorLineColor: Colors.transparent,
+          ),
+          indicatorBuilder: (context, controller, chunks, notifier) => SizedBox(
+            width: left,
+            height: _viewportHeight,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (d) => _selectLineAt(
+                d.localPosition.dy + (_scroll.hasClients ? _scroll.offset : 0),
+              ),
+            ),
+          ),
+          scrollbarBuilder: (context, child, details) => details.direction == AxisDirection.down
+              ? ValueListenableBuilder(
                   valueListenable: _hovering,
-                  builder: (context, hovering, child) => DifyEditorScrollbar(
+                  builder: (context, hovered, _) => DifyEditorScrollbar(
                     controller: _scroll,
-                    visible: hovering,
+                    visible: hovered,
                     width: CodeEditorMetrics.verticalScrollbarWidth,
                     color: VsTheme.scrollbarSlider,
                     hoverColor: VsTheme.scrollbarSliderHover,
                     activeColor: VsTheme.scrollbarSliderActive,
-                    child: child!,
+                    child: child,
                   ),
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false, overscroll: false),
-                    child: SingleChildScrollView(
-                      controller: _scroll,
-                      physics: const ClampingScrollPhysics(),
-                      child: content,
-                    ),
+                )
+              : child,
+          shortcutOverrideActions: {
+            re.CodeShortcutCommentIntent: CallbackAction<re.CodeShortcutCommentIntent>(
+              onInvoke: (_) {
+                if (!widget.readOnly) _apply(_editing.toggleLineComment(_controller.value));
+                return null;
+              },
+            ),
+          },
+          toolbarController: _toolbar,
+        );
+        return Focus(
+          onKeyEvent: _onKey,
+          canRequestFocus: false,
+          child: MouseRegion(
+            onEnter: (_) => _hovering.value = true,
+            onExit: (_) => _hovering.value = false,
+            child: ClipRect(
+              child: Stack(
+                children: [
+                  paint(_BackPainter(state, repaint)),
+                  editor,
+                  paint(
+                    _CaretPainter(state, Listenable.merge([repaint, _caretOn])),
                   ),
-                ),
-                // Monaco's decorations overview ruler on the scrollbar: its left border and the cursor's place (read-only
-                // viewers; see the current line).
-                if (widget.readOnly)
                   Positioned(
+                    left: 0,
                     right: 0,
                     top: 0,
-                    bottom: 0,
-                    width: CodeEditorMetrics.verticalScrollbarWidth,
+                    height: 6,
                     child: IgnorePointer(
-                      child: CustomPaint(
-                        painter: _OverviewRulerPainter(paintState, Listenable.merge([_controller, _scroll])),
+                      child: ListenableBuilder(
+                        listenable: _scroll,
+                        builder: (context, _) => _scroll.hasClients && _scroll.offset > 0
+                            ? const DecoratedBox(decoration: BoxDecoration(gradient: _scrollShadow))
+                            : const SizedBox.shrink(),
                       ),
                     ),
                   ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  height: 6,
-                  child: IgnorePointer(
-                    child: ListenableBuilder(
-                      listenable: _scroll,
-                      builder: (context, _) => _scroll.hasClients && _scroll.offset > 0
-                          ? const DecoratedBox(decoration: BoxDecoration(gradient: _scrollShadow))
-                          : const SizedBox.shrink(),
+                  if (widget.readOnly)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: CodeEditorMetrics.verticalScrollbarWidth,
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: _OverviewRulerPainter(state, repaint),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -574,15 +712,229 @@ class CodeEditorViewState extends State<CodeEditorView> {
     );
   }
 
-  /// A click in the margin selects the line (Monaco's line-number click).
   void _selectLineAt(double y) {
-    final box = _editableKey.currentState?.renderEditable;
-    if (box == null) return;
-    final line = _layout.lineAtY(this, box, y);
+    final line = _layout.lineAtY(this, _geometry, y);
     final start = _doc.lineStart(line);
     final end = line + 1 < _doc.lineCount ? _doc.lineStart(line + 1) : _doc.lineEnd(line);
     _focus.requestFocus();
     _controller.selection = TextSelection(baseOffset: start, extentOffset: end);
+  }
+}
+
+class _NativeCodeController extends re.CodeLineEditingControllerDelegate {
+  _NativeCodeController(this.owner, re.CodeLineEditingController source) : super(delegate: source);
+  final CodeEditorViewState owner;
+  @override
+  re.CodeParagraphBuilder? get paragraphBuilder =>
+      (span, style, width, maxLength) => owner._geometry.forSpan(span);
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    required int index,
+    required TextSpan textSpan,
+    required TextStyle style,
+  }) {
+    owner._geometry.prepare(owner, owner._geometry.size.width);
+    return owner._geometry.spanAt(index);
+  }
+
+  @override
+  void edit(TextEditingValue next) {
+    final old = owner._controller.value;
+    owner._transaction = true;
+    try {
+      super.edit(next);
+      final plain = owner._global(value);
+      final formatted = _MonacoFormatter(owner).formatEditUpdate(old, plain);
+      if (formatted != plain) value = owner._local(formatted);
+    } finally {
+      owner._transaction = false;
+      owner._nativeChanged();
+    }
+  }
+
+  @override
+  void applyNewLine() => owner._apply(owner._editing.enter(owner._controller.value));
+  @override
+  void applyIndent() => owner._apply(owner._editing.tab(owner._controller.value));
+  @override
+  void applyOutdent() => owner._apply(
+    owner._editing.shift(owner._controller.value, unshift: true),
+  );
+  @override
+  void deleteBackward() {
+    final current = owner._controller.value;
+    final replacement = owner._editing.backspace(current, owner._autoClosed);
+    if (replacement != null) {
+      owner._apply(replacement);
+    } else {
+      super.deleteBackward();
+    }
+  }
+}
+
+class _ScrollPainter extends CustomPainter {
+  _ScrollPainter(this.inner, this.scroll) : super(repaint: Listenable.merge([inner, scroll]));
+  final CustomPainter inner;
+  final ScrollController scroll;
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(0, -(scroll.hasClients ? scroll.offset : 0.0));
+    inner.paint(canvas, size);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_ScrollPainter old) => inner.shouldRepaint(old.inner) || old.scroll != scroll;
+}
+
+class _CodeToolbar implements re.SelectionToolbarController {
+  _CodeToolbar(this.owner);
+  final CodeEditorViewState owner;
+  FocusNode get focus => owner._focus;
+  bool get readOnly => owner.widget.readOnly;
+  void dispose() => _context.remove();
+  final _context = ContextMenuController();
+  @override
+  void show({
+    required BuildContext context,
+    required re.CodeLineEditingController controller,
+    required TextSelectionToolbarAnchors anchors,
+    Rect? renderRect,
+    required LayerLink layerLink,
+    required ValueNotifier<bool> visibility,
+  }) {
+    _context.show(
+      context: context,
+      contextMenuBuilder: (_) => DifySelectionMenu(
+        anchors: anchors,
+        focusParent: focus,
+        buttonItems: [
+          if (!readOnly && !controller.selection.isCollapsed)
+            ContextMenuButtonItem(
+              type: ContextMenuButtonType.cut,
+              onPressed: controller.cut,
+            ),
+          if (!controller.selection.isCollapsed)
+            ContextMenuButtonItem(
+              type: ContextMenuButtonType.copy,
+              onPressed: () => unawaited(controller.copy()),
+            ),
+          if (!readOnly)
+            ContextMenuButtonItem(
+              type: ContextMenuButtonType.paste,
+              onPressed: controller.paste,
+            ),
+          ContextMenuButtonItem(
+            type: ContextMenuButtonType.selectAll,
+            onPressed: controller.selectAll,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void hide(BuildContext context) => _context.remove();
+}
+
+class _CodeGeometry {
+  final paragraphs = <WrappedParagraph>[];
+  final _spans = <TextSpan>[];
+  final _indices = Expando<int>();
+  int _version = -1;
+  double _width = -1;
+  TextStyle? _style;
+  TextRange _composing = TextRange.empty;
+  Size get size => Size(math.max(0.0, _width), paragraphs.fold(0, (sum, p) => sum + p.height));
+  bool get hasSize => paragraphs.isNotEmpty;
+  void clear() {
+    final retired = paragraphs.toList();
+    // Previously laid out render objects may still paint in the current frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final p in retired) {
+        p.dispose();
+      }
+    });
+    paragraphs.clear();
+    _spans.clear();
+    _version = -1;
+  }
+
+  void prepare(CodeEditorViewState owner, double width) {
+    final style = owner._metrics.style, composing = owner._controller.value.composing;
+    if (_version == owner._doc.version && _width == width && _style == style && _composing == composing) {
+      return;
+    }
+    clear();
+    owner._layout._version = -1;
+    _version = owner._doc.version;
+    _width = width;
+    _style = style;
+    _composing = composing;
+    for (var i = 0; i < owner._doc.lineCount; i++) {
+      final start = owner._doc.lineStart(i), end = owner._doc.lineEnd(i);
+      final underline = composing.isValid && composing.start <= end && composing.end >= start
+          ? (composing.start - start, composing.end - start)
+          : null;
+      final span = TextSpan(
+        style: style,
+        children: [owner._controller._buildLine(i, underline)],
+      );
+      _indices[span] = i;
+      _spans.add(span);
+      paragraphs.add(
+        WrappedParagraph(span, style, width, tabSize: owner._doc.tabSize),
+      );
+    }
+    _document = owner._doc;
+  }
+
+  late CodeDocument _document;
+  TextSpan spanAt(int index) => _spans[index];
+  WrappedParagraph forSpan(TextSpan span) => paragraphs[_indices[span]!];
+  Rect getLocalRectForCaret(TextPosition position) {
+    final index = _document.lineAt(
+      position.offset.clamp(0, _document.text.length),
+    );
+    final p = paragraphs[index];
+    final offset = p.getOffset(
+      TextPosition(
+        offset: position.offset - _document.lineStart(index),
+        affinity: position.affinity,
+      ),
+    );
+    final y = paragraphs.take(index).fold(0.0, (sum, p) => sum + p.height);
+    return Rect.fromLTWH(offset.dx, offset.dy + y, 1, p.preferredLineHeight);
+  }
+
+  List<ui.TextBox> getBoxesForSelection(TextSelection selection) {
+    final result = <ui.TextBox>[];
+    var top = 0.0;
+    for (var i = 0; i < paragraphs.length; i++) {
+      final start = _document.lineStart(i), end = _document.lineEnd(i), p = paragraphs[i];
+      if (selection.start < end && selection.end > start) {
+        for (final rect in p.getRangeRects(
+          TextRange(
+            start: math.max(start, selection.start) - start,
+            end: math.min(end, selection.end) - start,
+          ),
+        )) {
+          result.add(
+            ui.TextBox.fromLTRBD(
+              rect.left,
+              rect.top + top,
+              rect.right,
+              rect.bottom + top,
+              TextDirection.ltr,
+            ),
+          );
+        }
+      }
+      top += p.height;
+    }
+    return result;
   }
 }
 
@@ -600,7 +952,7 @@ class _LineLayout {
   List<double> tops = const [];
   List<int> rows = const [];
 
-  void ensure(CodeEditorViewState s, RenderEditable box) {
+  void ensure(CodeEditorViewState s, _CodeGeometry box) {
     if (_version == s._doc.version && _width == box.size.width) return;
     final lh = s._metrics.lineHeight;
     final doc = s._doc;
@@ -621,10 +973,9 @@ class _LineLayout {
     _width = box.size.width;
   }
 
-  static int _row(RenderEditable box, TextPosition p, double lh) =>
-      (box.getLocalRectForCaret(p).center.dy / lh).floor();
+  static int _row(_CodeGeometry box, TextPosition p, double lh) => (box.getLocalRectForCaret(p).center.dy / lh).floor();
 
-  int lineAtY(CodeEditorViewState s, RenderEditable box, double y) {
+  int lineAtY(CodeEditorViewState s, _CodeGeometry box, double y) {
     ensure(s, box);
     var line = 0;
     while (line + 1 < tops.length && tops[line + 1] <= y) {
@@ -639,16 +990,17 @@ class _PaintState {
   final CodeEditorViewState view;
   final double contentLeft, width;
 
-  RenderEditable? get box {
-    final b = view._editableKey.currentState?.renderEditable;
-    return b != null && b.hasSize ? b : null;
-  }
+  _CodeGeometry? get box => view._geometry.hasSize ? view._geometry : null;
 
   /// The visual row of the cursor (selection extent).
-  int caretRow(RenderEditable box) {
+  int caretRow(_CodeGeometry box) {
     final sel = view._controller.selection;
     final lh = view._metrics.lineHeight;
-    return _LineLayout._row(box, TextPosition(offset: sel.extentOffset, affinity: sel.affinity), lh);
+    return _LineLayout._row(
+      box,
+      TextPosition(offset: sel.extentOffset, affinity: sel.affinity),
+      lh,
+    );
   }
 }
 
@@ -663,7 +1015,10 @@ class _OverviewRulerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final px = 1 / ui.PlatformDispatcher.instance.implicitView!.devicePixelRatio;
-    canvas.drawRect(Rect.fromLTWH(0, 0, px, size.height), Paint()..color = VsTheme.overviewRulerBorder);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, px, size.height),
+      Paint()..color = VsTheme.overviewRulerBorder,
+    );
     final box = s.box;
     final sel = s.view._controller.selection;
     final lh = s.view._metrics.lineHeight;
@@ -671,7 +1026,10 @@ class _OverviewRulerPainter extends CustomPainter {
     final content = box?.size.height ?? lh;
     final scrollHeight = content + math.max(0.0, size.height - lh);
     final y = scrollHeight <= 0 ? 0.0 : (row * lh * size.height / scrollHeight).clamp(0.0, size.height - 2);
-    canvas.drawRect(Rect.fromLTWH(px, y, size.width - px, 2), Paint()..color = VsTheme.overviewRulerCursor);
+    canvas.drawRect(
+      Rect.fromLTWH(px, y, size.width - px, 2),
+      Paint()..color = VsTheme.overviewRulerCursor,
+    );
   }
 
   @override
@@ -681,7 +1039,7 @@ class _OverviewRulerPainter extends CustomPainter {
 class _BackPainter extends CustomPainter {
   _BackPainter(this.s, Listenable repaint) : super(repaint: repaint);
   final _PaintState s;
-  static final _numbers = <(String, bool, TargetPlatform), TextPainter>{};
+  static final _numbers = <(String, bool, TargetPlatform, Color), TextPainter>{};
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -704,7 +1062,12 @@ class _BackPainter extends CustomPainter {
       // Dify's editable editors in node panels lay Monaco out wider than their box, which hides both: there the
       // line runs to the box's edge.
       final end = view.widget.readOnly ? CodeEditorMetrics.verticalScrollbarWidth : 0.0;
-      final r = Rect.fromLTWH(left, caretRow * lh, math.max(0.0, s.width - end - left), lh).deflate(1);
+      final r = Rect.fromLTWH(
+        left,
+        caretRow * lh,
+        math.max(0.0, s.width - end - left),
+        lh,
+      ).deflate(1);
       canvas.drawRect(
         r,
         Paint()
@@ -726,7 +1089,10 @@ class _BackPainter extends CustomPainter {
         if (x > maxIndentLeft) break;
         final isActive = active != null && active.startLine <= i && i <= active.endLine && lvl == active.indent;
         guidePaint.color = isActive ? VsTheme.activeIndentGuide : VsTheme.indentGuide;
-        canvas.drawRect(Rect.fromLTWH(left + x, layout.tops[i], 1, layout.rows[i] * lh), guidePaint);
+        canvas.drawRect(
+          Rect.fromLTWH(left + x, layout.tops[i], 1, layout.rows[i] * lh),
+          guidePaint,
+        );
       }
     }
 
@@ -736,9 +1102,16 @@ class _BackPainter extends CustomPainter {
       if (pair != null) {
         for (final o in [pair.open, pair.close]) {
           final a = box.getLocalRectForCaret(TextPosition(offset: o));
-          final b = box.getLocalRectForCaret(TextPosition(offset: o + 1, affinity: TextAffinity.upstream));
+          final b = box.getLocalRectForCaret(
+            TextPosition(offset: o + 1, affinity: TextAffinity.upstream),
+          );
           final row = (a.center.dy / lh).floor();
-          final r = Rect.fromLTRB(left + a.left, row * lh, left + b.left, row * lh + lh);
+          final r = Rect.fromLTRB(
+            left + a.left,
+            row * lh,
+            left + b.left,
+            row * lh + lh,
+          );
           canvas.drawRect(r, Paint()..color = VsTheme.bracketMatchBackground);
           canvas.drawRect(
             r.deflate(0.5),
@@ -759,27 +1132,35 @@ class _BackPainter extends CustomPainter {
     for (var i = 0; i < doc.lineCount; i++) {
       final top = layout.tops[i];
       final isActive = (top / lh).round() == caretRow;
-      final tp = _numbers.putIfAbsent(('${i + 1}', isActive, defaultTargetPlatform), () {
-        return TextPainter(
-          text: TextSpan(
-            text: '${i + 1}',
-            style: m.style.copyWith(
-              color: isActive ? VsTheme.activeLineNumber : VsTheme.lineNumber,
-              fontFeatures: const [FontFeature.tabularFigures()],
+      final tp = _numbers.putIfAbsent(
+        (
+          '${i + 1}',
+          isActive,
+          defaultTargetPlatform,
+          isActive ? VsTheme.activeLineNumber : VsTheme.lineNumber,
+        ),
+        () {
+          return TextPainter(
+            text: TextSpan(
+              text: '${i + 1}',
+              style: m.style.copyWith(
+                color: isActive ? VsTheme.activeLineNumber : VsTheme.lineNumber,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
-          ),
-          strutStyle: m.strut,
-          textDirection: TextDirection.ltr,
-          textScaler: TextScaler.noScaling,
-        )..layout();
-      });
+            strutStyle: m.strut,
+            textDirection: TextDirection.ltr,
+            textScaler: TextScaler.noScaling,
+          )..layout();
+        },
+      );
       tp.paint(canvas, Offset(numbersRight - tp.width, top + dy));
     }
   }
 
   /// Monaco's selection: per row, from the selection start to its end on that row, plus half a character where it
   /// takes the line break; 3 px rounded outer corners; `#ADD6FF` focused, `#E5EBF1` otherwise.
-  void _paintSelection(Canvas canvas, RenderEditable box, bool focused) {
+  void _paintSelection(Canvas canvas, _CodeGeometry box, bool focused) {
     final view = s.view;
     final doc = view._doc;
     final m = view._metrics;
@@ -798,20 +1179,38 @@ class _BackPainter extends CustomPainter {
       final a = math.max(sel.start, ls), b = math.min(sel.end, le);
       if (a < b) {
         // Flutter adds a box from the end of a line to the paragraph's edge; the row ends at the segment's end.
-        final end = box.getLocalRectForCaret(TextPosition(offset: b, affinity: TextAffinity.upstream));
+        final end = box.getLocalRectForCaret(
+          TextPosition(offset: b, affinity: TextAffinity.upstream),
+        );
         final endRow = (end.center.dy / lh).floor();
-        for (final tb in box.getBoxesForSelection(TextSelection(baseOffset: a, extentOffset: b))) {
+        for (final tb in box.getBoxesForSelection(
+          TextSelection(baseOffset: a, extentOffset: b),
+        )) {
           var rect = tb.toRect();
           if ((rect.center.dy / lh).floor() == endRow) {
-            rect = Rect.fromLTRB(rect.left, rect.top, math.min(rect.right, end.left), rect.bottom);
+            rect = Rect.fromLTRB(
+              rect.left,
+              rect.top,
+              math.min(rect.right, end.left),
+              rect.bottom,
+            );
           }
           if (rect.width > 0) addRect(rect);
         }
       }
       if (sel.end > le) {
         // The line break: half a character after the line's end.
-        final caret = box.getLocalRectForCaret(TextPosition(offset: le, affinity: TextAffinity.upstream));
-        addRect(Rect.fromLTWH(caret.left, caret.center.dy - lh / 2, m.charWidth / 2, lh));
+        final caret = box.getLocalRectForCaret(
+          TextPosition(offset: le, affinity: TextAffinity.upstream),
+        );
+        addRect(
+          Rect.fromLTWH(
+            caret.left,
+            caret.center.dy - lh / 2,
+            m.charWidth / 2,
+            lh,
+          ),
+        );
       }
     }
     final paint = Paint()..color = focused ? VsTheme.selection : VsTheme.inactiveSelection;
@@ -853,11 +1252,16 @@ class _CaretPainter extends CustomPainter {
     final sel = view._controller.selection;
     if (box == null || !sel.isValid) return;
     final lh = view._metrics.lineHeight;
-    final caret = box.getLocalRectForCaret(TextPosition(offset: sel.extentOffset, affinity: sel.affinity));
+    final caret = box.getLocalRectForCaret(
+      TextPosition(offset: sel.extentOffset, affinity: sel.affinity),
+    );
     final row = (caret.center.dy / lh).floor();
     var x = caret.left;
     if (x >= 1) x -= 1;
-    canvas.drawRect(Rect.fromLTWH(s.contentLeft + x, row * lh, 2, lh), Paint()..color = VsTheme.cursor);
+    canvas.drawRect(
+      Rect.fromLTWH(s.contentLeft + x, row * lh, 2, lh),
+      Paint()..color = VsTheme.cursor,
+    );
   }
 
   @override
