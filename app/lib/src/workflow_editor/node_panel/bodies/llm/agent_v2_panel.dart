@@ -104,7 +104,9 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
       }
     }
     final inlineId = binding['binding_type'] == 'inline_agent' ? jsStr(binding['agent_id']) : null;
-    final key = inlineId == null || inlineId.isEmpty ? null : (node: props.id, agent: inlineId, snapshot: jsStr(binding['current_snapshot_id']));
+    final key = inlineId == null || inlineId.isEmpty
+        ? null
+        : (node: props.id, agent: inlineId, snapshot: jsStr(binding['current_snapshot_id']));
     if (key != _inlineKey) {
       _inlineKey = key;
       _inline?.dispose();
@@ -134,14 +136,16 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
   }
 
   void _setInlineBinding(Json binding, {bool open = false}) {
-    if (!_services.composerCommitsBinding) _write({
-      ...jsonClone(_inputs),
-      'agent_binding': {
-        'binding_type': 'inline_agent',
-        'agent_id': binding['agent_id'],
-        'current_snapshot_id': binding['current_snapshot_id'],
-      },
-    });
+    if (!_services.composerCommitsBinding) {
+      _write({
+        ...jsonClone(_inputs),
+        'agent_binding': {
+          'binding_type': 'inline_agent',
+          'agent_id': binding['agent_id'],
+          'current_snapshot_id': binding['current_snapshot_id'],
+        },
+      });
+    }
     if (open) _setOpenInlineAgentPanelNodeId(props.id);
   }
 
@@ -174,10 +178,12 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
       _openedFromTrigger = false;
     });
     _setOpenInlineAgentPanelNodeId(props.id);
-    if (!_services.composerCommitsBinding) _write({
-      ...jsonClone(_inputs),
-      'agent_binding': {'binding_type': 'inline_agent'},
-    });
+    if (!_services.composerCommitsBinding) {
+      _write({
+        ...jsonClone(_inputs),
+        'agent_binding': {'binding_type': 'inline_agent'},
+      });
+    }
     _createInlineAgentBinding();
   }
 

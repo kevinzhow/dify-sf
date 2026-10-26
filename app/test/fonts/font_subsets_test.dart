@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dify_sf_app/src/design/font_subsets.dart';
 import 'package:flutter/services.dart';

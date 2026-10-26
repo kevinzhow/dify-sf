@@ -26,7 +26,7 @@ void main() {
   );
   ReadonlyWorkflowReader reader({List<String> unavailable = const [], int revision = 7}) => ReadonlyWorkflowReader(
     snapshot: (_) async => (seq: revision, doc: doc, mode: 'workflow'),
-    context: (_, __, mode) async => (env: ChecklistEnv(appMode: mode), unavailable: unavailable),
+    context: (_, _, mode) async => (env: ChecklistEnv(appMode: mode), unavailable: unavailable),
   );
   test('native opt-in is absent from browser query and ordinary startup', () {
     expect(LaunchOptions.fromQuery({'mcp-port': '39391'}).mcpPort, isNull);
