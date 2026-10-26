@@ -716,6 +716,7 @@ class CodeEditorViewState extends State<CodeEditorView> {
             selection: _controller.selection,
             properties: SemanticsProperties(
               identifier: 'dify-code-editor-input',
+              enabled: true,
               textField: true,
               multiline: true,
               focused: _focus.hasFocus,

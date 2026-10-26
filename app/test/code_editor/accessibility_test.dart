@@ -1,4 +1,4 @@
-import 'dart:ui' show SemanticsAction;
+import 'dart:ui' show SemanticsAction, Tristate;
 
 import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/code_editor/editor_view.dart';
@@ -31,6 +31,7 @@ void main() {
         var node = t.getSemantics(field);
         var data = node.getSemanticsData();
         expect(data.flagsCollection.isTextField, isTrue);
+        expect(data.flagsCollection.isEnabled, Tristate.isTrue);
         expect(data.flagsCollection.isMultiline, isTrue);
         expect(data.flagsCollection.isReadOnly, readOnly);
         expect(data.value, '\t中文😀\nnext');
