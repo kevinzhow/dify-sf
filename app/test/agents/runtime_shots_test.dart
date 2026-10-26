@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:re_editor/re_editor.dart' as re;
 
 import '../support/app_fonts.dart';
 
@@ -120,16 +121,28 @@ void main() {
               await t.pumpAndSettle();
             }
             expect(t.takeException(), isNull);
-            await t.runAsync(() async {
-              final image = await (boundary.currentContext!.findRenderObject() as RenderRepaintBoundary).toImage(
-                pixelRatio: 2,
-              );
-              final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-              final target = Directory(output)..createSync(recursive: true);
-              File('${target.path}/$kind-$language-${dark ? 'dark' : 'light'}-${width.toInt()}.png')
-                  .writeAsBytesSync(bytes!.buffer.asUint8List());
-              image.dispose();
-            });
+            Future<void> capture(String suffix) async {
+              await t.runAsync(() async {
+                final image = await (boundary.currentContext!.findRenderObject() as RenderRepaintBoundary).toImage(
+                  pixelRatio: 2,
+                );
+                final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+                final target = Directory(output)..createSync(recursive: true);
+                File('${target.path}/$kind-$language-${dark ? 'dark' : 'light'}-${width.toInt()}$suffix.png')
+                    .writeAsBytesSync(bytes!.buffer.asUint8List());
+                image.dispose();
+              });
+            }
+
+            await capture('');
+            if (kind == 'long-log') {
+              final scroll = t.widget<re.CodeEditor>(find.byType(re.CodeEditor)).scrollController!.verticalScroller;
+              expect(scroll.position.maxScrollExtent, greaterThan(0));
+              scroll.jumpTo(scroll.position.maxScrollExtent);
+              await t.pumpAndSettle();
+              expect(scroll.offset, greaterThan(0));
+              await capture('-tail');
+            }
             await t.pumpWidget(const SizedBox());
             await t.runAsync(() => Future<void>.delayed(Duration.zero));
           });
