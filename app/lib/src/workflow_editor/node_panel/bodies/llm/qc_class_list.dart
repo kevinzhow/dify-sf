@@ -175,6 +175,7 @@ class _ClassItemState extends State<ClassItem> {
                 border: Border.all(color: DifyColors.componentsInputBorderActive),
               ),
               child: EditableText(
+          contextMenuBuilder: difySelectionToolbar,
                 controller: _draft,
                 focusNode: _focus,
                 style: style,

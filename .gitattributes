@@ -2,3 +2,7 @@
 # Keep ordinary source whitespace checks enabled everywhere else.
 server/Sources/CollabServer/HelperPrompts.swift whitespace=-blank-at-eol
 server/Sources/CollabServer/WorkflowHelperPrompts.swift whitespace=-blank-at-eol
+
+# Reviewed upstream input engine and generated Monaco oracle vectors.
+third_party/re_editor/** linguist-vendored
+app/test/code_editor/monaco_wrapping.json linguist-generated

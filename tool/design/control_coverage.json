@@ -190,6 +190,14 @@
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract."
     },
+    "font_notice.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/fonts/font_subsets_test.dart",
+        "app/test/design/font_notice_test.dart"
+      ],
+      "note": "Shared Dify text and retry control. Native composition checks preserve the input; actual browser font failure/retry is separate release evidence."
+    },
     "form_control_shared.dart": {
       "kind": "text-composition",
       "evidence": [
@@ -266,6 +274,15 @@
         "app/test/dify_spec/workflow/nodes/last_run_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "main_nav_link.dart": {
+      "kind": "text-composition",
+      "note": "Primary-navigation labels reuse DifyTextLine; shared active glass/rings never shift layout. Real English/Chinese page captures and keyboard/font-scale geometry regression.",
+      "evidence": [
+        "app/test/design/source_rules_stage2_test.dart",
+        "app/test/studio_test.dart",
+        "tool/visual/page_cases.json"
+      ]
     },
     "menu.dart": {
       "kind": "gallery",
@@ -348,6 +365,13 @@
         "app/test/dify_spec/workflow/nodes_panel/entry/trigger_schedule/panel_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "public_app_layout.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/public_app_page_test.dart"
+      ],
+      "note": "Shared public-app responsive layout; child text uses the common typography contract."
     },
     "qrcode.dart": {
       "kind": "layout-or-non-text",
@@ -519,6 +543,15 @@
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
+    "text_input_scope.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/code_editor/global_shortcuts_test.dart",
+        "app/test/dify_spec/workflow/hotkeys_test.dart",
+        "app/test/dify_spec/workflow/operator/shortcuts_test.dart"
+      ],
+      "note": "Focus ownership only: no font, text layout, painting or dimensions. Mounted native-editor and ordinary-input tests protect text commands from global workflow/page shortcuts."
+    },
     "text_line.dart": {
       "kind": "text-composition",
       "evidence": [
@@ -563,15 +596,6 @@
         "app/test/design_typography_test.dart"
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. No dedicated direct construction test is claimed by this row."
-    },
-    "main_nav_link.dart": {
-      "kind": "text-composition",
-      "note": "Primary-navigation labels reuse DifyTextLine; shared active glass/rings never shift layout. Real English/Chinese page captures and keyboard/font-scale geometry regression.",
-      "evidence": [
-        "app/test/design/source_rules_stage2_test.dart",
-        "app/test/studio_test.dart",
-        "tool/visual/page_cases.json"
-      ]
     }
   }
 }

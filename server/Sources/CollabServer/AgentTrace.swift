@@ -28,11 +28,91 @@ enum AgentTrace {
         let key = "\(run):\(event)"
         let record: JSONValue = ["event_key": .string(key), "event": .string(name), "data": safe]
         guard ["thought", "tool_call", "model_call", "error"].contains(name) else { return (record, nil) }
-        let label = name == "tool_call" ? (data["name"]?.string ?? "Tool") : name
+        let label = name == "tool_call" ? (safe["name"]?.string ?? "Tool") : name
         let log: JSONValue = ["message_id": .string(key), "node_id": .string(node), "label": .string(label),
             "status": name == "error" ? "failed" : (data["phase"] == "started" ? "start" : "success"),
             "data": safe, "metadata": ["event": .string(name), "event_id": .int(event)], "parent_id": .null]
         return (record, log)
+    }
+}
+
+/// Reasoning chunks are one logical stream. An incomplete secret prefix is masked
+/// immediately, including its continuation in later events. This intentionally
+/// over-redacts an ambiguous suffix rather than publishing it until a later event
+/// proves it sensitive. No raw suffix is ever committed or broadcast.
+struct AgentReasoningRedactor: Sendable {
+    private struct Pattern: Sendable {
+        let chars: [Unicode.Scalar]
+        let failure: [Int]
+        init(_ value: String) {
+            chars = Array(value.unicodeScalars)
+            var table = Array(repeating: 0, count: chars.count), matched = 0
+            for index in chars.indices.dropFirst() {
+                while matched > 0 && chars[index] != chars[matched] { matched = table[matched - 1] }
+                if chars[index] == chars[matched] { matched += 1 }
+                table[index] = matched
+            }
+            failure = table
+        }
+    }
+    private let patterns: [Pattern]
+    private var prefixes: [Int]
+
+    init(secrets: [String]) {
+        patterns = Array(Set(secrets.filter { !$0.isEmpty })).sorted().map(Pattern.init)
+        prefixes = Array(repeating: 0, count: patterns.count)
+    }
+
+    mutating func redact(_ text: String) -> String {
+        let chars = Array(text.unicodeScalars)
+        guard !chars.isEmpty else { return text }
+        // KMP plus range-difference marking is linear per secret, including
+        // adversarial overlapping matches and very long repetitive fragments.
+        var ranges = Array(repeating: 0, count: chars.count + 1)
+        for (index, pattern) in patterns.enumerated() {
+            let secret = pattern.chars, previous = prefixes[index]
+            var continuation = 0
+            while previous > 0 && continuation < chars.count && previous + continuation < secret.count &&
+                    chars[continuation] == secret[previous + continuation] { continuation += 1 }
+            if continuation > 0 { ranges[0] += 1; ranges[continuation] -= 1 }
+            var matched = previous
+            for (position, char) in chars.enumerated() {
+                while matched > 0 && secret[matched] != char { matched = pattern.failure[matched - 1] }
+                if secret[matched] == char { matched += 1 }
+                if matched == secret.count {
+                    ranges[max(0, position - secret.count + 1)] += 1
+                    ranges[position + 1] -= 1
+                    matched = pattern.failure[matched - 1]
+                }
+            }
+            prefixes[index] = matched
+            if matched > 0 { ranges[max(0, chars.count - matched)] += 1; ranges[chars.count] -= 1 }
+        }
+        var result = "", inMask = false, coverage = 0
+        for (index, char) in chars.enumerated() {
+            coverage += ranges[index]
+            if coverage > 0 {
+                if !inMask { result += "[redacted]" }
+                inMask = true
+            } else { result.unicodeScalars.append(char); inMask = false }
+        }
+        return result
+    }
+}
+
+/// One writer for the whole operation, across HTTP reconnections. Prepare state
+/// by value and advance only after persistence succeeds, just like the SSE cursor.
+actor AgentTraceWriter {
+    private var reasoning: AgentReasoningRedactor
+    let secrets: [String]
+    init(secrets: [String]) { self.secrets = secrets; reasoning = .init(secrets: secrets) }
+
+    func record(routes: Routes, session: StoredAgentSession, run: String, event: Int, name: String, data: JSONObject) async throws {
+        var next = reasoning
+        var safe = AgentTrace.redacted(.object(data), secrets: secrets).object ?? [:]
+        if name == "thought", let text = data["text"]?.string { safe["text"] = .string(next.redact(text)) }
+        try await routes.recordAgentEvent(session: session, run: run, event: event, name: name, data: safe, secrets: [])
+        reasoning = next
     }
 }
 
@@ -62,24 +142,36 @@ extension Routes {
         let marker: JSONValue = ["message_id": .string(session.executionID + ":truncated"), "node_id": .string(session.nodeID),
             "label": "Record truncated", "status": "success", "data": ["truncated": true, "full_record_url": .string(path)],
             "metadata": ["event": "truncated"], "parent_id": .null]
-        let reserve = marker.compactJSON().utf8.count + 2
-        var logs: [JSONValue] = [], bytes = 2, after = 0
-        while true {
+        let reserve = marker.compactJSON().utf8.count + 4
+        let budget = (Self.agentLogPreviewBytes - reserve) / 2
+        var head: [JSONValue] = [], bytes = 0, after = 0, lastHead = 0, omitted = false
+        headLoop: while true {
             let rows = try await store.agentEventRecords(execution: session.executionID, after: after)
-            if rows.isEmpty { return .array(logs) }
+            if rows.isEmpty { return .array(head) }
             for row in rows {
                 after = row.ordinal
                 guard let raw = row.log else { continue }
-                for log in try JSONValue.parse(raw).array ?? [] {
-                    let size = log.compactJSON().utf8.count + 1
-                    if bytes + size + reserve > Self.agentLogPreviewBytes {
-                        logs.append(marker)
-                        return .array(logs)
-                    }
-                    logs.append(log); bytes += size
-                }
+                let logs = try JSONValue.parse(raw).array ?? []
+                let size = logs.reduce(0) { $0 + $1.compactJSON().utf8.count + 1 }
+                if bytes + size > budget { omitted = true; break headLoop }
+                head += logs; bytes += size; lastHead = row.ordinal
             }
         }
+        var tail: [JSONValue] = [], tailBytes = 0, before = Int.max
+        tailLoop: while true {
+            let rows = try await store.agentEventRecordsBefore(execution: session.executionID, before: before)
+            if rows.isEmpty { omitted = false; break }
+            for row in rows {
+                before = row.ordinal
+                if row.ordinal <= lastHead { omitted = false; break tailLoop }
+                guard let raw = row.log else { continue }
+                let logs = try JSONValue.parse(raw).array ?? []
+                let size = logs.reduce(0) { $0 + $1.compactJSON().utf8.count + 1 }
+                if tailBytes + size > budget { break tailLoop }
+                tail.insert(contentsOf: logs, at: 0); tailBytes += size
+            }
+        }
+        return .array(head + (omitted ? [marker] : []) + tail)
     }
 
     func registerAgentRecords(on r: any RoutesBuilder) {

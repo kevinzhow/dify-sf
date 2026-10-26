@@ -2,6 +2,8 @@
 /// file picker and human-input form; its transport never uses console auth.
 library;
 
+import '../web/startup_ready.dart';
+
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart';
@@ -421,6 +423,7 @@ class _PublicAppPageState extends State<PublicAppPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_loading) markStartupReadyAfterFrame();
     final api = _api;
     final picker = api == null ? null : runtimeFilePickerWithApi(context, () => api);
     final title = '${_definition?['title'] ?? _definition?['name'] ?? ''}';

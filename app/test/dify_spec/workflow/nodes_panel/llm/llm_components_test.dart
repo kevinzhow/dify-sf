@@ -1,3 +1,4 @@
+import '../../../../support/code_editor_input.dart';
 // dify-spec: web/app/components/workflow/nodes/llm/components/__tests__/panel-memory-section.spec.tsx
 // dify-spec: web/app/components/workflow/nodes/llm/components/__tests__/panel-output-section.spec.tsx
 // dify-spec: web/app/components/workflow/nodes/llm/components/__tests__/prompt-generator-btn.spec.tsx
@@ -46,8 +47,7 @@ Map<String, Object?> _memory(String query) => {
 
 /// The JSON importer's code editor (Dify mocks it with a textarea named json-editor).
 Future<void> _typeJson(WidgetTester t, String json) async {
-  final editable = find.descendant(of: find.byType(SchemaJsonEditor), matching: find.byType(EditableText));
-  await t.enterText(editable.first, json);
+  await enterCodeEditorText(t, json, within: find.byType(SchemaJsonEditor));
   await settle(t, 200);
 }
 
@@ -360,8 +360,7 @@ void main() {
       await render(t);
       await t.tap(find.text('JSON Schema'));
       await settle(t);
-      final editable = find.descendant(of: find.byType(SchemaJsonEditor), matching: find.byType(EditableText));
-      await t.enterText(editable.first, 'invalid json');
+      await enterCodeEditorText(t, 'invalid json', within: find.byType(SchemaJsonEditor));
       await settle(t, 200);
       await t.tap(find.text('Visual Editor'));
       await settle(t);

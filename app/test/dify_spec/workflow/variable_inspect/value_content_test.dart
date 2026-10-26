@@ -1,3 +1,5 @@
+import '../../../support/code_editor_input.dart';
+
 // dify-spec: web/app/components/workflow/variable-inspect/__tests__/value-content.spec.tsx
 import 'dart:convert';
 
@@ -66,7 +68,8 @@ void main() {
         }),
       );
 
-      await t.enterText(find.byType(EditableText), '{');
+      // A lone brace is automatically paired by the editor; this stays invalid.
+      await enterCodeEditorText(t, '{"foo":');
       await t.pump();
 
       expect(find.textContaining(RegExp('json', caseSensitive: false)), findsOneWidget);
@@ -128,7 +131,7 @@ void main() {
         }),
       );
 
-      await t.enterText(find.byType(EditableText), '{"foo":2}');
+      await enterCodeEditorText(t, '{"foo":2}');
       await waitDebounce(t);
 
       expect(changes.single.$1, 'var-7');

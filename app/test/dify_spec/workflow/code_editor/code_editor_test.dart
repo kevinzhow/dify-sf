@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
 import 'package:flutter/widgets.dart';
+import 'package:dify_sf_app/src/workflow_editor/code_editor/editor_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _jsonObjectSchema = {
@@ -29,7 +30,7 @@ void main() {
         ),
       );
 
-      final editable = t.widget<EditableText>(find.byType(EditableText));
+      final editable = t.state<CodeEditorViewState>(find.byType(CodeEditorView));
       expect(editable.controller.text, const JsonEncoder.withIndent('  ').convert(_jsonObjectSchema));
     });
   });

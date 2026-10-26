@@ -4,6 +4,8 @@ import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/code_editor/editor_view.dart';
 import 'package:dify_sf_app/src/workflow_editor/code_editor/monarch/vs_theme.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:re_editor/re_editor.dart' as re;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -22,13 +24,17 @@ Widget _host(Widget child, {double width = 420}) => Directionality(
   ),
 );
 
-EditableText _editable(WidgetTester t) => t.widget<EditableText>(find.byType(EditableText));
+({TextEditingController controller, TextStyle style, bool readOnly}) _editable(WidgetTester t) => (
+  controller: t.state<CodeEditorViewState>(find.byType(CodeEditorView)).controller,
+  style: CodeEditorMetrics.of(defaultTargetPlatform).style,
+  readOnly: t.widget<CodeEditorView>(find.byType(CodeEditorView)).readOnly,
+);
 
 /// (text, colour) of each leaf span the editor shows.
 List<(String, Color?)> _spans(WidgetTester t) {
   final e = _editable(t);
   final span = e.controller.buildTextSpan(
-    context: t.element(find.byType(EditableText)),
+    context: t.element(find.byType(CodeEditorView)),
     style: e.style,
     withComposing: false,
   );
@@ -47,7 +53,7 @@ List<(String, Color?)> _spans(WidgetTester t) {
 }
 
 Future<void> _type(WidgetTester t, String text) async {
-  final value = _editable(t).controller.value;
+  final value = TextEditingValue.fromJSON(t.testTextInput.editingState!);
   final s = value.selection;
   t.testTextInput.updateEditingValue(
     TextEditingValue(
@@ -59,7 +65,7 @@ Future<void> _type(WidgetTester t, String text) async {
 }
 
 Future<void> _focusAt(WidgetTester t, int offset) async {
-  await t.tap(find.byType(EditableText), warnIfMissed: false);
+  t.widget<re.CodeEditor>(find.byType(re.CodeEditor)).focusNode!.requestFocus();
   await t.pump();
   _editable(t).controller.selection = TextSelection.collapsed(offset: offset);
   await t.pump();

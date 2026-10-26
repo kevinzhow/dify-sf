@@ -872,8 +872,8 @@ features:
   title: 'Code editor: Monaco python / javascript / JSON highlighting (Monarch tokenizers), chrome'
   dify: [web/app/components/workflow/nodes/_base/components/editor/code-editor]
   status: ported
-  deviation: A Dart port of Monaco 0.52.2's Monarch tokenizers and vs / vs-dark themes (identical token colours), not an embedded Monaco.
-  evidence: ['spec:web/app/components/workflow/nodes/_base/components/editor', 'spec:web/app/components/workflow/nodes/_base/components/editor/code-editor', app/test/code_editor]
+  deviation: Reuses a pinned native Re-Editor input engine with Monaco 0.52.2 document, commands, token themes and wrapping rules. One projected paragraph supplies painting, hit testing, caret, selection and IME geometry; continuation indentation and tab expansion never enter copied source text. Dify menus and scrollbar remain the shared design-system families.
+  evidence: ['spec:web/app/components/workflow/nodes/_base/components/editor', 'spec:web/app/components/workflow/nodes/_base/components/editor/code-editor', app/test/code_editor, docs/code-editor-wrapping.md, tool/check_editor_vendor.py, tool/design/check_reference.py]
   ours: [app/lib/src/workflow_editor/code_editor/code_editor.dart, app/lib/src/workflow_editor/code_editor/monarch/monarch.dart]
 
 # ---------------------------------------------------------------- nodes
@@ -2434,8 +2434,8 @@ features:
   dify: [api/core/workflow/nodes/agent_v2, api/services/agent_llm_inner_service.py]
   status: partial
   reason: 'The opt-in Swift adapter pins private configuration, persists operation identities and leases, commits native human questions with the workflow pause, and commits final node outputs before downstream execution. Two consecutive questions, continuous SSE, exact usage totals, stale ownership and persistent ACK/cleanup retry have regression coverage. Independent-process restart acceptance also verifies unanswered-pause renewal beyond the remote lease, single shell side effects and nested uploaded files. Durable SSE event replay and thought/tool logs, explicit sandbox opt-in, declared-field receipt policies and active elapsed totals extend that runtime. The combined inline client candidate is reviewed separately; public execution is disabled by default.'
-  deviation: 'dify-sf extension: the Dart backend is called with fenced operation identities. Private result receipts, row-based redacted event archives with 256 KiB previews and authenticated full-record downloads, and an outbox make persistence precede remote acknowledgement. Admission waits on full capacity; shell capability is cached and pinned per execution. Active worker loss fails the run rather than replaying potentially completed shell side effects.'
-  evidence: [server/Tests/CollabTests/AgentExecutionStoreTests.swift, server/Tests/CollabTests/AgentRuntimeIntegrationTests.swift, server/Tests/CollabTests/AgentOutboxTests.swift, server/Tests/CollabTests/AgentQuestionTests.swift, server/Tests/CollabTests/AgentReviewTests.swift, server/Tests/CollabTests/AgentEventTransportTests.swift, server/Tests/CollabTests/AgentLongRecordsTests.swift, e2e/agent_runtime/restart.py]
+  deviation: 'dify-sf extension: the Dart backend is called with fenced operation identities. Private result receipts, row-based archives with cross-event secret redaction, 256 KiB head/tail previews and authenticated full-record downloads, and an outbox make persistence precede remote acknowledgement. Event insertion has finite transient database retries; maintenance isolates per-item failures and public build identity is returned beside actual capability switches. Admission waits on full capacity; shell capability is cached and pinned per execution. Active worker loss fails the run rather than replaying potentially completed shell side effects.'
+  evidence: [server/Tests/CollabTests/AgentExecutionStoreTests.swift, server/Tests/CollabTests/AgentRuntimeIntegrationTests.swift, server/Tests/CollabTests/AgentOutboxTests.swift, server/Tests/CollabTests/AgentQuestionTests.swift, server/Tests/CollabTests/AgentReviewTests.swift, server/Tests/CollabTests/AgentEventTransportTests.swift, server/Tests/CollabTests/AgentLongRecordsTests.swift, server/Tests/CollabTests/AgentTraceStreamTests.swift, server/Tests/CollabTests/AgentPersistenceRetryTests.swift, server/Tests/CollabTests/BuildIdentityTests.swift, docs/agent-runtime-hardening.md, e2e/agent_runtime/restart.py]
   ours: [server/Sources/CollabServer/AgentRuntime.swift, server/Sources/CollabServer/AgentMaintenance.swift, server/Sources/CollabStore/AgentExecutions.swift, docs/agent-runtime-durability.md, docs/deployment/trial-update-20261026.md]
 
 - id: run.agent-v2-resource-portability
@@ -2457,3 +2457,21 @@ features:
   deviation: 'dify-sf extensions: node-scoped saves that preserve only locally edited sections on reload, exact idempotent retry, a shared generated English-label model filter, the native read-only MCP endpoint and a tool-call capability diagnostic. Explicit save actions are used; complete Agent App/roster UI parity is not claimed.'
   evidence: [packages/collab_client/test/agent_composer_api_test.dart, app/test/agents/inline_composer_test.dart, app/test/agents/inline_configure_test.dart, app/test/agents/inline_checks_test.dart, app/test/agents/inline_shots_test.dart]
   ours: [app/lib/src/agents/inline_composer.dart, app/lib/src/agents/inline_configure.dart, app/lib/src/agents/inline_checks.dart, app/lib/src/mcp/host_io.dart, docs/agent-inline-client.md]
+
+- id: design.web-demand-fonts
+  area: design
+  title: 'Web startup shell and same-face glyph-demand CJK loading'
+  dify: []
+  status: dify_sf_only
+  reason: 'Flutter deployment extension: a token-generated HTML shell stays until a meaningful initial page and its discovered fonts have painted; a pinned isolated engine hook reuses missing-glyph detection, shaping and reflow to load certified regional shards, with self-hosted fallback fonts and explicit recoverable failure. Native targets retain complete original fonts.'
+  evidence: [docs/web-demand-fonts.md, app/test/fonts/font_subsets_test.dart, tool/fonts/check_subsets.py, tool/test_wasm_policy.mjs]
+  ours: [app/lib/src/design/font_subsets.dart, app/lib/src/design/font_bridge_web.dart, app/lib/src/design/widgets/font_notice.dart, app/web/startup.js, app/lib/src/web/startup_ready.dart, tool/build_web.sh, tool/web_engine/build.py]
+
+- id: accounts.release-status
+  area: accounts
+  title: 'Account: public client/server version and actual advertised capabilities'
+  dify: []
+  status: dify_sf_only
+  reason: 'dify-sf extension: shows bounded public build/protocol identifiers and advertised Agent, isolated Shell and email switches. Older servers report an unknown release; the page never guesses a backend version from the frontend build.'
+  evidence: [app/test/design/release_status_test.dart, packages/collab_client/test/build_identity_test.dart, docs/web-demand-fonts.md]
+  ours: [app/lib/src/account/release_status.dart, packages/collab_client/lib/src/auth/account.dart]

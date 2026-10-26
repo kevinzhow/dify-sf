@@ -1,3 +1,4 @@
+import 'support/code_editor_input.dart';
 import 'dart:convert';
 import 'dart:async';
 
@@ -114,8 +115,8 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(_runButton());
     await t.pumpAndSettle();
-    expect(find.byType(EditableText), findsOneWidget);
-    expect(t.widget<EditableText>(find.byType(EditableText)).controller.text, contains('"count": 3'));
+    expect(codeEditorText(t), isNotEmpty);
+    expect(codeEditorText(t), contains('"count": 3'));
     expect(t.takeException(), isNull);
     await t.pumpWidget(const SizedBox());
   });

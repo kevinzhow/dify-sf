@@ -17,3 +17,9 @@ __pycache__/
 /packages/*/pubspec.lock
 tool/visual/.venv/
 /build/
+
+# Generated from the pinned complete CJK faces by tool/fonts/subset.py.
+app/assets/fonts/subsets/
+
+# Exact Flutter fallback mirror is verified by tool/web_engine/fallback_fonts.lock.json.
+app/web/font-fallback/

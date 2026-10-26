@@ -48,15 +48,18 @@ Future<void> _startApp(List<String> args) async {
   // of the theme (the launch option's, the remembered choice, or the system's), and again after a switch.
   DifyTheme.icons = () => DifyCards.icons;
   final theme = await AppTheme.load(override: options.theme);
-  await IconCache.preload(DifyCards.icons);
+  DifyFonts.onChanged = DifyTheme.fontsChanged;
   // Cards measure and draw text outside the widget tree too: the translations load before anything is built. The
   // language: the command line's, the one chosen last time (the sign-in page's locale menu), the system's.
   final lang =
       options.lang ??
       await AppLocale.remembered() ??
       difyLanguageFor(WidgetsBinding.instance.platformDispatcher.locale);
-  if (kIsWeb) await DifyFonts.loadFor(lang);
-  await DifyI18n.load(lang);
+  await Future.wait([
+    IconCache.preload(DifyCards.icons),
+    if (kIsWeb) DifyFonts.loadFor(lang),
+    DifyI18n.load(lang),
+  ]);
   CanvasDefaults.viewport = CanvasDefaults.parseViewport(options.view);
   CanvasDefaults.reportRect = kIsWeb && Uri.base.queryParameters['visual'] == '1';
   if (CanvasDefaults.reportRect) CanvasDefaults.select = Uri.base.queryParameters['select'];

@@ -872,6 +872,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
 
   Widget _contextMenu(BuildContext context, EditableTextState s) => DifySelectionMenu(
     anchors: s.contextMenuAnchors,
+    focusParent: s.widget.focusNode,
     buttonItems: [
       for (final i in s.contextMenuButtonItems)
         switch (i.type) {

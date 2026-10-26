@@ -92,7 +92,7 @@ projections and thought/tool/usage logs in the private execution ledger before b
 the cursor. A result cannot enqueue its acknowledgement until the terminal cursor agrees with durable service
 state. Replayed events have stable run/event identities and are deduplicated. When a cursor expires (410), the adapter
 recovers the final result through GET and stores an explicit history-gap record before ACK; it never claims a complete
-old event history. A persistence failure leaves the HTTP retry path immediately. Final node metadata retains the log; paused reconnect snapshots reconstruct
+old event history. Event persistence has its own finite transient retry; an exhausted or permanent persistence failure leaves the HTTP retry path immediately. Final node metadata retains the log; paused reconnect snapshots reconstruct
 it from the private execution ledger. The original node-start payload is committed with each operation, using the
 same encoder as live events, so reconnects preserve its title, index, timestamp and iteration/loop scope. Terminal service snapshots are not copied into the public log. Environment
 values are redacted from event projections, and operation audit digests omit environment values.
@@ -108,7 +108,7 @@ transient cleanup failures remain in the durable outbox.
 
 The private redacted archive uses one immutable database row per event, fenced by the execution owner and operation.
 It has no 4096-event or 8 MB execution-failure threshold and does not rewrite the accumulated session JSON for each
-chunk. Finished-node and reconnect previews contain at most 256 KiB of complete JSON/UTF-8 records. A truncation
+chunk. Finished-node and reconnect previews retain the head and tail within 256 KiB of complete JSON/UTF-8 records. A truncation
 marker references `GET /v1/apps/{app}/workflow-runs/{run}/agent-records/{execution}.jsonl`; this downloads the full
 redacted record as a paged JSONL stream with ordinary member authentication and app/run ownership checks. It is
 not a public file link. Thoughts, tool calls and the service's `model_call` usage records share this archive.
@@ -118,3 +118,5 @@ seconds, including failures. The first capability decision is pinned to the exec
 cannot gain or lose tools because of a later configuration or health change. Remote orphan cancellation requires a
 matching tenant and an app/run present in this database; an older service that omits that identity grants no authority
 to cancel unknown work.
+
+Stream-spanning secret projection, per-item maintenance isolation and event-only persistence retry are described in [runtime hardening](agent-runtime-hardening.md).

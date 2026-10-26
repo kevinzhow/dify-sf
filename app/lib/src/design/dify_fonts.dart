@@ -1,3 +1,8 @@
+import 'package:flutter/foundation.dart';
+
+import 'font_subsets.dart';
+import 'font_bridge_stub.dart' if (dart.library.js_interop) 'font_bridge_web.dart' as bridge;
+
 import 'package:flutter/services.dart';
 import 'package:flutter/painting.dart';
 
@@ -44,6 +49,21 @@ abstract final class DifyFonts {
     return _metric(bundledXHeights, effective.fontFamily, effective.fontWeight);
   }
 
+  static final failed = ValueNotifier(false);
+  static VoidCallback? onChanged;
+  static final _demand = FontSubsetLoader()
+    ..onFailure = (value) {
+      failed.value = value;
+    }
+    ..onChanged = (() {
+      onChanged?.call();
+    });
+  static bool _installed = false;
+  static void retry() {
+    failed.value = false;
+    bridge.invalidateFontProvider();
+  }
+
   static final _loads = <String, Future<void>>{};
   static String? _active;
   static List<String>? get fallbackFamilies => _active == null ? null : ['Dify CJK $_active'];
@@ -60,6 +80,17 @@ abstract final class DifyFonts {
 
   static Future<void> loadFor(String language) async {
     final region = regionFor(language);
+    if (kIsWeb) {
+      if (!_installed) {
+        bridge.installFontProvider(_demand);
+        _installed = true;
+      }
+      _active = region;
+      final code = language.toLowerCase();
+      await _demand.activate(region, warmCore: code.startsWith('zh') || code.startsWith('ja') || code.startsWith('ko'));
+      bridge.invalidateFontProvider();
+      return;
+    }
     await _loads.putIfAbsent(region, () async {
       final loader = FontLoader('Dify CJK $region');
       for (final weight in ['Regular', 'Bold']) {

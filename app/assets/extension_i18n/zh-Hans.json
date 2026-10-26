@@ -32,5 +32,21 @@
     "inline.nodeMissing": "此节点或其配置已删除，请重新加载工作流。",
     "inline.configurationTooLarge": "配置过大，请减少文件或缩短文本。",
     "inline.rateLimited": "请求过于频繁，请稍后重试。"
+  },
+  "common": {
+    "web.fontLoadFailed": "部分文字加载失败，请联网后重试。",
+    "operation.cut": "剪切",
+    "operation.paste": "粘贴",
+    "release.title": "版本与能力",
+    "release.client": "客户端",
+    "release.server": "服务端",
+    "release.workflow": "工作流协议",
+    "release.agentProtocol": "Agent 协议",
+    "release.agent": "本地 Agent",
+    "release.shell": "隔离 Shell",
+    "release.mail": "邮件",
+    "release.enabled": "已启用",
+    "release.disabled": "未启用",
+    "release.unknown": "未报告"
   }
 }

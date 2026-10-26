@@ -68,7 +68,7 @@ export async function start(loader, {
   }
   const iosWasm = !compatibility && candidate.allowed && features !== null &&
     ['gc', 'exceptions', 'jsTag', 'strings', 'webgl'].every(key => features[key] === true);
-  const config = {};
+  const config = {fontFallbackBaseUrl: new URL('font-fallback/', env.document?.baseURI || url).href};
   if (candidate.isIOS) {
     // iOS browser brands can be classified differently by Flutter's vendor
     // detector. Keep the same iOS version/capability policy for each brand.
@@ -96,6 +96,7 @@ export async function start(loader, {
     if (!iosWasm || ready || recovering) return false;
     recovering = true;
     state.phase = 'fallback';
+    env.__difyStartup?.stage('fallback');
     // A fresh document is required: partially initialized Flutter engines are
     // not reentrant. The explicit URL also works without sessionStorage and
     // prevents an endless Wasm retry. Preserve the original route and query.
@@ -123,21 +124,27 @@ export async function start(loader, {
   }
   const options = {config};
   if (serviceWorkerSettings) options.serviceWorkerSettings = serviceWorkerSettings;
-  if (iosWasm) {
-    options.onEntrypointLoaded = async initializer => {
-      try {
-        // Flutter does not forward config automatically with a custom callback.
-        const runner = await initializer.initializeEngine(config);
-        await runner.runApp();
-      } catch (error) {
-        if (!recover() && !recovering) throw error;
+  options.onEntrypointLoaded = async initializer => {
+    try {
+      // Flutter does not forward config automatically with a custom callback.
+      env.__difyStartup?.stage('engine');
+      const runner = await initializer.initializeEngine(config);
+      env.__difyStartup?.stage('app');
+      await runner.runApp();
+    } catch (error) {
+      if (!recover() && !recovering) {
+        env.__difyStartup?.fail();
+        throw error;
       }
-    };
-  }
+    }
+  };
   try {
     await loader.load(options);
   } catch (error) {
-    if (!recover() && !recovering) throw error;
+    if (!recover() && !recovering) {
+      env.__difyStartup?.fail();
+      throw error;
+    }
   }
   return state;
 }

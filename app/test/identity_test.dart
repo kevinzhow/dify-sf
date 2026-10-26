@@ -1,6 +1,8 @@
 /// Protocol 1.8 identities in the editor: names, comment authors, mention candidates and online users are accounts.
 library;
 
+import 'support/code_editor_input.dart';
+
 import 'package:dify_sf_app/src/design/widgets/text_line.dart';
 
 import 'package:collab_client/collab_client.dart';
@@ -9,7 +11,6 @@ import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
 import 'package:dify_sf_app/src/workflow_editor/comments/comments_store.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/workflow_header.dart';
-import 'package:dify_sf_app/src/workflow_editor/code_editor/code_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -70,8 +71,7 @@ void main() {
     await _settle(t, const Duration(seconds: 1));
     demo.setOffline(true);
     await _settle(t, const Duration(seconds: 1));
-    final editor = find.descendant(of: find.byType(DifyCodeEditor), matching: find.byType(EditableText)).first;
-    await t.enterText(editor, 'my code');
+    await enterCodeEditorText(t, 'my code');
     await _settle(t);
     demo.boSets('code', ['code'], 'bo code');
     await _settle(t, const Duration(seconds: 35));

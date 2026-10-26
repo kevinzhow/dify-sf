@@ -356,6 +356,7 @@ class _LinkEditorState extends State<LinkEditor> {
                           Padding(
                             padding: const EdgeInsets.all(4),
                             child: EditableText(
+          contextMenuBuilder: difySelectionToolbar,
                               controller: _url,
                               focusNode: _input,
                               autofocus: true,

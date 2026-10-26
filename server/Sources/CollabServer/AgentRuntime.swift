@@ -142,9 +142,9 @@ struct ServerAgentRuntime: AgentRuntime {
                 let remote = try await service.start(body, token: token)
                 try await routes.store.recordAgentRun(session: session, run: remote)
                 let activeSession = session
-                let secretValues = env.values.compactMap(\.string)
+                let trace = AgentTraceWriter(secrets: env.values.compactMap(\.string))
                 let terminal = try await service.result(run: remote, operation: operation, deadline: deadline, isAborted: context.isAborted) { event, name, data in
-                    try await routes.recordAgentEvent(session: activeSession, run: remote, event: event, name: name, data: data, secrets: secretValues)
+                    try await trace.record(routes: routes, session: activeSession, run: remote, event: event, name: name, data: data)
                 }
                 let usage = await routes.agentModelScopes.revoke(token: token)
                 roundUsage = roundUsage.plus(usage); cumulative = cumulative.plus(usage)

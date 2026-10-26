@@ -140,10 +140,7 @@ class _WorkflowShortcutsState extends State<WorkflowShortcuts> with WidgetsBindi
     return KeyEventResult.handled;
   }
 
-  static bool _typing() {
-    final ctx = FocusManager.instance.primaryFocus?.context;
-    return ctx != null && (ctx.widget is EditableText || ctx.findAncestorWidgetOfExactType<EditableText>() != null);
-  }
+  static bool _typing() => difyFocusInTextInput();
 
   @override
   Widget build(BuildContext context) => widget.child;

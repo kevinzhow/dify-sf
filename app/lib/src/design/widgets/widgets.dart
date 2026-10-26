@@ -65,3 +65,4 @@ export 'tooltip.dart';
 export 'workspace_avatar.dart';
 export 'main_nav_link.dart';
 export 'public_app_layout.dart';
+export 'text_input_scope.dart';

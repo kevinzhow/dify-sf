@@ -18,6 +18,7 @@ import '../files/upload_service.dart';
 import '../settings/settings_kit.dart';
 import 'account_dialogs.dart';
 import 'email_change_modal.dart';
+import 'release_status.dart';
 
 /// Opens the Account page on the app's navigator (Dify's `<Link href="/account">`).
 Future<void> openAccountPage(BuildContext context, {AppsApi? apps}) =>
@@ -492,6 +493,7 @@ class _AccountPageBodyState extends State<AccountPageBody> {
             ],
           ),
         ),
+        ReleaseStatus(features: features),
       ],
     );
   }

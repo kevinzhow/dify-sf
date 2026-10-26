@@ -4,6 +4,8 @@ import Foundation
 /// Runtime configuration, read through swift-configuration from environment variables and command-line
 /// arguments (`--collab.http.port 8080` or `COLLAB_HTTP_PORT=8080`).
 public struct ServerConfig: Sendable {
+    /// Immutable release commit (COLLAB_BUILD_REVISION), optional for local development.
+    public var buildRevision: String
     public var httpHost: String
     public var httpPort: Int
     public var dbHost: String
@@ -103,6 +105,7 @@ public struct ServerConfig: Sendable {
     public static let defaultPluginDaemonTenant = "00000000-0000-0000-0000-000000000001"
 
     public init(reader: ConfigReader) {
+        buildRevision = reader.string(forKey: "collab.build.revision", default: "")
         httpHost = reader.string(forKey: "collab.http.host", default: "127.0.0.1")
         httpPort = reader.int(forKey: "collab.http.port", default: 8080)
         dbHost = reader.string(forKey: "collab.db.host", default: "127.0.0.1")

@@ -1,0 +1,18 @@
+{
+  "common": {
+    "operation.cut": "剪下",
+    "operation.paste": "貼上",
+    "web.fontLoadFailed": "部分文字載入失敗，請連線後重試。",
+    "release.title": "版本與能力",
+    "release.client": "用戶端",
+    "release.server": "伺服器",
+    "release.workflow": "工作流程協定",
+    "release.agentProtocol": "Agent 協定",
+    "release.agent": "本機 Agent",
+    "release.shell": "隔離 Shell",
+    "release.mail": "郵件",
+    "release.enabled": "已啟用",
+    "release.disabled": "未啟用",
+    "release.unknown": "未回報"
+  }
+}

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
 import '../../design/widgets/shortcut_kbd.dart' show DifyPlatform;
+import '../../design/widgets/text_input_scope.dart';
 import '../../editor/undo_manager.dart';
 import '../store/store.dart';
 import 'actions.dart';
@@ -67,10 +68,7 @@ class _OperatorShortcutsState extends State<OperatorShortcuts> {
     _Hotkey(LogicalKeyboardKey.keyZ, mod: true, shift: true),
   ];
 
-  static bool _typing() {
-    final ctx = FocusManager.instance.primaryFocus?.context;
-    return ctx != null && (ctx.widget is EditableText || ctx.findAncestorWidgetOfExactType<EditableText>() != null);
-  }
+  static bool _typing() => difyFocusInTextInput();
 
   KeyEventResult _onKey(FocusNode node, KeyEvent e) {
     if ((e is! KeyDownEvent && e is! KeyRepeatEvent) || _targets.isEmpty || _typing()) return KeyEventResult.ignored;

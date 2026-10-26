@@ -1,3 +1,4 @@
+import 'web/startup_ready.dart';
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart' show WorkflowRunApi;
@@ -173,6 +174,7 @@ class _AppRootState extends State<AppRoot> {
       ),
       HomeRoute() => Builder(builder: widget.home),
     };
+    if (route is! StartingRoute) markStartupReadyAfterFrame();
     return AuthScope(controller: _auth, child: page);
   }
 }

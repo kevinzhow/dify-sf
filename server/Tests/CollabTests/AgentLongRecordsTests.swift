@@ -23,9 +23,11 @@ struct AgentLongRecordsTests {
             }
             let preview = try await routes.agentLogPreview(session)
             #expect(preview.compactJSON().utf8.count <= Routes.agentLogPreviewBytes)
-            #expect(preview.array?.last?["data"]?["truncated"] == true)
-            let path = try #require(preview.array?.last?["data"]?["full_record_url"]?.string)
+            #expect(preview.array?.contains(where: { $0["data"]?["truncated"] == true }) == true)
+            let path = try #require(preview.array?.first(where: { $0["data"]?["truncated"] == true })?["data"]?["full_record_url"]?.string)
             #expect(!preview.compactJSON().contains(secret))
+            #expect(preview.array?.first?["message_id"] == "remote:1")
+            #expect(preview.array?.last?["message_id"] == "remote:4105")
             #expect(try await store.agentSession(execution: session.executionID)?.usage.utf8.count ?? 0 < 1024)
             var after = 0, count = 0, size = 0, last: JSONValue = [:]
             while true {
