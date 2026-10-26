@@ -572,6 +572,21 @@
         "app/test/studio_test.dart",
         "tool/visual/page_cases.json"
       ]
+    },
+    "font_notice.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/fonts/font_subsets_test.dart",
+        "app/test/design/font_notice_test.dart"
+      ],
+      "note": "Shared Dify text and retry control. Native composition checks preserve the input; actual browser font failure/retry is separate release evidence."
+    },
+    "public_app_layout.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/public_app_page_test.dart"
+      ],
+      "note": "Shared public-app responsive layout; child text uses the common typography contract."
     }
   }
 }

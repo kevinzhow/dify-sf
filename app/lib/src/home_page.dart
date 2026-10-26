@@ -1,3 +1,4 @@
+import 'design/widgets/font_notice.dart';
 export 'design/widgets/main_nav_link.dart' show MainNavLink;
 
 import 'files/upload_service.dart';
@@ -729,6 +730,7 @@ Widget buildApp(
               fit: StackFit.expand,
               children: [
                 child!,
+                const DifyFontLoadNotice(),
                 DefaultTextStyle(
                   style: TextStyle(
                     fontFamily: cardFontFamily,

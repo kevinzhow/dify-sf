@@ -60,6 +60,10 @@ abstract final class DifyTheme {
     rebuildAll();
   }
 
+  /// Invalidate offscreen captures after a newly registered font. Framework
+  /// paragraphs relayout through Flutter's existing font-change notification.
+  static void fontsChanged() => _changes.changed();
+
   /// Marks every element for a rebuild and every render object for a repaint.
   static void rebuildAll() {
     final binding = WidgetsBinding.instance;

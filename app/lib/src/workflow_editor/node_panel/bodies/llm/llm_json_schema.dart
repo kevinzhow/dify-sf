@@ -1512,6 +1512,7 @@ class _EditCardState extends State<EditCard> {
               child: SizedBox(
                 height: 16,
                 child: EditableText(
+          contextMenuBuilder: difySelectionToolbar,
                   controller: _description,
                   focusNode: _descriptionFocus,
                   style: difyStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
@@ -1648,6 +1649,7 @@ class _AutoWidthInput extends StatelessWidget {
                   child: DifyTextLine(placeholder, style: style.copyWith(color: DifyColors.textPlaceholder)),
                 ),
               EditableText(
+          contextMenuBuilder: difySelectionToolbar,
                 controller: controller,
                 focusNode: focusNode,
                 style: style,

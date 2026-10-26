@@ -1,0 +1,18 @@
+{
+  "common": {
+    "operation.cut": "切り取り",
+    "operation.paste": "貼り付け",
+    "web.fontLoadFailed": "文字を読み込めませんでした。接続して再試行してください。",
+    "release.title": "バージョンと機能",
+    "release.client": "クライアント",
+    "release.server": "サーバー",
+    "release.workflow": "ワークフローのプロトコル",
+    "release.agentProtocol": "Agent プロトコル",
+    "release.agent": "ローカル Agent",
+    "release.shell": "分離 Shell",
+    "release.mail": "メール",
+    "release.enabled": "有効",
+    "release.disabled": "無効",
+    "release.unknown": "未報告"
+  }
+}

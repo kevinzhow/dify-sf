@@ -1,0 +1,100 @@
+/* Pre-engine shell, styled with the same Dify tokens and system font stack.
+   Generated token sections: tool/gen_web_startup.py. Loading animation: Dify base/loading/style.css. */
+:root, :root[data-startup-theme="light"] {
+  color-scheme: light;
+/* BEGIN light tokens */
+  --background-default: #ffffff;
+  --text-tertiary: #676f83;
+  --text-logo-text: #18222f;
+  --text-destructive: #d92d20;
+  --components-button-primary-bg: #0033ff;
+  --components-button-primary-bg-hover: #002cde;
+  --components-button-primary-text: #ffffff;
+  --components-button-primary-border: rgba(16, 24, 40, 0.04);
+  --components-button-primary-border-hover: rgba(16, 24, 40, 0.08);
+  --state-accent-solid: #0033ff;
+  --shadow-shadow3: rgba(9, 9, 11, 0.05);
+  --shadow-shadow5: rgba(9, 9, 11, 0.08);
+  --shadow-shadow10: rgba(9, 9, 11, 0.05);
+/* END light tokens */
+}
+:root[data-startup-theme="dark"] {
+  color-scheme: dark;
+/* BEGIN dark tokens */
+  --background-default: #222225;
+  --text-tertiary: rgba(200, 206, 218, 0.6);
+  --text-logo-text: #e9e9ec;
+  --text-destructive: #f97066;
+  --components-button-primary-bg: #085afc;
+  --components-button-primary-bg-hover: #3072ff;
+  --components-button-primary-text: rgba(255, 255, 255, 0.95);
+  --components-button-primary-border: rgba(255, 255, 255, 0.12);
+  --components-button-primary-border-hover: rgba(255, 255, 255, 0.2);
+  --state-accent-solid: #3072ff;
+  --shadow-shadow3: rgba(0, 0, 0, 0.1);
+  --shadow-shadow5: rgba(0, 0, 0, 0.16);
+  --shadow-shadow10: rgba(0, 0, 0, 0.4);
+/* END dark tokens */
+}
+html, body { margin: 0; min-height: 100%; background: var(--background-default); }
+#dify-startup {
+  position: fixed; inset: 0; z-index: 2147483647;
+  display: grid; place-items: center; padding: 24px;
+  box-sizing: border-box; background: var(--background-default);
+  color: var(--text-tertiary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-size: 13px; font-weight: 400; line-height: 20px;
+}
+.startup-content { display: flex; flex-direction: column; align-items: center; gap: 24px; max-width: 360px; text-align: center; }
+.startup-logo { display: flex; color: var(--text-logo-text); }
+.startup-status { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.startup-spinner { flex: none; fill: #1c64f2; }
+.startup-spinner rect { animation: dify-startup-pulse 2s linear infinite; }
+.startup-spinner rect:nth-child(2) { animation-delay: .5s; }
+.startup-spinner rect:nth-child(3) { animation-delay: 1s; }
+.startup-spinner rect:nth-child(4) { animation-delay: 1.5s; }
+@keyframes dify-startup-pulse { 0% { opacity: 0; } 25% { opacity: .1; } 50% { opacity: .2; } 75% { opacity: .5; } 100% { opacity: 1; } }
+#dify-startup[data-failed] .startup-spinner { display: none; }
+#dify-startup[data-failed] .startup-status { color: var(--text-destructive); }
+/* Dify primary/medium: button/index.tsx and styles.css shadow-primary-button. */
+#dify-startup-retry {
+  appearance: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  height: 32px; padding: 0 14px; box-sizing: border-box; white-space: nowrap;
+  border: 0; border-radius: 8px; font: inherit; font-weight: 500; line-height: 16px;
+  background: var(--components-button-primary-bg); color: var(--components-button-primary-text);
+  box-shadow: inset 0 0 0 .5px var(--components-button-primary-border),
+    0 2px 2px -1px rgba(0,0,0,.12), 0 1px 1px -1px rgba(0,0,0,.12),
+    0 0 0 .5px var(--shadow-shadow10), inset 0 -6px 12px -4px var(--shadow-shadow5),
+    inset 0 0 1px rgba(255,255,255,.16), inset 0 .5px 0 rgba(255,255,255,.08);
+}
+#dify-startup-retry:hover {
+  background: var(--components-button-primary-bg-hover);
+  box-shadow: inset 0 0 0 .5px var(--components-button-primary-border-hover), 0 1px 2px var(--shadow-shadow3);
+}
+#dify-startup-retry:focus-visible { outline: 2px solid var(--state-accent-solid); outline-offset: 0; }
+#dify-startup [hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .startup-spinner rect { animation: none; } }
+
+@media (prefers-color-scheme: dark) {
+:root:not([data-startup-theme]) {
+/* BEGIN dark tokens */
+  --background-default: #222225;
+  --text-tertiary: rgba(200, 206, 218, 0.6);
+  --text-logo-text: #e9e9ec;
+  --text-destructive: #f97066;
+  --components-button-primary-bg: #085afc;
+  --components-button-primary-bg-hover: #3072ff;
+  --components-button-primary-text: rgba(255, 255, 255, 0.95);
+  --components-button-primary-border: rgba(255, 255, 255, 0.12);
+  --components-button-primary-border-hover: rgba(255, 255, 255, 0.2);
+  --state-accent-solid: #3072ff;
+  --shadow-shadow3: rgba(0, 0, 0, 0.1);
+  --shadow-shadow5: rgba(0, 0, 0, 0.16);
+  --shadow-shadow10: rgba(0, 0, 0, 0.4);
+/* END dark tokens */
+}
+}
+
+/* DifyLogo dark-theme silhouette; keep the original light-theme SVG bytes. */
+:root[data-startup-theme="dark"] .startup-logo { filter: brightness(0) invert(1); }
+@media (prefers-color-scheme: dark) { :root:not([data-startup-theme]) .startup-logo { filter: brightness(0) invert(1); } }

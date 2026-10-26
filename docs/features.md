@@ -60,13 +60,13 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Organize (auto layout)](#organize) | 2 |  |  |  |  | 2 |
 | [Undo / redo & change history](#history) | 2 |  | 1 |  |  | 3 |
 | [Version history](#versions) | 2 |  |  |  |  | 2 |
-| [Accounts, sign-in & members](#accounts) | 10 |  | 6 | 2 | 1 | 19 |
+| [Accounts, sign-in & members](#accounts) | 10 |  | 6 | 2 | 2 | 20 |
 | [Settings tabs & workspace](#settings) | 3 | 4 | 5 | 3 |  | 15 |
 | [App-level pages outside the editor](#app-pages) | 19 | 6 | 5 | 4 | 2 | 36 |
 | [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 7 | 9 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
-| [i18n, design tokens & UI primitives](#design) | 5 | 3 | 1 | 1 |  | 10 |
-| **Total** | **182** | **57** | **30** | **17** | **15** | **301** |
+| [i18n, design tokens & UI primitives](#design) | 5 | 3 | 1 | 1 | 1 | 11 |
+| **Total** | **182** | **57** | **30** | **17** | **17** | **303** |
 
 <a id="canvas"></a>
 
@@ -596,6 +596,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Account page: change the email with codes to the current and the new address | ported | Deviation: Protocol 1.12 (/v1/account/change-email...), Dify's tokens, expiry and limits. Offered only when the server sends mail (enable_change_email = mail configured; Dify CE shows it whenever ENABLE_CHANGE_EMAIL, default on). check-email-unique needs a signed-in member (Dify's is public). | `app/test/account_page_test.dart`, `packages/collab_client/test/support/account_settings_scenario.dart` |
 | Account page: upload, crop and remove the avatar | ported | Deviation: Enabled only when the server advertises configured file storage. The account persists an own-upload image ID and receives a fresh signed URL. The avatar reuses the app icon crop control in image-only mode; delete requires confirmation. | spec `web/app/account/(commonLayout)/account-page`, `app/test/design/app_icon_picker_test.dart`, `packages/collab_client/test/files_test.dart`, `app/integration_test/files_flow_test.dart` |
 | Account page: delete the account (email code, feedback) | n/a | Dify Cloud only (shown when deployment_edition is CLOUD); dify-sf mirrors the community edition. | spec `web/app/account/(commonLayout)/delete-account/components` |
+| Account: public client/server version and actual advertised capabilities | dify-sf only | dify-sf extension: shows bounded public build/protocol identifiers and advertised Agent, isolated Shell and email switches. Older servers report an unknown release; the page never guesses a backend version from the frontend build. | `app/test/design/release_status_test.dart`, `packages/collab_client/test/build_identity_test.dart`, `docs/web-demand-fonts.md` |
 
 <a id="settings"></a>
 
@@ -704,3 +705,4 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | dify-ui primitives no ported feature uses yet: pagination, autocomplete, checkbox group, meter | not ported | Decided (2026-10-18): not built until a ported feature uses them; their specs stay to do. | spec `packages/dify-ui/src/pagination`, spec `packages/dify-ui/src/autocomplete`, spec `packages/dify-ui/src/checkbox-group`, spec `packages/dify-ui/src/meter` |
 | Dify test harness and fixtures (workflow-test-env, model provider fixtures) | n/a | Tests of Dify's own test helpers, not product code; dify-sf's harnesses are Dart helpers. | spec `workflow/workflow-test-env.spec.tsx` |
 | Page text selection and copy with a shared Dify context menu | partial | Pages, dialogs and drawers use a shared selection region for plain/rich text and Markdown, preserving block separators and local input editing. Canvas drag targets and buttons exclude passive text selection. Full virtualized-list, table-copy and browser/input-method parity is not yet accepted. | `app/test/design/page_selection_test.dart`, `app/test/workflow_editor/page_selection_canvas_test.dart`, `app/test/workflow_editor/canvas_connect_and_drag_test.dart` |
+| Web startup shell and same-face glyph-demand CJK loading | dify-sf only | Flutter deployment extension: a token-generated HTML shell stays until the first app frame; a pinned isolated engine hook reuses missing-glyph detection, shaping and reflow to load certified regional shards, with self-hosted fallback fonts and explicit recoverable failure. Native targets retain complete original fonts. | `docs/web-demand-fonts.md`, `app/test/fonts/font_subsets_test.dart`, `tool/fonts/check_subsets.py`, `tool/test_wasm_policy.mjs` |

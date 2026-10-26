@@ -441,6 +441,7 @@ class CodeEditorViewState extends State<CodeEditorView> {
         final editableWidth = columns * m.charWidth + 3 + 0.5;
         final extra = math.max(0.0, _viewportHeight - lh);
         final editable = EditableText(
+          contextMenuBuilder: difySelectionToolbar,
           key: _editableKey,
           controller: _controller,
           focusNode: _focus,

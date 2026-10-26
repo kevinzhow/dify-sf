@@ -54,9 +54,12 @@ class DifyMenuPopup extends StatefulWidget {
     this.width,
     this.semanticLabel,
     this.style = DifyMenuPopupStyle.menu,
+    bool focusFirst = false,
   }) : _root = null,
        _focusNode = null,
-       _focusFirst = false,
+       // Public option; internal tree constructors retain their private field.
+       // ignore: prefer_initializing_formals
+       _focusFirst = focusFirst,
        _onArrowLeft = null,
        _parent = null;
 

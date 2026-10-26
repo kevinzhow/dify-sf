@@ -2457,3 +2457,21 @@ features:
   deviation: 'dify-sf extensions: node-scoped saves that preserve only locally edited sections on reload, exact idempotent retry, a shared generated English-label model filter, the native read-only MCP endpoint and a tool-call capability diagnostic. Explicit save actions are used; complete Agent App/roster UI parity is not claimed.'
   evidence: [packages/collab_client/test/agent_composer_api_test.dart, app/test/agents/inline_composer_test.dart, app/test/agents/inline_configure_test.dart, app/test/agents/inline_checks_test.dart, app/test/agents/inline_shots_test.dart]
   ours: [app/lib/src/agents/inline_composer.dart, app/lib/src/agents/inline_configure.dart, app/lib/src/agents/inline_checks.dart, app/lib/src/mcp/host_io.dart, docs/agent-inline-client.md]
+
+- id: design.web-demand-fonts
+  area: design
+  title: 'Web startup shell and same-face glyph-demand CJK loading'
+  dify: []
+  status: dify_sf_only
+  reason: 'Flutter deployment extension: a token-generated HTML shell stays until the first app frame; a pinned isolated engine hook reuses missing-glyph detection, shaping and reflow to load certified regional shards, with self-hosted fallback fonts and explicit recoverable failure. Native targets retain complete original fonts.'
+  evidence: [docs/web-demand-fonts.md, app/test/fonts/font_subsets_test.dart, tool/fonts/check_subsets.py, tool/test_wasm_policy.mjs]
+  ours: [app/lib/src/design/font_subsets.dart, app/lib/src/design/font_bridge_web.dart, app/lib/src/design/widgets/font_notice.dart, app/web/startup.js, tool/build_web.sh, tool/web_engine/build.py]
+
+- id: accounts.release-status
+  area: accounts
+  title: 'Account: public client/server version and actual advertised capabilities'
+  dify: []
+  status: dify_sf_only
+  reason: 'dify-sf extension: shows bounded public build/protocol identifiers and advertised Agent, isolated Shell and email switches. Older servers report an unknown release; the page never guesses a backend version from the frontend build.'
+  evidence: [app/test/design/release_status_test.dart, packages/collab_client/test/build_identity_test.dart, docs/web-demand-fonts.md]
+  ours: [app/lib/src/account/release_status.dart, packages/collab_client/lib/src/auth/account.dart]

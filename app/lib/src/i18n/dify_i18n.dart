@@ -61,9 +61,12 @@ class DifyI18n implements Translator {
     ],
   }) async {
     final b = bundle ?? rootBundle;
-    Future<Map<String, Map<String, String>>> read(String lang) async => {
-      for (final ns in namespaces) ns: await _read(b, 'assets/i18n/$lang/$ns.json'),
-    };
+    Future<Map<String, Map<String, String>>> read(String lang) async => Map.fromEntries(
+      await Future.wait([
+        for (final ns in namespaces)
+          _read(b, 'assets/i18n/$lang/$ns.json').then((values) => MapEntry(ns, values)),
+      ]),
+    );
     Future<Map<String, Map<String, String>>> withExtensions(String lang) async {
       final result = await read(lang);
       try {
@@ -74,8 +77,12 @@ class DifyI18n implements Translator {
       } on Object { /* Languages without local additions use the English fallback. */ }
       return result;
     }
-    final fallback = await withExtensions(fallbackLanguage);
-    final i18n = DifyI18n._(language, language == fallbackLanguage ? fallback : await withExtensions(language), fallback);
+    final bundles = await Future.wait([
+      withExtensions(fallbackLanguage),
+      if (language != fallbackLanguage) withExtensions(language),
+    ]);
+    final fallback = bundles.first;
+    final i18n = DifyI18n._(language, language == fallbackLanguage ? fallback : bundles.last, fallback);
     current = i18n;
     return i18n;
   }

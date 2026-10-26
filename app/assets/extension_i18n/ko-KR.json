@@ -1,0 +1,18 @@
+{
+  "common": {
+    "operation.cut": "잘라내기",
+    "operation.paste": "붙여넣기",
+    "web.fontLoadFailed": "일부 글자를 불러오지 못했습니다. 연결 후 다시 시도하세요.",
+    "release.title": "버전 및 기능",
+    "release.client": "클라이언트",
+    "release.server": "서버",
+    "release.workflow": "워크플로 프로토콜",
+    "release.agentProtocol": "Agent 프로토콜",
+    "release.agent": "로컬 Agent",
+    "release.shell": "격리 Shell",
+    "release.mail": "메일",
+    "release.enabled": "활성화",
+    "release.disabled": "비활성화",
+    "release.unknown": "보고되지 않음"
+  }
+}

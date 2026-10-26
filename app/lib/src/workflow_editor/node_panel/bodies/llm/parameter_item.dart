@@ -450,6 +450,7 @@ class ParameterNumberInput extends StatelessWidget {
       label: label,
       textField: true,
       child: EditableText(
+          contextMenuBuilder: difySelectionToolbar,
         controller: controller,
         focusNode: focusNode,
         style: difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled),
@@ -503,6 +504,7 @@ class _ParameterTextAreaState extends State<ParameterTextArea> {
       textField: true,
       multiline: true,
       child: EditableText(
+          contextMenuBuilder: difySelectionToolbar,
         controller: _c,
         focusNode: _f,
         maxLines: null,

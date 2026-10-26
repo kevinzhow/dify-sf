@@ -32,5 +32,21 @@
     "inline.nodeMissing": "This node or its configuration was removed. Reload the workflow.",
     "inline.configurationTooLarge": "This configuration is too large. Remove files or shorten its text.",
     "inline.rateLimited": "Too many requests. Wait briefly and retry."
+  },
+  "common": {
+    "web.fontLoadFailed": "Some text could not be loaded. Reconnect and retry.",
+    "operation.cut": "Cut",
+    "operation.paste": "Paste",
+    "release.title": "Version and capabilities",
+    "release.client": "Client",
+    "release.server": "Server",
+    "release.workflow": "Workflow protocol",
+    "release.agentProtocol": "Agent protocol",
+    "release.agent": "Local Agent",
+    "release.shell": "Isolated Shell",
+    "release.mail": "Email",
+    "release.enabled": "Enabled",
+    "release.disabled": "Disabled",
+    "release.unknown": "Not reported"
   }
 }

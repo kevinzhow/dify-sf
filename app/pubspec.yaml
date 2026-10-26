@@ -92,7 +92,11 @@ flutter:
     - assets/i18n/vi-VN/
     - assets/i18n/zh-Hans/
     - assets/i18n/zh-Hant/
-    - assets/fonts/cjk/
+    - path: assets/fonts/cjk/
+      platforms: [android, ios, linux, macos, windows]
+    - path: assets/fonts/subsets/
+      platforms:
+        - web
     - assets/fonts/OFL.txt
     - assets/fonts/LICENSE-DejaVu.txt
     # Dify's logo (web/public/logo/logo.svg) and the Heroicons Dify uses (@iconify-json/heroicons 1.2.3, MIT).
