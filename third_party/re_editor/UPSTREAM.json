@@ -50,7 +50,7 @@
     },
     "lib/src/_code_input.dart": {
       "upstream_sha256": "2346559b036b2668f503145ecee09c2360474b6a608dca1f2ef3e701fbbb455e",
-      "vendored_sha256": "bd72ad6c2297bad0974c4b8b96301d9e6514e29626272251bbd6458028ca06bf"
+      "vendored_sha256": "262104647e0d11ef0b7fc23d66781e240f412afc44442a7d808431148603fe8d"
     },
     "lib/src/_code_line.dart": {
       "upstream_sha256": "e2eb7bab29617262dc5f9043bf6c158e878ce4ab21b6c92766e88859e7e72c3f",

@@ -168,6 +168,23 @@ class _CodeInputController extends ChangeNotifier implements DeltaTextInputClien
     if (newValue == _remoteEditingValue) {
       return;
     }
+    if (newValue.text == _remoteEditingValue!.text) {
+      // A platform caret/selection/composition update is not a replacement of
+      // the selected document range. The platform buffer describes the base
+      // line, whereas a native selection may span several document lines.
+      final previous = _remoteEditingValue!.removePrefixIfNecessary();
+      final local = newValue.removePrefixIfNecessary();
+      _remoteEditingValue = newValue;
+      _controller.value = value.copyWith(
+        selection: local.selection == previous.selection
+            ? selection
+            : CodeLineSelection.fromTextSelection(
+                index: selection.baseIndex, selection: local.selection),
+        composing: local.composing,
+      );
+      notifyListeners();
+      return;
+    }
     if (!smartChange) {
       _remoteEditingValue = newValue;
     }
