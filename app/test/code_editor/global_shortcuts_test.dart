@@ -4,7 +4,6 @@ import 'package:dify_sf_app/src/workflow_editor/code_editor/language.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/hotkey.dart';
 import 'package:dify_sf_app/src/workflow_editor/operator/operator.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:re_editor/re_editor.dart' as re;
