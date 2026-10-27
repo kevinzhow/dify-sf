@@ -37,6 +37,7 @@ class SandboxGrant {
     required this.created,
     this.gateway,
     this.profile,
+    this.codexGatewayUrl,
   });
   final String sandboxId;
   final Uri url;
@@ -46,6 +47,10 @@ class SandboxGrant {
   /// The executor profile the supervisor created the sandbox with (null
   /// from a supervisor without profiles).
   final String? profile;
+
+  /// The supervisor's dedicated, path-restricted Responses reverse proxy.
+  /// Never inferred from arbitrary operation input or the host gateway.
+  final Uri? codexGatewayUrl;
 
   /// The sandbox network's reserved gateway address (no host owns it when
   /// the network is set up as required); probed for host reachability.
@@ -116,6 +121,9 @@ class SupervisorClient {
       created: j['created'] == true,
       gateway: j['gateway'] as String?,
       profile: j['profile'] as String?,
+      codexGatewayUrl: j['codex_gateway_url'] is String
+          ? Uri.parse(j['codex_gateway_url'] as String)
+          : null,
     );
   }
 

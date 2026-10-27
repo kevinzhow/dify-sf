@@ -77,6 +77,8 @@ class Harness {
           : SupervisorClient(supervisorUrl!, _supervisorKey),
       profiles: _profiles,
       profileStatusTtl: Duration.zero,
+      // These suites test the Dart port; the official runtime has its own.
+      codexRuntime: CodexRuntime.port,
     );
     await service.start(address: '127.0.0.1', port: 0);
   }

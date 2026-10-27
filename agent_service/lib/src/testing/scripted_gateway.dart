@@ -23,8 +23,20 @@
 ///                // style's native wire): Responses events sent as they are;
 ///                // a `response.completed` without `reasoning` echoes the
 ///                // request's
-///  "files": {"<file_id>": {"mime_type": "image/png", "size": 3, "content": "…"}}}
+///  "files": {"<file_id>": {"mime_type": "image/png", "size": 3, "content": "…"}},
 ///                // or "content_base64": "…" for binary content
+///  "codex_run_token": "…",          // the official Codex runtime's entry
+///  "codex_call_limit": 6}           // (see below)
+/// ```
+///
+/// `POST /inner/agent/codex/v1/responses` stands in for the gateway's Codex
+/// entry: `Authorization: Bearer <codex_run_token>`, every POST numbered from
+/// 1 and answered with the next call's `responses_events` (a
+/// `response.completed` without `id` gets one), and beyond
+/// `codex_call_limit` a 429 with `error.type: usage_limit_reached`.
+/// `GET /debug/codex-requests` lists what Codex sent (headers and bodies).
+///
+/// ```jsonc
 /// ```
 library;
 
@@ -259,12 +271,17 @@ class CallObservation {
   bool completed = false;
 }
 
+/// The gateway's Codex Responses entry (official Codex runtime).
+const codexResponsesPath = '/inner/agent/codex/v1/responses';
+
 class ScriptedGateway {
   ScriptedGateway({
     List<ScriptedCall> calls = const [],
     Map<String, Map<String, Object?>> files = const {},
     this.serviceKey,
     this.log,
+    this.codexRunToken,
+    this.codexCallLimit,
   }) : _calls = List.of(calls),
        files = Map.of(files);
 
@@ -283,9 +300,18 @@ class ScriptedGateway {
     },
     serviceKey: serviceKey,
     log: log,
+    codexRunToken: script['codex_run_token'] as String?,
+    codexCallLimit: script['codex_call_limit'] as int?,
   );
 
   final List<ScriptedCall> _calls;
+
+  /// The run token the Codex entry expects (any bearer when null).
+  final String? codexRunToken;
+
+  /// POSTs the Codex entry answers before `usage_limit_reached`.
+  final int? codexCallLimit;
+  int codexCalls = 0;
   final Map<String, Map<String, Object?>> files;
   final String? serviceKey;
   final void Function(String)? log;
@@ -389,6 +415,20 @@ class ScriptedGateway {
         res.statusCode = uploadStatus;
         return await res.close();
       }
+      if (request.method == 'GET' && path == '/debug/codex-requests') {
+        return await _jsonResponse(res, 200, {
+          'requests': [
+            for (final e in exchanges)
+              if (e.path == codexResponsesPath)
+                {
+                  'headers': e.headers,
+                  'body': e.body,
+                  'status': e.status,
+                  'closed_by_client': e.closedByClient,
+                },
+          ],
+        });
+      }
       final text = await utf8.decodeStream(request);
       final body = text.isEmpty
           ? <String, Object?>{}
@@ -403,6 +443,9 @@ class ScriptedGateway {
       );
       exchanges.add(exchange);
       log?.call('${request.method} $path');
+      if (path == codexResponsesPath) {
+        return await _codexResponses(res, body, exchange);
+      }
       if (serviceKey != null &&
           request.headers.value('authorization') != 'Bearer $serviceKey') {
         return await _jsonResponse(res, 401, {
@@ -616,6 +659,81 @@ class ScriptedGateway {
           {
             ...e,
             'response': {...e['response'] as Map, 'reasoning': reasoning},
+          }
+        else
+          e,
+    ];
+    return _sse(res, obs, call, '', exchange, responseEvents: events);
+  }
+
+  /// `POST /inner/agent/codex/v1/responses` (see the library comment).
+  Future<void> _codexResponses(
+    HttpResponse res,
+    Map<String, Object?> body,
+    RecordedExchange exchange,
+  ) async {
+    final token = codexRunToken;
+    final auth = exchange.headers['authorization'] ?? '';
+    if (!auth.startsWith('Bearer ') ||
+        (token != null && auth != 'Bearer $token')) {
+      return _jsonResponse(res, 401, {
+        'error': {
+          'type': 'invalid_request_error',
+          'code': 'invalid_run_token',
+          'message': 'unknown run token',
+        },
+      }, exchange);
+    }
+    final index = ++codexCalls;
+    final limit = codexCallLimit;
+    if (limit != null && index > limit) {
+      return _jsonResponse(res, 429, {
+        'error': {
+          'type': 'usage_limit_reached',
+          'code': 'agent_call_limit',
+          'message': 'agent call limit reached',
+        },
+      }, exchange);
+    }
+    final obs = CallObservation('codex:$index');
+    observations.add(obs);
+    final call = _calls.isEmpty
+        ? ScriptedCall(
+            responseEvents: [
+              {
+                'type': 'response.failed',
+                'response': {
+                  'id': 'resp_$index',
+                  'error': {
+                    'code': 'server_error',
+                    'message': 'script exhausted',
+                  },
+                },
+              },
+            ],
+          )
+        : _calls.removeAt(0);
+    if (call.httpStatus != 200) {
+      obs.completed = true;
+      return _jsonResponse(
+        res,
+        call.httpStatus,
+        call.httpBody ??
+            {
+              'error': {
+                'type': 'server_error',
+                'message': 'scripted HTTP ${call.httpStatus}',
+              },
+            },
+        exchange,
+      );
+    }
+    final events = [
+      for (final e in call.responseEvents ?? const <Map<String, Object?>>[])
+        if (e['response'] is Map && !(e['response'] as Map).containsKey('id'))
+          {
+            ...e,
+            'response': {...e['response'] as Map, 'id': 'resp_$index'},
           }
         else
           e,

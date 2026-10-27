@@ -1,0 +1,212 @@
+// The official Codex runtime's pieces that run without a sandbox: the
+// operation fields, config.toml, the catalog entry and the output schema.
+// The runtime itself is covered end to end by tool/codex_e2e.sh (a real
+// sandbox, the real binary and the scripted gateway's Codex entry).
+import 'dart:convert';
+
+import 'package:agent_service/agent_service.dart';
+import 'package:agent_service/src/harness/codex/official.dart';
+import 'package:agent_service/testing.dart';
+import 'package:http/http.dart' as http;
+import 'package:test/test.dart';
+
+import 'support.dart';
+
+void main() {
+  Map<String, Object?> codexOp({Object? effort, bool token = true}) {
+    final o = operation();
+    final model = Map.of(o['model'] as Map<String, Object?>);
+    if (token) model['run_token'] = 'secret-run-token';
+    if (effort != null) model['parameters'] = {'reasoning_effort': effort};
+    return {...o, 'harness_style': 'codex', 'model': model};
+  }
+
+  group('operation', () {
+    test('model.run_token is kept out of the request JSON and digest', () {
+      final r = OperationRequest.parse(codexOp(), officialCodex: true);
+      expect(r.officialCodex, isTrue);
+      expect(r.codexRunToken, 'secret-run-token');
+      expect(jsonEncode(r.json), isNot(contains('secret-run-token')));
+      final without = OperationRequest.parse(codexOp(token: false));
+      expect(r.digest, without.digest);
+    });
+
+    test('the official runtime needs the token and accepts ultra', () {
+      expect(
+        () =>
+            OperationRequest.parse(codexOp(token: false), officialCodex: true),
+        throwsA(isA<ApiError>().having((e) => e.status, 'status', 400)),
+      );
+      final r = OperationRequest.parse(
+        codexOp(effort: 'ultra'),
+        officialCodex: true,
+      );
+      expect(r.reasoningEffort, 'ultra');
+      expect(
+        () => OperationRequest.parse(codexOp(effort: 'ultra')),
+        throwsA(isA<ApiError>().having((e) => e.status, 'status', 422)),
+      );
+      expect(
+        () => OperationRequest.parse(
+          codexOp(effort: 'persistent'),
+          officialCodex: true,
+        ),
+        throwsA(isA<ApiError>().having((e) => e.status, 'status', 422)),
+      );
+    });
+  });
+
+  test('config.toml', () {
+    final toml = codexConfigToml(
+      model: 'deepseek-v4.1-flash',
+      baseUrl: 'http://gw/inner/agent/codex/v1',
+      catalogPath: '/home/dify/agent/.codex-runs/r/models.json',
+      effort: 'max',
+      shell: true,
+      viewImage: false,
+      updatePlan: false,
+      commandEnv: {'NO_PROXY': 'localhost'},
+    );
+    for (final line in [
+      'model_provider = "difysf"',
+      'model_reasoning_effort = "max"',
+      'base_url = "http://gw/inner/agent/codex/v1"',
+      'env_key = "DIFYSF_RUN_TOKEN"',
+      'supports_websockets = false',
+      'exclude = ["DIFYSF_RUN_TOKEN", "SHELLCTL_*"]',
+      'NO_PROXY = "localhost"',
+      'multi_agent = false',
+      'instant_interrupt = false',
+      'view_image = false',
+    ]) {
+      expect(toml, contains(line));
+    }
+    expect(
+      codexConfigToml(
+        model: 'm',
+        baseUrl: 'u',
+        catalogPath: 'c',
+        effort: 'ultra',
+        shell: true,
+        viewImage: true,
+        updatePlan: true,
+      ),
+      contains('multi_agent = true'),
+    );
+  });
+
+  group('catalog entry', () {
+    final bundled = [
+      {
+        'slug': 'gpt-6-astra',
+        'tool_mode': 'code_mode_only',
+        'use_responses_lite': true,
+        'prefer_websockets': true,
+        'apply_patch_tool_type': 'freeform',
+        'default_reasoning_level': 'low',
+        'supported_reasoning_levels': [
+          for (final e in ['low', 'max', 'ultra'])
+            {'effort': e, 'description': 'd-$e'},
+        ],
+        'model_messages': {'instructions_template': 'gpt-6 prompt'},
+      },
+    ];
+
+    test('gpt-6 models start from gpt-6-astra, in Direct-tools mode', () {
+      final e = codexCatalogEntry(
+        model: 'gpt-6.1-terra',
+        bundled: bundled,
+        contextWindow: 400000,
+        reasoningEfforts: ['max', 'ultra'],
+        shell: true,
+      );
+      expect(e['slug'], 'gpt-6.1-terra');
+      expect(
+        (e['model_messages'] as Map)['instructions_template'],
+        'gpt-6 prompt',
+      );
+      expect(e['tool_mode'], isNull);
+      expect(e['use_responses_lite'], isFalse);
+      expect(e['prefer_websockets'], isFalse);
+      expect(e['context_window'], 400000);
+      expect(e['supported_reasoning_levels'], [
+        {'effort': 'max', 'description': 'd-max'},
+        {'effort': 'ultra', 'description': 'd-ultra'},
+      ]);
+      expect(e['default_reasoning_level'], isNull);
+    });
+
+    test(
+      'other models get the fallback metadata with freeform apply_patch',
+      () {
+        final e = codexCatalogEntry(
+          model: 'deepseek-v4.1-flash',
+          bundled: bundled,
+          inputModalities: ['text'],
+          shell: true,
+        );
+        expect(e['shell_type'], 'unified_exec');
+        expect(e['apply_patch_tool_type'], 'freeform');
+        expect(e['input_modalities'], ['text']);
+        expect(
+          (e['model_messages'] as Map)['instructions_template'],
+          startsWith('You are a coding agent running in the Codex CLI'),
+        );
+        expect(
+          codexCatalogEntry(
+            model: 'x',
+            bundled: bundled,
+            shell: false,
+          )['apply_patch_tool_type'],
+          isNull,
+        );
+      },
+    );
+  });
+
+  test('declared outputs: strict schema and the optional nulls dropped', () {
+    final schema = {
+      'type': 'object',
+      'properties': {
+        'text': {'type': 'string'},
+        'board': {'type': 'string'},
+      },
+      'required': ['text'],
+    };
+    final strict = strictOutputSchema(schema);
+    expect(strict['required'], ['text', 'board']);
+    expect(strict['additionalProperties'], isFalse);
+    expect((strict['properties'] as Map)['board'], {
+      'type': ['string', 'null'],
+    });
+    expect(dropOptionalNulls(schema, {'text': 'a', 'board': null}), {
+      'text': 'a',
+    });
+  });
+
+  test('scripted gateway: Codex entry token and call limit', () async {
+    final gw = ScriptedGateway(
+      calls: [ScriptedCall.responses([])],
+      codexRunToken: 'tok',
+      codexCallLimit: 1,
+    );
+    final base = await gw.start();
+    final url = base.resolve(codexResponsesPath);
+    Future<http.Response> post(String token) =>
+        http.post(url, headers: {'Authorization': 'Bearer $token'}, body: '{}');
+    try {
+      expect((await post('wrong')).statusCode, 401);
+      final ok = await post('tok');
+      expect(ok.statusCode, 200);
+      expect(ok.body, contains('"id":"resp_1"'));
+      final limited = await post('tok');
+      expect(limited.statusCode, 429);
+      expect(
+        ((jsonDecode(limited.body) as Map)['error'] as Map)['type'],
+        'usage_limit_reached',
+      );
+    } finally {
+      await gw.close();
+    }
+  });
+}

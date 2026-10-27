@@ -10,9 +10,10 @@ import Vapor
 enum AgentModelWire {
     static let compatible = "langgenius/openai_api_compatible/openai_api_compatible"
     static let openAI = "langgenius/openai/openai"
+    static let deepSeek = "langgenius/deepseek/deepseek"
 
     static func select(style: String, provider: String, credentials: JSONObject) -> String {
-        style == "codex" && (provider == openAI || (provider == compatible && credentials["api_type"] == "responses"))
+        style == "codex" && (provider == openAI || provider == deepSeek || (provider == compatible && credentials["api_type"] == "responses"))
             ? "responses" : "plugin"
     }
 }
@@ -90,8 +91,11 @@ struct AgentResponsesConnection: Sendable {
             throw ServerError.badRequest("The selected model does not use the Responses API")
         }
         let official = provider == AgentModelWire.openAI
+        let deepSeek = provider == AgentModelWire.deepSeek
         let key = credentials[official ? "openai_api_key" : "api_key"]?.string ?? (official ? "" : "dummy")
-        let endpoint = credentials[official ? "openai_api_base" : "endpoint_url"]?.string ?? (official ? "https://api.openai.com/v1" : "")
+        let configured = credentials[official ? "openai_api_base" : "endpoint_url"]?.string
+        let endpoint = configured.flatMap { $0.isEmpty ? nil : $0 }
+            ?? (official ? "https://api.openai.com/v1" : (deepSeek ? "https://api.deepseek.com" : ""))
         guard var parts = URLComponents(string: endpoint), ["https", "http"].contains(parts.scheme ?? ""),
               parts.host?.isEmpty == false, parts.user == nil, parts.password == nil,
               parts.query == nil, parts.fragment == nil, !key.isEmpty, key.utf8.count <= 4096,
@@ -99,7 +103,7 @@ struct AgentResponsesConnection: Sendable {
             throw ServerError.badRequest("The selected model connection is not configured correctly")
         }
         while parts.path.hasSuffix("/") { parts.path.removeLast() }
-        if !parts.path.hasSuffix("/v1") { parts.path += "/v1" }
+        if !deepSeek && !parts.path.hasSuffix("/v1") { parts.path += "/v1" }
         parts.path += "/responses"
         guard let url = parts.url?.absoluteString else { throw AgentModelGatewayRequest.invalid() }
         var headers: [String: String] = ["Content-Type": "application/json", "Accept": "text/event-stream"]
@@ -190,8 +194,8 @@ private actor AgentResponsesObserver {
 private struct AgentResponsesHead: Sendable { let status: Int; let retryAfter: String? }
 
 extension Routes {
-    func invokeAgentResponses(_ req: Request) async throws -> Response {
-        let token = try authenticateAgentService(req)
+    func invokeAgentResponses(_ req: Request, codex: Bool = false) async throws -> Response {
+        let token = codex ? try authenticateAgentCodex(req) : try authenticateAgentService(req)
         let scope = try await agentModelScopes.activeScope(token: token)
         if scope.durableOwner != nil { try await requireDurableAgentScope(scope) }
         guard let run = try await store.workflowRun(doc: scope.appID, id: scope.workflowRunID),
@@ -201,17 +205,20 @@ extension Routes {
         _ = try await liveApp(scope.appID, viewer: scope.userID)
         let bytes = try await req.body.collect(max: .specified(ByteCount(value: AgentModelGatewayLimits.requestBytes))) ?? Data()
         guard let payload = try? JSONValue.parse(bytes) else { throw AgentModelGatewayRequest.invalid() }
-        var request = try AgentResponsesRequest(body: payload, index: req.headers[HTTPField.Name("X-Agent-Call-Index")!],
-            invocation: req.headers[HTTPField.Name("X-Agent-Invocation-ID")!], attempt: req.headers[HTTPField.Name("X-Agent-Attempt")!], scope: scope)
-        request.body["input"] = try await normalizeAgentResponsesFiles(request.body["input"]!, scope: scope)
+        var request = codex ? try AgentResponsesRequest(codexBody: payload, scope: scope)
+            : try AgentResponsesRequest(body: payload, index: req.headers[HTTPField.Name("X-Agent-Call-Index")!],
+                invocation: req.headers[HTTPField.Name("X-Agent-Invocation-ID")!], attempt: req.headers[HTTPField.Name("X-Agent-Attempt")!], scope: scope)
+        request.body["input"] = try await normalizeAgentResponsesFiles(request.body["input"]!, scope: scope, allowInline: codex)
         let credentials = try await agentCredentials(provider: scope.provider, model: scope.model, reference: scope.credentialReference)
         let connection = try AgentResponsesConnection(provider: scope.provider, model: scope.model, credentials: credentials)
         request.body["model"] = .string(connection.model)
         let encoded = JSONValue.object(request.body).compactJSON()
         guard encoded.utf8.count <= AgentModelGatewayLimits.requestBytes else { throw ServerError.payloadTooLarge }
-        let claim = try await agentModelScopes.claim(token: token, caller: scope.caller.merging(["invocation_id": .string(request.invocationID)]),
-            provider: scope.provider, model: scope.model, parameters: scope.modelParameters ?? [:],
-            stop: scope.modelParameters?["stop"]?.array?.compactMap(\.string) ?? [], index: request.callIndex, attempt: request.attempt)
+        let claim = codex ? try await agentModelScopes.claimCodex(token: token)
+            : try await agentModelScopes.claim(token: token, caller: scope.caller.merging(["invocation_id": .string(request.invocationID)]),
+                provider: scope.provider, model: scope.model, parameters: scope.modelParameters ?? [:],
+                stop: scope.modelParameters?["stop"]?.array?.compactMap(\.string) ?? [], index: request.callIndex, attempt: request.attempt)
+        let forwarded = request.body
         let (heads, head) = AsyncThrowingStream<AgentResponsesHead, any Error>.makeStream(bufferingPolicy: .bufferingNewest(1))
         let (frames, output) = AsyncThrowingStream<ByteBuffer, any Error>.makeStream(bufferingPolicy: .unbounded)
         let scopes = agentModelScopes
@@ -226,9 +233,15 @@ extension Routes {
                     upstream.method = .POST
                     for (name, value) in connection.headers { upstream.headers.add(name: name, value: value) }
                     upstream.body = .bytes(ByteBuffer(string: encoded))
+                    if codex {
+                        try await recordCodexModelCall(scope: scope, claim: claim, phase: "started", body: forwarded,
+                            model: connection.model, usage: nil, status: nil)
+                    }
                     let response = try await client.execute(upstream, timeout: .seconds(max(1, Int64(scope.expiresAt.timeIntervalSinceNow))))
                     let status = Int(response.status.code)
                     let retry = response.headers.first(name: "Retry-After").flatMap { value -> String? in
+                        if codex, !value.isEmpty, value.utf8.count <= 128,
+                           value.unicodeScalars.allSatisfy({ $0.value >= 32 && $0.value < 127 }) { return value }
                         guard let seconds = Int(value), (0...300).contains(seconds) else { return nil }; return String(seconds)
                     }
                     if status != 200 {
@@ -238,9 +251,20 @@ extension Routes {
                         let value = try? JSONValue.parse(Array(raw.readableBytesView))
                         let code = value?["error"]?["code"]?.string ?? value?["error"]?["type"]?.string ?? "upstream_error"
                         let safeCodes: Set<String> = ["server_is_overloaded", "rate_limit_exceeded", "insufficient_quota", "quota_exceeded", "invalid_api_key", "invalid_request_error", "context_length_exceeded"]
-                        let safe: JSONValue = ["error": ["code": .string(safeCodes.contains(code) ? code : "upstream_error"),
-                            "message": "The model provider rejected this request"]]
+                        func safeIdentifier(_ value: String) -> String {
+                            guard !value.isEmpty, value.utf8.count <= 80,
+                                  value.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "-") }),
+                                  !(connection.secrets + [token]).contains(where: { !$0.isEmpty && value.contains($0) }) else { return "upstream_error" }
+                            return value
+                        }
+                        let safe: JSONValue = codex
+                            ? ["error": ["type": .string(safeIdentifier(value?["error"]?["type"]?.string ?? code)),
+                                "code": .string(safeIdentifier(code)), "message": "The model provider rejected this request"]]
+                            : ["error": ["code": .string(safeCodes.contains(code) ? code : "upstream_error"),
+                                "message": "The model provider rejected this request"]]
                         await scopes.finish(claim, usage: nil, succeeded: !(status == 429 || status >= 500))
+                        if codex { try? await recordCodexModelCall(scope: scope, claim: claim, phase: "finished", body: forwarded,
+                            model: connection.model, usage: nil, status: status) }
                         head.yield(.init(status: status, retryAfter: retry)); head.finish()
                         output.yield(ByteBuffer(string: safe.compactJSON())); output.finish()
                         return
@@ -249,7 +273,8 @@ extension Routes {
                         throw AgentModelGatewayRequest.invalid()
                     }
                     head.yield(.init(status: status, retryAfter: retry)); head.finish()
-                    var total = 0, guarder = AgentResponsesSecretGuard(connection.secrets)
+                    var total = 0, guarder = AgentResponsesSecretGuard(connection.secrets + (codex ? [token] : []))
+                    var recordedTerminal = false
                     for try await chunk in response.body {
                         try Task.checkCancellation()
                         total += chunk.readableBytes
@@ -257,17 +282,32 @@ extension Routes {
                         let bytes = Array(chunk.readableBytesView)
                         try await observer.consume(bytes)
                         let safe = try guarder.consume(bytes)
+                        if codex {
+                            let observed = await observer.snapshot()
+                            if let usage = observed.usage { await scopes.observeCodexUsage(usage, for: claim) }
+                            if observed.terminal && !recordedTerminal {
+                                // Commit the completed-call record before Codex can
+                                // finish the Agent operation on receiving this frame.
+                                try await recordCodexModelCall(scope: scope, claim: claim, phase: "finished", body: forwarded,
+                                    model: connection.model, usage: observed.usage, status: status)
+                                recordedTerminal = true
+                            }
+                        }
                         if !safe.isEmpty { output.yield(ByteBuffer(bytes: safe)) }
                     }
                     let tail = try guarder.consume([], final: true)
                     if !tail.isEmpty { output.yield(ByteBuffer(bytes: tail)) }
                     let observed = await observer.snapshot()
                     await scopes.finish(claim, usage: observed.usage, succeeded: observed.terminal && !observed.failed)
+                    if codex { try? await recordCodexModelCall(scope: scope, claim: claim, phase: "finished", body: forwarded,
+                        model: connection.model, usage: observed.usage, status: status) }
                     output.finish()
                 }
             } catch {
                 let observed = await observer.snapshot()
                 await scopes.finish(claim, usage: observed.usage, succeeded: false)
+                if codex { try? await recordCodexModelCall(scope: scope, claim: claim, phase: "finished", body: forwarded,
+                    model: connection.model, usage: observed.usage, status: 502) }
                 // Never reflect transport error descriptions: they can include a URL.
                 let safe = ServerError.http(status: 502, code: "agent_model_transport", message: "The model response stream was interrupted")
                 head.finish(throwing: safe); output.finish(throwing: safe)
@@ -284,6 +324,7 @@ extension Routes {
         var headers = Self.eventHeaders
         if response.status != 200 { headers[.contentType] = "application/json" }
         if let retry = response.retryAfter { headers[HTTPField.Name("Retry-After")!] = retry }
+        if codex { headers[HTTPField.Name("X-Dify-SF-Call-Index")!] = String(claim.index) }
         if let effort = request.body["reasoning"]?["effort"]?.string {
             headers[HTTPField.Name("X-Dify-SF-Forwarded-Reasoning")!] = effort
         }
@@ -293,7 +334,7 @@ extension Routes {
         }, count: nil))
     }
 
-    func normalizeAgentResponsesFiles(_ input: JSONValue, scope: AgentModelScope) async throws -> JSONValue {
+    func normalizeAgentResponsesFiles(_ input: JSONValue, scope: AgentModelScope, allowInline: Bool = false) async throws -> JSONValue {
         var bytes = 0, nodes = 0
         func walk(_ value: JSONValue, depth: Int) async throws -> JSONValue {
             nodes += 1
@@ -306,6 +347,20 @@ extension Routes {
             guard var fields = value.object else { return value }
             if ["input_image", "input_file"].contains(fields["type"]?.string ?? "") {
                 let image = fields["type"] == "input_image"
+                if allowInline, let embedded = fields[image ? "image_url" : "file_data"]?.string, embedded.hasPrefix("data:") {
+                    guard fields["file_url"] == nil, fields["file_id"] == nil,
+                          image ? fields["file_data"] == nil : fields["image_url"] == nil,
+                          let separator = embedded.firstIndex(of: ",") else { throw AgentModelFileError() }
+                    let prefix = String(embedded[..<separator]), raw = String(embedded[embedded.index(after: separator)...])
+                    let mimes = image ? ["image/png", "image/jpeg", "image/webp", "image/gif"]
+                        : ["application/pdf", "text/plain", "application/octet-stream"]
+                    guard mimes.contains(where: { prefix == "data:\($0);base64" }),
+                          raw.utf8.count <= ((AgentModelGatewayLimits.fileBytes + 2) / 3) * 4,
+                          let content = Data(base64Encoded: raw), !content.isEmpty else { throw AgentModelFileError() }
+                    bytes += content.count
+                    guard bytes <= AgentModelGatewayLimits.fileBytes else { throw ServerError.payloadTooLarge }
+                    return value
+                }
                 guard fields["file_data"] == nil, fields["file_url"] == nil,
                       image ? fields["file_id"] == nil : fields["image_url"] == nil,
                       let reference = fields[image ? "image_url" : "file_id"]?.string,

@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+import 'harness/codex/official.dart' show officialCodexReasoningEfforts;
 import 'output_tool.dart';
 import 'sandbox/paths.dart';
 
@@ -231,7 +232,9 @@ class ModelSpec {
       apiType = _optString(json, 'api_type', 'model'),
       wire = _optString(json, 'wire', 'model'),
       contextWindow = _optPositiveInt(json, 'context_window', 'model'),
-      maxOutputTokens = _optPositiveInt(json, 'max_output_tokens', 'model') {
+      maxOutputTokens = _optPositiveInt(json, 'max_output_tokens', 'model'),
+      reasoningEfforts = _optStrings(json, 'reasoning_efforts', 'model'),
+      inputModalities = _optStrings(json, 'input_modalities', 'model') {
     if (wire != null && wire != 'plugin' && wire != 'responses') {
       throw invalidRequest('model.wire must be "plugin" or "responses"');
     }
@@ -257,6 +260,21 @@ class ModelSpec {
   /// the model schema): accepted and checked; used by compaction later.
   final int? contextWindow;
   final int? maxOutputTokens;
+
+  /// `model.reasoning_efforts` and `model.input_modalities` (optional, from
+  /// the model schema): the levels and inputs (`text`, `image`) the model
+  /// supports; the official Codex runtime writes them into its catalog.
+  final List<String>? reasoningEfforts;
+  final List<String>? inputModalities;
+}
+
+List<String>? _optStrings(Map<String, Object?> o, String key, String where) {
+  final v = o[key];
+  if (v == null) return null;
+  if (v is List && v.every((e) => e is String && e.isNotEmpty)) {
+    return v.cast<String>();
+  }
+  throw invalidRequest('$where.$key must be a list of non-empty strings');
 }
 
 int? _optPositiveInt(Map<String, Object?> o, String key, String where) {
@@ -394,6 +412,8 @@ class OperationRequest {
     required this.continuation,
     required this.outputAttempt,
     required this.resumeSequence,
+    this.officialCodex = false,
+    this.codexRunToken,
   });
 
   final Map<String, Object?> json;
@@ -437,12 +457,25 @@ class OperationRequest {
   final int outputAttempt;
   final int resumeSequence;
 
+  /// `harness_style: codex` runs the official Codex binary (see
+  /// `harness/codex/official.dart`), not the Dart port.
+  final bool officialCodex;
+
+  /// `model.run_token`: the run token Codex sends to the gateway's Codex
+  /// entry. A secret: removed from [json] (so from the request digest, the
+  /// snapshots and the run store) and never logged.
+  final String? codexRunToken;
+
   String get digest => requestDigest(json);
 
   List<String> get fileIds => [for (final f in files) f.fileId];
 
   /// Validates [json]; throws [ApiError] (400) on a malformed request.
-  static OperationRequest parse(Map<String, Object?> json) {
+  /// [officialCodex]: `harness_style: codex` runs the official Codex binary.
+  static OperationRequest parse(
+    Map<String, Object?> json, {
+    bool officialCodex = false,
+  }) {
     requireProtocol(json);
     final unknown = json.keys.where((k) => !operationFields.contains(k));
     if (unknown.isNotEmpty) {
@@ -451,7 +484,14 @@ class OperationRequest {
     final operationId = _string(json, 'operation_id', 'request');
     final generation = _int(json, 'generation', 'request');
     final execution = ExecutionRef(_object(json['execution'], 'execution'));
-    final model = ModelSpec(_object(json['model'], 'model'));
+    // The run token is kept apart: never in the digest, snapshot or store.
+    final rawModel = Map.of(_object(json['model'], 'model'));
+    final runToken = rawModel.remove('run_token');
+    if (runToken != null && (runToken is! String || runToken.isEmpty)) {
+      throw invalidRequest('model.run_token must be a non-empty string');
+    }
+    if (runToken != null) json = {...json, 'model': rawModel};
+    final model = ModelSpec(rawModel);
 
     // operation_id = <execution_id>:<output_attempt>:<resume_sequence>
     final prefix = '${execution.executionId}:';
@@ -534,11 +574,18 @@ class OperationRequest {
     if (updatePlan && harnessStyle != HarnessStyle.codex) {
       throw invalidRequest('tools.update_plan needs harness_style "codex"');
     }
+    final official = officialCodex && harnessStyle == HarnessStyle.codex;
+    if (official && runToken == null) {
+      throw invalidRequest('model.run_token is required for harness_style "codex"');
+    }
     if (harnessStyle == HarnessStyle.codex &&
         model.parameters.containsKey('reasoning_effort')) {
       final effort = model.parameters['reasoning_effort'];
-      if (effort is! String || !codexReasoningEfforts.contains(effort)) {
-        final refused = effort is String
+      final accepted = official
+          ? officialCodexReasoningEfforts
+          : codexReasoningEfforts;
+      if (effort is! String || !accepted.contains(effort)) {
+        final refused = effort is String && !official
             ? codexRefusedReasoningEfforts[effort]
             : null;
         throw ApiError(
@@ -546,7 +593,7 @@ class OperationRequest {
           'unsupported_reasoning_effort',
           refused ??
               'model.parameters.reasoning_effort ${jsonEncode(effort)} is not '
-                  'one of ${codexReasoningEfforts.join(', ')}',
+                  'one of ${accepted.join(', ')}',
           extra: {'reasoning_effort': effort},
         );
       }
@@ -634,6 +681,8 @@ class OperationRequest {
       continuation: continuation,
       outputAttempt: outputAttempt,
       resumeSequence: resumeSequence,
+      officialCodex: official,
+      codexRunToken: runToken as String?,
     );
   }
 }

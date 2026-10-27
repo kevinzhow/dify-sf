@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import 'executor_profiles.dart';
+import 'harness/codex/official.dart' show CodexRuntime;
 import 'leases.dart';
 import 'loop.dart';
 import 'protocol.dart';
@@ -35,6 +36,8 @@ class AgentService {
     Duration profileStatusTtl = const Duration(seconds: 15),
     SandboxLayout sandboxLayout = const SandboxLayout(),
     http.Client Function()? shellctlHttpClient,
+    this.codexRuntime = CodexRuntime.official,
+    this.codexGatewayUrl,
   }) : store = RunStore(dataDir, clock: clock, eventRetention: eventRetention),
        profiles = profiles ?? ExecutorProfiles.implicit() {
     leases = LeaseManager(onExpired: _leaseExpired);
@@ -51,6 +54,14 @@ class AgentService {
 
   final String serviceKey;
   final Uri? innerUrl;
+
+  /// What runs `harness_style: codex` (`AGENT_CODEX_RUNTIME`).
+  final CodexRuntime codexRuntime;
+
+  /// The Codex Responses entry as sandboxes reach it, used when the
+  /// supervisor's grant has no `codex_gateway_url`
+  /// (`AGENT_CODEX_GATEWAY_URL`; local tests).
+  final String? codexGatewayUrl;
   final RunStore store;
 
   /// The executor profiles (`AGENT_EXECUTOR_PROFILES`).
@@ -277,7 +288,10 @@ class AgentService {
 
   Future<void> _postOperation(HttpRequest request) async {
     final body = await _body(request);
-    final op = OperationRequest.parse(body);
+    final op = OperationRequest.parse(
+      body,
+      officialCodex: codexRuntime == CodexRuntime.official,
+    );
     final executionId = op.execution.executionId;
     // Read before the synchronous section below; null = not known.
     String? profileStatus;
@@ -316,7 +330,7 @@ class AgentService {
         return _json(request.response, 200, run.statusJson());
       }
     }
-    if (op.shell) {
+    if (op.shell || op.officialCodex) {
       final p = profiles[op.executorProfile];
       checkOperationProfile(
         op,
@@ -344,6 +358,7 @@ class AgentService {
       serviceKey: serviceKey,
       runToken: runToken,
       sandboxes: sandboxes,
+      codexGatewayUrl: codexGatewayUrl,
       log: (m) => _log(LogLevel.error, m),
     );
     _live[record.runId] = run;

@@ -46,6 +46,7 @@ struct AgentModelScope: Sendable {
     var durableOwner: String? = nil
     var harnessStyle: String = "dify"
     var modelWire: String = "plugin"
+    var outputTokenLimit: Int? = nil
 
     var appID: String { execution["app_id"]?.string ?? "" }
     var workflowRunID: String { execution["workflow_run_id"]?.string ?? "" }
@@ -177,8 +178,9 @@ actor AgentModelScopes {
         var activeAttempt: Int?
         var retryableCalls: [Int: Int] = [:]
         var invocations: [Int: String] = [:]
+        var codexActive: Set<Int> = []
     }
-    struct Claim: Sendable { var digest: String; var scope: AgentModelScope; var index: Int; var attempt: Int = 1 }
+    struct Claim: Sendable { var digest: String; var scope: AgentModelScope; var index: Int; var attempt: Int = 1; var codex: Bool = false }
     private var entries: [String: Entry] = [:]
     private var generations: [String: Int] = [:]
 
@@ -236,7 +238,7 @@ actor AgentModelScopes {
         guard !entry.calls.contains(index) || entry.retryableCalls[index].map({ attempt > $0 }) == true else {
             throw ServerError.http(status: 409, code: "duplicate_invocation", message: "This model invocation was already accepted")
         }
-        guard entry.activeCall == nil else {
+        guard entry.activeCall == nil, entry.codexActive.isEmpty else {
             throw ServerError.http(status: 409, code: "agent_call_in_progress", message: "A model invocation is still running")
         }
         entry.invocations[index] = invocation
@@ -250,7 +252,7 @@ actor AgentModelScopes {
 
     func attach(_ task: Task<Void, Never>, to claim: Claim) {
         guard var entry = entries[claim.digest], generations[entry.scope.executionKey] == entry.scope.generation,
-              entry.activeCall == claim.index, entry.activeAttempt == claim.attempt else {
+              claim.codex ? entry.codexActive.contains(claim.index) : (entry.activeCall == claim.index && entry.activeAttempt == claim.attempt) else {
             task.cancel(); return
         }
         entry.tasks[claim.index] = task
@@ -258,13 +260,50 @@ actor AgentModelScopes {
     }
 
     func finish(_ claim: Claim, usage: LLMUsage?, succeeded: Bool = true) {
-        guard var entry = entries[claim.digest], entry.activeCall == claim.index, entry.activeAttempt == claim.attempt else { return }
-        if let usage { entry.usage[claim.index] = entry.usage[claim.index].map { $0.plus(usage) } ?? usage }
+        guard var entry = entries[claim.digest],
+              claim.codex ? entry.codexActive.contains(claim.index) : (entry.activeCall == claim.index && entry.activeAttempt == claim.attempt) else { return }
+        if let usage {
+            entry.usage[claim.index] = claim.codex ? usage : (entry.usage[claim.index].map { $0.plus(usage) } ?? usage)
+        }
+        if claim.codex {
+            entry.codexActive.remove(claim.index)
+            entry.tasks[claim.index] = nil
+            entries[claim.digest] = entry
+            return
+        }
         if !succeeded { entry.retryableCalls[claim.index] = claim.attempt }
         entry.activeAttempt = nil
         entry.tasks[claim.index] = nil
         if entry.activeCall == claim.index { entry.activeCall = nil }
         entries[claim.digest] = entry
+    }
+
+    /// Codex may finish its turn as soon as it reads response.completed,
+    /// before the provider closes HTTP. Revocation must already see that usage.
+    func observeCodexUsage(_ usage: LLMUsage, for claim: Claim) {
+        guard claim.codex, var entry = entries[claim.digest], entry.codexActive.contains(claim.index) else { return }
+        entry.usage[claim.index] = usage
+        entries[claim.digest] = entry
+    }
+
+    /// Official Codex owns retry identities. Every accepted HTTP POST consumes
+    /// a new slot, including retries and calls made by child agents.
+    func claimCodex(token: String) throws -> Claim {
+        let digest = Tokens.sha256(token)
+        guard var entry = entries[digest], entry.scope.expiresAt > Date(),
+              generations[entry.scope.executionKey] == entry.scope.generation,
+              entry.scope.harnessStyle == "codex", entry.scope.modelWire == "responses" else { throw Self.denied() }
+        let index = (entry.calls.max() ?? 0) + 1
+        guard index <= entry.scope.maxCalls else { throw AgentCodexCallLimit() }
+        entry.calls.insert(index)
+        entries[digest] = entry
+        // Keep the server's bounded stream buffers bounded across child agents.
+        guard entry.codexActive.count < 8, entry.activeCall == nil else {
+            throw ServerError.http(status: 503, code: "agent_model_busy", message: "Too many model requests are active")
+        }
+        entry.codexActive.insert(index)
+        entries[digest] = entry
+        return Claim(digest: digest, scope: entry.scope, index: index, codex: true)
     }
 
     func grantFiles(execution: String, generation: Int, files: Set<String>) {
@@ -309,6 +348,16 @@ extension Routes {
                 do { return try await invokeAgentResponses(req) }
                 catch is AgentModelFileError {
                     return rawJSON(["error": "file_error", "message": "The model file is not available to this execution"], status: .init(code: 422))
+                }
+            }
+        }
+        routes.post("inner", "agent", "codex", "v1", "responses") { req in
+            await handle(req, cancellable: true) {
+                do { return try await invokeAgentResponses(req, codex: true) }
+                catch is AgentCodexCallLimit {
+                    return rawJSON(["error": ["type": "usage_limit_reached", "code": "agent_call_limit", "message": "Agent model call limit reached"]], status: .init(code: 429))
+                } catch is AgentModelFileError {
+                    return rawJSON(["error": ["type": "invalid_request_error", "code": "file_error", "message": "The model file is not available to this execution"]], status: .init(code: 422))
                 }
             }
         }

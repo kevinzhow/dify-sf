@@ -184,6 +184,7 @@ class SupervisorConfig {
     required this.agentPeers,
     this.proxyPeer,
     this.proxyPort = 3128,
+    this.codexGateway = false,
     this.composeProject,
     String subnetPool = '10.213.0.0/16',
     this.image = 'langgenius/dify-agent-local-sandbox:1.17.1',
@@ -209,6 +210,9 @@ class SupervisorConfig {
        profiles = profiles ?? ExecutorProfiles.implicit() {
     if (agentPeers.isEmpty) {
       throw SupervisorConfigError('at least one agent peer is required');
+    }
+    if (codexGateway && proxyPeer == null) {
+      throw SupervisorConfigError('the Codex gateway requires a proxy peer');
     }
     for (final p in this.profiles.profiles.values) {
       final l = limitsOf(p);
@@ -250,6 +254,10 @@ class SupervisorConfig {
   /// sandbox network>:[proxyPort]`. Without it sandboxes have no egress.
   final String? proxyPeer;
   final int proxyPort;
+
+  /// The configured peer is a dedicated Responses reverse proxy, rather
+  /// than a general HTTP proxy. Only explicit allowlist profiles receive it.
+  final bool codexGateway;
 
   /// Peers are compose services of this project (labels
   /// `com.docker.compose.project` and `com.docker.compose.service`).
@@ -375,6 +383,7 @@ class SupervisorConfig {
       agentPeers: agents,
       proxyPeer: opt('SANDBOX_PROXY_PEER'),
       proxyPort: intOf('SANDBOX_PROXY_PORT', 3128, max: 65535),
+      codexGateway: opt('SANDBOX_CODEX_GATEWAY') == 'true',
       composeProject: opt('SANDBOX_COMPOSE_PROJECT'),
       subnetPool: opt('SANDBOX_SUBNET_POOL') ?? '10.213.0.0/16',
       image:
@@ -1065,6 +1074,10 @@ class SandboxSupervisor {
       'gateway': subnet.host(gatewayHost),
       'created': created,
       'profile': profileOf(inspect),
+      if (config.codexGateway &&
+          config.profiles[profileOf(inspect)]?.egress == Egress.allowlist)
+        'codex_gateway_url':
+            'http://${subnet.host(proxyHost)}:${config.proxyPort}/inner/agent/codex/v1',
     };
   }
 
