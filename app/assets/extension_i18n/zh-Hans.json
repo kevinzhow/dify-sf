@@ -50,7 +50,13 @@
     "inline.progressStarted": "Agent 正在开始执行…",
     "inline.partialResult": "部分完成：Agent 接近调用或时间上限，已提交当前成果。",
     "inline.cacheHitTokens": "提示词缓存命中：{{count}} tokens",
-    "inline.unknownUsage": "未知"
+    "inline.unknownUsage": "未知",
+    "inline.harnessStyle": "Harness style",
+    "inline.harnessHint": "选择 Agent 规划、使用工具和继续工作的方式。模型通道根据已配置的供应商自动选择。",
+    "inline.updatePlan": "允许更新计划",
+    "inline.event.commentary": "Agent 汇报",
+    "inline.event.plan": "计划",
+    "inline.event.model_retry": "重试模型调用"
   },
   "common": {
     "web.fontLoadFailed": "部分文字加载失败，请联网后重试。",

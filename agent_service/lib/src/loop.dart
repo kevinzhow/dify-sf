@@ -4,22 +4,37 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show HttpException, SocketException;
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:genkit/genkit.dart';
+import 'package:http/http.dart' as http;
 import 'package:schemantic/schemantic.dart';
 
 import 'ask_human.dart';
+import 'executor_profiles.dart' show Egress;
 import 'file_outputs.dart';
 import 'gateway.dart';
+import 'harness/codex/apply_patch.dart';
+import 'harness/codex/exec_output.dart';
+import 'harness/codex/prompts.dart';
+import 'harness/codex/retry.dart';
+import 'harness/codex/sandbox_patch_fs.dart';
+import 'harness/codex/tools.dart';
+import 'harness/codex/transport.dart';
+import 'harness/codex/unified_exec.dart';
 import 'model.dart';
 import 'output_tool.dart';
 import 'protocol.dart';
 import 'report_progress.dart';
 import 'run_store.dart';
 import 'sandbox/sandbox.dart';
+import 'sandbox/shellctl.dart' show ShellctlException;
 import 'sandbox/shell_tools.dart';
 import 'view_image.dart';
+
+part 'harness/codex/codex_run.dart';
 
 /// More than one `ask_human` call in one model turn (as in Dify).
 class AskHumanInvalid implements Exception {
@@ -169,6 +184,18 @@ List<Message> verifyContinuation(OperationRequest r) {
     throw _incompatible(
       'snapshot envelope ${jsonEncode(s['envelope'])} is not $envelopeName',
     );
+  }
+  // Snapshots of the dify style carry no `harness_style`.
+  final style = s['harness_style'] ?? HarnessStyle.dify.wire;
+  if (style != r.harnessStyle.wire) {
+    throw _incompatible(
+      'snapshot was taken with harness_style ${jsonEncode(style)}, not '
+      '"${r.harnessStyle.wire}"',
+    );
+  }
+  if (r.harnessStyle == HarnessStyle.codex) {
+    verifyCodexContinuation(r);
+    return const [];
   }
   final genkit = s['genkit'];
   if (genkit is! String ||
@@ -352,6 +379,12 @@ class AgentRun {
   /// The sandbox this run used (its `workspace_ref`).
   String? _sandboxId;
 
+  /// Aborts what the `codex` loop has in flight besides the model call.
+  void Function()? _onStop;
+
+  /// The clock of prompt dates (`codex` style's environment context).
+  DateTime _now() => DateTime.now();
+
   String get runId => record.runId;
   Stream<RunEvent> get events => _events.stream;
   Future<RunEvent> get done => _done.future;
@@ -365,6 +398,7 @@ class AgentRun {
     _cancel.cancel(reason.name);
     _inner?.close();
     _session?.abort();
+    _onStop?.call();
   }
 
   void _emit(String event, Map<String, Object?> data) {
@@ -431,6 +465,15 @@ class AgentRun {
       'model': {'provider': r.model.provider, 'name': r.model.name},
       'call_index_base': 0,
       'executor_profile': r.executorProfile,
+      'harness_style': r.harnessStyle.wire,
+      if (r.harnessStyle == HarnessStyle.codex)
+        'model_wire': switch (selectWire(r)) {
+          final w => {
+            'wire': w.wire,
+            'reason': w.reason,
+            'reduced_fidelity': w.reducedFidelity,
+          },
+        },
     });
     if (r.shell && !(sandboxes?.enabled ?? false)) {
       return _fail(
@@ -453,6 +496,16 @@ class AgentRun {
       () => stop(StopReason.timeout),
     );
     _clock.start();
+    if (r.harnessStyle == HarnessStyle.codex) {
+      try {
+        await _CodexLoop(this, inner).execute();
+      } finally {
+        await _endShell();
+        timer.cancel();
+        inner.close();
+      }
+      return;
+    }
     final ai = Genkit(isDevEnv: false, promptDir: null);
     try {
       final model = defineGatewayModel(
@@ -1204,59 +1257,73 @@ class AgentRun {
         final args = input is Map
             ? input.cast<String, Object?>()
             : const <String, Object?>{};
-        final caption = args['caption'];
-        if (caption is! String || caption.trim().isEmpty) {
-          return error('caption is required');
-        }
-        final text = caption.trim();
-        if (text.runes.length > progressCaptionMaxChars) {
-          return error(
-            'caption has ${text.runes.length} characters; at most '
-            '$progressCaptionMaxChars',
-          );
-        }
-        if (_progressCount >= progressMaxPerRun) {
-          return error(
-            'this run already reported $progressMaxPerRun previews, the most '
-            'it may; continue without reporting',
-          );
-        }
-        // Reserved before the upload: tools of one turn run concurrently.
-        _progressCount++;
-        final callIndex = _model?.callIndex ?? 0;
-        final img = await _workspaceImage(
-          args['path'],
-          progressImageBytes,
-          'a preview may have at most $progressImageBytes bytes',
-        );
-        if (img.error != null) {
-          _progressCount--;
-          return error(img.error!);
-        }
-        final info = img.info!;
-        final name = img.rel.substring(img.rel.lastIndexOf('/') + 1);
-        final String uploadId;
-        try {
-          uploadId = await _upload(name, info.mimeType, img.bytes);
-        } on GatewayException catch (e) {
-          _progressCount--;
-          return error('the preview could not be uploaded: ${e.message}');
-        }
-        _emit('progress', {
-          'file': {
-            'upload_id': uploadId,
-            'filename': name,
-            'mime_type': info.mimeType,
-            'size': img.bytes.length,
-          },
-          'caption': text,
-          'call_index': callIndex,
-        });
-        return ToolResult.response(
+        final r = await _reportProgressCall(args, _model?.callIndex ?? 0);
+        final message = r.error;
+        return message == null ? ToolResult.response(r.text) : error(message);
+      },
+    );
+  }
+
+  /// The work of `report_progress` (both styles): the preview checked,
+  /// uploaded and announced; an error text the model can act on otherwise.
+  Future<({String? error, String text})> _reportProgressCall(
+    Map<String, Object?> args,
+    int callIndex,
+  ) async {
+    ({String? error, String text}) error(String message) =>
+        (error: message, text: '');
+    final caption = args['caption'];
+    if (caption is! String || caption.trim().isEmpty) {
+      return error('caption is required');
+    }
+    final text = caption.trim();
+    if (text.runes.length > progressCaptionMaxChars) {
+      return error(
+        'caption has ${text.runes.length} characters; at most '
+        '$progressCaptionMaxChars',
+      );
+    }
+    if (_progressCount >= progressMaxPerRun) {
+      return error(
+        'this run already reported $progressMaxPerRun previews, the most '
+        'it may; continue without reporting',
+      );
+    }
+    // Reserved before the upload: tools of one turn run concurrently.
+    _progressCount++;
+    final img = await _workspaceImage(
+      args['path'],
+      progressImageBytes,
+      'a preview may have at most $progressImageBytes bytes',
+    );
+    if (img.error != null) {
+      _progressCount--;
+      return error(img.error!);
+    }
+    final info = img.info!;
+    final name = img.rel.substring(img.rel.lastIndexOf('/') + 1);
+    final String uploadId;
+    try {
+      uploadId = await _upload(name, info.mimeType, img.bytes);
+    } on GatewayException catch (e) {
+      _progressCount--;
+      return error('the preview could not be uploaded: ${e.message}');
+    }
+    _emit('progress', {
+      'file': {
+        'upload_id': uploadId,
+        'filename': name,
+        'mime_type': info.mimeType,
+        'size': img.bytes.length,
+      },
+      'caption': text,
+      'call_index': callIndex,
+    });
+    return (
+      error: null,
+      text:
           'Progress reported: ${img.rel} with your caption '
           '($_progressCount of at most $progressMaxPerRun in this run).',
-        );
-      },
     );
   }
 

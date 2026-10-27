@@ -268,11 +268,11 @@ public struct LLMUsage: Sendable, Hashable, Codable {
 
     /// From the plugin daemon's JSON (missing fields take `empty_usage`'s values).
     public init(json: JSONValue) {
-        promptTokens = json["prompt_tokens"]?.int ?? 0
+        promptTokens = (json["prompt_tokens"] ?? json["input_tokens"])?.int ?? 0
         promptUnitPrice = DecimalText(json: json["prompt_unit_price"])
         promptPriceUnit = DecimalText(json: json["prompt_price_unit"])
         promptPrice = DecimalText(json: json["prompt_price"])
-        completionTokens = json["completion_tokens"]?.int ?? 0
+        completionTokens = (json["completion_tokens"] ?? json["output_tokens"])?.int ?? 0
         completionUnitPrice = DecimalText(json: json["completion_unit_price"])
         completionPriceUnit = DecimalText(json: json["completion_price_unit"])
         completionPrice = DecimalText(json: json["completion_price"])
@@ -283,8 +283,8 @@ public struct LLMUsage: Sendable, Hashable, Codable {
         timeToFirstToken = json["time_to_first_token"]?.double
         timeToGenerate = json["time_to_generate"]?.double
         reasoningTokens = (json["reasoning_tokens"] ?? json["completion_tokens_details"]?["reasoning_tokens"]
-            ?? json["thoughts_tokens"] ?? json["thoughtsTokens"])?.int
-        cachedTokens = (json["cached_tokens"] ?? json["prompt_tokens_details"]?["cached_tokens"])?.int
+            ?? json["output_tokens_details"]?["reasoning_tokens"] ?? json["thoughts_tokens"] ?? json["thoughtsTokens"])?.int
+        cachedTokens = (json["cached_tokens"] ?? json["prompt_tokens_details"]?["cached_tokens"] ?? json["input_tokens_details"]?["cached_tokens"])?.int
     }
 
     /// `jsonable_encoder(usage)`: pydantic's JSON mode (decimals as strings), field order kept.

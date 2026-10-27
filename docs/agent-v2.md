@@ -110,6 +110,7 @@ Starts one operation. Every operation is a separate request; there is no separat
   "files": [{"file_id": "…", "path": "files/spec.md"}],
   "limits": {"max_turns": 50, "timeout_seconds": 1800},
   "executor_profile": "default",
+  "harness_style": "dify",
   "continuation": null
 }
 ```
@@ -144,6 +145,15 @@ Starts one operation. Every operation is a separate request; there is no separat
 - `executor_profile` names the sandbox's executor profile (see [Executor profiles](#executor-profiles)); absent
   means `default`. It must match `^[a-z0-9][a-z0-9-]{0,63}$` (`400 invalid_request`, also for `""`: the Swift
   server sends the Soul's `""` as `default` or omits the field).
+- `harness_style` selects how the agent loop is built: `"dify"` (absent means `dify`; the behaviour described in the
+  rest of this document) or `"codex"` (a port of the OpenAI Codex CLI harness, see [Harness styles](#harness-styles)).
+  Another string is `422 unsupported_harness_style`, a non-string `400 invalid_request`. It is part of the request
+  digest and is echoed in `run_started`. `tools.update_plan: true` (default false) needs `"codex"` (`400
+  invalid_request` otherwise). With `"codex"`, `model.parameters.reasoning_effort` must be one of `none`, `minimal`,
+  `low`, `medium`, `high`, `xhigh`, `max`; `ultra`, `persistent` and anything else are `422
+  unsupported_reasoning_effort` (`{"reasoning_effort"}` in the body; see [Reasoning levels](#reasoning-levels)).
+  `model.api_type` (optional string, e.g. `"responses"`) is the credential's API mode; the `codex` style chooses its
+  model wire from it (see [Model wire](#model-wire)).
 - Top-level fields other than the ones above are `400 invalid_request` ("unknown request fields: …").
 - `continuation` is `null` for the first run. Otherwise it is one of:
   - `{"kind": "answer", "snapshot": <envelope>, "question_id": "…", "result": <ask_human result>}` after a question.
@@ -163,6 +173,8 @@ Responses:
 | `generation` older than one already seen for the execution | `409 stale_generation` | |
 | Snapshot of an unknown envelope version or a different config snapshot | `422 snapshot_incompatible` | |
 | Execution already deleted (`DELETE /v1/executions/{id}`) | `410 execution_deleted` | |
+| `harness_style` not supported | `422 unsupported_harness_style` | |
+| `codex` style with a refused `reasoning_effort` | `422 unsupported_reasoning_effort` | `{"reasoning_effort"}` |
 
 The request digest is SHA-256 of the canonical JSON request without `generation`.
 
@@ -208,12 +220,15 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 
 | `event` | `data` |
 |---|---|
-| `run_started` | `{"model", "call_index_base", "executor_profile"}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name |
+| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style"}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex` |
 | `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB of UTF-8 is split into several, cut only between code points |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
 | `model_call` | `{"invocation_id", "usage", "prompt"}` after each model call; `prompt` is `{"messages", "prefix_stable", "first_changed_message"}` (see [Prompt cache](#prompt-cache)) |
 | `budget_notice` | `{"reason": "max_turns" \| "timeout", "call_index", "remaining_calls", "remaining_seconds"?}`: the model was told to finish (see [Near-budget submit](#near-budget-submit)); at most one per run, before the model call it went with |
 | `progress` | `{"file": {"upload_id", "filename", "mime_type", "size"}, "caption", "call_index"}`: a preview from `report_progress` (see [Progress previews](#progress-previews)), between the tool's `started` and `finished` `tool_call` events |
+| `commentary` | `codex` style: `{"text", "call_index"}`, the assistant text of a response that also calls tools (Codex's `phase: commentary`); it stays in the history |
+| `plan` | `codex` style with `tools.update_plan`: `{"explanation", "plan": [{"step", "status"}], "call_index"}` |
+| `model_retry` | `codex` style: `{"call_index", "attempt", "layer": "request" \| "stream", "kind", "message", "delay_ms"}` before a retried model call (see [Harness styles](#harness-styles)) |
 | `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage", "partial"}`; `partial` is `null`, or `{"reason", "notice_call_index"}` when the result came after a budget notice |
 | `paused` | `{"question_id", "tool_call_id", "question": <ask_human args>, "snapshot": <envelope>, "usage"}` |
 | `failed` | `{"error_type", "message", "usage", "snapshot"?}` |
@@ -352,7 +367,10 @@ rejected (`422 snapshot_incompatible`), never resumed with a different configura
 execution's sandbox (null until the shell is used); a resume whose sandbox was replaced fails with `sandbox_error`.
 `executor_profile` is the operation's profile; a snapshot without it (taken before profiles) counts as `default`. A
 continuation with the shell and a `workspace_ref` whose profile differs from the request's is `422
-snapshot_incompatible`.
+snapshot_incompatible`. A snapshot of the `codex` style carries `"harness_style": "codex"`, `"codex": {"upstream",
+"model_family", "wire"}` and `"items"` (Responses API items, see [Harness styles](#harness-styles)) instead of `genkit`
+and `messages`; a snapshot without `harness_style` is a `dify` snapshot. A continuation whose `harness_style` differs
+from its snapshot's is `422 snapshot_incompatible`.
 
 ## Agent loop
 
@@ -481,6 +499,193 @@ daemon that passes them (both outside dify-sf; Dify itself has no such field). U
   same conversation, and the provider's `usage` (hits and misses). It logs no headers, texts or image bytes.
 - The provider's own usage page shows hit and miss tokens per key and day.
 
+## Harness styles
+
+`harness_style` (operation field, absent = `dify`) decides five things: the tool set, the prompt assembly, the loop
+policy, context compaction and the reasoning round trip. It is independent of the model. `dify` is everything above
+and stays as it is. `codex` ports the OpenAI Codex CLI harness, `rust-v0.163.0` (Apache-2.0, vendored and recorded in
+`third_party/codex/`: `LICENSE`, `NOTICE`, `UPSTREAM.json`, `PATCHES.md`; ported Dart files carry an attribution
+header). This first step is Codex's Direct-tools mode, on the native Responses wire when the provider speaks it and on
+the plugin wire otherwise (see [Model wire](#model-wire)). Code mode, compaction and sub-agents come later.
+
+### What agent_service expects in the operation
+
+For the Swift server's harness selector, model channel and context-capacity fields:
+
+| Field | Values | Meaning and checks |
+|---|---|---|
+| `harness_style` (top level) | `"dify"` \| `"codex"`; absent = `dify` | Another string `422 unsupported_harness_style`; not a string `400 invalid_request`. In the request digest; echoed in `run_started.harness_style`. The node selector maps to it; nothing else of the editor reaches the service |
+| `tools.update_plan` | boolean, default false | `codex` only (`400 invalid_request` with `dify`) |
+| `model.parameters.reasoning_effort` | `none` … `max` | With `codex`: `ultra`, `persistent`, other strings or non-strings `422 unsupported_reasoning_effort`. Forwarded unchanged on the plugin wire (the gateway's byte-equality check still holds), sent as `reasoning.effort` on the native wire |
+| `model.wire` | `"plugin"` \| `"responses"`, optional | The channel the Swift server chose; wins over the automatic choice. `"responses"` needs `codex` (`400 invalid_request`); another value `400 invalid_request` |
+| `model.api_type` | string, optional (e.g. `"responses"`) | The credential's API mode; used for the automatic choice when `model.wire` is absent |
+| `model.context_window`, `model.max_output_tokens` | integers ≥ 1, optional | From the model schema; checked (`400 invalid_request`) and kept in the request; used by compaction in a later step |
+
+The resolved channel is echoed in `run_started.model_wire` (`codex` only). The Swift server should check that the
+echo matches its choice, as it does for `executor_profile`.
+
+### Tools (`codex`)
+
+| Tool | When | As in Codex | dify-sf differences |
+|---|---|---|---|
+| `exec_command` `{cmd, workdir?, tty?, yield_time_ms?, max_output_tokens?, login?}` | `tools.shell` | Codex's schema and output (`Chunk ID`, `Wall time`, `Process exited with code N` or `Process running with session ID N`, `Original token count`, `Output:`); yield 10 s default, clamped to 250-30000 ms; output collected up to 1 MiB (head and tail) and truncated with the model's policy | No `shell`, `environment_id` or approval parameters (danger-full-access, approval `never`). A shellctl job `exec bash -lc <cmd>` in `/workspace` (or `workdir`); `tty: false` (default) is a pipe job without stdin, `tty: true` a PTY job. Codex's `NO_COLOR=1 TERM=dumb PAGER=cat …` are set; the profile's and the operation's `env` win |
+| `write_stdin` `{session_id, chars?, yield_time_ms?, max_output_tokens?}` | `tools.shell` | Codex's schema, defaults (writes 250 ms, max 30 s; empty polls 5-300 s) and errors (`write_stdin failed: Unknown process id N`, `stdin is closed for this session; rerun exec_command with tty=true …`) | At most 64 sessions, the least recently used terminated |
+| `apply_patch` | `tools.shell` | Codex's patch grammar, lenient parser, fuzzy matching, line endings and messages; every hunk is checked before anything is written; the result is formatted like an exec (`Exit code: 0`, `Wall time`, `Output:`, `Success. Updated the following files:` …) | A Dart port (not the binary; reasons in `PATCHES.md`), on the sandbox through shellctl control commands, files up to 16 MiB. On the plugin wire a function tool `{input: string}` with the Lark grammar in its description (Dify's `PromptMessageTool` cannot carry freeform tools); Codex's freeform tool on the Responses wire |
+| `view_image` `{path, detail?}` | `tools.view_image` | Codex's schema (`detail: high \| original` only for models with original detail) and messages | The image is uploaded as an execution file; on the plugin wire it follows the tool message as a user message (`original` sent as `high`); no client-side resizing; 16 MiB of viewed images per conversation |
+| `update_plan` | `tools.update_plan` (default false, as in Codex 0.163.0) | Codex's schema; answers `Plan updated` | Emits a `plan` event |
+| `ask_human`, `report_progress` | as for `dify` | | dify-sf tools, unchanged definitions |
+
+There is no `final_output` tool and no shell tool of Dify's.
+
+### Prompt (`codex`)
+
+The history is a list of Responses API items, in Codex's layout:
+
+1. `developer`: the base instructions. Models are matched as Codex matches its catalog (longest slug prefix, then the
+   same after one simple `namespace/` segment): `gpt-6*` (for example `codex/gpt-6.1-terra`) gets the bundled
+   `gpt-6-astra` template up to "# Using skills", with the two code-mode bullets replaced by "Run independent
+   read-only commands as parallel tool calls."; every other model gets Codex's fallback `prompt.md`. The `update_plan`
+   guidance is removed unless `tools.update_plan` is on (Codex's own filter).
+2. `developer`: `<permissions instructions>` for danger-full-access and approval `never` (network `enabled` with
+   egress `allowlist`, `restricted` with `none`), with the shell; then the ask_human hint (with `tools.ask_human`); then,
+   with declared outputs, a dify-sf section "# Final answer format" holding the model-facing output schema.
+3. `user`: `# AGENTS.md instructions for /workspace` with the node's `system_prompt` in `<INSTRUCTIONS>`, and
+   `<environment_context>` (`cwd`, `shell`, `current_date`, `timezone` UTC and the filesystem element; without the
+   shell only the date and time zone).
+4. `user`: the task.
+
+On the plugin wire `developer` messages become `system` messages (the plugin maps them to `developer` for the
+Responses API); a user message with several parts is sent as a list of text parts. Dify's shell prompt is not used.
+
+### Loop (`codex`)
+
+- A step samples once; the run ends at the first response without tool calls (its assistant text is the answer). The
+  assistant text of a response with tool calls is commentary (a `commentary` event) and stays in the history.
+- All tool calls of a response run before the next call: consecutive parallel-safe calls (`exec_command`,
+  `write_stdin`, `view_image`) together, every other call alone; the outputs are appended in call order.
+- `max_turns`, the near-budget notice (text adapted: finish with the final answer) and the last-call rule stay
+  (dify-sf limits; Codex has no cap).
+- Declared outputs: the final answer is the candidate; it must be a JSON object (a code fence around it is accepted),
+  checked against the schema and file outputs resolved as with `final_output`; anything else gives `candidate: null`
+  and one error with `field: ""`. An output retry appends the feedback as a user message and continues the items.
+- `ask_human`: one valid call per response pauses the run after the other calls of that response ran; the answer is
+  put where that call's output belongs. Invalid arguments are a tool error; two calls in one response are
+  `ask_human_invalid`.
+- `finish_reason` `length` (output cut off) and `content_filter` end the run `model_error`.
+- **Retries** (Codex's rules): a request layer retries HTTP 5xx answers and connection failures up to 4 times; a stream
+  layer retries retryable failures up to 5 times (each again with the request layer); the delay is the server's
+  `Retry-After`, else 200 ms × 2^(n-1) with ±10% jitter; an overload (`503 server_is_overloaded`) only with
+  `Retry-After`. Terminal: the gateway's own refusals (400, 401, 403, 404, 409, 410, 413, 422; 429 is its call limit),
+  Dify envelopes with a quota type, `InvokeAuthorizationError`, `InvokeBadRequestError`,
+  `CredentialsValidateFailedError`, and -429 without a rate-limit type. Each retry repeats the call: the same
+  `invocation_id` and `call_index` with the next attempt number (see [the gateway](#post-inneragentllminvoke)); a
+  `model_retry` event announces it. A gateway that refuses a retry (400 or 409) ends the run with the first failure.
+  Only the successful attempt's usage counts.
+
+### Reasoning levels
+
+`model.parameters.reasoning_effort` is forwarded unchanged (the plugin wire) or sent as `reasoning.effort` (the
+Responses wire, later). Codex 0.163.0 knows `none … xhigh, max, ultra, persistent`. `ultra` is not "more than max": for
+gpt-6 models Codex sends `effort: xhigh` and turns on proactive delegation to sub-agents, which this harness does not
+run, so `ultra` is refused rather than silently weakened (use `max`). `persistent` is an interactive mode and is
+refused too. Whether the plugin accepts `max` is up to the plugin (0.0.68 offers up to `xhigh`); the Swift server
+should check the level against the model's supported levels before it starts the node.
+
+Every `model_call` event of the `codex` style carries `"harness_style": "codex"`, `"wire"` and `"reasoning"`:
+
+```jsonc
+{"effort_requested": "xhigh",   // model.parameters.reasoning_effort (null when absent)
+ "effort_sent": "xhigh",        // what this request carried
+ "effort_sent_by": "plugin",    // who built the vendor request: "plugin" | "agent_service"
+ "effort_echoed": null,         // the provider's echo (Responses `reasoning.effort`); null on the plugin wire
+ "effort_echoed_null_reason": "the plugin wire returns no provider response object",
+ "effort_forwarded": "xhigh",   // native wire only: X-Dify-SF-Forwarded-Reasoning
+ "summary_sent": null, "encrypted_items_in": 0, "encrypted_items_out": 0,
+ "reasoning_tokens": null, "reasoning_tokens_source": null,
+ "reasoning_tokens_null_reason": "the plugin wire reports no reasoning token count (Dify LLMUsage has no such field)"}
+```
+
+On the plugin wire the effort is therefore recorded but not provable; on the native wire it is (the body is built
+here, the Swift server reports what it forwarded, the provider echoes it and reports
+`output_tokens_details.reasoning_tokens`).
+
+### Model wire
+
+A `codex` run uses one of two wires, chosen when the operation starts and recorded in `run_started` as
+`"model_wire": {"wire": "responses" | "plugin", "reason", "reduced_fidelity"}`:
+
+- `model.wire`, when the Swift server sends it, decides. Otherwise:
+- **`responses`** (native): when the provider speaks the OpenAI Responses API: `model.provider` is
+  `…/openai_api_compatible/openai_api_compatible` with `model.api_type: "responses"`, or `langgenius/openai/openai`.
+  `model.api_type` is an optional operation field the Swift server sets from the credential's API mode (no secret);
+  it is part of the request digest. agent_service builds the request Codex builds and sends it through
+  `POST /inner/agent/responses` (below).
+- **`plugin`**: every other model, through `POST /inner/agent/llm/invoke`, with `reduced_fidelity: true`: no encrypted
+  reasoning round trip (reasoning goes back as `<think>` or `reasoning_content`), `apply_patch` as a function tool,
+  viewed images after the tool message, declared outputs described in the prompt, and neither an effort echo nor
+  reasoning or cache token counts.
+
+The wire is fixed for the execution: a continuation whose wire differs from its snapshot's (`codex.wire`) is `422
+snapshot_incompatible`.
+
+On the native wire the history items are sent verbatim (annotation keys `dify_sf_*` removed): reasoning items keep
+their `encrypted_content` in the history and in snapshots and go back on every later request, as Codex does with
+`store: false`.
+
+#### `POST /inner/agent/responses` (as agent_service uses it)
+
+Authentication as for `llm/invoke`: the service key and the run token (`X-Agent-Run-Token`), which carry the
+identity and scope. The call is described by request headers:
+
+| Header | Value |
+|---|---|
+| `X-Agent-Call-Index` | the model call's index in the run (1, 2, …) |
+| `X-Agent-Invocation-ID` | `<run_id>:<call_index>`, the same for every attempt of the call |
+| `X-Agent-Attempt` | `1`, one more for each retry of the same call |
+
+The body is the raw Responses API request, as Codex 0.163.0 builds it; the Swift server forwards it unchanged to the
+credential's endpoint (URL rule as the plugin's: `endpoint_url` plus `/responses`, `/v1` not doubled):
+
+```jsonc
+{"model": "<operation model name>",
+ "input": [ /* items */ ], "tools": [ /* function and custom (freeform) tools */ ],
+ "tool_choice": "auto", "parallel_tool_calls": true,
+ "reasoning": {"effort": "max", "summary": "auto"?},
+ "store": false, "stream": true, "include": ["reasoning.encrypted_content"],
+ "prompt_cache_key": "<execution_id>",
+ "text": {"format": {"type": "json_schema", "name": "codex_output_schema", "strict": false, "schema": {…}}}?}
+```
+
+- `model` is the operation's `model.name`. Open question for the Swift server: whether the credential's
+  `endpoint_model_name` replaces it (the plugin uses `endpoint_model_name` when set).
+- `strict` is `true` only when the schema already meets OpenAI's strict rules (every object closed, every property
+  required); the schema is not rewritten.
+- Files appear as `"image_url": "dify-sf-file:<file_id>"` (`input_image`, in user messages and inside
+  `function_call_output` content) and `"file_id": "dify-sf-file:<file_id>"` (`input_file`). The Swift server checks
+  them against the execution's files and replaces them with data URLs (`file_data` for `input_file`) within the file
+  budget, as for `llm/invoke` (`422 file_error`, `413`).
+- Response: `200 text/event-stream`, the provider's Responses events unchanged (`event: <type>` and `data: <json>`).
+  agent_service reads `response.output_item.done` (the output items), `response.reasoning_summary_text.delta` and
+  `response.reasoning_text.delta` (`thought`), `response.completed` (usage and the `reasoning.effort` echo),
+  `response.incomplete` (`max_output_tokens` ends the run `model_error`), `response.failed` and `error`. A stream
+  that ends without `response.completed` is a retryable stream error.
+- Response header `X-Dify-SF-Forwarded-Reasoning: <effort>`: the effort the Swift server forwarded; recorded as
+  `model_call.reasoning.effort_forwarded`, so a rewrite on the way shows.
+- Errors before the stream: a status and `{"error", "message"}` (or an OpenAI-style `{"error": {"code"}}`) as for
+  `llm/invoke` (classified for retries as in
+  [Loop](#loop-codex)). `response.failed` codes: `rate_limit_exceeded` and `slow_down` are retried,
+  `server_is_overloaded` only with `Retry-After`, `insufficient_quota` and usage limits end the run `model_quota`,
+  `context_length_exceeded`, `invalid_prompt` and `invalid_request_error` end it `model_error`, other codes are retried.
+- Usage from `response.completed`: `input_tokens` → `prompt_tokens`, `output_tokens` → `completion_tokens`,
+  `output_tokens_details.reasoning_tokens` → `reasoning_tokens`, `input_tokens_details.cached_tokens` →
+  `prompt_cache_hit_tokens` (misses: the difference).
+- A retry repeats the same `X-Agent-Call-Index` and `X-Agent-Invocation-ID` with the next `X-Agent-Attempt`.
+
+`model_call.reasoning` on this wire: `"effort_sent_by": "agent_service"`, `effort_forwarded` (the header),
+`effort_echoed` (the provider's `response.reasoning.effort`), `summary_sent` (none for gpt-6 models, `auto` for the
+fallback, Codex's defaults), `encrypted_items_in`/`out` (reasoning items with `encrypted_content` sent and received),
+and `reasoning_tokens` with `"reasoning_tokens_source": "provider"`.
+
 ## Inner gateway (Swift server)
 
 Authentication: the service key plus a run token. The Swift server issues a run token per operation (sent to the agent
@@ -511,7 +716,11 @@ is all the agent service guarantees: what reaches the vendor is decided by the m
 example, the signed `openai_api_compatible` plugin 0.0.68 removes `<think>` blocks from earlier assistant messages, and
 drops the think blocks it returns when the model declares no reasoning support. The last chunk carries `delta.usage` and `delta.finish_reason`. Errors end the stream with
 `{"code": -429 | -500, "message": "{\"error_type\":…,\"message\":…}", "data": null}`, as in Dify. A repeated
-`invocation_id` is rejected, so usage is recorded once. Closing the connection closes the gateway's connection to the plugin (see below).
+`invocation_id` is rejected, so usage is recorded once. The `codex` style retries a failed call (see
+[Harness styles](#harness-styles)) with the same `invocation_id` and `call_index` and `caller.attempt` 2, 3, … (absent
+on the first attempt, which means 1), as `X-Agent-Attempt` on the Responses route. Proposal for the Swift server:
+accept such a retry when the earlier attempts of that `call_index` failed (today it answers `409 duplicate_invocation`,
+and the run then fails with the first error). Closing the connection closes the gateway's connection to the plugin (see below).
 
 The gateway may complete any call without streaming and return the result as one or a few complete chunks (full
 `tool_calls` with `id`, reasoning, usage and finish reason in one delta). It does so today for every call that offers

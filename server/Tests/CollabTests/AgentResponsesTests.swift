@@ -1,0 +1,399 @@
+import AsyncHTTPClient
+import CollabCore
+import CollabRuntime
+import CollabStore
+import Foundation
+import HTTPTypes
+import NIOCore
+import Synchronization
+import Testing
+import Vapor
+import VaporTesting
+@testable import CollabServer
+
+@Suite("Agent native Responses wire")
+struct AgentResponsesTests {
+    static func scope() -> AgentModelScope {
+        var scope = AgentModelScopeTests.scope()
+        scope.provider = AgentModelWire.compatible
+        scope.harnessStyle = "codex"; scope.modelWire = "responses"
+        scope.modelParameters = ["reasoning_effort": "max", "max_tokens": 32768]
+        return scope
+    }
+    static func body(_ scope: AgentModelScope) -> JSONValue {
+        ["model": .string(scope.model), "input": [["role": "user", "content": "Synthetic fixture"]],
+         "tools": [["type": "custom", "name": "apply_patch", "format": ["type": "text"]]],
+         "reasoning": ["effort": "max", "summary": "auto"], "stream": true, "store": false,
+         "include": ["reasoning.encrypted_content"], "prompt_cache_key": .string(scope.executionID)]
+    }
+    static let stream = ": heartbeat\r\nevent: response.output_item.done\r\ndata: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"reasoning\",\"encrypted_content\":\"opaque-fixture-ONLY\",\"future_field\":17}}\r\n\r\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":20,\"output_tokens\":30,\"total_tokens\":50,\"input_tokens_details\":{\"cached_tokens\":12},\"output_tokens_details\":{\"reasoning_tokens\":19}}}}\n\n"
+
+    @Test func onlyScopedModelEffortAndBudgetsAreForwarded() throws {
+        let scope = Self.scope()
+        let request = try AgentResponsesRequest(body: Self.body(scope), index: "1", invocation: "run:1", attempt: nil, scope: scope)
+        #expect(request.body["max_output_tokens"] == 32768)
+        #expect(request.body["reasoning"]?["effort"] == "max")
+        for index in [nil, "0", "01", "1.5"] as [String?] {
+            #expect(throws: CollabServer.ServerError.self) { try AgentResponsesRequest(body: Self.body(scope), index: index, invocation: "run:1", attempt: nil, scope: scope) }
+        }
+        for changes in [["model": "other"], ["reasoning": ["effort": "high"]], ["max_output_tokens": 999999],
+                                   ["previous_response_id": "other-run"], ["tools": [["type": "web_search"]]], ["store": true]] as [JSONObject] {
+            #expect(throws: CollabServer.ServerError.self) {
+                try AgentResponsesRequest(body: .object(Self.body(scope).object!.merging(changes)), index: "1", invocation: "run:1", attempt: nil, scope: scope)
+            }
+        }
+        var plugin = scope; plugin.modelWire = "plugin"
+        #expect(throws: CollabServer.ServerError.self) { try AgentResponsesRequest(body: Self.body(scope), index: "1", invocation: "run:1", attempt: nil, scope: plugin) }
+    }
+
+    @Test func credentialsOwnTheDestinationHeadersAndVendorAlias() throws {
+        for base in ["http://localhost:9000", "http://localhost:9000/", "http://localhost:9000/v1/"] {
+            let connection = try AgentResponsesConnection(provider: AgentModelWire.compatible, model: "alias", credentials: [
+                "api_type": "responses", "endpoint_url": .string(base), "api_key": "fixture-secret", "endpoint_model_name": "vendor-name",
+                "extra_headers": "{\"X-Fixture\":\"fixture-header\",\"Authorization\":\"ignored\"}"])
+            #expect(connection.url == "http://localhost:9000/v1/responses")
+            #expect(connection.model == "vendor-name")
+            #expect(connection.headers["Authorization"] == "Bearer fixture-secret")
+            #expect(connection.headers["X-Fixture"] == "fixture-header")
+        }
+        #expect(AgentModelWire.select(style: "dify", provider: AgentModelWire.openAI, credentials: [:]) == "plugin")
+        #expect(AgentModelWire.select(style: "codex", provider: AgentModelWire.compatible, credentials: ["api_type": "chat_completions"]) == "plugin")
+        #expect(AgentModelWire.select(style: "codex", provider: AgentModelWire.openAI, credentials: [:]) == "responses")
+        for url in ["file:///private", "https://user:password@example.test", "https://example.test?key=secret", "https://example.test/#fragment"] {
+            #expect(throws: CollabServer.ServerError.self) { try AgentResponsesConnection(provider: AgentModelWire.compatible, model: "fixture", credentials: ["api_type": "responses", "endpoint_url": .string(url)]) }
+        }
+    }
+
+    @Test func usageObserverAndCredentialGuardWorkAcrossEveryChunkBoundary() throws {
+        let bytes = Array(Self.stream.utf8)
+        for split in 0...bytes.count {
+            var parser = AgentResponsesSSE(), guarder = AgentResponsesSecretGuard(["fixture-secret-DO-NOT-REFLECT"])
+            let a = Array(bytes[..<split]), b = Array(bytes[split...])
+            try parser.consume(a); try parser.consume(b)
+            let forwarded = try guarder.consume(a) + guarder.consume(b) + guarder.consume([], final: true)
+            #expect(forwarded == Data(bytes))
+            #expect(parser.terminal && !parser.failed)
+            #expect(parser.usage?.totalTokens == 50 && parser.usage?.promptTokens == 20)
+            #expect(parser.usage?.reasoningTokens == 19 && parser.usage?.cachedTokens == 12)
+        }
+        let secret = Array("fixture-secret-DO-NOT-REFLECT".utf8)
+        for split in 1..<secret.count {
+            var guarder = AgentResponsesSecretGuard([String(decoding: secret, as: UTF8.self)])
+            #expect(try guarder.consume(Array(secret[..<split])).isEmpty)
+            #expect(throws: CollabServer.ServerError.self) { try guarder.consume(Array(secret[split...])) }
+        }
+        #expect(LLMUsage(json: ["input_tokens": 2, "output_tokens": 3, "total_tokens": 5]).cachedTokens == nil)
+    }
+
+    @Test func retriesConsumeOneCallSlotAndAllKnownPhysicalUsage() async throws {
+        let scopes = AgentModelScopes(), scope = Self.scope()
+        let token = try await scopes.activate(scope)
+        let first = try await scopes.claim(token: token, request: AgentModelScopeTests.request(scope, parameters: scope.modelParameters!))
+        do {
+            _ = try await scopes.claim(token: token, request: AgentModelScopeTests.request(scope, override: ["attempt": 2], parameters: scope.modelParameters!))
+            Issue.record("Overlapping attempt accepted")
+        } catch { }
+        await scopes.finish(first, usage: LLMUsage(json: ["input_tokens": 2, "output_tokens": 3, "total_tokens": 5]), succeeded: false)
+        let retry = try await scopes.claim(token: token, request: AgentModelScopeTests.request(scope, override: ["attempt": 3], parameters: scope.modelParameters!))
+        // A stale completion cannot release or overwrite the new attempt.
+        await scopes.finish(first, usage: .empty)
+        await scopes.finish(retry, usage: LLMUsage(json: ["input_tokens": 4, "output_tokens": 6, "total_tokens": 10]))
+        do {
+            _ = try await scopes.claim(token: token, request: AgentModelScopeTests.request(scope, override: ["attempt": 4], parameters: scope.modelParameters!))
+            Issue.record("Successful invocation replayed")
+        } catch { }
+        #expect(await scopes.revoke(token: token).totalTokens == 15)
+    }
+}
+
+private func withResponsesProvider(_ handler: @Sendable @escaping (Request) async throws -> Response,
+                                   body: @Sendable @escaping (String) async throws -> Void) async throws {
+    try await withApp(configure: { app in app.routes.post("v1", "responses", use: handler) }) { app in
+        try await app.testing(.running) { client in try await body("http://127.0.0.1:\(try #require(client.port))/v1") }
+    }
+}
+
+@Suite("Agent native Responses routes", .enabled(if: testDbHost != nil))
+struct AgentResponsesRouteTests {
+    static let path = "/inner/agent/responses"
+    static func fixture(_ api: API, _ store: PostgresStore, _ routes: CollabServer.Routes, endpoint: String) async throws -> (AgentModelScope, String) {
+        let (owner, user, app) = try await runtimeFixture(api, endpoint: endpoint)
+        let saved = try await api.post("/v1/workspace/model-providers/\(AgentModelWire.compatible)/models/credentials", JSONValue.object([
+            "model": "stub-chat", "model_type": "llm", "credentials": ["api_type": "responses", "api_key": "sk-native-fixture-only",
+                "endpoint_url": .string(endpoint), "endpoint_model_name": "vendor-stub", "mode": "chat", "context_size": "4096",
+                "extra_headers": "{\"X-Fixture\":\"native-extra\"}", "max_tokens_to_sample": "4096"]]).compactJSON(), token: owner)
+        #expect(saved.status == 201, "\(saved.text)")
+        let key = ModelKey(provider: AgentModelWire.compatible, model: "stub-chat", modelType: "llm")
+        let state = try await store.modelProviderState()
+        let selected = try #require(state.modelCredentials[key]?.first { $0.config?.contains("sk-native-fixture-only") == true })
+        // Extra provider headers may come from an existing server-side credential;
+        // the current public credential form intentionally drops unknown fields.
+        var stored = try JSONValue.parse(try #require(selected.config)).object!
+        stored["extra_headers"] = "{\"X-Fixture\":\"native-extra\"}"
+        try await store.updateModelCredential(key, id: selected.id, name: nil, config: JSONValue.object(stored).compactJSON())
+        try await store.switchCustomModelCredential(key, id: selected.id)
+        let run = UUID().uuidString.lowercased()
+        try await store.insertWorkflowRun(.init(id: run, docId: app, docSeq: 0, workflowId: "draft", type: "workflow", triggeredFrom: "debugging",
+            version: "draft", graph: "{}", inputs: "{}", status: "running", createdBy: user, createdAt: Date()))
+        var scope = AgentResponsesTests.scope(); scope.model = "stub-chat"
+        scope.execution["app_id"] = .string(app); scope.execution["user_id"] = .string(user); scope.execution["workflow_run_id"] = .string(run)
+        return (scope, try await routes.agentModelScopes.activate(scope))
+    }
+    static func headers(_ token: String, call: Int = 1, attempt: Int = 1) -> [(String, String)] {
+        [("X-Agent-Run-Token", token), ("X-Agent-Call-Index", String(call)), ("X-Agent-Invocation-ID", "fixture-run:\(call)"), ("X-Agent-Attempt", String(attempt))]
+    }
+
+    @Test func originalSSEAndOpaqueItemsSurviveWithCredentialsOnlyAtTheProvider() async throws {
+        let seen = Mutex<[JSONValue]>([])
+        try await withResponsesProvider({ req in
+            #expect(req.headers[.authorization] == "Bearer sk-native-fixture-only")
+            #expect(req.headers[HTTPField.Name("X-Fixture")!] == "native-extra")
+            #expect(req.headers[HTTPField.Name("X-Agent-Run-Token")!] == nil)
+            let raw = try await req.body.collect(max: .specified(ByteCount(value: 1 << 20))) ?? Data()
+            let payload = try JSONValue.parse(raw); seen.withLock { $0.append(payload) }
+            return Response(status: .ok, headers: [.contentType: "text/event-stream"], body: .init(string: AgentResponsesTests.stream))
+        }) { endpoint in
+            try await withFakeDaemon { daemon, log in
+                try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                    let (scope, token) = try await Self.fixture(api, store, routes, endpoint: endpoint)
+                    var payload = AgentResponsesTests.body(scope).object!
+                    let opaque: JSONValue = ["type": "reasoning", "encrypted_content": "opaque-input-fixture-ONLY", "future": ["preserve": true]]
+                    payload["input"] = .array([opaque] + payload["input"]!.array!)
+                    let answer = try await api.send(.post, Self.path, JSONValue.object(payload).compactJSON(), token: AgentModelGatewayRouteTests.serviceKey, headers: Self.headers(token))
+                    #expect(answer.status == 200 && answer.text == AgentResponsesTests.stream, "\(answer.status): \(answer.text)")
+                    let sent = try #require(seen.withLock { $0.first })
+                    #expect(sent["model"] == "vendor-stub" && sent["input"]?.array?.first == opaque)
+                    #expect(sent["reasoning"]?["effort"] == "max" && sent["max_output_tokens"] == 32768)
+                    let duplicate = try await api.send(.post, Self.path, JSONValue.object(payload).compactJSON(), token: AgentModelGatewayRouteTests.serviceKey, headers: Self.headers(token, attempt: 2))
+                    #expect(duplicate.status == 409)
+                    #expect(!log.requests.contains { $0.path.hasSuffix("/dispatch/llm/invoke") })
+                    let usage = await routes.agentModelScopes.revoke(token: token)
+                    #expect(usage.totalTokens == 50 && usage.cachedTokens == 12 && usage.reasoningTokens == 19)
+                }
+            }
+        }
+    }
+
+    @Test(arguments: [429, 503])
+    func providerStatusRetryAfterAndFailedAttemptArePreservedWithoutReflectedSecrets(status: Int) async throws {
+        let calls = Mutex(0)
+        try await withResponsesProvider({ _ in
+            let n = calls.withLock { $0 += 1; return $0 }
+            if n == 1 {
+                let code = status == 429 ? "rate_limit_exceeded" : "server_is_overloaded"
+                return Response(status: .init(code: status), headers: [HTTPField.Name("Retry-After")!: "2"],
+                    body: .init(string: JSONValue.object(["error": ["code": .string(code), "message": "sk-native-fixture-only"]]).compactJSON()))
+            }
+            return Response(status: .ok, headers: [.contentType: "text/event-stream"], body: .init(string: AgentResponsesTests.stream))
+        }) { endpoint in
+            try await withFakeDaemon { daemon, _ in
+                try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                    let (scope, token) = try await Self.fixture(api, store, routes, endpoint: endpoint)
+                    let body = AgentResponsesTests.body(scope).compactJSON()
+                    var headers: HTTPFields = [.authorization: "Bearer " + AgentModelGatewayRouteTests.serviceKey]
+                    for (key, value) in Self.headers(token) { headers[HTTPField.Name(key)!] = value }
+                    let failed = try await api.client.send(.post, headers: headers, to: "/inner/agent/responses") { $0.body = .init(string: body) }
+                    let message = try await failed.body.requireString()
+                    #expect(failed.status.code == status, "\(failed.status.code): \(message)")
+                    #expect(message.contains(status == 429 ? "rate_limit_exceeded" : "server_is_overloaded"))
+                    #expect(failed.headers[HTTPField.Name("Retry-After")!] == "2")
+                    #expect(!message.contains("sk-native-fixture-only"))
+                    let retried = try await api.send(.post, Self.path, body, token: AgentModelGatewayRouteTests.serviceKey, headers: Self.headers(token, attempt: 2))
+                    #expect(retried.status == 200 && retried.text == AgentResponsesTests.stream)
+                    #expect(calls.withLock { $0 } == 2)
+                    _ = await routes.agentModelScopes.revoke(token: token)
+                }
+            }
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func closingTheCallerClosesTheProviderEvenBeforeHeadersArrive(beforeHeaders: Bool) async throws {
+        let started = Mutex(false), disconnected = Mutex(false)
+        try await withResponsesProvider({ _ in
+            if beforeHeaders {
+                started.withLock { $0 = true }
+                do { try await Task.sleep(for: .seconds(8)) }
+                catch { disconnected.withLock { $0 = true }; throw error }
+            }
+            let body = try Response.Body(stream: { writer in
+                started.withLock { $0 = true }
+                do {
+                    for _ in 0..<400 {
+                        try await writer.write(": heartbeat\n\n")
+                        try await Task.sleep(for: .milliseconds(20))
+                    }
+                } catch { disconnected.withLock { $0 = true }; throw error }
+            }, count: nil)
+            return Response(status: .ok, headers: [.contentType: "text/event-stream"], body: body)
+        }) { endpoint in
+            try await withFakeDaemon { daemon, _ in
+                try await withStore { store, logger in
+                    let config = AgentModelGatewayRouteTests.config(daemon)
+                    let routes = try CollabServer.Routes(registry: DocumentRegistry(store: store, config: config, logger: logger), store: store, config: config, logger: logger)
+                    try await withApp(configure: { routes.register(on: $0) }) { app in
+                        try await app.testing(.running) { testClient in
+                            let (scope, token) = try await Self.fixture(API(client: testClient), store, routes, endpoint: endpoint)
+                            let client = HTTPClient(eventLoopGroupProvider: .singleton)
+                            let call = Task {
+                                var request = HTTPClientRequest(url: "http://127.0.0.1:\(try #require(testClient.port))" + Self.path)
+                                request.method = .POST
+                                request.headers.add(name: "Authorization", value: "Bearer " + AgentModelGatewayRouteTests.serviceKey)
+                                for (name, value) in Self.headers(token) { request.headers.add(name: name, value: value) }
+                                request.body = .bytes(ByteBuffer(string: AgentResponsesTests.body(scope).compactJSON()))
+                                let response = try await client.execute(request, timeout: .seconds(10))
+                                for try await _ in response.body { }
+                            }
+                            for _ in 0..<200 {
+                                if started.withLock({ $0 }) { break }
+                                try await Task.sleep(for: .milliseconds(10))
+                            }
+                            #expect(started.withLock { $0 })
+                            call.cancel(); _ = try? await call.value
+                            for _ in 0..<200 {
+                                if disconnected.withLock({ $0 }) { break }
+                                try await Task.sleep(for: .milliseconds(10))
+                            }
+                            #expect(disconnected.withLock { $0 }, "Provider connection survived caller cancellation")
+                            _ = await routes.agentModelScopes.revoke(token: token)
+                            try await client.shutdown()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func revocationAndTheAbsoluteDeadlineCloseAStalledUpstream(deadline: Bool) async throws {
+        let started = Mutex(false), disconnected = Mutex(false)
+        try await withResponsesProvider({ _ in
+            let body = try Response.Body(stream: { writer in
+                started.withLock { $0 = true }
+                do {
+                    for _ in 0..<500 {
+                        try await writer.write(": heartbeat\n\n")
+                        try await Task.sleep(for: .milliseconds(20))
+                    }
+                } catch { disconnected.withLock { $0 = true }; throw error }
+            }, count: nil)
+            return Response(status: .ok, headers: [.contentType: "text/event-stream"], body: body)
+        }) { endpoint in
+            try await withFakeDaemon { daemon, _ in
+                try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                    let (initial, initialToken) = try await Self.fixture(api, store, routes, endpoint: endpoint)
+                    _ = await routes.agentModelScopes.revoke(token: initialToken)
+                    var scope = initial
+                    if deadline { scope.expiresAt = Date().addingTimeInterval(0.5) }
+                    let token = try await routes.agentModelScopes.activate(scope)
+                    let body = AgentResponsesTests.body(scope).compactJSON()
+                    let call = Task { try await api.send(.post, Self.path, body, token: AgentModelGatewayRouteTests.serviceKey, headers: Self.headers(token)) }
+                    for _ in 0..<200 {
+                        if started.withLock({ $0 }) { break }
+                        try await Task.sleep(for: .milliseconds(10))
+                    }
+                    #expect(started.withLock { $0 })
+                    if !deadline { _ = await routes.agentModelScopes.revoke(token: token) }
+                    _ = try? await call.value
+                    for _ in 0..<200 {
+                        if disconnected.withLock({ $0 }) { break }
+                        try await Task.sleep(for: .milliseconds(10))
+                    }
+                    #expect(disconnected.withLock { $0 }, "Upstream socket remained open")
+                    _ = await routes.agentModelScopes.revoke(token: token)
+                }
+            }
+        }
+    }
+
+    @Test func theServiceAndActiveScopeAreRequiredAndRedirectsAreNotFollowed() async throws {
+        try await withResponsesProvider({ _ in
+            Response(status: .temporaryRedirect, headers: [.location: "http://127.0.0.1:1/credential-theft"], body: .init(string: "sk-native-fixture-only"))
+        }) { endpoint in
+            try await withFakeDaemon { daemon, _ in
+                try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                    let (scope, token) = try await Self.fixture(api, store, routes, endpoint: endpoint)
+                    let body = AgentResponsesTests.body(scope).compactJSON()
+                    #expect(try await api.post(Self.path, body).status == 401)
+                    #expect(try await api.post(Self.path, body, token: AgentModelGatewayRouteTests.serviceKey).status == 401)
+                    let redirect = try await api.send(.post, Self.path, body, token: AgentModelGatewayRouteTests.serviceKey, headers: Self.headers(token))
+                    #expect(redirect.status == 307 && !redirect.text.contains("sk-native-fixture-only"), "\(redirect.status): \(redirect.text)")
+                    try await store.finishWorkflowRun(id: scope.workflowRunID, status: "stopped", outputs: nil, error: nil,
+                        elapsedTime: 0, totalTokens: 0, totalSteps: 0, exceptionsCount: 0, finishedAt: Date())
+                    #expect(try await api.send(.post, Self.path, body, token: AgentModelGatewayRouteTests.serviceKey, headers: Self.headers(token, call: 2)).status == 403)
+                    _ = await routes.agentModelScopes.revoke(token: token)
+                }
+            }
+        }
+    }
+
+    @Test func scopedFilesInToolOutputsAreExpandedAndExternalMediaAndExcessBytesAreRefused() async throws {
+        try await withFakeDaemon { daemon, _ in
+            var config = AgentModelGatewayRouteTests.config(daemon)
+            config.files.directory = FileManager.default.temporaryDirectory.appendingPathComponent("responses-files-" + UUID().uuidString).path
+            config.files.signingKey = String(repeating: "fixture-only-", count: 4); config.files.externalURL = "http://files.example.test"
+            let frozen = config
+            defer { try? FileManager.default.removeItem(atPath: frozen.files.directory) }
+            try await withServerAndRoutes(config: frozen) { api, store, routes in
+                let (initial, initialToken) = try await AgentModelGatewayRouteTests.fixture(api, store, routes)
+                _ = await routes.agentModelScopes.revoke(token: initialToken)
+                let files = ServerWorkflowFiles(routes: routes, userId: initial.userID)
+                let file = try await files.save(bytes: [UInt8](repeating: 42, count: 7 << 20), filename: "fixture.png", mimeType: "image/png", sourceURL: nil)
+                var scope = initial; scope.inputFileIDs = [file.recordId]
+                let image: JSONValue = ["type": "input_image", "image_url": .string("dify-sf-file:" + file.recordId)]
+                let document: JSONValue = ["type": "input_file", "file_id": .string("dify-sf-file:" + file.recordId)]
+                let normalized = try await routes.normalizeAgentResponsesFiles([["type": "function_call_output", "call_id": "c", "output": .array([image, document])]], scope: scope)
+                let parts = try #require(normalized.array?.first?["output"]?.array)
+                #expect(parts[0]["image_url"]?.string?.hasPrefix("data:image/png;base64,") == true)
+                #expect(parts[1]["file_id"] == nil && parts[1]["filename"] == "fixture.png")
+                for invalid in [["type": "input_image", "image_url": "https://external.invalid/a.png"],
+                                           ["type": "input_file", "file_data": "data:application/pdf;base64,AA=="],
+                                           ["type": "input_image", "image_url": .string("dify-sf-file:" + UUID().uuidString.lowercased())]] as [JSONValue] {
+                    do { _ = try await routes.normalizeAgentResponsesFiles([invalid], scope: scope); Issue.record("Unauthorized media accepted") }
+                    catch is AgentModelFileError { }
+                }
+                do { _ = try await routes.normalizeAgentResponsesFiles(.array([image, image, image]), scope: scope); Issue.record("Aggregate file budget bypassed") }
+                catch CollabServer.ServerError.payloadTooLarge { }
+            }
+        }
+    }
+}
+
+@Suite("Agent harness acknowledgement")
+struct AgentHarnessEchoTests {
+    @Test func matchingStyleAndWireAreRequiredBeforeAcceptingTheResult() async throws {
+        let echo = Mutex<JSONValue>(["harness_style": "codex", "model_wire": ["wire": "responses"]])
+        let cancelled = Mutex(0)
+        try await withApp(configure: { app in
+            app.routes.get("v1", "runs", "remote", "events") { _ in
+                Response(status: .ok, headers: [.contentType: "text/event-stream"], body: .init(string:
+                    "id: 1\nevent: run_started\ndata: \(echo.withLock { $0 }.compactJSON())\n\nid: 2\nevent: succeeded\ndata: {}\n\n"))
+            }
+            app.routes.get("v1", "runs", "remote") { _ in
+                Response(status: .ok, body: .init(string: #"{"protocol":"dify-sf-agent/1","run_id":"remote","operation_id":"operation","status":"succeeded","last_event_id":2,"result":{}}"#))
+            }
+            app.routes.post("v1", "runs", "remote", "cancel") { _ in
+                cancelled.withLock { $0 += 1 }
+                return Response(status: .accepted, body: .init(string: #"{"protocol":"dify-sf-agent/1"}"#))
+            }
+        }) { app in
+            try await app.testing(.running) { client in
+                var config = ServerConfig.defaults.agentService
+                config.url = "http://127.0.0.1:\(try #require(client.port))"; config.key = "fixture-only"
+                let service = AgentServiceClient(config: config)
+                #expect(try await service.result(run: "remote", operation: "operation", deadline: Date().addingTimeInterval(5),
+                    expectedHarness: "codex", expectedWire: "responses", isAborted: { false })["status"] == "succeeded")
+                for bad in [[:], ["harness_style": "dify", "model_wire": ["wire": "responses"]],
+                            ["harness_style": "codex", "model_wire": ["wire": "plugin"]]] as [JSONValue] {
+                    echo.withLock { $0 = bad }
+                    do {
+                        _ = try await service.result(run: "remote", operation: "operation", deadline: Date().addingTimeInterval(5),
+                            expectedHarness: "codex", expectedWire: "responses", isAborted: { false })
+                        Issue.record("Unconfirmed harness accepted")
+                    } catch let error as NodeError { #expect(error.errorTypeName == "AgentHarnessMismatch") }
+                }
+                #expect(cancelled.withLock { $0 } == 3)
+            }
+        }
+    }
+}

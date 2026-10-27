@@ -6,3 +6,6 @@ server/Sources/CollabServer/WorkflowHelperPrompts.swift whitespace=-blank-at-eol
 # Reviewed upstream input engine and generated Monaco oracle vectors.
 third_party/re_editor/** linguist-vendored
 app/test/code_editor/monaco_wrapping.json linguist-generated
+
+# OpenAI Codex texts and fixtures, byte-identical to upstream (see third_party/codex/PATCHES.md).
+third_party/codex/upstream/** linguist-vendored whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab,-indent-with-non-tab,-tab-in-indent,-trailing-space,-cr-at-eol

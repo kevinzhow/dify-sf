@@ -44,6 +44,8 @@ struct AgentModelScope: Sendable {
     var modelParameters: JSONObject? = nil
     var credentialReference: JSONValue? = nil
     var durableOwner: String? = nil
+    var harnessStyle: String = "dify"
+    var modelWire: String = "plugin"
 
     var appID: String { execution["app_id"]?.string ?? "" }
     var workflowRunID: String { execution["workflow_run_id"]?.string ?? "" }
@@ -65,6 +67,8 @@ enum AgentModelGatewayLimits {
     static let messages = 8192
     static let requestBytes = 32 << 20
     static let fileBytes = 20 << 20
+    // Codex: 5 request attempts inside 6 stream attempts.
+    static let attempts = 30
 }
 
 struct AgentModelGatewayRequest: Sendable {
@@ -77,6 +81,7 @@ struct AgentModelGatewayRequest: Sendable {
     let stop: [String]
     let callIndex: Int
     let invocationID: String
+    let attempt: Int
 
     static func invalid() -> ServerError { .badRequest("Invalid agent model request") }
 
@@ -94,6 +99,10 @@ struct AgentModelGatewayRequest: Sendable {
         self.model = model
         self.callIndex = callIndex
         self.invocationID = invocationID
+        if let value = caller["attempt"] {
+            guard case .int(let attempt) = value, (1...AgentModelGatewayLimits.attempts).contains(attempt) else { throw Self.invalid() }
+            self.attempt = attempt
+        } else { self.attempt = 1 }
         if let raw = target["model_parameters"], raw != .null {
             guard let object = raw.object else { throw Self.invalid() }
             parameters = object
@@ -165,8 +174,11 @@ actor AgentModelScopes {
         var tasks: [Int: Task<Void, Never>] = [:]
         var usage: [Int: LLMUsage] = [:]
         var activeCall: Int?
+        var activeAttempt: Int?
+        var retryableCalls: [Int: Int] = [:]
+        var invocations: [Int: String] = [:]
     }
-    struct Claim: Sendable { var digest: String; var scope: AgentModelScope; var index: Int }
+    struct Claim: Sendable { var digest: String; var scope: AgentModelScope; var index: Int; var attempt: Int = 1 }
     private var entries: [String: Entry] = [:]
     private var generations: [String: Int] = [:]
 
@@ -199,42 +211,57 @@ actor AgentModelScopes {
     }
 
     func claim(token: String, request: AgentModelGatewayRequest) throws -> Claim {
+        try claim(token: token, caller: request.caller, provider: request.provider, model: request.model,
+                  parameters: request.parameters, stop: request.stop, index: request.callIndex, attempt: request.attempt)
+    }
+
+    func claim(token: String, caller: JSONObject, provider: String, model: String, parameters: JSONObject,
+               stop: [String], index: Int, attempt: Int) throws -> Claim {
         let digest = Tokens.sha256(token)
         guard var entry = entries[digest], entry.scope.expiresAt > Date() else { throw Self.denied() }
         let scope = entry.scope
         guard generations[scope.executionKey] == scope.generation else { throw Self.stale() }
-        guard request.provider == scope.provider, request.model == scope.model,
+        guard provider == scope.provider, model == scope.model, index >= 1, (1...AgentModelGatewayLimits.attempts).contains(attempt),
               scope.modelParameters.map({ expected in
-                  expected.count == request.parameters.count && expected.allSatisfy { request.parameters[$0.key] == $0.value }
+                  expected.count == parameters.count && expected.allSatisfy { parameters[$0.key] == $0.value }
               }) ?? true,
-              scope.modelParameters.map({ expected in request.stop == (expected["stop"]?.array?.compactMap(\.string) ?? []) }) ?? true,
-              scope.caller.allSatisfy({ request.caller[$0.key] == $0.value }) else { throw Self.denied() }
-        guard request.callIndex <= scope.maxCalls else {
+              scope.modelParameters.map({ expected in stop == (expected["stop"]?.array?.compactMap(\.string) ?? []) }) ?? true,
+              scope.caller.allSatisfy({ caller[$0.key] == $0.value }) else { throw Self.denied() }
+        guard index <= scope.maxCalls else {
             throw ServerError.http(status: 429, code: "agent_call_limit", message: "Agent model call limit reached")
         }
-        guard !entry.calls.contains(request.callIndex) else {
+        let invocation = caller["invocation_id"]?.string ?? ""
+        guard entry.invocations[index] == nil || entry.invocations[index] == invocation else { throw Self.denied() }
+        // Requests lost before admission need not have reached the gateway at all.
+        guard !entry.calls.contains(index) || entry.retryableCalls[index].map({ attempt > $0 }) == true else {
             throw ServerError.http(status: 409, code: "duplicate_invocation", message: "This model invocation was already accepted")
         }
         guard entry.activeCall == nil else {
             throw ServerError.http(status: 409, code: "agent_call_in_progress", message: "A model invocation is still running")
         }
-        entry.calls.insert(request.callIndex)
-        entry.activeCall = request.callIndex
+        entry.invocations[index] = invocation
+        entry.calls.insert(index)
+        entry.retryableCalls[index] = nil
+        entry.activeCall = index
+        entry.activeAttempt = attempt
         entries[digest] = entry
-        return Claim(digest: digest, scope: scope, index: request.callIndex)
+        return Claim(digest: digest, scope: scope, index: index, attempt: attempt)
     }
 
     func attach(_ task: Task<Void, Never>, to claim: Claim) {
-        guard var entry = entries[claim.digest], generations[entry.scope.executionKey] == entry.scope.generation else {
+        guard var entry = entries[claim.digest], generations[entry.scope.executionKey] == entry.scope.generation,
+              entry.activeCall == claim.index, entry.activeAttempt == claim.attempt else {
             task.cancel(); return
         }
         entry.tasks[claim.index] = task
         entries[claim.digest] = entry
     }
 
-    func finish(_ claim: Claim, usage: LLMUsage?) {
-        guard var entry = entries[claim.digest] else { return }
-        if let usage { entry.usage[claim.index] = usage }
+    func finish(_ claim: Claim, usage: LLMUsage?, succeeded: Bool = true) {
+        guard var entry = entries[claim.digest], entry.activeCall == claim.index, entry.activeAttempt == claim.attempt else { return }
+        if let usage { entry.usage[claim.index] = entry.usage[claim.index].map { $0.plus(usage) } ?? usage }
+        if !succeeded { entry.retryableCalls[claim.index] = claim.attempt }
+        entry.activeAttempt = nil
         entry.tasks[claim.index] = nil
         if entry.activeCall == claim.index { entry.activeCall = nil }
         entries[claim.digest] = entry
@@ -274,6 +301,14 @@ extension Routes {
                 catch is AgentModelFileError {
                     return rawJSON(["error": "file_error", "message": "The model file is not available to this execution"],
                                    status: .init(code: 422))
+                }
+            }
+        }
+        routes.post("inner", "agent", "responses") { req in
+            await handle(req, cancellable: true) {
+                do { return try await invokeAgentResponses(req) }
+                catch is AgentModelFileError {
+                    return rawJSON(["error": "file_error", "message": "The model file is not available to this execution"], status: .init(code: 422))
                 }
             }
         }
@@ -377,6 +412,9 @@ extension Routes {
             throw ServerError.forbidden(code: "agent_run_forbidden", message: "The agent operation is not authorized")
         }
         let scope = authorized
+        guard scope.modelWire == "plugin" else {
+            throw ServerError.forbidden(code: "agent_model_wire", message: "This operation uses a different model channel")
+        }
         // Current machine state still wins over an issued token (e.g. stop or delete between two model turns).
         guard let run = try await store.workflowRun(doc: scope.appID, id: scope.workflowRunID),
               run.status == "running", run.type == "workflow" else {
@@ -418,14 +456,14 @@ extension Routes {
                 await scopes.finish(claim, usage: lastUsage)
                 continuation.finish()
             } catch is CancellationError {
-                await scopes.finish(claim, usage: lastUsage)
+                await scopes.finish(claim, usage: lastUsage, succeeded: false)
                 continuation.finish(throwing: CancellationError())
             } catch {
                 // Upstream errors may quote a provider key, prompt or signed URL. Do not reflect them.
                 let inner: JSONValue = ["error_type": "AgentModelInvokeError", "message": "Agent model invocation failed"]
                 let envelope: JSONValue = ["code": -500, "message": .string(inner.compactJSON()), "data": .null]
                 continuation.yield("data: " + envelope.compactJSON() + "\n\n")
-                await scopes.finish(claim, usage: lastUsage)
+                await scopes.finish(claim, usage: lastUsage, succeeded: false)
                 continuation.finish()
             }
         }

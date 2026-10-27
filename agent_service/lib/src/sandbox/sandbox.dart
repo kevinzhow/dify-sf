@@ -880,6 +880,11 @@ class ShellSession {
   /// Aborts the tool calls in flight (their HTTP requests).
   void abort() => _client.close();
 
+  /// Records a job started by another client of this sandbox (the `codex`
+  /// style's exec tools), so [close] terminates and deletes it too.
+  void trackJob(String jobId, int offset, {required bool done}) =>
+      _remember(jobId, offset, done);
+
   void _remember(String jobId, int offset, bool done) {
     if (!jobIds.contains(jobId)) jobIds.add(jobId);
     _offsets[jobId] = offset;

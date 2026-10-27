@@ -130,6 +130,8 @@ struct ServerAgentRuntime: AgentRuntime {
             json["report_progress"] = .bool(reportProgress)
             return JSONValue.object(json).compactJSON()
         }
+        let modelEnvelope = try await modelEnvelope(soul)
+        let wire = modelEnvelope["wire"]?.string ?? "plugin"
         var inputs = JSONObject(); inputs["task"] = .string(data.task)
         while true {
             try Task.checkCancellation()
@@ -150,16 +152,22 @@ struct ServerAgentRuntime: AgentRuntime {
                 }
                 env[name] = .string(value)
             }
-            let body: JSONObject = ["operation_id": .string(operation), "generation": .int(session.generation), "execution": .object(identity),
-                "model": ["provider": .string(soul.provider!), "name": .string(soul.model!), "parameters": .object(soul.modelParameters)],
+            var body: JSONObject = ["operation_id": .string(operation), "generation": .int(session.generation), "execution": .object(identity),
+                "model": .object(modelEnvelope),
                 "system_prompt": .string(prompt.system), "task": .array(prompt.task), "output_schema": data.outputSchema ?? .null,
                 "executor_profile": .string(soul.executorProfile),
                 "tools": ["ask_human": .bool(soul.askHuman), "shell": .bool(shellAvailable), "view_image": .bool(viewImage), "report_progress": .bool(reportProgress)], "env": .object(env), "files": .array(prompt.files),
                 "limits": ["max_turns": .int(maxTurns), "timeout_seconds": .int(max(1, Int(deadline.timeIntervalSinceNow)))], "continuation": continuation]
+            if soul.harnessStyle == "codex" {
+                body["harness_style"] = "codex"
+                var tools = body["tools"]!.object!
+                tools["update_plan"] = .bool(soul.updatePlan)
+                body["tools"] = .object(tools)
+            }
             // Identities are fixed across uncertain transport retries. Secrets are never persisted in the operation ledger.
             let scope = AgentModelScope(operationID: operation, generation: session.generation, execution: identity,
                 provider: soul.provider!, model: soul.model!, maxCalls: maxTurns, expiresAt: deadline, inputFileIDs: prompt.inputFileIDs,
-                endUserID: endUserID, modelParameters: soul.modelParameters, credentialReference: soul.json["model"]?["credential_ref"], durableOwner: routes.agentOwner)
+                endUserID: endUserID, modelParameters: soul.modelParameters, credentialReference: soul.json["model"]?["credential_ref"], durableOwner: routes.agentOwner, harnessStyle: soul.harnessStyle, modelWire: wire)
             let token = try await routes.agentModelScopes.activate(scope)
             do {
                 try await admitted { try await routes.store.startAgentOperation(session: session, operation: operation,
@@ -171,7 +179,8 @@ struct ServerAgentRuntime: AgentRuntime {
                 let activeSession = session
                 let trace = AgentTraceWriter(secrets: env.values.compactMap(\.string))
                 let terminal = try await service.result(run: remote, operation: operation, deadline: deadline,
-                    expectedProfile: soul.executorProfile, generation: session.generation, isAborted: context.isAborted) { event, name, data in
+                    expectedProfile: soul.executorProfile, expectedHarness: soul.harnessStyle == "codex" ? "codex" : nil,
+                    expectedWire: soul.harnessStyle == "codex" ? wire : nil, generation: session.generation, isAborted: context.isAborted) { event, name, data in
                     var display = data
                     if name == "run_started" { display["max_turns"] = .int(maxTurns) }
                     if name == "progress" { display = try await routes.normalizeAgentProgress(data, session: activeSession, files: files) }
@@ -267,6 +276,23 @@ struct ServerAgentRuntime: AgentRuntime {
             throw NodeError("executor_profile_unavailable", "Executor profile \(soul.executorProfile) is not available on this server")
         }
         return profile
+    }
+
+    private func modelEnvelope(_ soul: AgentInlineConfig) async throws -> JSONObject {
+        var result: JSONObject = ["provider": .string(soul.provider!), "name": .string(soul.model!), "parameters": .object(soul.modelParameters)]
+        // Preserve the original dify envelope, including the absence of new keys.
+        guard soul.harnessStyle == "codex" else { return result }
+        let credentials = try await routes.agentCredentials(provider: soul.provider!, model: soul.model!, reference: soul.json["model"]?["credential_ref"])
+        result["wire"] = .string(AgentModelWire.select(style: soul.harnessStyle, provider: soul.provider!, credentials: credentials))
+        if let apiType = credentials["api_type"]?.string { result["api_type"] = .string(apiType) }
+        if let models = routes.runtimeServices(appId: appID, userId: userID).models,
+           let schema = try await models.modelSchema(provider: soul.provider!, model: soul.model!, modelType: "llm", credentials: credentials) {
+            if let context = schema.json["model_properties"]?["context_size"]?.int, context > 0 { result["context_window"] = .int(context) }
+            if let output = schema.json["parameter_rules"]?.array?.first(where: {
+                ["max_tokens", "max_completion_tokens", "max_output_tokens"].contains($0["name"]?.string ?? "")
+            })?["max"]?.int, output > 0 { result["max_output_tokens"] = .int(output) }
+        }
+        return result
     }
 
     private func modelSupportsVision(_ soul: AgentInlineConfig) async throws -> Bool {

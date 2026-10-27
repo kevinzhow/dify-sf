@@ -67,6 +67,19 @@ void main() {
     expect(tool.calls, 1);
     expect(NodeRunView.fromRunData({'_agentProgress': tool.json}).agentProgress, tool);
   });
+  test('commentary, current plan step and retries reach the running canvas', () {
+    var view = AgentProgressView.advance(null, log(1, 'model_call', {'call_index': 7}));
+    view = AgentProgressView.advance(view, log(2, 'commentary', {'text': 'Checking the render'}));
+    expect(view?.summary, 'Checking the render');
+    view = AgentProgressView.advance(view, log(3, 'plan', {'plan': [
+      {'step': 'Prepare', 'status': 'completed'},
+      {'step': 'Render', 'status': 'in_progress'},
+    ]}));
+    expect(view?.summary, 'Render');
+    view = AgentProgressView.advance(view, log(4, 'model_retry', {'message': 'The model stream was interrupted'}));
+    expect(view?.summary, 'The model stream was interrupted');
+    expect(view?.calls, 7);
+  });
   test('untrusted upload receipts and remote image URLs never become previews', () {
     for (final file in [
       {'upload_id': 'unknown', 'url': 'https://external.invalid/track.png'},

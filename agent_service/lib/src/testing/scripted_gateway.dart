@@ -16,7 +16,13 @@
 ///                "usage": {…}, "finish_reason": "stop", "delay_ms": 0}
 ///               /* or {"raw": <LLMResultChunk>} */],
 ///    "error": {"code": -429, "message": "…"},   // after the chunks
-///    "hang": false}],               // keep the stream open after the chunks
+///    "hang": false,                 // keep the stream open after the chunks
+///    "responses_events": [{"type": "response.output_item.done", "item": {…}},
+///                         {"type": "response.completed", "response": {…}}]}],
+///                // a call of `POST /inner/agent/responses` (the `codex`
+///                // style's native wire): Responses events sent as they are;
+///                // a `response.completed` without `reasoning` echoes the
+///                // request's
 ///  "files": {"<file_id>": {"mime_type": "image/png", "size": 3, "content": "…"}}}
 ///                // or "content_base64": "…" for binary content
 /// ```
@@ -87,6 +93,7 @@ class ScriptedCall {
     this.httpBody,
     this.error,
     this.hang = false,
+    this.responseEvents,
   });
 
   final List<ScriptedChunk> chunks;
@@ -98,6 +105,41 @@ class ScriptedCall {
   final Map<String, Object?>? httpBody;
   final Map<String, Object?>? error;
   final bool hang;
+
+  /// The Responses events of a `responses` call.
+  final List<Map<String, Object?>>? responseEvents;
+
+  /// A `responses` call answering [output] items, then
+  /// `response.completed` with [usage] (Responses shape).
+  factory ScriptedCall.responses(
+    List<Map<String, Object?>> output, {
+    Map<String, Object?>? usage,
+    List<String> summary = const [],
+    Map<String, Object?>? reasoningEcho,
+  }) => ScriptedCall(
+    responseEvents: [
+      for (final t in summary)
+        {'type': 'response.reasoning_summary_text.delta', 'delta': t},
+      for (final item in output)
+        {'type': 'response.output_item.done', 'item': item},
+      {
+        'type': 'response.completed',
+        'response': {
+          'status': 'completed',
+          'reasoning': ?reasoningEcho,
+          'usage':
+              usage ??
+              {
+                'input_tokens': 100,
+                'input_tokens_details': {'cached_tokens': 80},
+                'output_tokens': 20,
+                'output_tokens_details': {'reasoning_tokens': 12},
+                'total_tokens': 120,
+              },
+        },
+      },
+    ],
+  );
 
   /// A plain text answer with usage.
   factory ScriptedCall.text(
@@ -141,6 +183,9 @@ class ScriptedCall {
     httpBody: (j['http_body'] as Map?)?.cast<String, Object?>(),
     error: (j['error'] as Map?)?.cast<String, Object?>(),
     hang: j['hang'] as bool? ?? false,
+    responseEvents: (j['responses_events'] as List?)
+        ?.map((e) => (e as Map).cast<String, Object?>())
+        .toList(),
   );
 }
 
@@ -259,6 +304,18 @@ class ScriptedGateway {
 
   Uri get url => Uri.parse('http://127.0.0.1:${_server!.port}');
 
+  /// Native model calls (raw Responses bodies) in arrival order.
+  List<Map<String, Object?>> get responsesRequests => [
+    for (final r in requests)
+      if (r.path == '/inner/agent/responses') r.body,
+  ];
+
+  /// The headers of the native model calls (lower-case names).
+  List<Map<String, String>> get responsesHeaders => [
+    for (final r in requests)
+      if (r.path == '/inner/agent/responses') r.headers,
+  ];
+
   /// Model calls (`llm/invoke` bodies) in arrival order.
   List<Map<String, Object?>> get llmRequests => [
     for (final r in requests)
@@ -355,6 +412,8 @@ class ScriptedGateway {
       switch (path) {
         case '/inner/agent/llm/invoke':
           return await _invoke(res, body, exchange);
+        case '/inner/agent/responses':
+          return await _responses(res, body, exchange);
         case '/inner/agent/files/download-request':
           final id = body['file_id'];
           final f = files[id];
@@ -415,7 +474,8 @@ class ScriptedGateway {
     final caller = (body['caller'] as Map?) ?? const {};
     final target = (body['target'] as Map?) ?? const {};
     final invocationId = caller['invocation_id'] as String? ?? '';
-    if (!_invocationIds.add(invocationId)) {
+    // A retry is the same invocation with a higher `caller.attempt`.
+    if (!_invocationIds.add('$invocationId#${caller['attempt'] ?? 1}')) {
       return _jsonResponse(res, 409, {
         'error': 'invocation_repeated',
         'message': 'invocation_id $invocationId was already used',
@@ -469,13 +529,108 @@ class ScriptedGateway {
     return _sse(res, obs, call, target['model'] as String? ?? '', exchange);
   }
 
+  /// `POST /inner/agent/responses`: the body is the raw Responses request;
+  /// `X-Agent-Call-Index`, `X-Agent-Invocation-ID` and `X-Agent-Attempt`
+  /// describe the call. Answers the scripted Responses events of the next
+  /// call, with `X-Dify-SF-Forwarded-Reasoning` set from the request.
+  Future<void> _responses(
+    HttpResponse res,
+    Map<String, Object?> body,
+    RecordedExchange exchange,
+  ) async {
+    final invocationId = exchange.headers['x-agent-invocation-id'] ?? '';
+    final attempt = exchange.headers['x-agent-attempt'] ?? '';
+    if (invocationId.isEmpty ||
+        int.tryParse(exchange.headers['x-agent-call-index'] ?? '') == null ||
+        int.tryParse(attempt) == null) {
+      return _jsonResponse(res, 400, {
+        'error': 'invalid_request',
+        'message':
+            'X-Agent-Call-Index, X-Agent-Invocation-ID and '
+            'X-Agent-Attempt are required',
+      }, exchange);
+    }
+    if (!_invocationIds.add('$invocationId#$attempt')) {
+      return _jsonResponse(res, 409, {
+        'error': 'invocation_repeated',
+        'message': 'invocation_id $invocationId was already used',
+      }, exchange);
+    }
+    String? unknown;
+    void walk(Object? v) {
+      if (v is Map) v.values.forEach(walk);
+      if (v is List) v.forEach(walk);
+      if (v is String && v.startsWith('dify-sf-file:')) {
+        final id = v.substring('dify-sf-file:'.length);
+        if (!(files.containsKey(id) || uploads.containsKey(id))) unknown = v;
+      }
+    }
+
+    walk(body);
+    if (unknown != null) {
+      return _jsonResponse(res, 422, {
+        'error': 'file_error',
+        'message': 'not a file of this execution: $unknown',
+      }, exchange);
+    }
+    final obs = CallObservation(invocationId);
+    observations.add(obs);
+    final call = _calls.isEmpty
+        ? ScriptedCall(
+            responseEvents: [
+              {
+                'type': 'response.failed',
+                'response': {
+                  'error': {
+                    'code': 'server_error',
+                    'message': 'script exhausted',
+                  },
+                },
+              },
+            ],
+          )
+        : _calls.removeAt(0);
+    if (call.httpStatus != 200) {
+      obs.completed = true;
+      return _jsonResponse(
+        res,
+        call.httpStatus,
+        call.httpBody ??
+            {
+              'error': 'scripted_http_error',
+              'message': 'scripted HTTP ${call.httpStatus}',
+            },
+        exchange,
+      );
+    }
+    final reasoning = body['reasoning'];
+    final effort = reasoning is Map ? reasoning['effort'] : null;
+    if (effort is String) {
+      res.headers.set('X-Dify-SF-Forwarded-Reasoning', effort);
+    }
+    final events = [
+      for (final e in call.responseEvents ?? const <Map<String, Object?>>[])
+        if (e['type'] == 'response.completed' &&
+            e['response'] is Map &&
+            !(e['response'] as Map).containsKey('reasoning'))
+          {
+            ...e,
+            'response': {...e['response'] as Map, 'reasoning': reasoning},
+          }
+        else
+          e,
+    ];
+    return _sse(res, obs, call, '', exchange, responseEvents: events);
+  }
+
   Future<void> _sse(
     HttpResponse res,
     CallObservation obs,
     ScriptedCall call,
     String model,
-    RecordedExchange exchange,
-  ) async {
+    RecordedExchange exchange, {
+    List<Map<String, Object?>>? responseEvents,
+  }) async {
     exchange
       ..status = 200
       ..events = [];
@@ -542,7 +697,17 @@ class ScriptedGateway {
     }
 
     if (!await wait(call.delayMs)) return;
-    for (var i = 0; i < call.chunks.length; i++) {
+    if (responseEvents != null) {
+      for (var i = 0; i < responseEvents.length; i++) {
+        final e = responseEvents[i];
+        if (i > 0 && !await wait(call.chunkDelayMs)) return;
+        exchange.events!.add(e);
+        if (!await send('event: ${e['type']}\ndata: ${jsonEncode(e)}\n\n')) {
+          return;
+        }
+      }
+    }
+    for (var i = 0; responseEvents == null && i < call.chunks.length; i++) {
       final c = call.chunks[i];
       if (i > 0 && !await wait(call.chunkDelayMs + c.delayMs)) return;
       if (!await envelope(0, '', c.toChunk(model, i))) return;

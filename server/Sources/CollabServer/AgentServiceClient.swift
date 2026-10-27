@@ -104,13 +104,13 @@ struct AgentServiceClient: Sendable {
     }
 
     /// Durable SSE replay is independent from the browser. Reconnect with the last committed cursor, never restart a loop.
-    func result(run: String, operation: String, deadline: Date, expectedProfile: String? = nil, generation: Int = 0,
+    func result(run: String, operation: String, deadline: Date, expectedProfile: String? = nil, expectedHarness: String? = nil, expectedWire: String? = nil, generation: Int = 0,
                 isAborted: @escaping @Sendable () -> Bool,
                 onEvent: @escaping @Sendable (Int, String, JSONObject) async throws -> Void = { _, _, _ in }) async throws -> JSONValue {
         // AsyncHTTPClient's execute deadline ends when response headers arrive. An idle SSE body needs its own timer.
         try await agentBeforeDeadline(deadline, isAborted: isAborted) {
             try await collectResult(run: run, operation: operation, deadline: deadline,
-                expectedProfile: expectedProfile, generation: generation, isAborted: isAborted, onEvent: onEvent)
+                expectedProfile: expectedProfile, expectedHarness: expectedHarness, expectedWire: expectedWire, generation: generation, isAborted: isAborted, onEvent: onEvent)
         }
     }
 
@@ -122,13 +122,14 @@ struct AgentServiceClient: Sendable {
         }
     }
 
-    private func collectResult(run: String, operation: String, deadline: Date, expectedProfile: String?, generation: Int,
+    private func collectResult(run: String, operation: String, deadline: Date, expectedProfile: String?, expectedHarness: String?, expectedWire: String?, generation: Int,
                 isAborted: @Sendable () -> Bool,
                 onEvent: @Sendable (Int, String, JSONObject) async throws -> Void) async throws -> JSONValue {
         let id = try Self.pathID(run)
         var cursor = 0, failures = 0
         var historyExpired = false
         var verifiedProfile = expectedProfile == nil
+        var verifiedHarness = expectedHarness == nil && expectedWire == nil
         func refuseProfile() async -> NodeError {
             try? await cancel(run: run, generation: generation)
             return NodeError("sandbox_unavailable", "The agent service did not confirm the selected executor profile")
@@ -165,6 +166,14 @@ struct AgentServiceClient: Sendable {
                             guard event.data["executor_profile"] == .string(expectedProfile) else { throw await refuseProfile() }
                             verifiedProfile = true
                         }
+                        if event.name == "run_started", expectedHarness != nil || expectedWire != nil {
+                            guard expectedHarness.map({ event.data["harness_style"] == .string($0) }) ?? true,
+                                  expectedWire.map({ event.data["model_wire"]?["wire"] == .string($0) }) ?? true else {
+                                try? await cancel(run: run, generation: generation)
+                                throw NodeError("AgentHarnessMismatch", "The agent service did not confirm the selected harness and model channel")
+                            }
+                            verifiedHarness = true
+                        }
                         do { try await onEvent(event.id, event.name, event.data) }
                         catch { throw AgentEventCommitFailure(underlying: error) }
                         cursor = event.id // Advance only after the database commit succeeded.
@@ -178,6 +187,10 @@ struct AgentServiceClient: Sendable {
                       let state = value["status"]?.string else { throw Self.invalidResponse() }
                 if ["succeeded", "paused", "failed", "cancelled"].contains(state) {
                     guard verifiedProfile else { throw await refuseProfile() }
+                    guard verifiedHarness else {
+                        try? await cancel(run: run, generation: generation)
+                        throw NodeError("AgentHarnessMismatch", "The agent service did not confirm the selected harness and model channel")
+                    }
                     guard value["result"]?.object != nil, case .int(let last)? = value["last_event_id"], last > 0, historyExpired || cursor == last else {
                         throw Self.invalidResponse()
                     }

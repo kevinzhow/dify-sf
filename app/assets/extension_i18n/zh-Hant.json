@@ -54,6 +54,12 @@
     "inline.progressStarted": "Agent 正在開始執行…",
     "inline.partialResult": "部分完成：Agent 接近呼叫或時間上限，已提交目前成果。",
     "inline.cacheHitTokens": "提示詞快取命中：{{count}} tokens",
-    "inline.unknownUsage": "未知"
+    "inline.unknownUsage": "未知",
+    "inline.harnessStyle": "Harness style",
+    "inline.harnessHint": "選擇 Agent 規劃、使用工具及繼續工作的方式。模型通道依已設定的供應商自動選擇。",
+    "inline.updatePlan": "允許更新計畫",
+    "inline.event.commentary": "Agent 回報",
+    "inline.event.plan": "計畫",
+    "inline.event.model_retry": "重試模型呼叫"
   }
 }

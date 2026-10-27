@@ -535,3 +535,12 @@ Map<String, Object?> _assistant(Message m) {
     if (reasoningField.isNotEmpty) 'reasoning_content': reasoningField.join(),
   };
 }
+
+/// A Dify media content part for [media] (a `dify-sf-file:` reference), as
+/// the dify style sends task files and viewed images; used by the `codex`
+/// style's plugin transport.
+Future<Map<String, Object?>> mediaPromptContent(
+  Media media,
+  InnerClient inner, {
+  String detail = 'low',
+}) => _mediaContent(media, inner, detail: detail);
