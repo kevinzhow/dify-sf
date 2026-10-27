@@ -1042,7 +1042,7 @@ the new `apps` columns start as Dify's defaults (`enable_site`, `enable_api` tru
 
 The workflow runtime runs Dify workflows in the server: a Swift port of graphon 0.7.0 (Dify 1.17.1's engine, Apache-2.0;
 `server/Sources/CollabRuntime`, attribution in its `NOTICE.md`), with Dify's paths and shapes. Models are not called by
-dify-sf itself: every model invocation goes through **Dify's plugin daemon** (0.6.10), which runs the provider plugins,
+dify-sf itself: every model invocation goes through **Dify's plugin daemon** (0.6.11), which runs the provider plugins,
 exactly as Dify's api calls it (`POST /plugin/{tenant}/dispatch/llm/invoke`, `.../model/schema`), with the workspace's
 credentials (protocol 1.9, decrypted per call). 1.13 has the **single node run of `llm` nodes**; whole runs, the other node
 types, streaming and history follow in later versions.

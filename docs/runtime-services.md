@@ -20,7 +20,7 @@ The overlay sets the server's daemon/sandbox/proxy URLs and waits for healthy de
 |---|---|---:|---:|---|
 | server | repository build | 1024 MiB | 1 | uploads volume; runs/credentials in PostgreSQL |
 | postgres | PostgreSQL 15 Alpine digest | 512 MiB | 0.5 | application and development plugin databases |
-| plugin_daemon | 0.6.10-local digest | 1024 MiB | 1 | `dify_plugin` database, `plugin_storage` |
+| plugin_daemon | 0.6.11-local digest | 1024 MiB | 1 | `dify_plugin` database, `plugin_storage` |
 | redis | Redis 6 Alpine digest | 64 MiB | 0.2 | daemon cache; persistence disabled |
 | sandbox | 0.2.15 digest | 256 MiB | 0.5 | `sandbox_dependencies` |
 | ssrf_proxy | Ubuntu Squid digest | 128 MiB | 0.2 | no cache; entrypoint forwards proxy-owned log files |
@@ -128,3 +128,9 @@ agent service or proxy container is recreated, the next use of a sandbox attache
 
 `agent_service/tool/compose_smoke.sh SUBNET [POOL]` runs this profile end to end under its own project name (see
 `agent_service/README.md`).
+
+## Managed model providers
+
+The ten bundled provider plugins can be installed, updated to their reviewed server pins, and removed in Integrations. Installation state comes from the actual daemon. The server retains model credentials and workflow documents on removal. See [model provider management](model-provider-plugins.md) for permissions, failure states, custom model capabilities and validation.
+
+The daemon pin includes the upstream [shared-runtime installation fix](https://github.com/langgenius/dify-plugin-daemon/pull/804). The previous pin could report a successful immediate reinstall while the previous local process was still shutting down. The updated pin was exercised with an actual signed plugin, removal/reinstallation, a local Responses workflow and all ten providers’ metadata under the same 1024 MiB / 1 CPU limit.
