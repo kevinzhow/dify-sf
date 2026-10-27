@@ -540,7 +540,11 @@ binary ends the run `sandbox_error`.
 filter but excluding `DIFYSF_RUN_TOKEN` and `SHELLCTL_*`; request_user_input, skills (unless the profile declares
 them, below), bundled skills, the skill MCP-dependency install prompt, goals, apps, plugins, memories, image generation
 and analytics off; `instant_interrupt = false`, so input sent during a turn waits for the next model
-request instead of discarding a response the gateway already counted), `models.json` (`model_catalog_json`: one entry,
+request instead of discarding a response the gateway already counted; `[projects."/workspace"] trust_level = "untrusted"`:
+Codex would otherwise trust its cwd at `thread/start` (danger-full-access) and load `/workspace/.codex/config.toml`,
+its hooks and exec policies and `/workspace/AGENTS.md`, which an earlier operation of the execution may have written
+(a planted `shell_environment_policy` handed the run token to the commands); untrusted, none of them is read, and the
+provider, sandbox, approval and skill settings come only from this file and `thread/start`), `models.json` (`model_catalog_json`: one entry,
 see below) and `AGENTS.md` = the node's `system_prompt` (Codex puts it in its `# AGENTS.md instructions` user message).
 The base URL is the grant's `codex_gateway_url` (the supervisor gives it only to profiles with network egress
 `allowlist`; without it the run ends `sandbox_unavailable`), else `AGENT_CODEX_GATEWAY_URL` (local tests). Codex runs
