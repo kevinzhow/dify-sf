@@ -56,7 +56,8 @@ Widget _modal(
 Future<void> _editFirst(WidgetTester t, String text) async {
   await t.tap(find.text(_edit).first);
   await settle(t);
-  await t.enterText(find.byType(TextField), text);
+  expect(t.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus, isTrue);
+  t.testTextInput.enterText(text);
   await settle(t, 2);
   await tapButton(t, _save);
 }
