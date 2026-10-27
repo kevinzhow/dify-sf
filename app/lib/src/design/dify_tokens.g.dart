@@ -4294,4 +4294,17 @@ abstract final class DifyDrawerRecipe {
   static const width = 480.0;
   static const viewportGutter = 32.0;
 }
+
+/// Dify 1.17.1: web/app/components/base/features/new-feature-panel/feature-card.tsx.
+abstract final class DifyFeatureCardRecipe {
+  static const padding = 12.0;
+  static const marginBottom = 4.0;
+  static const borderWidth = 0.5;
+  static const headerBottom = 8.0;
+  static const headerGap = 8.0;
+  static const tooltipMargin = 2.0;
+  static const radius = DifyRadius.xl;
+  static Color get background => DifyColors.backgroundSectionBurn;
+  static Color get border => DifyColors.effectsHighlight;
+}
 // 1 variables have no plain dark value (the light one is used in both themes): premium-badge-background
