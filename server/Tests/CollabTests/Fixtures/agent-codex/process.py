@@ -3,6 +3,7 @@ import json, os, pathlib, queue, subprocess, tempfile, threading, time
 
 binary = os.environ['AGENT_CODEX_BINARY']
 root = pathlib.Path(tempfile.mkdtemp(prefix='official-codex-'))
+(root/'codex-home').mkdir(mode=0o700)
 options = {
     'model': os.environ['CODEX_FIXTURE_MODEL'], 'model_provider': 'difysf',
     'model_reasoning_effort': 'max', 'approval_policy': 'never',
