@@ -12,7 +12,7 @@ The first attempt retained two 320px field-switch input failures. The final harn
 
 The mounted initial-Answer regression fails before the fix. 284 related tests and a strengthened 29-test edit suite pass; these suites overlap. The edit helper now types through the already-focused input instead of using a test helper that focuses it automatically. Unicode values, selecting another field, rebuilding and resizing are covered. Flutter analysis and design/reference/coverage guards pass. The release web build contains 2763 files and is from `800652f725f844e477dafb16d66fa29dbcd6a247`.
 
-The report's twelve new focus-state visual cases remain pixel-different. The complete 450-scene matrix was not rerun: its historical e84f90b result remains 171 strict / 67 basic / 212 different / 0 missing. DOM/canvas caret capture, navigation folding, rendering and other existing differences remain visible. Physical Android Chrome and iOS Safari are still pending.
+The report's twelve new focus-state visual cases score 2 basic passes / 10 differences. The complete 450-scene matrix was not rerun: its historical e84f90b result remains 171 strict / 67 basic / 212 different / 0 missing. DOM/canvas caret capture, navigation folding, rendering and other existing differences remain visible. Physical Android Chrome and iOS Safari are still pending.
 
 Reproduce against disposable accounts with the same private session format as the other visual runners:
 
