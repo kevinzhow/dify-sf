@@ -121,6 +121,7 @@ class ExecutorProfile {
     this.limits = const ProfileLimits(),
     this.env = const {},
     this.workspaceBacking = WorkspaceBacking.tmpfs,
+    this.codexSkillsDirs = const [],
   });
 
   final String name;
@@ -141,6 +142,11 @@ class ExecutorProfile {
 
   /// `workspace.backing`; the size stays `limits.workspace_mb`.
   final WorkspaceBacking workspaceBacking;
+
+  /// `codex.skills_dirs`: directories in the sandbox, each inside one of
+  /// [mounts], whose skills the official Codex runtime offers to the model.
+  /// Empty: Codex skills stay off.
+  final List<String> codexSkillsDirs;
 
   int get timeoutSecondsMax => limits.timeoutSecondsMax;
   int get maxTurnsMax => limits.maxTurnsMax;
@@ -250,6 +256,7 @@ class ExecutorProfiles {
       'limits',
       'env',
       'workspace',
+      'codex',
     }, where);
     final description = p['description'] ?? '';
     if (description is! String || description.length > 200) {
@@ -422,6 +429,30 @@ class ExecutorProfiles {
       }
     }
 
+    final skillsDirs = <String>[];
+    if (p['codex'] != null) {
+      final c = _obj(p['codex'], '$where codex');
+      _onlyKeys(c, const {'skills_dirs'}, '$where codex');
+      final raw = c['skills_dirs'] ?? const [];
+      if (raw is! List || raw.isEmpty || raw.length > 16) {
+        throw ProfileLoadError(
+          '$where: codex.skills_dirs must be a list of 1 to 16 paths',
+        );
+      }
+      for (var i = 0; i < raw.length; i++) {
+        final d = _absolutePath(raw[i], '$where codex.skills_dirs[$i]');
+        if (!mounts.any((m) => d == m.target || d.startsWith('${m.target}/'))) {
+          throw ProfileLoadError(
+            '$where: codex.skills_dirs[$i] $d must lie inside a mount target',
+          );
+        }
+        if (skillsDirs.contains(d)) {
+          throw ProfileLoadError('$where: codex.skills_dirs[$i] $d repeats');
+        }
+        skillsDirs.add(d);
+      }
+    }
+
     return ExecutorProfile(
       name: name,
       description: description,
@@ -433,6 +464,7 @@ class ExecutorProfiles {
       limits: limits,
       env: Map.unmodifiable(env),
       workspaceBacking: backing,
+      codexSkillsDirs: List.unmodifiable(skillsDirs),
     );
   }
 
