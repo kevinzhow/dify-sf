@@ -364,7 +364,8 @@ The snapshot passed back in `continuation` is a versioned envelope, not a bare G
 
 A snapshot whose envelope, Genkit major version, config snapshot or tool definitions differ from the request is
 rejected (`422 snapshot_incompatible`), never resumed with a different configuration. `workspace_ref` is the
-execution's sandbox (null until the shell is used); a resume whose sandbox was replaced fails with `sandbox_error`.
+execution's sandbox (null until the shell is used); a resume whose sandbox was replaced fails with `sandbox_error`,
+unless the new sandbox keeps the disk workspace (`workspace_kept_from`, see [Disk workspaces](#disk-workspaces)).
 `executor_profile` is the operation's profile; a snapshot without it (taken before profiles) counts as `default`. A
 continuation with the shell and a `workspace_ref` whose profile differs from the request's is `422
 snapshot_incompatible`. A snapshot of the `codex` style carries `"harness_style": "codex"`, `"codex": {"upstream",
@@ -894,7 +895,8 @@ dify-sf therefore gives each execution that enables the shell its own container 
   accepts only "create sandbox for execution X with the fixed image and limits" and "remove it".
 
 Supervisor (`agent_service/bin/sandbox_supervisor.dart`, Docker Engine API on the unix socket, bearer key):
-`POST /v1/sandboxes {"execution_key", "profile"}` → `{"sandbox_id", "url", "token", "gateway", "created", "profile"}`,
+`POST /v1/sandboxes {"execution_key", "profile"}` → `{"sandbox_id", "url", "token", "gateway", "created", "profile"}`
+(with a disk workspace also `"workspace": "disk", "workspace_kept_from": [<earlier sandbox IDs>]`),
 idempotent per key (a stopped container is replaced, with a new ID and network); `DELETE /v1/sandboxes/{id}`;
 `GET /v1/sandboxes`; `GET /v1/profiles`. Any other request field is `400`. Image, limits, binds, devices and egress
 come from the named executor profile (see [Executor profiles](#executor-profiles)). Containers and networks carry its label and the execution label; only objects with both are
@@ -906,7 +908,7 @@ Each container gets a fresh random `SHELLCTL_AUTH_TOKEN` and, from the superviso
 | Memory (tmpfs pages count here too), no swap | `Memory` = `MemorySwap` (default 1024 MiB) |
 | CPU | `NanoCpus` (default 1 CPU) |
 | Processes | `PidsLimit` (default 256) |
-| Disk | `ReadonlyRootfs`; `Tmpfs` `/home/dify` (256 MiB) and `/workspace` (512 MiB), `rw,exec,nosuid,nodev,mode=0700` |
+| Disk | `ReadonlyRootfs`; `Tmpfs` `/home/dify` (256 MiB) and `/workspace` (512 MiB), `rw,exec,nosuid,nodev,mode=0700`; a profile with `workspace.backing: disk` gets `/workspace` as a volume instead (see [Disk workspaces](#disk-workspaces)) |
 | Privileges | `CapDrop: ["ALL"]`, `SecurityOpt: ["no-new-privileges:true"]`, not privileged; no binds or mounts except the executor profile's read-only binds under `/opt`, no devices except its render nodes (see [Executor profiles](#executor-profiles)) |
 | Landlock (shellctl) | `SHELLCTL_LANDLOCK_RO_PATHS` = shellctl's defaults plus `/opt`; with render nodes also `/dev/dri`, `/sys/dev/char` and each GPU's sysfs directory (`/sys/dev/char/<major>:<minor>/device` resolved; K17 `/sys/devices/pci0000:00/0000:00:02.0`), which Mesa needs to identify the GPU (without them it falls back to llvmpipe). `SHELLCTL_LANDLOCK_RW_DEV_PATHS` = the defaults plus the render nodes. Set in the container's environment, which jobs inherit; a node cannot set `SHELLCTL_*` |
 | Network | `NetworkMode` = its own network (below), fixed address `.3`; IPv6 off (`Sysctls` `disable_ipv6`) |
@@ -957,6 +959,47 @@ removed. Observed in the integration test: after a cancel no `sleep` started dir
 under `sh -c` remained. This covers processes inside the container only; what a command already did outside it
 (e.g. a request through the proxy) is not undone, and nothing beyond the container is claimed.
 
+### Disk workspaces
+
+Status: implemented in the supervisor (2026-10-28); verified end to end on K17 in isolation. A profile with
+`"workspace": {"backing": "disk"}` gets a `/workspace` of `limits.workspace_mb` on the host's disk, so its files do not
+count against the memory limit. The home stays tmpfs. Per execution, the supervisor:
+
+1. checks the budget (sum of all images plus the new one ≤ `SANDBOX_DISK_BUDGET_MB`), the free space on the root (size
+   plus `SANDBOX_DISK_MIN_FREE_MB`) and picks a pool device no lease holds; otherwise `503 disk_budget_exceeded`,
+   `disk_space_low` or `disk_pool_busy`, before any network or container exists;
+2. creates `<SANDBOX_DISK_ROOT>/<sha256(execution key)>/` (0700) with `lease.json` (written atomically, state
+   `preparing`) and an empty `workspace.img` (0666, reachable only through the directory), and records the image's
+   device and inode;
+3. runs a short-lived helper container from `SANDBOX_DISK_TOOL_IMAGE` (pinned): root, `CapDrop ALL` + `CapAdd
+   SYS_ADMIN`, `no-new-privileges`, read-only root, no network, no Docker socket, no host PID namespace; it sees only
+   this image (single-file bind from `SANDBOX_DISK_HOST_ROOT`) and one pool device. It refuses a file whose device and
+   inode differ from the recorded ones and a device that is already bound (`LOOP_SET_FD` is atomic; no pre-emption),
+   checks the free space, `posix_fallocate`s the size, runs `mke2fs -t ext4 -m 0 -E nodiscard,root_owner=1000:1000`,
+   removes `lost+found`, sets the root to 0700, binds the device and checks the binding with `LOOP_GET_STATUS64`
+   (device and inode, never the backing file name: it shows `/` with single-file bind mounts);
+4. creates the Docker local volume `<prefix>ws-<24 hex>` (`type=ext4`, `device=/dev/loopN`, `o=rw,nosuid,nodev`,
+   labels: the supervisor's and `dify-sf.sandbox.workspace=<sha256>`), marks the lease `ready` and mounts the volume
+   at `/workspace` (`NoCopy`). The sandbox itself gets no capability.
+
+A failure rolls back what was done. A sandbox that is replaced (stopped, unhealthy) keeps the workspace: before a new
+container mounts it, the helper re-verifies the binding (re-binds it when it is gone, e.g. after a reboot, using
+another free pool device if the old one was taken, and replaces an own volume that points at the old device), and the
+answer lists the earlier sandbox IDs in `workspace_kept_from`. The agent service accepts a snapshot's `workspace_ref`
+found there (no `sandbox_error`) and does not materialize `files[]` again.
+
+Release (`DELETE /v1/sandboxes/{id}`; the agent service calls it only after artifact collection and the result
+acknowledgement): remove the sandbox and its network, check that no container uses the volume and remove it, detach
+the device only when `LOOP_GET_STATUS64` shows this image's device and inode, delete the image, the lease, the
+directory. A repeated or late `DELETE` of an earlier sandbox ID releases the workspace only when no sandbox of the
+execution exists. At start the sweep removes leftover helpers, finishes leases in `preparing` or `releasing`, releases
+the workspaces of the unknown sandboxes it removed and own volumes without a lease; a `ready` lease without a sandbox
+(a paused execution) stays. A device that holds another file while the lease says it was bound in this boot, or an
+image that was replaced, puts the lease in `conflict`: nothing is detached, deleted or reused, the execution answers
+`503 disk_workspace_conflict` and an operator resolves it (leases in `conflict` still count against the budget). With
+one pool device (K17: `/dev/loop13`) at most one disk execution is active at a time. A disk profile's status is
+`image_missing` also when the tool image is absent.
+
 ## Executor profiles
 
 Status: implemented in the agent service and the supervisor (2026-10-27); the Swift/editor integration is described
@@ -997,7 +1040,8 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
 | `image` | Pinned by digest (`name@sha256:…`); a tag alone stops the process at load. Images are built from `agent_service/sandbox-images/<name>/` (Dockerfile and `VERSION`) in this repository. Every image keeps shellctl (they derive from `langgenius/dify-agent-local-sandbox:1.17.1`), because the service's probes, file staging, output files and process cleanup use it. |
 | `mounts` | Read-only bind mounts only (`Mounts` of type `bind`, `ReadOnly`; a missing source fails, it is never created). The source is an absolute, normalized host path (no `.`, `..`, `//`, trailing `/`, `:` or `,`); it must not be `/` and must not be, contain or lie inside the Docker socket (`/var/run/docker.sock`, `/run/docker.sock`, the configured one), Docker's or containerd's state (`/var/lib/docker`, `/var/lib/containerd`, `/run/containerd`), `/proc`, `/sys`, `/dev`, the service's data directory, the supervisor's state file or the profile file. The target is under `/opt` (not `/opt` itself), never `/workspace` or the home; targets do not nest. This replaces the sandbox rule "no binds or mounts" with "only the profile's read-only binds". Symlinks in the source are resolved by Docker on the host. |
 | `network.egress` | `none`: the proxy is not connected, so there is no egress. `allowlist`: the proxy as today, with its default domains. Per-profile domain lists come later. Default `allowlist`. |
-| `limits` | `cpus`, `memory_mb` (the tmpfs pages of `/workspace` and the home count here; `workspace_mb + home_mb` must be below it), `pids`, `workspace_mb`, `home_mb`. `timeout_seconds_max` (1..86400, default 1800) is the largest `limits.timeout_seconds` a run of this profile may have. `max_turns_max` (1..1000, default 50) is the largest `limits.max_turns`. Another missing value takes the supervisor's current default (`SANDBOX_*`). |
+| `workspace` | Optional `{"backing": "tmpfs"}` or `{"backing": "disk"}`, default `tmpfs`. `disk` needs the supervisor's `SANDBOX_DISK_*` settings (see [Disk workspaces](#disk-workspaces)); `workspace_mb` must not exceed its budget. |
+| `limits` | `cpus`, `memory_mb` (the tmpfs pages of `/workspace` and the home count here; `workspace_mb + home_mb` must be below it, `home_mb` alone with a disk workspace), `pids`, `workspace_mb`, `home_mb`. `timeout_seconds_max` (1..86400, default 1800) is the largest `limits.timeout_seconds` a run of this profile may have. `max_turns_max` (1..1000, default 50) is the largest `limits.max_turns`. Another missing value takes the supervisor's current default (`SANDBOX_*`). |
 | `devices` | Optional GPU access: host device nodes passed into the container (`Devices`, `rw`). Only DRI render nodes (`/dev/dri/renderD<n>`) are accepted, without `/dev/dri/card*` (no display or modesetting); the container gets the node's group ID on the host (K17: `render`, 990) as a supplementary group (`GroupAdd`), and the Landlock paths of the [Sandbox](#sandbox) table. The supervisor reads the group with `stat` and the GPU's sysfs directory from `/sys/dev/char`, so a containerized supervisor needs `/dev/dri` bound read-only (it opens nothing there). Anything else stops the process at load. NVIDIA (`--gpus`) is out of the MVP: the executor host K17 has an Intel GPU only. |
 | `env` | Fixed variables for the sandbox's commands, set by the administrator. They are not secrets and are not shown to the model. The reserved names are refused at load. A node's `env` cannot override them (`400 reserved_env`, compared case-insensitively). The agent service adds them to every shell job under the node's `env`; they are not in the container's environment. |
 | `description` | Optional, at most 200 characters; shown by `GET /v1/profiles`. |
