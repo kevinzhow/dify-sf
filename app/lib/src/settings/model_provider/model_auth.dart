@@ -271,6 +271,8 @@ modelFormSchemas(
     label: DifyI18n.tr('plugin', 'auth.authorizationName'),
   );
   var values = <String, Object?>{for (final s in raw) '${s['variable']}': s['default']};
+  final defaultModelType = provider.supportedModelTypes.firstOrNull;
+  if (!providerFormSchemaPredefined && defaultModelType != null) values['__model_type'] = defaultModelType;
   if (credential != null) {
     values = {...values, '__authorization_name__': credential.credentialName};
     if (credentials != null) values = {...values, ...credentials};
@@ -282,9 +284,11 @@ modelFormSchemas(
     modelNameAndTypeFormSchemas: providerFormSchemaPredefined
         ? const []
         : [genModelNameFormSchema(provider.modelCredentialModel), genModelTypeFormSchema(provider.supportedModelTypes)],
-    modelNameAndTypeFormValues: providerFormSchemaPredefined || model == null
+    modelNameAndTypeFormValues: providerFormSchemaPredefined
         ? const {}
-        : {'__model_name': model.model, '__model_type': model.modelType},
+        : model != null
+        ? {'__model_name': model.model, '__model_type': model.modelType}
+        : {if (defaultModelType != null) '__model_type': defaultModelType},
   );
 }
 

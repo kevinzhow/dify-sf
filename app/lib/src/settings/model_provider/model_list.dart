@@ -192,6 +192,16 @@ class _ModelListItemState extends State<ModelListItem> {
               nameColor: DifyColors.textSecondary,
             ),
           ),
+          if (m.schemaStatus != 'ready')
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: DifyTooltip(
+                content: DifyTextLine(_t('modelProvider.metadataUnknownTip'),
+                  style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textSecondary)),
+                child: DifyTextLine(_t('modelProvider.metadataUnknown'),
+                  style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textWarning)),
+              ),
+            ),
           if (m.deprecated)
             DifyTooltip(
               content: DifyTextLine(

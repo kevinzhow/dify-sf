@@ -14,6 +14,8 @@
     "release.enabled": "已啟用",
     "release.disabled": "未啟用",
     "release.unknown": "未回報",
-    "runtime.unsupportedNodes": "此伺服器無法執行以下節點：{{nodes}}。請設定或替換這些節點後重試。"
+    "runtime.unsupportedNodes": "此伺服器無法執行以下節點：{{nodes}}。請設定或替換這些節點後重試。",
+    "modelProvider.metadataUnknown": "模型資訊待確認",
+    "modelProvider.metadataUnknownTip": "無法從供應商讀取此模型的能力和參數。請檢查模型名稱、介面類型與供應商設定；已儲存的設定可繼續編輯。"
   }
 }

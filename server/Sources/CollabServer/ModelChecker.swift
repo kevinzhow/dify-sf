@@ -65,6 +65,7 @@ struct HTTPCredentialChecker: CredentialChecker {
 
 /// The catalog and the credential checker, shared by the model provider routes.
 struct ModelService: Sendable {
+    let schemas = ModelSchemaCache()
     let catalog: ModelCatalog
     let checker: any CredentialChecker
     /// `COLLAB_MODELS_VALIDATE`.

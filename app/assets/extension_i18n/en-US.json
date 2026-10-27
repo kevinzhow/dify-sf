@@ -48,6 +48,8 @@
     "release.enabled": "Enabled",
     "release.disabled": "Disabled",
     "release.unknown": "Not reported",
-    "runtime.unsupportedNodes": "This server cannot run these nodes: {{nodes}}. Configure or replace them before running."
+    "runtime.unsupportedNodes": "This server cannot run these nodes: {{nodes}}. Configure or replace them before running.",
+    "modelProvider.metadataUnknown": "Model info pending",
+    "modelProvider.metadataUnknownTip": "Could not load this model’s capabilities and parameters from its provider. Check the model name, API type and provider configuration. You can edit the saved configuration."
   }
 }

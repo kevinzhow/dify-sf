@@ -48,6 +48,8 @@
     "release.enabled": "已启用",
     "release.disabled": "未启用",
     "release.unknown": "未报告",
-    "runtime.unsupportedNodes": "此服务器无法运行以下节点：{{nodes}}。请配置或替换这些节点后重试。"
+    "runtime.unsupportedNodes": "此服务器无法运行以下节点：{{nodes}}。请配置或替换这些节点后重试。",
+    "modelProvider.metadataUnknown": "模型信息待确认",
+    "modelProvider.metadataUnknownTip": "无法从供应商读取此模型的能力和参数。请检查模型名称、接口类型与供应商配置；已保存的配置可继续编辑。"
   }
 }

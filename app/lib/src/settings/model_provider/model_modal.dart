@@ -99,6 +99,10 @@ class _ModelModalState extends State<ModelModal> {
   bool _isLoading = false;
   Json _credentialData = const {};
 
+  CustomModel? get _modelContext => widget.model ?? (widget.fixedFields == null ? null : (
+    model: widget.fixedFields!.modelName, modelType: widget.fixedFields!.modelType,
+  ));
+
   bool get _predefined => widget.configurateMethod == ConfigurationMethodEnum.predefinedModel;
 
   @override
@@ -114,7 +118,7 @@ class _ModelModalState extends State<ModelModal> {
       providerFormSchemaPredefined: _predefined,
       isModelCredential: widget.isModelCredential,
       credential: widget.credential,
-      model: widget.model,
+      model: _modelContext,
     );
     if (request == null) return const {};
     setState(() => _isLoading = true);
@@ -218,7 +222,7 @@ class _ModelModalState extends State<ModelModal> {
       providerFormSchemaPredefined: _predefined,
       credentials: _storedCredentials,
       credential: w.credential,
-      model: w.model,
+      model: _modelContext,
     );
     final stored = _storedCredentials ?? const {};
     final isEditMode =
