@@ -24,10 +24,12 @@ void main() {
               200,
             );
           }
-          if (r.url.path.endsWith('/install'))
+          if (r.url.path.endsWith('/install')) {
             return http.Response('{"task_id":"task-1"}', 200);
-          if (r.url.path.contains('/tasks/'))
+          }
+          if (r.url.path.contains('/tasks/')) {
             return http.Response('{"status":"success","error":null}', 200);
+          }
           return http.Response('{"result":"success"}', 200);
         }),
       );

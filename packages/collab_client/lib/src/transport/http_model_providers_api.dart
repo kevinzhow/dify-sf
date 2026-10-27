@@ -10,16 +10,13 @@ import '../providers/model_providers_api.dart';
 
 /// [ModelProvidersApi] against a real server at [baseUrl] (protocol 1.9). Pass the signed-in user's [auth]: every
 /// request carries its bearer token (refreshed once on a `401`).
-class HttpModelProvidersApi
-    implements ModelProvidersApi, ModelProviderPluginsApi {
+class HttpModelProvidersApi implements ModelProvidersApi, ModelProviderPluginsApi {
   HttpModelProvidersApi(
     this.baseUrl, {
     http.Client? client,
     TokenProvider? auth,
     this.timeout = const Duration(seconds: 20),
-  }) : _client = auth == null
-           ? (client ?? http.Client())
-           : AuthenticatedClient(client ?? http.Client(), auth);
+  }) : _client = auth == null ? (client ?? http.Client()) : AuthenticatedClient(client ?? http.Client(), auth);
 
   final Uri baseUrl;
 
@@ -27,9 +24,8 @@ class HttpModelProvidersApi
   final Duration timeout;
   final http.Client _client;
 
-  String get _basePath => baseUrl.path.endsWith('/')
-      ? baseUrl.path.substring(0, baseUrl.path.length - 1)
-      : baseUrl.path;
+  String get _basePath =>
+      baseUrl.path.endsWith('/') ? baseUrl.path.substring(0, baseUrl.path.length - 1) : baseUrl.path;
 
   Uri _url(String path, [Map<String, String>? query]) => baseUrl.replace(
     path: '$_basePath$path',
@@ -39,13 +35,13 @@ class HttpModelProvidersApi
   static const _ws = '/v1/workspace';
 
   /// `.../model-providers/{org}/{plugin}/{name}`: the provider id's segments, each encoded.
-  String _p(String provider) =>
-      '$_ws/model-providers/${provider.split('/').map(Uri.encodeComponent).join('/')}';
+  String _p(String provider) => '$_ws/model-providers/${provider.split('/').map(Uri.encodeComponent).join('/')}';
 
   List<Map<String, Object?>> _data(Object? json) {
     final data = json is Map<String, Object?> ? json['data'] : null;
-    if (data is! List<Object?>)
+    if (data is! List<Object?>) {
       throw const TransportException('malformed answer: no data list');
+    }
     return [
       for (final e in data)
         if (e is Map<String, Object?>) e,
@@ -58,25 +54,23 @@ class HttpModelProvidersApi
   );
 
   @override
-  Future<List<Map<String, Object?>>> providers({String? modelType}) async =>
-      _data(
-        await _send(
-          'GET',
-          '$_ws/model-providers',
-          ok: const [200],
-          query: {'model_type': ?modelType},
-        ),
-      );
+  Future<List<Map<String, Object?>>> providers({String? modelType}) async => _data(
+    await _send(
+      'GET',
+      '$_ws/model-providers',
+      ok: const [200],
+      query: {'model_type': ?modelType},
+    ),
+  );
 
   @override
-  Future<List<Map<String, Object?>>> modelsOfType(String modelType) async =>
-      _data(
-        await _send(
-          'GET',
-          '$_ws/models/model-types/${Uri.encodeComponent(modelType)}',
-          ok: const [200],
-        ),
-      );
+  Future<List<Map<String, Object?>>> modelsOfType(String modelType) async => _data(
+    await _send(
+      'GET',
+      '$_ws/models/model-types/${Uri.encodeComponent(modelType)}',
+      ok: const [200],
+    ),
+  );
 
   @override
   Future<Map<String, Object?>?> defaultModel(String modelType) async {
@@ -386,11 +380,12 @@ class HttpModelProvidersApi
       throw TransportException('GET $url failed: $e');
     }
     if (res.statusCode == 404) return null;
-    if (res.statusCode != 200)
+    if (res.statusCode != 200) {
       throw transportErrorOf(
         res.statusCode,
         utf8.decode(res.bodyBytes, allowMalformed: true),
       );
+    }
     return ModelProviderIcon(
       bytes: res.bodyBytes,
       contentType: res.headers['content-type'] ?? 'application/octet-stream',
@@ -448,21 +443,19 @@ class HttpModelProvidersApi
       '$_ws/model-provider-plugins/${pluginId.split('/').map(Uri.encodeComponent).join('/')}';
 
   @override
-  Future<Map<String, Object?>> installProviderPlugin(String pluginId) async =>
-      (await _send(
-        'POST',
-        '${_pluginPath(pluginId)}/install',
-        ok: const [200],
-        requestTimeout: const Duration(seconds: 120),
-      )) as Map<String, Object?>;
+  Future<Map<String, Object?>> installProviderPlugin(String pluginId) async => (await _send(
+    'POST',
+    '${_pluginPath(pluginId)}/install',
+    ok: const [200],
+    requestTimeout: const Duration(seconds: 120),
+  )) as Map<String, Object?>;
 
   @override
-  Future<Map<String, Object?>> providerPluginTask(String taskId) async =>
-      (await _send(
-        'GET',
-        '$_ws/model-provider-plugins/tasks/${Uri.encodeComponent(taskId)}',
-        ok: const [200],
-      )) as Map<String, Object?>;
+  Future<Map<String, Object?>> providerPluginTask(String taskId) async => (await _send(
+    'GET',
+    '$_ws/model-provider-plugins/tasks/${Uri.encodeComponent(taskId)}',
+    ok: const [200],
+  )) as Map<String, Object?>;
 
   @override
   Future<void> uninstallProviderPlugin(
