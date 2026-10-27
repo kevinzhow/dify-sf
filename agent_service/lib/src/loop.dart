@@ -18,6 +18,7 @@ import 'file_outputs.dart';
 import 'gateway.dart';
 import 'harness/codex/apply_patch.dart';
 import 'harness/codex/exec_output.dart';
+import 'harness/codex/official.dart';
 import 'harness/codex/prompts.dart';
 import 'harness/codex/retry.dart';
 import 'harness/codex/sandbox_patch_fs.dart';
@@ -30,11 +31,12 @@ import 'protocol.dart';
 import 'report_progress.dart';
 import 'run_store.dart';
 import 'sandbox/sandbox.dart';
-import 'sandbox/shellctl.dart' show ShellctlException;
+import 'sandbox/shellctl.dart' show JobResult, ShellctlException;
 import 'sandbox/shell_tools.dart';
 import 'view_image.dart';
 
 part 'harness/codex/codex_run.dart';
+part 'harness/codex/official_run.dart';
 
 /// More than one `ask_human` call in one model turn (as in Dify).
 class AskHumanInvalid implements Exception {
@@ -194,7 +196,11 @@ List<Message> verifyContinuation(OperationRequest r) {
     );
   }
   if (r.harnessStyle == HarnessStyle.codex) {
-    verifyCodexContinuation(r);
+    if (r.officialCodex) {
+      verifyOfficialCodexContinuation(r);
+    } else {
+      verifyCodexContinuation(r);
+    }
     return const [];
   }
   final genkit = s['genkit'];
@@ -330,6 +336,7 @@ class AgentRun {
     required this.runToken,
     this.sandboxes,
     this.log,
+    this.codexGatewayUrl,
   });
 
   final RunRecord record;
@@ -343,6 +350,10 @@ class AgentRun {
 
   /// The service's sandboxes; null or disabled means no shell.
   final SandboxManager? sandboxes;
+
+  /// The Codex Responses entry as sandboxes reach it, when the grant has
+  /// none (`AGENT_CODEX_GATEWAY_URL`).
+  final String? codexGatewayUrl;
   final void Function(String message)? log;
 
   final StreamController<RunEvent> _events = StreamController.broadcast(
@@ -466,7 +477,19 @@ class AgentRun {
       'call_index_base': 0,
       'executor_profile': r.executorProfile,
       'harness_style': r.harnessStyle.wire,
-      if (r.harnessStyle == HarnessStyle.codex)
+      if (r.officialCodex) ...{
+        'model_wire': {
+          'wire': 'codex',
+          'reason': 'the official Codex CLI in the sandbox calls the '
+              'gateway\'s Codex Responses entry',
+          'reduced_fidelity': false,
+        },
+        'runtime': {
+          'name': 'codex-cli',
+          'version': officialCodexVersion,
+          'sha256': officialCodexSha256,
+        },
+      } else if (r.harnessStyle == HarnessStyle.codex)
         'model_wire': switch (selectWire(r)) {
           final w => {
             'wire': w.wire,
@@ -479,6 +502,13 @@ class AgentRun {
       return _fail(
         'sandbox_unavailable',
         'the shell tool is not available: this agent service has no sandbox',
+      );
+    }
+    if (r.officialCodex && !(sandboxes?.enabled ?? false)) {
+      return _fail(
+        'sandbox_unavailable',
+        'harness_style codex runs Codex in a sandbox: this agent service has '
+            'no sandbox',
       );
     }
     final base = innerBase;
@@ -496,6 +526,16 @@ class AgentRun {
       () => stop(StopReason.timeout),
     );
     _clock.start();
+    if (r.officialCodex) {
+      try {
+        await _OfficialCodexRun(this).execute();
+      } finally {
+        await _endShell();
+        timer.cancel();
+        inner.close();
+      }
+      return;
+    }
     if (r.harnessStyle == HarnessStyle.codex) {
       try {
         await _CodexLoop(this, inner).execute();

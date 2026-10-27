@@ -13,6 +13,7 @@ export 'src/report_progress.dart';
 export 'src/run_store.dart';
 export 'src/server.dart';
 export 'src/file_outputs.dart';
+export 'src/harness/codex/official.dart' show CodexRuntime;
 export 'src/sandbox/sandbox.dart';
 export 'src/sandbox/shell_tools.dart';
 export 'src/sandbox/shellctl.dart';

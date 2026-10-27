@@ -17,6 +17,10 @@ import 'package:agent_service/agent_service.dart';
 ///                      /etc/dify-sf/executor-profiles.json; without it only
 ///                      the implicit `default`). A file that does not
 ///                      validate stops the process.
+///   AGENT_CODEX_RUNTIME official (default) | port: what runs harness_style
+///                      codex (the Codex binary in the sandbox, or the Dart port)
+///   AGENT_CODEX_GATEWAY_URL the Codex Responses entry as sandboxes reach it,
+///                      when the supervisor's grant has none (local tests)
 Future<void> main(List<String> args) async {
   if (args.contains('--healthcheck')) {
     await healthcheck('AGENT_SERVICE_KEY', 'AGENT_SERVICE_PORT', 5050);
@@ -80,6 +84,16 @@ Future<void> main(List<String> args) async {
     '${profiles.path == null ? ' (implicit; no profile file)' : ' from ${profiles.path}'}',
   );
 
+  final runtimeText = env['AGENT_CODEX_RUNTIME'] ?? 'official';
+  final codexRuntime = CodexRuntime.values
+      .where((r) => r.name == runtimeText)
+      .firstOrNull;
+  if (codexRuntime == null) {
+    stderr.writeln('AGENT_CODEX_RUNTIME must be official or port');
+    exit(64);
+  }
+  final codexGateway = env['AGENT_CODEX_GATEWAY_URL'];
+
   final service = AgentService(
     serviceKey: key,
     dataDir: dataDir,
@@ -87,6 +101,10 @@ Future<void> main(List<String> args) async {
     logLevel: level,
     supervisor: supervisor,
     profiles: profiles,
+    codexRuntime: codexRuntime,
+    codexGatewayUrl: codexGateway == null || codexGateway.isEmpty
+        ? null
+        : codexGateway,
   );
   await service.start(address: InternetAddress.anyIPv4, port: port);
 
