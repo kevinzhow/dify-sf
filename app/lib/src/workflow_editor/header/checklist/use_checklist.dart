@@ -724,10 +724,16 @@ class WorkflowRunValidation {
 
   bool get hasValidationErrors => warningNodes.isNotEmpty;
 
-  /// False (after [toastError] with `panel.checklistTip`) when the checklist has items.
-  bool validateBeforeRun(void Function(String message) toastError) {
+  /// Refuse invalid graphs before sending. Named errors and navigation intentionally
+  /// extend Dify's summary toast while retaining its existing checklist and validators.
+  bool validateBeforeRun(void Function(String message) toastError, {void Function(ChecklistItem item)? onFirstInvalid}) {
     if (warningNodes.isEmpty) return true;
-    toastError(_t('workflow', 'panel.checklistTip'));
+    toastError(warningNodes.map((item) {
+      final errors = [...item.errorMessages, if (item.unConnected) _t('workflow', 'common.needConnectTip')];
+      return '[${item.title}] ${errors.isEmpty ? _t('workflow', 'panel.checklistTip') : errors.join('; ')}';
+    }).join('\n'));
+    final first = warningNodes.where((item) => item.canNavigate && !item.disableGoTo).firstOrNull;
+    if (first != null) onFirstInvalid?.call(first);
     return false;
   }
 }

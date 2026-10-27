@@ -138,6 +138,27 @@ void main() {
     expect(messages.single, contains('Draft writer'));
   });
 
+  test('run validation reads the current graph even while the displayed checklist is stale', () async {
+    final store = WorkflowStore();
+    final oldIssue = <String, Object?>{'id': 'llm', 'title': 'Draft writer', 'canNavigate': true,
+      'errorMessages': ['Choose a model']};
+    store.checklistItems.value = [oldIssue];
+    var current = <DifyJson>[];
+    store.computeRunChecklist = () => current;
+    final service = _Service();
+    final run = _Run(store, service, toast: (_, _) {});
+    final chat = DebugChatController(run: run, service: service, store: store);
+    addTearDown(chat.dispose);
+    // The node was fixed, but the displayed snapshot still contains its old error.
+    expect(chat.handleSend({'query': 'fixed now', 'inputs': <String, Object?>{}}), isTrue);
+    expect(run.requests, hasLength(1));
+    // Conversely a newly broken node must be caught before the displayed snapshot catches up.
+    current = [oldIssue];
+    store.checklistItems.value = [];
+    expect(chat.handleSend({'query': 'broken now', 'inputs': <String, Object?>{}}), isFalse);
+    expect(run.requests, hasLength(1));
+  });
+
   test('unsupported graph types are named instead of claiming Chatflow is unavailable', () async {
     final service = ServerRunService(
       runtime: ServerWorkflowRuntime(

@@ -21,6 +21,7 @@ import 'header_data.dart';
 class EditorHeaderBinding {
   EditorHeaderBinding({required this.controller, required this.store, checklist.ChecklistEnv Function()? checklistEnv})
     : _env = checklistEnv ?? checklist.ChecklistEnv.new {
+    store.computeRunChecklist = _computeRunChecklist;
     controller.addListener(_update);
     _events = controller.session.events.listen((e) {
       if (e is OpCommitted) _saved();
@@ -31,6 +32,9 @@ class EditorHeaderBinding {
   final EditorController controller;
   final WorkflowStore store;
   final checklist.ChecklistEnv Function() _env;
+  List<DifyJson> _computeRunChecklist() => [
+    for (final item in checklist.computeChecklist(controller.doc, _env())) item.toJson(),
+  ];
   late final StreamSubscription<ClientEvent> _events;
 
   final graph = ValueNotifier(WorkflowGraphFacts.empty);
@@ -119,6 +123,7 @@ class EditorHeaderBinding {
   void cancelSelection() => controller.selectNode(null);
 
   void dispose() {
+    if (store.computeRunChecklist == _computeRunChecklist) store.computeRunChecklist = null;
     _showSync?.cancel();
     _hideSync?.cancel();
     controller.removeListener(_update);

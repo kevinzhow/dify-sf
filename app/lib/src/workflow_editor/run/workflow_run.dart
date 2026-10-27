@@ -13,6 +13,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../design/widgets/toast.dart';
 import '../../i18n/dify_i18n.dart';
+import '../header/checklist/checklist_item.dart';
+import '../header/checklist/use_checklist.dart' show WorkflowRunValidation;
 import '../header/test_run_menu.dart' show TriggerOption, TriggerType;
 import '../store/workflow_store.dart';
 import 'run_graph.dart';
@@ -330,21 +332,11 @@ class WorkflowRunController {
   /// Use the same live checklist as the header, before creating a run or a chat turn.
   /// A failed preflight names the affected nodes and keeps the existing Go to fix entries.
   bool validateBeforeRun() {
-    final issues = store.checklistItems.value;
-    if (issues.isEmpty) return true;
-    final messages = <String>[];
-    for (final issue in issues) {
-      final errors = [
-        for (final e in issue['errorMessages'] as List? ?? const []) '$e',
-        if (issue['unConnected'] == true) DifyI18n.tr('workflow', 'common.needConnectTip'),
-      ];
-      final title = issue['title'] ?? issue['id'] ?? '';
-      messages.add('[$title] ${errors.isEmpty ? DifyI18n.tr('workflow', 'panel.checklistTip') : errors.join('; ')}');
-    }
-    toast(DifyToastType.error, messages.join('\n'));
-    final first = issues.where((i) => i['canNavigate'] == true && i['disableGoTo'] != true).firstOrNull;
-    if (first != null) onValidationFailed?.call(first);
-    return false;
+    final issues = store.computeRunChecklist?.call() ?? store.checklistItems.value;
+    return WorkflowRunValidation(issues.map(ChecklistItem.fromJson).toList(), DifyI18n.tr).validateBeforeRun(
+      (message) => toast(DifyToastType.error, message),
+      onFirstInvalid: (item) => onValidationFailed?.call(item.toJson()),
+    );
   }
 
   /// The event handlers (`useWorkflowRunEvent`).

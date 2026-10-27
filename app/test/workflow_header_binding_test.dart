@@ -35,5 +35,8 @@ void main() {
     expect(await saved, isTrue);
     expect(store.isSyncingWorkflowDraft.value, isFalse);
     expect(binding.graph.value.checklist.map((i) => i.id), contains(id));
+    // A run recomputes from the current document rather than the rendered snapshot.
+    store.checklistItems.value = [];
+    expect(store.computeRunChecklist!().map((item) => item['id']), contains(id));
   });
 }
