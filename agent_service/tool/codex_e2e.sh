@@ -1,0 +1,374 @@
+#!/usr/bin/env bash
+# End-to-end test of the official Codex runtime of harness_style codex (docs/agent-v2.md, "Codex runtime"):
+#
+#   agent_service/tool/codex_e2e.sh SUBNET CODEX_DIR [SANDBOX_POOL]
+#
+# SUBNET        a free private /28 for the project's `default` network, e.g. 10.212.9.16/28
+# CODEX_DIR     a directory holding the Codex 0.163.0 release binary `codex` (mounted read-only at /opt/codex)
+# SANDBOX_POOL  the supervisor's SANDBOX_SUBNET_POOL (default 10.219.0.0/16)
+#
+# Environment: E2E_IMAGE (an image with agent_service, sandbox_supervisor and fake_gateway in /usr/local/bin; default:
+# compiled from this tree with the local dart and removed afterwards), E2E_KEEP=DIR
+# (keep the events, Codex's requests and the logs there), TMPDIR (scratch parent, default /var/tmp).
+#
+# Starts agent_service, sandbox_supervisor and agent_sandbox_proxy from the repository's docker-compose.yml under its
+# own project, with the scripted fake gateway as the inner gateway AND as the gateway's Codex Responses entry (it is
+# attached to every sandbox network as a second agent peer; AGENT_CODEX_GATEWAY_URL points Codex at it). Three runs:
+#   1. exec_command (writes a PNG, prints the environment), apply_patch, update_plan + report_progress, view_image,
+#      final answer with declared outputs (a text file and the PNG); max_turns 5 gives the near-budget notice;
+#   2. a model call that hangs: cancelled; the Codex process must be gone and the gateway stream closed;
+#   3. the gateway's call limit (429 usage_limit_reached): the run must fail max_turns.
+# Everything created carries dify-sf.test=<random> and is removed at the end, also on failure.
+set -euo pipefail
+
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+  sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
+  exit 64
+fi
+SUBNET=$1
+CODEX_DIR=$(readlink -f "$2")
+POOL=${3:-10.219.0.0/16}
+
+HERE=$(cd "$(dirname "$0")/.." && pwd)        # agent_service/
+REPO=$(cd "$HERE/.." && pwd)
+ID=$(openssl rand -hex 4)
+LABEL_KEY=dify-sf.test
+LABEL="$LABEL_KEY=$ID"
+PROJECT=dify-sf-codex-e2e-$ID
+IMAGE=${E2E_IMAGE:-}
+OWN_IMAGE=
+SERVICE_KEY=e2e-service-key-$ID
+SUPERVISOR_KEY=e2e-supervisor-key-$ID
+RUN_TOKEN=e2e-codex-run-token-$ID
+WORK=$(mktemp -d "${TMPDIR:-/var/tmp}/dify-sf-codex-e2e-$ID.XXXX")
+
+log() { printf '[codex-e2e %s] %s\n' "$(date -u +%H:%M:%S)" "$*" >&2; }
+fail() { log "FAIL: $*"; exit 1; }
+
+[[ -x $CODEX_DIR/codex ]] || fail "no executable $CODEX_DIR/codex"
+DEFAULT_REF=$(docker image inspect -f '{{.Id}}' langgenius/dify-agent-local-sandbox:1.17.1) || fail "no sandbox image"
+DEFAULT_REF=langgenius/dify-agent-local-sandbox@$DEFAULT_REF
+for image in ubuntu/squid:latest; do
+  docker image inspect "$image" >/dev/null 2>&1 || fail "image $image is not present locally (nothing is pulled)"
+done
+
+compose() {
+  docker compose -p "$PROJECT" -f "$REPO/docker-compose.yml" -f "$WORK/override.yml" --profile agent "$@"
+}
+
+cleanup() {
+  local rc=$?
+  set +e
+  if [[ -n "${E2E_KEEP:-}" ]]; then
+    mkdir -p "$E2E_KEEP" && compose logs --no-color >"$E2E_KEEP/compose-$ID.log" 2>&1
+    cp "$WORK"/*.txt "$WORK"/*.json "$E2E_KEEP/" 2>/dev/null
+  elif [[ $rc -ne 0 && -f "$WORK/override.yml" ]]; then
+    compose logs --no-color --tail 80 >&2
+  fi
+  log "cleanup"
+  [[ -f "$WORK/override.yml" ]] && compose down -v --remove-orphans --timeout 5 >/dev/null 2>&1
+  for c in $(docker ps -aq --filter "label=$LABEL"); do docker rm -f -v "$c" >/dev/null; done
+  for n in $(docker network ls -q --filter "label=$LABEL"); do
+    for c in $(docker network inspect -f '{{range $k, $v := .Containers}}{{$k}} {{end}}' "$n"); do
+      docker network disconnect -f "$n" "$c" >/dev/null 2>&1
+    done
+    docker network rm "$n" >/dev/null
+  done
+  for v in $(docker volume ls -q --filter "label=$LABEL"); do docker volume rm "$v" >/dev/null; done
+  [[ -n $OWN_IMAGE ]] && docker image rm "$OWN_IMAGE" >/dev/null 2>&1
+  rm -rf "$WORK"
+  local left
+  left="$(docker ps -aq --filter "label=$LABEL")$(docker network ls -q --filter "label=$LABEL")"
+  left+="$(docker volume ls -q --filter "label=$LABEL")$(docker image ls -q --filter "label=$LABEL")"
+  log "cleanup check (label $LABEL): containers/networks/volumes/images left: ${left:-none}"
+  if [[ -n "$left" ]]; then log "FAIL: cleanup left resources"; rc=1; fi
+  if [[ $rc -eq 0 ]]; then log "PASS"; fi
+  exit $rc
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+# ---- one image: the three binaries compiled here (no base image is pulled), on the local Debian 12 sandbox image ----
+if [[ -z $IMAGE ]]; then
+  IMAGE=dify-sf-agent-service:codex-e2e-$ID; OWN_IMAGE=$IMAGE
+  log "compiling the agent service, the supervisor and the fake gateway"
+  mkdir -p "$WORK/bin"
+  for b in agent_service sandbox_supervisor fake_gateway; do
+    (cd "$HERE" && dart compile exe -o "$WORK/bin/$b" "bin/$b.dart" >/dev/null)
+  done
+  log "building $IMAGE"
+  docker build -q --label "$LABEL" -t "$IMAGE" -f - "$WORK/bin" >/dev/null <<EOF
+FROM langgenius/dify-agent-local-sandbox:1.17.1
+USER root
+RUN mkdir -p /data && chown 10001:10001 /data && chmod 0700 /data
+COPY agent_service sandbox_supervisor fake_gateway /usr/local/bin/
+USER 10001:10001
+ENV AGENT_SERVICE_PORT=5050 AGENT_DATA_DIR=/data
+ENTRYPOINT ["/usr/local/bin/agent_service"]
+EOF
+fi
+GATEWAY_IMAGE=$IMAGE
+
+# ---- the profile file: Dify's sandbox with the Codex release mounted at /opt/codex -------------------------------
+python3 -I - "$WORK/executor-profiles.json" "$DEFAULT_REF" "$CODEX_DIR" <<'EOF'
+import json, sys
+path, default, codex = sys.argv[1:]
+json.dump({"version": 1, "profiles": {
+  "default": {"description": "Dify's shell sandbox with Codex", "image": default,
+              "mounts": [{"source": codex, "target": "/opt/codex"}],
+              "limits": {"memory_mb": 2048, "pids": 1024}}}}, open(path, "w"), indent=1)
+EOF
+
+# ---- the model script (Responses events, as a provider streams them) ---------------------------------------------
+python3 -I - "$WORK/script.json" "$RUN_TOKEN" <<'EOF'
+import json, sys
+path, token = sys.argv[1:]
+def call(*items, summary=None):
+    ev = [{"type": "response.created", "response": {}}]
+    if summary:
+        ev.append({"type": "response.reasoning_summary_text.delta", "delta": summary})
+        items = ({"type": "reasoning", "id": "rs", "summary": [{"type": "summary_text", "text": summary}]},) + items
+    ev += [{"type": "response.output_item.done", "item": i} for i in items]
+    ev.append({"type": "response.completed", "response": {"usage": {
+        "input_tokens": 1000, "input_tokens_details": {"cached_tokens": 800},
+        "output_tokens": 50, "output_tokens_details": {"reasoning_tokens": 20}, "total_tokens": 1050}}})
+    return {"responses_events": ev}
+def fn(cid, name, args):
+    return {"type": "function_call", "id": "fc_" + cid, "call_id": cid, "name": name, "arguments": json.dumps(args)}
+def msg(text, phase):
+    return {"type": "message", "role": "assistant", "id": "msg_" + phase, "phase": phase,
+            "content": [{"type": "output_text", "text": text}]}
+png = ("import struct,zlib,os\n"
+       "def c(t,d): return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d))\n"
+       "raw=b''.join(b'\\x00'+bytes([200,60,40])*16 for _ in range(16))\n"
+       "os.makedirs('out',exist_ok=True)\n"
+       "open('out/preview.png','wb').write(b'\\x89PNG\\r\\n\\x1a\\n'+c(b'IHDR',struct.pack('>IIBBBBB',16,16,8,2,0,0,0))+c(b'IDAT',zlib.compress(raw))+c(b'IEND',b''))\n")
+cmd = ("python3 -c \"$PNGPY\" && ls -l out/preview.png; id -u; pwd; "
+       "echo TOKEN=${DIFYSF_RUN_TOKEN:-unset} SHELLCTL=${SHELLCTL_AUTH_TOKEN:-unset}; "
+       "echo NO_PROXY=$NO_PROXY HTTPS_PROXY=${HTTPS_PROXY:-unset} NODE_ENV=$NODE_ENV_E2E; "
+       "for p in /proc/[0-9]*; do tr '\\0' ' ' < $p/cmdline 2>/dev/null; echo; done | grep -c '[c]odex app-server'")
+calls = [
+  call(msg("Let me make the preview first.", "commentary"),
+       fn("call_exec", "exec_command", {"cmd": cmd.replace("$PNGPY", png.replace('"', '\\"'))}),
+       summary="I should create the preview image with Python."),
+  call({"type": "custom_tool_call", "id": "ctc_patch", "call_id": "call_patch", "name": "apply_patch",
+        "input": "*** Begin Patch\n*** Add File: out/hello.txt\n+hello from real codex\n*** End Patch\n"}),
+  call(fn("call_plan", "update_plan", {"explanation": "almost done", "plan": [
+           {"step": "make preview", "status": "completed"}, {"step": "report", "status": "in_progress"}]}),
+       fn("call_progress", "report_progress", {"path": "out/preview.png", "caption": "first preview"})),
+  call(fn("call_view", "view_image", {"path": "/workspace/out/preview.png"})),
+  call(msg(json.dumps({"text": "done", "file": "out/hello.txt", "preview": "out/preview.png"}), "final_answer")),
+  # run 2: a model call that never ends (cancelled)
+  {"hang": True, "responses_events": [{"type": "response.created", "response": {}}]},
+]
+json.dump({"calls": calls, "codex_run_token": token, "codex_call_limit": 6}, open(path, "w"))
+EOF
+
+operation() { # FILE EXECUTION MAX_TURNS
+  python3 -I - "$1" "$2" "$3" "$RUN_TOKEN" <<'EOF'
+import json, sys
+path, execution, max_turns, token = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+json.dump({
+  "protocol": "dify-sf-agent/1", "operation_id": f"{execution}:0:0", "generation": 1,
+  "execution": {"tenant_id": "T1", "app_id": "A1", "workflow_run_id": "W1", "node_id": "N1",
+                "execution_id": execution, "agent_config_snapshot_id": "cfg-1", "user_id": "U1",
+                "user_from": "account", "invoke_from": "debugger"},
+  "model": {"provider": "langgenius/deepseek/deepseek", "name": "deepseek-v4.1-flash",
+            "parameters": {"reasoning_effort": "max"}, "context_window": 1000000,
+            "reasoning_efforts": ["high", "max"], "input_modalities": ["text", "image"], "run_token": token},
+  "harness_style": "codex",
+  "system_prompt": "You are the e2e node. Keep answers short.",
+  "task": [{"type": "text", "text": "Make a preview image and a hello file, then report."}],
+  "output_schema": {"type": "object", "properties": {
+      "text": {"type": "string"},
+      "file": {"type": "string", "x-dify-sf-file": {"extensions": ["txt"]}},
+      "preview": {"type": "string", "x-dify-sf-file": {"extensions": ["png"], "mime_types": ["image/png"]}}},
+    "required": ["text", "file"]},
+  "tools": {"ask_human": False, "shell": True, "view_image": True, "report_progress": True, "update_plan": True},
+  "env": {"NODE_ENV_E2E": "from-node-env"},
+  "limits": {"max_turns": max_turns, "timeout_seconds": 600},
+  "continuation": None}, open(path, "w"))
+EOF
+}
+operation "$WORK/op1.json" "CX1-$ID" 5
+operation "$WORK/op2.json" "CX2-$ID" 5
+operation "$WORK/op3.json" "CX3-$ID" 5
+
+DOCKER_SOCKET=${DOCKER_SOCKET:-/var/run/docker.sock}
+DOCKER_GID=$(stat -c %g "$DOCKER_SOCKET")
+cat >"$WORK/override.yml" <<EOF
+services:
+  agent_service:
+    image: $IMAGE
+    pull_policy: never
+    labels: {$LABEL_KEY: "$ID"}
+    environment:
+      AGENT_SERVICE_KEY: $SERVICE_KEY
+      AGENT_SANDBOX_SUPERVISOR_KEY: $SUPERVISOR_KEY
+      AGENT_INNER_URL: http://fake_gateway:5051
+      AGENT_EXECUTOR_PROFILES: /etc/dify-sf/executor-profiles.json
+      AGENT_CODEX_GATEWAY_URL: http://$PROJECT-fake_gateway-1:5051/inner/agent/codex/v1
+    volumes: ["$WORK/executor-profiles.json:/etc/dify-sf/executor-profiles.json:ro"]
+    ports: ["127.0.0.1::5050"]
+  sandbox_supervisor:
+    image: $IMAGE
+    pull_policy: never
+    labels: {$LABEL_KEY: "$ID"}
+    group_add: ["$DOCKER_GID"]
+    environment:
+      SANDBOX_SUPERVISOR_KEY: $SUPERVISOR_KEY
+      SANDBOX_LABEL: $LABEL
+      SANDBOX_SUBNET_POOL: $POOL
+      SANDBOX_START_TIMEOUT: "120"
+      SANDBOX_AGENT_PEERS: agent_service,fake_gateway
+      AGENT_EXECUTOR_PROFILES: /etc/dify-sf/executor-profiles.json
+    volumes: ["$WORK/executor-profiles.json:/etc/dify-sf/executor-profiles.json:ro"]
+  agent_sandbox_proxy:
+    labels: {$LABEL_KEY: "$ID"}
+  fake_gateway:
+    profiles: [agent]
+    image: $GATEWAY_IMAGE
+    entrypoint: ["/usr/local/bin/fake_gateway"]
+    pull_policy: never
+    labels: {$LABEL_KEY: "$ID"}
+    mem_limit: 256m
+    memswap_limit: 256m
+    environment:
+      AGENT_SERVICE_KEY: $SERVICE_KEY
+    volumes: ["$WORK/script.json:/script.json:ro"]
+    command: ["/script.json", "5051", "0.0.0.0"]
+    ports: ["127.0.0.1::5051"]
+networks:
+  default:
+    labels: {$LABEL_KEY: "$ID"}
+    ipam:
+      config: [{subnet: "$SUBNET"}]
+volumes:
+  agent_service_data: {labels: {$LABEL_KEY: "$ID"}}
+  sandbox_supervisor_state: {labels: {$LABEL_KEY: "$ID"}}
+EOF
+chmod a+r "$WORK/script.json" "$WORK/executor-profiles.json"
+chmod a+x "$WORK"
+
+log "starting project $PROJECT (default network $SUBNET, sandbox pool $POOL)"
+compose up -d --no-build --pull never --wait --wait-timeout 120 \
+  agent_service sandbox_supervisor agent_sandbox_proxy fake_gateway
+
+BASE=http://127.0.0.1:$(compose port agent_service 5050 | sed 's/.*://')
+GW=http://127.0.0.1:$(compose port fake_gateway 5051 | sed 's/.*://')
+api() { # METHOD PATH [BODY_FILE]
+  local args=(-sS -X "$1" -H "Authorization: Bearer $SERVICE_KEY" -H "X-Agent-Run-Token: e2e-$ID"
+    -H 'Content-Type: application/json' -w '\n%{http_code}' "$BASE$2")
+  [[ $# -ge 3 ]] && args+=(--data-binary "@$3")
+  curl "${args[@]}"
+}
+body_of() { sed '$d' <<<"$1"; }
+status_of() { tail -n1 <<<"$1"; }
+json() { python3 -I -c "import json,sys; d=json.load(sys.stdin); print($1)"; }
+start_run() { # OPFILE -> run id
+  local r; r=$(api POST /v1/operations "$1")
+  [[ $(status_of "$r") == 202 ]] || fail "POST /v1/operations answered $r"
+  body_of "$r" | json 'd["run_id"]'
+}
+codex_procs() { # CONTAINER -> the command lines of its Codex processes
+  docker exec "$1" sh -c 'for p in /proc/[0-9]*; do tr "\0" " " < $p/cmdline 2>/dev/null; echo; done' | grep '[c]odex' || true
+}
+sandbox_of() { # EXECUTION -> container id
+  docker ps -q --filter "label=$LABEL" --filter "label=dify-sf.sandbox.execution=$(printf %s "$1" | sha256sum | cut -d' ' -f1)"
+}
+summary() { # EVENTS_FILE
+  python3 -I - "$1" <<'EOF'
+import json, sys
+for b in open(sys.argv[1]).read().strip().split("\n\n"):
+    e = dict(l.split(": ", 1) for l in b.split("\n") if ": " in l)
+    if "id" not in e: continue
+    d = json.dumps(json.loads(e["data"]), ensure_ascii=False)
+    print(f"  {e['id']:>3} {e['event']:<14} {d[:300]}", file=sys.stderr)
+EOF
+}
+
+# ---- run 1: the full path ---------------------------------------------------------------------------------------
+RUN=$(start_run "$WORK/op1.json"); log "run 1 $RUN started"
+curl -sS -N -m 300 -H "Authorization: Bearer $SERVICE_KEY" "$BASE/v1/runs/$RUN/events" >"$WORK/events-1.txt" ||
+  fail "event stream failed"
+summary "$WORK/events-1.txt"
+curl -sS "$GW/debug/codex-requests" >"$WORK/codex-requests-1.json"
+python3 -I - "$WORK/events-1.txt" "$WORK/codex-requests-1.json" "$RUN_TOKEN" <<'EOF' || fail "run 1: unexpected events"
+import json, sys
+events = []
+for b in open(sys.argv[1]).read().strip().split("\n\n"):
+    e = dict(l.split(": ", 1) for l in b.split("\n") if ": " in l)
+    if "id" in e: events.append((e["event"], json.loads(e["data"])))
+names = [n for n, _ in events]
+first, last = events[0], events[-1]
+assert first[0] == "run_started" and first[1]["harness_style"] == "codex", first
+assert first[1]["runtime"]["version"] == "0.163.0" and first[1]["model_wire"]["wire"] == "codex", first
+assert last[0] == "succeeded", last
+assert "model_call" not in names, "the official runtime must not emit model_call"
+done = {d["name"]: d for n, d in events if n == "tool_call" and d["phase"] == "finished"}
+out = done["exec_command"]["output"]["output"]
+for needle in ["TOKEN=unset", "SHELLCTL=unset", "NODE_ENV=from-node-env", "preview.png"]:
+    assert needle in out, (needle, out)
+assert "NO_PROXY=*" not in out, out
+assert done["apply_patch"]["output"]["changes"][0]["path"] == "out/hello.txt", done["apply_patch"]
+assert "error" not in done["report_progress"], done["report_progress"]
+assert "view_image" in done, done.keys()
+assert any(n == "progress" for n in names) and any(n == "plan" for n in names), names
+assert any(n == "commentary" for n in names) and any(n == "thought" for n in names), names
+assert any(n == "budget_notice" for n in names), names
+c = last[1]["candidate"]
+assert last[1]["candidate_errors"] == [], last[1]["candidate_errors"]
+assert c["file"]["filename"] == "hello.txt" and c["preview"]["mime_type"] == "image/png", c
+assert last[1]["partial"] is not None, last[1]["partial"]
+reqs = json.load(open(sys.argv[2]))["requests"]
+assert len(reqs) == 5, len(reqs)
+assert all(r["headers"]["authorization"] == "Bearer " + sys.argv[3] for r in reqs)
+b0 = reqs[0]["body"]
+print("request 1 headers: " + json.dumps({k: v for k, v in reqs[0]["headers"].items() if k != "authorization"}), file=sys.stderr)
+print("request 1 body keys: " + json.dumps({k: (v if k not in ("input", "tools") else "...") for k, v in b0.items()})[:1500], file=sys.stderr)
+print("request 1 tools: " + json.dumps([(t["type"], t.get("name")) for t in b0["tools"]]), file=sys.stderr)
+print("request 1 input roles: " + json.dumps([(i.get("role"), i["content"][0]["text"][:60]) for i in b0["input"] if i.get("type") == "message"], ensure_ascii=False), file=sys.stderr)
+assert b0["model"] == "deepseek-v4.1-flash" and b0["reasoning"]["effort"] == "max", b0["reasoning"]
+assert any("You are the e2e node" in json.dumps(i) for i in b0["input"]), "AGENTS.md instructions missing"
+images = [c for r in reqs[4:] for i in r["body"]["input"] for c in (i.get("content") or i.get("output") or [])
+          if isinstance(c, dict) and c.get("type") == "input_image"]
+assert images and all(c["image_url"].startswith("data:image/png;base64,") for c in images), images
+print(f"view_image sent inline: {images[0]['image_url'][:40]}...", file=sys.stderr)
+steer = [i for i in reqs[4]["body"]["input"] if i.get("role") == "user" and "Budget notice" in json.dumps(i)]
+assert steer, "the budget notice was not in request 5"
+print("candidate: " + json.dumps(c), file=sys.stderr)
+EOF
+SANDBOX=$(sandbox_of "CX1-$ID")
+log "workspace: $(docker exec "$SANDBOX" sh -c 'ls -l /workspace/out; cat /workspace/out/hello.txt')"
+[[ -z $(codex_procs "$SANDBOX") ]] || fail "codex still runs in sandbox 1: $(codex_procs "$SANDBOX")"
+log "no Codex process left in sandbox 1"
+
+
+# ---- run 2: stop during a model call -----------------------------------------------------------------------------
+RUN2=$(start_run "$WORK/op2.json"); log "run 2 $RUN2 started"
+curl -sS -N -m 120 -H "Authorization: Bearer $SERVICE_KEY" "$BASE/v1/runs/$RUN2/events" >"$WORK/events-2.txt" &
+EV2=$!
+for _ in $(seq 120); do
+  [[ $(curl -sS "$GW/debug/codex-requests" | json 'len(d["requests"])') -ge 6 ]] && break; sleep 0.5
+done
+SANDBOX2=$(sandbox_of "CX2-$ID")
+log "codex in sandbox 2 before cancel: $(codex_procs "$SANDBOX2" | cut -c1-90)"
+printf '{"protocol":"dify-sf-agent/1","generation":1}' >"$WORK/cancel.json"
+r=$(api POST "/v1/runs/$RUN2/cancel" "$WORK/cancel.json"); log "cancel: $(status_of "$r")"
+wait $EV2 || true
+summary "$WORK/events-2.txt"
+grep -q '^event: cancelled' "$WORK/events-2.txt" || fail "run 2 did not end cancelled"
+left=$(codex_procs "$SANDBOX2")
+log "codex processes left in sandbox 2 after cancel: ${left:-none}"
+[[ -z $left ]] || fail "codex still runs after the stop"
+curl -sS "$GW/debug/codex-requests" >"$WORK/codex-requests-2.json"
+closed=$(json 'd["requests"][5]["closed_by_client"]' <"$WORK/codex-requests-2.json")
+log "hung model stream closed by Codex: $closed"
+[[ $closed == True ]] || fail "the model stream was not closed"
+
+# ---- run 3: the gateway's call limit -----------------------------------------------------------------------------
+RUN3=$(start_run "$WORK/op3.json"); log "run 3 $RUN3 started"
+curl -sS -N -m 120 -H "Authorization: Bearer $SERVICE_KEY" "$BASE/v1/runs/$RUN3/events" >"$WORK/events-3.txt"
+summary "$WORK/events-3.txt"
+grep -A1 '^event: failed' "$WORK/events-3.txt" | grep -q '"error_type":"max_turns"' || fail "run 3 did not fail max_turns"
+log "all three runs as expected"
