@@ -49,6 +49,8 @@ class ModelParameterRule {
     this.max,
     this.precision,
     this.options = const [],
+    this.allowCustomValue = false,
+    this.optionsSource,
     this.tagPlaceholder,
   });
 
@@ -63,6 +65,8 @@ class ModelParameterRule {
     max: j['max'] is num ? j['max'] as num : null,
     precision: j['precision'] is num ? (j['precision'] as num).toInt() : null,
     options: [for (final o in (j['options'] is List ? j['options'] as List : const [])) '$o'],
+    allowCustomValue: j['allow_custom_value'] == true,
+    optionsSource: j['options_source'] as String?,
     tagPlaceholder: _i18n(j['tagPlaceholder']),
   );
 
@@ -79,6 +83,8 @@ class ModelParameterRule {
   final num? min, max;
   final int? precision;
   final List<String> options;
+  final bool allowCustomValue;
+  final String? optionsSource;
   final I18nText? tagPlaceholder;
 }
 

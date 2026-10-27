@@ -19,6 +19,29 @@ private func discoveryJSON(_ value: JSON) throws -> String { String(decoding: tr
 
 @Suite("Model discovery console routes", .enabled(if: testDbHost != nil)) struct ModelDiscoveryRouteTests {
     static let path = "/v1/workspace/model-providers/langgenius/openai_api_compatible/openai_api_compatible/models"
+    @Test func providerReasoningDeclarationReachesSavedModelMenuAndExecution() async throws {
+        try await withServerAndRoutes { api, store, routes in
+            let token = try await api.setupOwner()
+            let ownerID = try #require(try await store.account(email: "owner@example.com")?.id)
+            let connection: [String: JSON] = ["endpoint_url": "https://gateway.invalid/v1", "api_key": "fixture-only"]
+            let model = ModelDiscovery.normalize(["reasoning_levels": ["max", "vendor-next-level"]], id: "new-model")
+            let receipt = await routes.modelDiscoveryReceipts.put(owner: ownerID, binding: try ModelDiscovery.Connection(connection).binding,
+                value: ["models": [model]])
+            let save = try await api.post(Self.path + "/autofill", discoveryJSON(["model": "new-model", "credentials": .object(connection), "discovery_id": .string(receipt)]), token: token)
+            #expect(save.status == 201)
+            let rules = try await api.get(Self.path + "/parameter-rules?model=new-model", token: token)
+            let effort = try #require(rules.data.first { $0["name"] == "reasoning_effort" })
+            #expect(effort["options"] == ["max", "vendor-next-level"])
+            #expect(effort["allow_custom_value"] == false && effort["options_source"] == "provider")
+            let runtime = try await routes.currentCredentials(provider: ModelDiscovery.provider, model: "new-model", modelType: "llm")
+            #expect(runtime[ModelReasoning.levelsKey] == ["max", "vendor-next-level"])
+            #expect(runtime[ModelDiscovery.metadataKey] == nil)
+            let read = try await api.get(Self.path + "/credentials?model=new-model&model_type=llm", token: token)
+            let selected = try await routes.agentCredentials(provider: ModelDiscovery.provider, model: "new-model",
+                reference: ["type": "model", "id": .string(try #require(read.j["current_credential_id"]?.string))])
+            #expect(selected[ModelReasoning.levelsKey] == ["max", "vendor-next-level"])
+        }
+    }
     @Test func outboundOperationsAndReceiptsArePrivilegedAndCannotCrossCallers() async throws {
         try await withServerAndRoutes { api, store, routes in
             let owner = try await api.setupOwner()

@@ -40,12 +40,17 @@ class DifySelect<T> extends StatefulWidget {
     this.placement = DifyPlacement.bottomStart,
     this.sideOffset = 4,
     this.alignOffset = 0,
+    this.allowCustomValue = false,
+    this.onCustomValueChanged,
   });
 
   final T? value;
   final Set<T> disabledValues;
   final DifyPlacement placement;
   final double sideOffset, alignOffset;
+  /// Extensible string enums reuse the canonical input and suggestion menu.
+  final bool allowCustomValue;
+  final ValueChanged<String>? onCustomValueChanged;
   final List<SelectOption<T>> options;
   final List<SelectGroup<T>> groups;
   final ValueChanged<T>? onChanged;
@@ -110,20 +115,48 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
           // The popup and trigger both use CSS border-box dimensions. The
           // shared floating layout owns viewport collision constraints.
           width: w.popupWidth ?? (c.maxWidth.isFinite ? c.maxWidth : 240),
-          builder: (context, controller) => _SelectTrigger(
-            text: selected == null ? w.placeholder ?? '' : _label(selected.label),
-            placeholder: selected == null,
-            readonly: w.readonly,
-            disabled: w.disabled,
-            textStyle:
-                w.textStyle ?? (w.large ? difyTextStyle(DifyType.systemMdRegular, DifyColors.textPrimary) : null),
-            paddingX: w.large ? 16 : w.paddingX,
-            height: w.large ? 36 : 32,
-            radius: w.large ? 10 : DifyRadius.lg,
-            semanticLabel: w.semanticLabel,
-            open: controller.isOpen,
-            onTap: w.readonly || w.disabled ? null : controller.toggle,
-          ),
+          builder: (context, controller) => w.allowCustomValue
+              ? DifyInput(
+                  value: w.value?.toString() ?? '',
+                  height: w.large ? 36 : 32,
+                  semanticLabel: w.semanticLabel,
+                  placeholder: w.placeholder,
+                  readOnly: w.readonly,
+                  disabled: w.disabled,
+                  onChanged: w.onCustomValueChanged,
+                  onKeyEvent: (_, event) {
+                    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                      if (!w.disabled && !w.readonly && !controller.isOpen) controller.toggle();
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  trailing: DifyIconButton(
+                    label: w.semanticLabel ?? 'Options',
+                    icon: const RemixIcon('arrow-down-s-line', size: 16),
+                    onPressed: w.readonly || w.disabled ? null : controller.toggle,
+                  ),
+                )
+              : _SelectTrigger(
+                  text: selected == null ? w.placeholder ?? '' : _label(selected.label),
+                  placeholder: selected == null,
+                  readonly: w.readonly,
+                  disabled: w.disabled,
+                  textStyle:
+                      w.textStyle ??
+                      (w.large
+                          ? difyTextStyle(
+                              DifyType.systemMdRegular,
+                              DifyColors.textPrimary,
+                            )
+                          : null),
+                  paddingX: w.large ? 16 : w.paddingX,
+                  height: w.large ? 36 : 32,
+                  radius: w.large ? 10 : DifyRadius.lg,
+                  semanticLabel: w.semanticLabel,
+                  open: controller.isOpen,
+                  onTap: w.readonly || w.disabled ? null : controller.toggle,
+                ),
           children: [
             DifyMenuRadioGroup<T>(
               value: w.value,

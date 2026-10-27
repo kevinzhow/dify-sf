@@ -163,8 +163,9 @@ extension Routes {
         do { state = try await store.modelProviderState() } catch { throw NodeError("ValueError", "\(error)") }
         let v = view(def, state)
         func parsed(_ text: String?) -> JSONObject? {
-            guard let text, let o = (try? JSONValue.parse(text))?.object, !o.isEmpty else { return nil }
-            return JSONObject(o.filter { $0.key != ModelDiscovery.metadataKey })
+            guard let credentials = Self.decodeConfig(text), !credentials.isEmpty else { return nil }
+            let filtered = ModelReasoning.runtimeCredentials(credentials, provider: provider)
+            return (try? JSONValue.parse(JSONCoding.encode(JSON.object(filtered))))?.object
         }
         if let c = v.customModels.first(where: { !$0.unadded && $0.key.model == model && $0.key.modelType == modelType }) {
             if v.settings[c.key] == false { throw NodeError("ValueError", "Model is disabled") }

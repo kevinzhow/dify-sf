@@ -505,6 +505,9 @@ extension Routes {
                 rules = schema.parameterRules
             }
         }
+        if let credentials {
+            rules = ModelReasoning.rules(rules, provider: def.id.description, credentials: credentials)
+        }
         return try json(JSON.object(["data": .array(rules)]))
     }
 

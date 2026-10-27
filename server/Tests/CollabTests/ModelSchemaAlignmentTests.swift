@@ -130,7 +130,18 @@ struct ModelSchemaAlignmentTests {
                     // Compare the wire representation: JSON serializes whole
                     // floating values as integers on both sides.
                     let expectedRules = try JSONCoding.decode(JSONCoding.encode(JSON.array(normalizedRules))).array ?? []
-                    #expect(parameters.status == 200 && parameters.data == expectedRules, "\(provider) \(parameters.text)")
+                    var comparable = parameters.data
+                    if provider == ModelDiscovery.provider {
+                        comparable = comparable.map { rule in
+                            guard rule["name"] == "reasoning_effort", var object = rule.object else { return rule }
+                            #expect(object["allow_custom_value"] == true && object["options_source"] == "plugin")
+                            #expect(object["help"]?["en_US"]?.string?.contains("service validates") == true)
+                            object["allow_custom_value"] = nil; object["options_source"] = nil
+                            object["help"] = expectedRules.first { $0["name"] == "reasoning_effort" }?["help"]
+                            return JSON.object(object)
+                        }
+                    }
+                    #expect(parameters.status == 200 && comparable == expectedRules, "\(provider) \(parameters.text)")
                     // The editor runtime sees precisely the same original plugin schema.
                     let runtime = PluginDaemonModelRuntime(daemon: routes.providerPluginDaemon(), credentialsOf: { _, _, _ in [:] }, appId: nil)
                     let runtimeSchema = try await runtime.modelSchema(provider: provider, model: model, modelType: "llm", credentials: item["credentials"]?.object ?? [:])
