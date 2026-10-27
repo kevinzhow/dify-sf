@@ -47,6 +47,14 @@ The contract it implements is [`docs/agent-v2.md`](../docs/agent-v2.md) (protoco
   cache hit and miss tokens in `usage` when reported. `tool/cache_probe.dart` measures them (a logging proxy for the
   provider endpoint, and a direct probe).
 
+- `harness_style: "codex"` (`lib/src/harness/codex/`): a port of the OpenAI Codex CLI harness (rust-v0.163.0,
+  Apache-2.0, see `../third_party/codex/`): Codex's base prompt per model family, AGENTS.md block and environment
+  context; `exec_command`/`write_stdin` over shellctl jobs, `apply_patch` (Dart port, Codex's fixtures pass) and
+  `view_image` with Codex's schemas and output truncation; parallel tool calls, Codex's retries and end-of-turn rule;
+  the native Responses wire (`POST /inner/agent/responses`, encrypted reasoning round trip) when the provider speaks
+  it, else the plugin wire. `dart run tool/gen_codex_vendor.dart` regenerates the vendored texts. Contract:
+  docs/agent-v2.md, "Harness styles".
+
 Without `AGENT_SANDBOX_SUPERVISOR_URL`, `tools.shell: true` fails with `sandbox_unavailable` and health reports
 `"sandbox": "disabled"`.
 

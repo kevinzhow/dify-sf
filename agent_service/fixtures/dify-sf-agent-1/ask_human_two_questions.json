@@ -1333,6 +1333,7 @@
             "data": {
               "call_index_base": 0,
               "executor_profile": "default",
+              "harness_style": "dify",
               "model": {
                 "name": "test-model",
                 "provider": "langgenius/openai_api_compatible/openai_api_compatible"
@@ -1996,6 +1997,7 @@
             "data": {
               "call_index_base": 0,
               "executor_profile": "default",
+              "harness_style": "dify",
               "model": {
                 "name": "test-model",
                 "provider": "langgenius/openai_api_compatible/openai_api_compatible"
@@ -2769,6 +2771,7 @@
             "data": {
               "call_index_base": 0,
               "executor_profile": "default",
+              "harness_style": "dify",
               "model": {
                 "name": "test-model",
                 "provider": "langgenius/openai_api_compatible/openai_api_compatible"

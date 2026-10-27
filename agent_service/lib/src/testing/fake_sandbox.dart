@@ -60,6 +60,14 @@ class FakeShellctl {
   bool reapSucceeds = true;
   FakeJobSpec Function(String script)? onJob;
 
+  /// Awaited before a user job starts (a test may hold jobs to observe
+  /// concurrency).
+  Future<void> Function(String script)? beforeJob;
+
+  /// Answers a control script first (exit code and output); null passes it
+  /// to the built-in handling (a test may run scripts in a local shell).
+  Future<(int, String)?> Function(String script)? onControl;
+
   final Map<String, FakeJob> jobs = {};
   final List<Map<String, Object?>> runRequests = [];
   final List<String> terminated = [];
@@ -115,7 +123,11 @@ class FakeShellctl {
       switch ((request.method, segments)) {
         case ('POST', ['v1', 'jobs', 'run']):
           runRequests.add(body);
-          final job = _start(body);
+          final script = body['script'] as String;
+          final isControl = body['mode'] == 'stdio' && _isControl(script);
+          final custom = isControl ? await onControl?.call(script) : null;
+          if (!isControl) await beforeJob?.call(script);
+          final job = _start(body, custom);
           return _json(res, 200, _window(job, 0, limit));
         case ('POST', ['v1', 'jobs', final id, 'wait']):
           final job = jobs[id];
@@ -222,14 +234,14 @@ class FakeShellctl {
     };
   }
 
-  FakeJob _start(Map<String, Object?> body) {
+  FakeJob _start(Map<String, Object?> body, [(int, String)? custom]) {
     final script = body['script'] as String;
     final mode = body['mode'] as String? ?? 'pty';
     final env = (body['env'] as Map?)?.cast<String, String>();
     final job = FakeJob('job${++_next}', mode, script, env);
     jobs[job.id] = job;
-    if (mode == 'stdio') {
-      final (code, out) = _control(script);
+    if (mode == 'stdio' && (custom != null || _isControl(script))) {
+      final (code, out) = custom ?? _control(script);
       job
         ..output = out
         ..exitCode = code
@@ -247,6 +259,11 @@ class FakeShellctl {
     }
     return job;
   }
+
+  /// The service's own control scripts (as opposed to a user job in
+  /// `stdio` mode).
+  static bool _isControl(String script) =>
+      script.startsWith('{\n') || script.startsWith('dd if=');
 
   (int, String) _control(String script) {
     if (script.contains('write_outside_workspace=')) {
