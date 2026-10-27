@@ -77,7 +77,11 @@ struct AgentOfficialIntegrationTests {
                             let finished = try #require(calls.first { $0["data"]?["data"]?["phase"] == "finished" })
                             #expect(finished["data"]?["data"]?["usage"]?["cached_tokens"] == 12)
                             #expect(requests.withLock { $0.count } == 1)
+                            // The production worker first commits the ACK; only
+                            // its next pass can admit sandbox cleanup.
                             await routes.deliverAgentOutbox()
+                            await routes.deliverAgentOutbox()
+                            #expect(try await store.pendingAgentJobs().isEmpty)
                         }
                     }
                 }
