@@ -109,6 +109,7 @@ Starts one operation. Every operation is a separate request; there is no separat
   "env": {"KEY": "value"},
   "files": [{"file_id": "…", "path": "files/spec.md"}],
   "limits": {"max_turns": 50, "timeout_seconds": 1800},
+  "executor_profile": "default",
   "continuation": null
 }
 ```
@@ -130,6 +131,8 @@ Starts one operation. Every operation is a separate request; there is no separat
 - `env` reaches only the sandbox environment and never a prompt. Reserved names (`HOME`, `PATH`, `TMPDIR`, `TMP`,
   `TEMP`, every `SHELLCTL_*`, `*_PROXY` and `NO_PROXY` in either case) are rejected with `400 reserved_env`, and
   refused again by the sandbox layer.
+- `executor_profile` names the sandbox's executor profile (see [Executor profiles](#executor-profiles), draft);
+  absent means `default`, today's image and limits.
 - `continuation` is `null` for the first run. Otherwise it is one of:
   - `{"kind": "answer", "snapshot": <envelope>, "question_id": "…", "result": <ask_human result>}` after a question.
   - `{"kind": "output_retry", "snapshot": <envelope>, "feedback": [{"field": "score", "error": "…"}]}` after the Swift
@@ -193,7 +196,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 
 | `event` | `data` |
 |---|---|
-| `run_started` | `{"model", "call_index_base"}`; `call_index_base` is 0 (call indexes of the run start at 1) |
+| `run_started` | `{"model", "call_index_base", "executor_profile"}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name |
 | `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB of UTF-8 is split into several, cut only between code points |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
 | `model_call` | `{"invocation_id", "usage"}` after each model call |
@@ -263,6 +266,7 @@ several. Runs recorded before the identity was kept list it as `null`.
 
 `{"protocol", "status": "ok" | "degraded", "sandbox": "isolated" | "unavailable" | "disabled", "version"}`. `sandbox`
 is `disabled` without a supervisor, `unavailable` after the latest probe or supervisor call failed, else `isolated`.
+With executor profiles (draft), it also has `"profiles": {"<name>": "ok" | "image_missing"}`.
 
 ### Other responses
 
@@ -511,6 +515,115 @@ removed. Observed in the integration test: after a cancel no `sleep` started dir
 under `sh -c` remained. This covers processes inside the container only; what a command already did outside it
 (e.g. a request through the proxy) is not undone, and nothing beyond the container is claimed.
 
+## Executor profiles
+
+Status: draft (2026-10-27); not implemented. MVP: one profile besides `default`, used only by the built-in agent
+loop and its shell tools.
+
+An executor profile is a named sandbox environment defined by an administrator on the executor host (the agent
+service and the sandbox supervisor). A node names a profile. A node, a DSL file or a request never carries an image,
+mount, network rule, limit or credential, so an import or an edit cannot run an arbitrary image or read host files.
+Dify's own Soul `sandbox.config` (image, working directory, environment, CPU) stays refused, as today.
+
+### Profile file
+
+One JSON file, `AGENT_EXECUTOR_PROFILES` (default `/etc/dify-sf/executor-profiles.json`). It is mounted read-only into
+the agent service and the supervisor, and read at start; a change needs a restart. A file that does not validate
+stops the process. Without the file there is one profile, `default`: today's image, limits and network.
+
+```jsonc
+{"version": 1,
+ "profiles": {
+   "default": {"description": "Dify's shell sandbox",
+               "image": "langgenius/dify-agent-local-sandbox@sha256:…"},
+   "colvalley-blender": {
+     "description": "Blender 5.2.3, colvalley-3d (read-only) and its board renderer",
+     "image": "dify-sf/sandbox-colvalley-blender@sha256:…",
+     "mounts": [{"source": "/srv/dify-sf/checkouts/colvalley-3d-77b81f5", "target": "/opt/colvalley-3d"}],
+     "network": {"egress": "none"},
+     "limits": {"cpus": 4, "memory_mb": 12288, "pids": 1024, "workspace_mb": 4096, "home_mb": 1024,
+                "timeout_seconds_max": 10800},
+     "env": {"BLENDER": "/opt/blender/blender", "CV3D_PYTHON": "/opt/cv3d-venv/bin/python"}}}}
+```
+
+| Field | Rule |
+|---|---|
+| `image` | Pinned by digest (`name@sha256:…`); a tag alone stops the process at load. Images are built from `agent_service/sandbox-images/<name>/` (Dockerfile and `VERSION`) in this repository. Every image keeps shellctl (they derive from `langgenius/dify-agent-local-sandbox:1.17.1`), because the service's probes, file staging, output files and process cleanup use it. |
+| `mounts` | Read-only bind mounts only. The source is an absolute host path that must not be, contain or lie inside the Docker socket, the service's data directory or the profile file. The target is under `/opt`, never `/workspace` or the home. This replaces the sandbox rule "no binds or mounts" with "only the profile's read-only binds". |
+| `network.egress` | `none`: the proxy is not connected, so there is no egress. `allowlist`: the proxy as today, with its default domains. Per-profile domain lists come later. Default `allowlist`. |
+| `limits` | CPU, memory (the tmpfs pages of `/workspace` and the home count here), PIDs, and the `/workspace` and home tmpfs sizes. `timeout_seconds_max` is the largest `limits.timeout_seconds` a run of this profile may have. A missing value takes the supervisor's current default. |
+| `env` | Fixed variables for the sandbox's commands, set by the administrator. They are not secrets and are not shown to the model. The reserved names are refused at load. A node's `env` cannot override them (`400 reserved_env`). |
+
+### Protocol
+
+- `POST /v1/operations` gains `"executor_profile": "<name>"`. Absent means `default`. The profile is used only when
+  `tools.shell` is true; otherwise it is ignored. It is part of the request digest.
+- An unknown name answers `422 executor_profile_unknown`. A profile whose image is not on the host answers
+  `503 executor_profile_unavailable`. A `limits.timeout_seconds` above the profile's `timeout_seconds_max` answers
+  `422 invalid_request`.
+- From this version the service refuses unknown top-level request fields (`400 invalid_request`). An older service
+  ignores `executor_profile` and would use the default image. To catch that, `run_started` gains
+  `"executor_profile"` (the resolved name). If the echo is missing or different, the Swift server cancels the run and
+  fails the node with `sandbox_unavailable`.
+- A continuation must name the profile of the snapshot's sandbox (`workspace_ref`). Otherwise it answers
+  `422 snapshot_incompatible`. The Soul snapshot pins the name, so this happens only when the configuration was
+  changed outside the snapshot.
+- Supervisor: `POST /v1/sandboxes {"execution_key", "profile"}`. The supervisor resolves the name from its own copy of
+  the file; an unknown name is `400`. The same key with a different profile is `409`. A sandbox keeps its profile for
+  its lifetime. `GET /v1/sandboxes` lists each sandbox's profile.
+- `GET /v1/health` gains `"profiles": {"<name>": "ok" | "image_missing"}`.
+
+`GET /v1/profiles` (new) lists what the Swift server needs for the editor and the checklist:
+
+```jsonc
+{"protocol": "dify-sf-agent/1",
+ "profiles": [{"name": "default", "description": "Dify's shell sandbox", "status": "ok", "timeout_seconds_max": 1800},
+              {"name": "colvalley-blender", "description": "…", "status": "ok", "timeout_seconds_max": 10800}]}
+```
+
+It never lists images, mounts, network rules or environment values.
+
+### Node configuration and DSL
+
+- A dify-sf extension of the Soul: the key `executor_profile` (a string; absent or `""` means `default`). It is
+  stored in the immutable Soul snapshot and pinned when publishing, like the rest of the Soul.
+- The editor shows a profile select (from `GET /v1/profiles`, through the Swift server) when the shell is on.
+- The DSL exports the name only. An import keeps the name even when this server does not know it; the import never
+  fails or silently changes it to `default`. A name the server does not know, or whose status is not `ok`, is a
+  checklist error ("Executor profile `colvalley-blender` is not available on this server"), and the node cannot
+  run. The native MCP checklist reports the same.
+- Out of the MVP: a profile administration UI (it will write the same file format), per-profile egress domain lists,
+  and choosing profiles per workspace or tenant.
+
+### Profile `colvalley-blender` (MVP)
+
+| Part | Where | Content |
+|---|---|---|
+| Base | Image | `langgenius/dify-agent-local-sandbox:1.17.1` (Debian 12, glibc 2.36; shellctl, Python 3.12, Node, git) |
+| Blender | Image | The official 5.2.3 Linux x64 build at `/opt/blender` (SHA-256 checked), with its X11 and GL libraries; used with `-b` |
+| Renderer runtime | Image | Weston (`FS_RENDERER=pixman`), D-Bus, GTK 3 and Mesa libraries for the Flutter Linux bundle |
+| Python tools | Image | A virtual environment `/opt/cv3d-venv` with the board tool's packages (numpy, scipy, trimesh, rtree, Pillow), because there is no egress |
+| colvalley-3d | Mount `/opt/colvalley-3d` | A prepared checkout pinned by commit on the executor host: LFS files, `flutter pub get`, the built Linux profile bundle and the precompiled scene importer (below) |
+| Limits | Profile | 4 CPUs, 12 GiB memory (4 GiB of it the `/workspace` tmpfs), 1024 PIDs, up to 3 hours |
+
+The board tool (`tools/board/render_board.sh`) today writes into the checkout: `out/board`, `out/board-cache`, and
+`dart run flutter_scene:import` in `app/`, which needs a writable `.dart_tool` and the Dart SDK. It needs these
+changes in colvalley-3d before it can run from a read-only mount:
+
+1. `--work-dir DIR` (or `CV3D_WORK`): every write goes under it: outputs (default `-o`), the baseline cache, Weston
+   scratch and the uv or Python cache. The tool refuses to write inside the checkout.
+2. `FS_IMPORTER`: a scene importer compiled ahead of time with the SDK that built the bundle
+   (`dart compile exe`), used instead of `dart run` in `app/`. The tool's importer self-check stays and proves it
+   matches the bundle. If the importer cannot be compiled ahead of time, fall back to copying `app/` without
+   `build/` (23 MB) into the work directory per run, with a path to `third_party/` that still resolves; that needs
+   the Flutter SDK in the image.
+3. `CV3D_PYTHON`: an interpreter with the packages already installed, used instead of `uv run --with …`.
+
+A script in colvalley-3d (`tools/board/prepare_checkout.sh <commit> <dir>`) prepares the mounted checkout on the
+executor host: checkout with LFS, `flutter pub get`, `flutter build linux --profile`, and the importer. The image
+then depends on no colvalley-3d commit. The bundle and importer always match the mounted commit, and a new commit
+needs a new checkout directory and a profile change, not a new image.
+
 ## Swift server summary
 
 - `AgentV2Node` implements `RuntimeNode`; the factory builds it only for `type: agent`, `version: "2"`,
@@ -528,6 +641,11 @@ under `sh -c` remained. This covers processes inside the container only; what a 
 - Run records (thoughts, tool calls, usage) are stored by the server and shown when the node ends (a dify-sf
   extension). They are truncated at 256 KB on a UTF-8 boundary with a marker and a reference to the full record file;
   credentials are removed first.
+
+- Executor profiles (draft, see [Executor profiles](#executor-profiles)): the Soul's `executor_profile` key
+  (validation, snapshot pinning, DSL name only, checklist and MCP checks against `GET /v1/profiles`), the editor's
+  profile select, `executor_profile` in the operation, the `run_started` echo check, and the timeout capped by the
+  profile's `timeout_seconds_max`.
 
 ## Tests that must stay
 
