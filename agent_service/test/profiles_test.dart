@@ -636,6 +636,9 @@ void main() {
         final result = s['result'] as Map;
         expect(result['error_type'], 'sandbox_unavailable');
         expect(result['message'], contains('not colvalley-blender'));
+        // The sandbox it created is not left behind.
+        expect(sup.deletes, sup.created);
+        expect(sup.sandboxes, isEmpty);
       }
     });
 

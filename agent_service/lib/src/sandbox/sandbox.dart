@@ -736,6 +736,14 @@ class SandboxManager {
       if (grant.profile != request.executorProfile) {
         // A supervisor that ignores profiles would give the default image.
         _unavailable = true;
+        if (grant.created) {
+          // Not recorded for the execution yet: release it here.
+          try {
+            await s.release(grant.sandboxId);
+          } catch (e) {
+            log?.call('could not release sandbox ${grant.sandboxId}: $e');
+          }
+        }
         throw SandboxFailure(
           'sandbox_unavailable',
           'the supervisor created the sandbox with profile '

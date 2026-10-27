@@ -163,7 +163,6 @@ s=$(date +%s%N)
 echo "BOARD_RC=$? BOARD_MS=$(( ($(date +%s%N) - s) / 1000000 ))"
 tail -4 /workspace/board.log
 grep -h FS_AA /workspace/board/1/render.log | head -1
-echo "CGROUP_MEMORY_PEAK=$(cat /sys/fs/cgroup/memory.peak 2>/dev/null)"
 ls -l /workspace/board/board.png
 du -sh /workspace 2>/dev/null
 } > /workspace/e2e.out 2>&1; cat /workspace/e2e.out
@@ -313,7 +312,8 @@ for b in blocks:
     for line in b.split("\n"):
         k, _, v = line.partition(": ")
         e[k] = v
-    events.append((int(e["id"]), e["event"], json.loads(e["data"])))
+    if "id" in e:  # not a ": keep-alive" comment
+        events.append((int(e["id"]), e["event"], json.loads(e["data"])))
 first, last = events[0], events[-1]
 assert first[1] == "run_started" and first[2]["executor_profile"] == "colvalley-blender", first
 print(f"run_started: {json.dumps(first[2])}", file=sys.stderr)

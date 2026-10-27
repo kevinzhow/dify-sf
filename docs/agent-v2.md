@@ -674,7 +674,7 @@ Built and checked on K17 on 2026-10-27: image `dify-sf/sandbox-colvalley-blender
 | Python tools | Image | `/opt/cv3d-venv` with numpy 2.5.4, scipy 1.18.1, trimesh 5.2.0, rtree 1.4.1, Pillow 13.0.0 (pinned in `requirements.txt`), because there is no egress |
 | colvalley-3d | Mount `/opt/colvalley-3d` | A checkout made by colvalley-3d's `tools/board/prepare_checkout.sh <commit> <dir>` on the executor host (below) |
 | Env | Profile | `BLENDER=/opt/blender/blender`, `CV3D_PYTHON=/opt/cv3d-venv/bin/python`, `FS_IMPORTER=/opt/colvalley-3d/.cv3d-prepared/fs_importer` |
-| Limits | Profile | 4 CPUs, 6 GiB memory (1.5 GiB of it the `/workspace` tmpfs, 512 MiB the home), 1024 PIDs, up to 3 hours, one run at a time. K17 has 15 GiB and 8 CPUs shared with the whole trial. Measured (below): one board run peaks at MEASURED_PEAK; the limits stay at the MVP ceiling until a real modelling run is measured (never below 2 GiB memory) |
+| Limits | Profile | 4 CPUs, 6 GiB memory (1.5 GiB of it the `/workspace` tmpfs, 512 MiB the home), 1024 PIDs, up to 3 hours, one run at a time. K17 has 15 GiB and 8 CPUs shared with the whole trial. Measured (below): one board run peaks at 454–647 MiB of cgroup memory (tmpfs included) and 3.5 CPUs; the limits stay at the MVP ceiling until a real modelling run is measured (never below 2 GiB memory) |
 
 colvalley-3d `alice/board-readonly` makes the board tool (`tools/board/render_board.sh`) run from a read-only checkout:
 
@@ -708,7 +708,12 @@ three.
 
 Measured end to end (`agent_service/tool/profile_e2e.sh`: the agent service, the supervisor and the profile file in
 compose, a scripted model running `render_board.sh --object fujiya` on the r6 `.blend` given as an input file, then
-`view_image` and `final_output` with the board as a declared file output): MEASURED_E2E.
+`view_image` and `final_output` with the board as a declared file output): 28.9 s from `POST` to the terminal
+event, 24.3 s of it the board; the sandbox's cgroup peaked at 536 MiB (`memory.peak`, tmpfs included; three direct
+runs of the board in the image: 454–647 MiB), 37.7 CPU-seconds, at most 3.46 CPUs over 0.5 s samples under the
+4-CPU limit; `/workspace` held 19 MB. That board is byte-identical to the writable-clone reference. The sandbox had
+exactly the profile's image digest, the checkout read-only, the render node with group 990, no proxy endpoint and no
+egress (`direct=blocked`); DELETE removed it and its network.
 
 ## Swift server summary
 
