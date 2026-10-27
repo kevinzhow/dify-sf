@@ -340,12 +340,12 @@
       "sha256": "979eb2cb12a585ab40ec4c9e1f397d21c2c5e3efc5a94955cb67598661a032ca"
     },
     "JP-000-Bold.woff2": {
-      "bytes": 281536,
-      "sha256": "f1499712266cafa86a01387db510bf2282fcb04bcba248169eaf2cfa3bbc279c"
+      "bytes": 281744,
+      "sha256": "1e093afd818ad2fe94d38b94b459c56b3ad76132981e04854a9dff2b00dcafce"
     },
     "JP-000-Regular.woff2": {
-      "bytes": 273728,
-      "sha256": "e56c969a7756ce59afe34a6011f3e9060ab4017c5a2b187c0bde8f84f3d65481"
+      "bytes": 274080,
+      "sha256": "a862887233a322f8b54705532fe34002822eac64b4cfa347ebcdfd255be92efc"
     },
     "JP-001-Bold.woff2": {
       "bytes": 37892,
@@ -436,168 +436,168 @@
       "sha256": "77e86fada1cd22520f384000f9e046f27294e41c474f1790ba678d20d980917b"
     },
     "JP-012-Bold.woff2": {
-      "bytes": 130504,
-      "sha256": "b2993e0e3f0f04855c56291f2b9844202b46b5093d4983306682e028061fe8fb"
+      "bytes": 130360,
+      "sha256": "cdda18618b6bb489223947e41b1833a2ec3d4abaecbc7bbdad7d1daa10c43cac"
     },
     "JP-012-Regular.woff2": {
-      "bytes": 128244,
-      "sha256": "1cc9b0b3aef72455c0156a75ecf75b847a9eab07f6511f9e367b52551e58bafd"
+      "bytes": 128060,
+      "sha256": "bea2d200ada863f8739f5d8766fe7d64f9cb119d72fb395afbf690b2165d5e8b"
     },
     "JP-013-Bold.woff2": {
-      "bytes": 111996,
-      "sha256": "92b2b0d6008b5f9bde097ebba081eb71cd5f574aac39b79ef23261179ace1b90"
+      "bytes": 112012,
+      "sha256": "b496534a1c8e2434eb4fcfb22fa91dc62a873e22b6820349f79fddc9c277b6b2"
     },
     "JP-013-Regular.woff2": {
-      "bytes": 109184,
-      "sha256": "e9f6185148e59ef7e096e424dcea19ade290557b6141c87782b3d9f9f9b9962b"
+      "bytes": 109368,
+      "sha256": "db0cbc425f241bf8014b14246a7e75c1dde90e418665fdbd9a192af6c9b4eb58"
     },
     "JP-014-Bold.woff2": {
-      "bytes": 140160,
-      "sha256": "51894cf0e90f7c79a294fb991b1ae5de7df92205e42551e2e3bf433bfff6eedf"
+      "bytes": 139616,
+      "sha256": "f5e85965d52dab777325978c9da9ac0fdc0b42c5642a0bd2516fb3cdc4f2fc38"
     },
     "JP-014-Regular.woff2": {
-      "bytes": 135328,
-      "sha256": "b90c489676aadaaeadb29778a1bd549e1d576ce04d524dcf1b23f8619b8758a9"
+      "bytes": 135352,
+      "sha256": "c9cf34671ac070f0cbebbfe87e3e1accddf7bddd8dac27659f7fe33731a85d7e"
     },
     "JP-015-Bold.woff2": {
-      "bytes": 120800,
-      "sha256": "01b4c43b199691cd2f6ab67308361a3a104cefdc83376b7467d80cd34b2ca1df"
+      "bytes": 121048,
+      "sha256": "b079cddd2894fd00486a180a2524b5c3e4f5ab29f3d55b2fc45fa19914d7be64"
     },
     "JP-015-Regular.woff2": {
-      "bytes": 116548,
-      "sha256": "27cf820d97cd26e2ac5e05eea50eff8518dc60933db44ea66f608da6b61bf5c4"
+      "bytes": 116316,
+      "sha256": "61cac3e4d7235191721f372e129d382631b0031649d3c6c798d0fa8ee996e280"
     },
     "JP-016-Bold.woff2": {
-      "bytes": 139600,
-      "sha256": "107635ae98e7b12766139c2ccf78c22d210bed66cf92851e4f525d6149bc3fb7"
+      "bytes": 139536,
+      "sha256": "71e1d3e1ccb00a4e65d862c9ab1faadfabddab43cab45197ae953afbc1a2e1cd"
     },
     "JP-016-Regular.woff2": {
-      "bytes": 135104,
-      "sha256": "4a6959a74eb55f330729ad1421313d9fd3c7ae9c1fcf0b6baa4acb548ff997fe"
+      "bytes": 135132,
+      "sha256": "d280044263611f08db5e7104e8cd948cdee76bb51b9b6cfa49e1aaa963b8f84c"
     },
     "JP-017-Bold.woff2": {
-      "bytes": 130448,
-      "sha256": "273fb4a1658bfd91a92c7ebe7219a6c2f44ab59a78cd9b00bb0c238949abe9a6"
+      "bytes": 130476,
+      "sha256": "6b5445efc5fdd9f4a72b7ef6c504fed9646d14de211952f614ff07b9df438013"
     },
     "JP-017-Regular.woff2": {
-      "bytes": 127716,
-      "sha256": "9cb5ef29a72c570d8b6ff86b4a0862362d5f288a03eb127162cd12d00a560729"
+      "bytes": 127620,
+      "sha256": "e497d209350a920933cbf332e2fe91053bdf14ed80bed10daa482e65437c89af"
     },
     "JP-018-Bold.woff2": {
-      "bytes": 125188,
-      "sha256": "47e06eb39161d322b16490dad2ff46f68ab57b145c3abac1a3b41898d0650879"
+      "bytes": 125404,
+      "sha256": "f1fe61de38c732d8d9dbd5dec0b931089cc1a193df41aa388ec2379a381ebfee"
     },
     "JP-018-Regular.woff2": {
-      "bytes": 120472,
-      "sha256": "14195b68483633bcd51208519397616390dfb83f1c9ba8bfc3ed227ede2ec1c1"
+      "bytes": 120548,
+      "sha256": "9b28525f0daa5d855c5fdbfe4c3d440bf60e98952240912559707eb34dfa59ba"
     },
     "JP-019-Bold.woff2": {
-      "bytes": 142656,
-      "sha256": "f8b454cc4c99ecef346133fa3cdcd84cebe5823cbc2e15764a0c0f64bba5d67d"
+      "bytes": 142856,
+      "sha256": "bbdbda18c6a0e10e38d4dc44529c51229c3736a878df237c16b247a38cf665c5"
     },
     "JP-019-Regular.woff2": {
-      "bytes": 135420,
-      "sha256": "0795d6e41ae310ec9482d15e3624f3b48c99d7650a455d2e7f23b2a203d358f2"
+      "bytes": 135368,
+      "sha256": "0699b5f19386e85f840255515e6f21de5c94f4b20e549260d1c88127ae6784f5"
     },
     "JP-020-Bold.woff2": {
-      "bytes": 144896,
-      "sha256": "6c851bf5e8636f9b4ba9a9e1d550578fd033e0b3447f709ef7bb1897fb94e5df"
+      "bytes": 144900,
+      "sha256": "a18ba88f932b2b94f0c233fc82aa71c0e455c864877b633126a2bf91b8e28838"
     },
     "JP-020-Regular.woff2": {
-      "bytes": 139632,
-      "sha256": "fe8a94a61f0d96a9aa2d5a62de2dca6d63fac3ac0327ae7b0fadca7ee6537385"
+      "bytes": 139656,
+      "sha256": "6a6bf81d5686e3cdd67fc2fcbbca307df2e6e1606022804621cbb48fd4d8277f"
     },
     "JP-021-Bold.woff2": {
-      "bytes": 122900,
-      "sha256": "72f5ceacb8eaefb704623a9cfd754cd17e4ad2d1b6e68130e7c5f761b9790f5a"
+      "bytes": 122600,
+      "sha256": "06e14eec8c784b3a96326a471132efe9cbbe42a888fe51a03dd25027d9b79423"
     },
     "JP-021-Regular.woff2": {
-      "bytes": 118820,
-      "sha256": "a5d9dd111d25aaac4a13a0b4fbc2114ad943f2f59169f3ab8f26173c58ea49e4"
+      "bytes": 118852,
+      "sha256": "4131a15326fc2f7d8d275d55ecaabb14f9a8919549bb7c6f22488129875652a6"
     },
     "JP-022-Bold.woff2": {
-      "bytes": 157756,
-      "sha256": "9a8f8e4d3d31b12cf7273ce54cc4bea6115d0b98169ee22edce05d5a75c3a21f"
+      "bytes": 157708,
+      "sha256": "6c8ffae6012a6e22519774faad2489d303415c718783f43472090c0b35fbae34"
     },
     "JP-022-Regular.woff2": {
-      "bytes": 150092,
-      "sha256": "1872b38a22dec09b65462c892f08817a6c4105cb969e7325784d4f2f20c988d6"
+      "bytes": 149288,
+      "sha256": "e5966837892b8170b39b8a1dcf4f4e1e15b350cc6be94d6aed8ec550084f4bec"
     },
     "JP-023-Bold.woff2": {
-      "bytes": 141396,
-      "sha256": "9cedc8b0bd5b9b7d04e3e7d66b7df436fe93b4fd9bf34b7af238ff81307834f5"
+      "bytes": 141308,
+      "sha256": "466342df56553ce5272bb8c21cd197bf30b3c49df484ccd2f3a76597d1381107"
     },
     "JP-023-Regular.woff2": {
-      "bytes": 135656,
-      "sha256": "71769b29a05576211155f40644e69dff79e1ddf1610f46b2a05f54faeb6bcccc"
+      "bytes": 135904,
+      "sha256": "7047f0db84aba779f110d8271d60156988ac2b5b3335626a9a17cce01b68486b"
     },
     "JP-024-Bold.woff2": {
-      "bytes": 145244,
-      "sha256": "cec29d50753875c11fcec3bea57026f1d8feae679c5e4b01923bc16838e5cb29"
+      "bytes": 144972,
+      "sha256": "b4b9312f72fe94cec470796a2b400316adbabcba66b34f9ee61bd2aab6fcd9d3"
     },
     "JP-024-Regular.woff2": {
-      "bytes": 140172,
-      "sha256": "20bfb21a4e5f27de522481d79bebf71674ffc549da8a8242e0b127b8a765bc29"
+      "bytes": 139796,
+      "sha256": "8691f4aee144f36a12da0b549493643c38b67a9c5b64f47f91184bbde6e900a8"
     },
     "JP-025-Bold.woff2": {
-      "bytes": 142072,
-      "sha256": "8774e06ae52fe6b916cb7ec161c6d6be96f9ae0085f7ca95e71762fd167b60b7"
+      "bytes": 141860,
+      "sha256": "fccbb2deee0d1be2e2c28f752238064238e42baa0d5860eb2fae4e96bf019ed5"
     },
     "JP-025-Regular.woff2": {
-      "bytes": 134536,
-      "sha256": "8a90d1130053ccdf8085680fa9c6c149fca71991e43a10484ef8b65fdb39bf52"
+      "bytes": 134184,
+      "sha256": "f56e6217afa19926b42ce34463eaa6bafd665ec5c3bdda12bcdc800dd9952b40"
     },
     "JP-026-Bold.woff2": {
-      "bytes": 143160,
-      "sha256": "8079b166b8d967598e6df831f14d0238bf644fe614898d074df77aa1d6d9f8b1"
+      "bytes": 143588,
+      "sha256": "1b02414512e25c3d9cc0bd57a5437bea13089a2cb63916d6f6bad58bc0e3578b"
     },
     "JP-026-Regular.woff2": {
-      "bytes": 137292,
-      "sha256": "30f59f8da4c99be63a7fc75c710332a2681cf43649838651187a2a0b66420d71"
+      "bytes": 137684,
+      "sha256": "423c499ac8e87bb944921f3e8e1f918e7d092cc5f16e6136805c8b09c2097dfc"
     },
     "JP-027-Bold.woff2": {
-      "bytes": 159860,
-      "sha256": "647f33b87de4ae26e0e46eb150d5959c704522ab7aedeae6b41b2fc4b3e94c93"
+      "bytes": 159804,
+      "sha256": "325134f4b5806aa0177e60698089458309812a38d37b61f498b3a8d80e9eb6c6"
     },
     "JP-027-Regular.woff2": {
-      "bytes": 151412,
-      "sha256": "75698378e8450800edbdef79df1bc7d2bec33659db406a29b6dc8ac3d403c288"
+      "bytes": 151300,
+      "sha256": "a3933cefed505977ec58336fe7f4dc3f1bfa7e7ded21b5dafdb04d88440ab64c"
     },
     "JP-028-Bold.woff2": {
-      "bytes": 167900,
-      "sha256": "86d3eea0ced0dc6e1ca24389bad308c6f1e19aa2b08da0d573b9405a94638d2a"
+      "bytes": 167940,
+      "sha256": "9f72a425d7345b0b7c09cca68aa7cda26be09c0e9664e4d95a356a9f33bd33c0"
     },
     "JP-028-Regular.woff2": {
-      "bytes": 160844,
-      "sha256": "f2671ac5eb54b50840f2c8e33cd204200812e6ab9811aefa93e5f34752c55089"
+      "bytes": 160788,
+      "sha256": "8aa27914e5016f8aee2a1b5ed4751ef4308322123d7fdf65a9ec0cd93c6e2d6b"
     },
     "JP-029-Bold.woff2": {
-      "bytes": 153924,
-      "sha256": "ed6090b13f6c835f0bfad7e5a43d3941e86806b110e42668023d28db29e51f05"
+      "bytes": 153992,
+      "sha256": "4dff501da9129c122964c466fffbf4e93df5e323e86bddc73b5714c259c1b40c"
     },
     "JP-029-Regular.woff2": {
-      "bytes": 148196,
-      "sha256": "2508eb5325107657150d83cd77e58ad29c14527a6d963542073252efe01dd24e"
+      "bytes": 148448,
+      "sha256": "431402af253dec2f07881de7a44cb2edecc3fc8338f0795d4603882da3a53d15"
     },
     "JP-030-Bold.woff2": {
-      "bytes": 74872,
-      "sha256": "a45905706a366eb07dbcfee6a04df5781a5eae96daf6fe03f0e516a2bcf31f03"
+      "bytes": 74700,
+      "sha256": "a311ba6cb471d9786ee2b9feb19a4af84447e2c539f15001f3e9b90e7032ce8f"
     },
     "JP-030-Regular.woff2": {
-      "bytes": 74416,
-      "sha256": "129fe366608bdb18c3e71b4ccc51eb2ee80e4e594a185b3089afdab990d3d228"
+      "bytes": 74228,
+      "sha256": "d43b17da73429fb766aed8ee4ef5582373419d7b894b81068a043b2d46e78001"
     },
     "JP-031-Bold.woff2": {
-      "bytes": 124492,
-      "sha256": "61a9340cf6a93b8eb3b965702e58efd75de26b28c46273429a1a7e25119e867a"
+      "bytes": 124300,
+      "sha256": "d66e961e8019768f15c127040a16b46d8a3a34a0bbdb5c283da1e1b0590be30b"
     },
     "JP-031-Regular.woff2": {
-      "bytes": 121872,
-      "sha256": "02180c7ec1032d4aaf802e29afa55b94e187ffd0f7f5df3871a1a3de90c0899b"
+      "bytes": 121384,
+      "sha256": "78d737b649307db2dfd0574435a59ebe6d7892f1582d4e3d562660560a998f01"
     },
     "JP.json": {
       "bytes": 109166,
-      "sha256": "8804bf60c271906469d66d43c3eb675ca81131927ece85ff28bea2355c6278f7"
+      "sha256": "9ec0739266be967037d408fd0e90f2d70712bee38569e0e60eb7056abb6cf2df"
     },
     "KR-000-Bold.woff2": {
       "bytes": 252572,
@@ -1773,7 +1773,7 @@
     },
     "catalog.json": {
       "bytes": 736430,
-      "sha256": "40e7f00581b4a462c6f0fd87b6c3850912e94c5680df116f7483dcee6ff25ef2"
+      "sha256": "af080e47a6ee10d99e497d6e476870a6abacf84336ae9c53a2e05ba0177a875b"
     }
   }
 }
