@@ -541,7 +541,8 @@ stops the process. Without the file there is one profile, `default`: today's ima
      "image": "dify-sf/sandbox-colvalley-blender@sha256:…",
      "mounts": [{"source": "/srv/dify-sf/checkouts/colvalley-3d-77b81f5", "target": "/opt/colvalley-3d"}],
      "network": {"egress": "none"},
-     "limits": {"cpus": 4, "memory_mb": 12288, "pids": 1024, "workspace_mb": 4096, "home_mb": 1024,
+     "devices": ["/dev/dri/renderD128"],
+     "limits": {"cpus": 4, "memory_mb": 6144, "pids": 1024, "workspace_mb": 1536, "home_mb": 512,
                 "timeout_seconds_max": 10800},
      "env": {"BLENDER": "/opt/blender/blender", "CV3D_PYTHON": "/opt/cv3d-venv/bin/python"}}}}
 ```
@@ -552,6 +553,7 @@ stops the process. Without the file there is one profile, `default`: today's ima
 | `mounts` | Read-only bind mounts only. The source is an absolute host path that must not be, contain or lie inside the Docker socket, the service's data directory or the profile file. The target is under `/opt`, never `/workspace` or the home. This replaces the sandbox rule "no binds or mounts" with "only the profile's read-only binds". |
 | `network.egress` | `none`: the proxy is not connected, so there is no egress. `allowlist`: the proxy as today, with its default domains. Per-profile domain lists come later. Default `allowlist`. |
 | `limits` | CPU, memory (the tmpfs pages of `/workspace` and the home count here), PIDs, and the `/workspace` and home tmpfs sizes. `timeout_seconds_max` is the largest `limits.timeout_seconds` a run of this profile may have. A missing value takes the supervisor's current default. |
+| `devices` | Optional GPU access: host device nodes passed into the container. Only DRI render nodes (`/dev/dri/renderD*`) are accepted, without `/dev/dri/card*` (no display or modesetting); the container gets the device's group (`render`) as a supplementary group. Anything else stops the process at load. NVIDIA (`--gpus`) is out of the MVP: the executor host K17 has an Intel GPU only. |
 | `env` | Fixed variables for the sandbox's commands, set by the administrator. They are not secrets and are not shown to the model. The reserved names are refused at load. A node's `env` cannot override them (`400 reserved_env`). |
 
 ### Protocol
@@ -616,10 +618,11 @@ attempted and fails, if at all, with the service's own answer.
 |---|---|---|
 | Base | Image | `langgenius/dify-agent-local-sandbox:1.17.1` (Debian 12, glibc 2.36; shellctl, Python 3.12, Node, git) |
 | Blender | Image | The official 5.2.3 Linux x64 build at `/opt/blender` (SHA-256 checked), with its X11 and GL libraries; used with `-b` |
-| Renderer runtime | Image | Weston (`FS_RENDERER=pixman`), D-Bus, GTK 3 and Mesa libraries for the Flutter Linux bundle |
+| Renderer runtime | Image | Weston, D-Bus, GTK 3 and Mesa (Intel `iris` driver) for the Flutter Linux bundle. With the profile's render node the board renders with `FS_RENDERER=gl` (MSAA, the reference path on K17); without it, `pixman` |
+| GPU | Profile | K17's Intel Arc render node `/dev/dri/renderD128`: Weston gl for the board renderer, and EEVEE/Workbench in Blender `-b` through EGL |
 | Python tools | Image | A virtual environment `/opt/cv3d-venv` with the board tool's packages (numpy, scipy, trimesh, rtree, Pillow), because there is no egress |
 | colvalley-3d | Mount `/opt/colvalley-3d` | A prepared checkout pinned by commit on the executor host: LFS files, `flutter pub get`, the built Linux profile bundle and the precompiled scene importer (below) |
-| Limits | Profile | 4 CPUs, 12 GiB memory (4 GiB of it the `/workspace` tmpfs), 1024 PIDs, up to 3 hours |
+| Limits | Profile | 4 CPUs, 6 GiB memory (1.5 GiB of it the `/workspace` tmpfs), 1024 PIDs, up to 3 hours, one run at a time. K17 has 15 GiB and 8 CPUs shared with the whole trial, so this is the MVP ceiling; the first real modelling run measures the peak and the values are set from it (never below 2 GiB memory) |
 
 The board tool (`tools/board/render_board.sh`) today writes into the checkout: `out/board`, `out/board-cache`, and
 `dart run flutter_scene:import` in `app/`, which needs a writable `.dart_tool` and the Dart SDK. It needs these
