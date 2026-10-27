@@ -393,10 +393,19 @@ class AgentRun {
   /// Aborts what the `codex` loop has in flight besides the model call.
   void Function()? _onStop;
 
+  /// `run_started` held back until the official Codex runtime knows the
+  /// run's skills ([_runStarted]); written before any other event.
+  Map<String, Object?>? _heldRunStarted;
+
   /// The clock of prompt dates (`codex` style's environment context).
   DateTime _now() => DateTime.now();
 
   String get runId => record.runId;
+
+  /// `codex.skills_dirs` of the run's executor profile.
+  List<String> get _codexSkillsDirs =>
+      sandboxes?.profiles[request.executorProfile]?.codexSkillsDirs ?? const [];
+
   Stream<RunEvent> get events => _events.stream;
   Future<RunEvent> get done => _done.future;
   bool get isEnded => record.isEnded;
@@ -414,11 +423,24 @@ class AgentRun {
 
   void _emit(String event, Map<String, Object?> data) {
     if (record.isEnded) return;
+    if (event != 'run_started') _runStarted();
     _events.add(store.append(record, event, data));
+  }
+
+  /// Writes a held `run_started`, with [runtime] added to its `runtime`.
+  void _runStarted([Map<String, Object?> runtime = const {}]) {
+    final started = _heldRunStarted;
+    if (started == null) return;
+    _heldRunStarted = null;
+    _emit('run_started', {
+      ...started,
+      'runtime': {...?started['runtime'] as Map?, ...runtime},
+    });
   }
 
   void _finish(String event, Map<String, Object?> data) {
     if (record.isEnded) return;
+    _runStarted();
     final e = store.finish(record, event, data);
     _events.add(e);
     unawaited(_events.close());
@@ -472,7 +494,7 @@ class AgentRun {
 
   Future<void> _execute() async {
     final r = request;
-    _emit('run_started', {
+    final started = <String, Object?>{
       'model': {'provider': r.model.provider, 'name': r.model.name},
       'call_index_base': 0,
       'executor_profile': r.executorProfile,
@@ -497,7 +519,14 @@ class AgentRun {
             'reduced_fidelity': w.reducedFidelity,
           },
         },
-    });
+    };
+    // With profile skills the official runtime adds their names (Codex
+    // lists them once it runs).
+    if (r.officialCodex && _codexSkillsDirs.isNotEmpty) {
+      _heldRunStarted = started;
+    } else {
+      _emit('run_started', started);
+    }
     if (r.shell && !(sandboxes?.enabled ?? false)) {
       return _fail(
         'sandbox_unavailable',

@@ -38,6 +38,8 @@ class Harness {
   final http.Client client = http.Client();
   String _supervisorKey = testSupervisorKey;
   ExecutorProfiles? _profiles;
+  CodexRuntime _codexRuntime = CodexRuntime.port;
+  String? _codexGatewayUrl;
 
   Uri get base => Uri.parse('http://127.0.0.1:${service.port}');
 
@@ -50,6 +52,8 @@ class Harness {
     Uri? supervisorUrl,
     String supervisorKey = testSupervisorKey,
     ExecutorProfiles? profiles,
+    CodexRuntime codexRuntime = CodexRuntime.port,
+    String? codexGatewayUrl,
   }) async {
     final gateway = ScriptedGateway(
       calls: calls,
@@ -60,7 +64,9 @@ class Harness {
     final h = Harness._(gateway, newDataDir(), TestClock())
       ..supervisorUrl = supervisorUrl
       .._supervisorKey = supervisorKey
-      .._profiles = profiles;
+      .._profiles = profiles
+      .._codexRuntime = codexRuntime
+      .._codexGatewayUrl = codexGatewayUrl;
     await h._startService();
     return h;
   }
@@ -77,8 +83,10 @@ class Harness {
           : SupervisorClient(supervisorUrl!, _supervisorKey),
       profiles: _profiles,
       profileStatusTtl: Duration.zero,
-      // These suites test the Dart port; the official runtime has its own.
-      codexRuntime: CodexRuntime.port,
+      // These suites test the Dart port unless a test asks for the official
+      // runtime.
+      codexRuntime: _codexRuntime,
+      codexGatewayUrl: _codexGatewayUrl,
     );
     await service.start(address: '127.0.0.1', port: 0);
   }
