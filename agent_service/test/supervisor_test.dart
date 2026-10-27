@@ -366,6 +366,7 @@ void main() {
 
   SupervisorConfig config({
     String? statePath,
+    bool codexGateway = false,
     String pool = '10.213.0.0/16',
     ExecutorProfiles? profiles,
     DeviceInfo? Function(String)? device,
@@ -373,6 +374,7 @@ void main() {
     key: key,
     agentPeers: ['agent_service'],
     proxyPeer: 'agent_sandbox_proxy',
+    codexGateway: codexGateway,
     composeProject: 'proj',
     subnetPool: pool,
     dockerSocket: docker.socketPath,
@@ -395,6 +397,7 @@ void main() {
 
   Future<void> startSupervisor({
     String? statePath,
+    bool codexGateway = false,
     String pool = '10.213.0.0/16',
     ExecutorProfiles? profiles,
     DeviceInfo? Function(String)? device,
@@ -402,6 +405,7 @@ void main() {
     supervisor = SandboxSupervisor(
       config(
         statePath: statePath,
+        codexGateway: codexGateway,
         pool: pool,
         profiles: profiles,
         device: device,
@@ -1070,6 +1074,33 @@ void main() {
         contains(proxy),
       );
     });
+
+    test(
+      'the dedicated Codex endpoint is granted only to allowlist profiles',
+      () async {
+        docker.images.addAll([defaultImage, blenderImage]);
+        final configured = file(egress: 'allowlist');
+        (configured['profiles'] as Map)['default'] = {
+          'image': defaultImage,
+          'network': {'egress': 'none'},
+        };
+        await startSupervisor(
+          profiles: ExecutorProfiles.parse(configured),
+          codexGateway: true,
+        );
+        final allowed = await acquireWith('codex-fixture', 'colvalley-blender');
+        expect(
+          allowed['codex_gateway_url'],
+          'http://10.213.0.2:3128/inner/agent/codex/v1',
+        );
+        final isolated = await acquireWith('default-fixture', 'default');
+        expect(isolated.containsKey('codex_gateway_url'), false);
+        expect(
+          docker.endpoints(supervisor.containerName('default-fixture')).keys,
+          isNot(contains(proxy)),
+        );
+      },
+    );
 
     test(
       'a key keeps its profile: another profile is 409; an unknown one '

@@ -167,8 +167,14 @@ struct ServerAgentRuntime: AgentRuntime {
             // Identities are fixed across uncertain transport retries. Secrets are never persisted in the operation ledger.
             let scope = AgentModelScope(operationID: operation, generation: session.generation, execution: identity,
                 provider: soul.provider!, model: soul.model!, maxCalls: maxTurns, expiresAt: deadline, inputFileIDs: prompt.inputFileIDs,
-                endUserID: endUserID, modelParameters: soul.modelParameters, credentialReference: soul.json["model"]?["credential_ref"], durableOwner: routes.agentOwner, harnessStyle: soul.harnessStyle, modelWire: wire)
+                endUserID: endUserID, modelParameters: soul.modelParameters, credentialReference: soul.json["model"]?["credential_ref"], durableOwner: routes.agentOwner, harnessStyle: soul.harnessStyle, modelWire: wire,
+                outputTokenLimit: modelEnvelope["max_output_tokens"]?.int)
             let token = try await routes.agentModelScopes.activate(scope)
+            if soul.harnessStyle == "codex", wire == "responses" {
+                var model = body["model"]!.object!
+                model["run_token"] = .string(token)
+                body["model"] = .object(model)
+            }
             do {
                 try await admitted { try await routes.store.startAgentOperation(session: session, operation: operation,
                     digest: Self.operationDigest(body), tokenHash: Tokens.sha256(token), startedData: startedData.compactJSON(), maxConcurrent: routes.config.agentService.maxConcurrent) }
@@ -177,7 +183,7 @@ struct ServerAgentRuntime: AgentRuntime {
                     generation: session.generation, deadline: deadline, isAborted: context.isAborted)
                 try await routes.store.recordAgentRun(session: session, run: remote)
                 let activeSession = session
-                let trace = AgentTraceWriter(secrets: env.values.compactMap(\.string))
+                let trace = AgentTraceWriter(secrets: env.values.compactMap(\.string) + [token])
                 let terminal = try await service.result(run: remote, operation: operation, deadline: deadline,
                     expectedProfile: soul.executorProfile, expectedHarness: soul.harnessStyle == "codex" ? "codex" : nil,
                     expectedWire: soul.harnessStyle == "codex" ? wire : nil, generation: session.generation, isAborted: context.isAborted) { event, name, data in
@@ -306,6 +312,10 @@ struct ServerAgentRuntime: AgentRuntime {
     static func operationDigest(_ body: JSONObject) -> String {
         var projected = body
         projected["env"] = .object(JSONObject((body["env"]?.object ?? [:]).keys.map { ($0, JSONValue.string("[redacted]")) }))
+        if var model = projected["model"]?.object {
+            model["run_token"] = nil
+            projected["model"] = .object(model)
+        }
         return Tokens.sha256(JSONValue.object(projected).compactJSON())
     }
 
