@@ -12,7 +12,8 @@
 # Environment: E2E_IMAGE (agent service image; default: built from this tree as dify-sf-agent-service:e2e-<id> and
 # removed afterwards), E2E_BLENDER_IMAGE (default: dify-sf/sandbox-colvalley-blender:1, resolved to its digest),
 # E2E_DEFAULT_IMAGE (default langgenius/dify-agent-local-sandbox:1.17.1, resolved to its digest), E2E_RENDER_NODE
-# (default /dev/dri/renderD128), E2E_KEEP=DIR (keep the logs, events and the downloaded outputs there).
+# (default /dev/dri/renderD128), E2E_KEEP=DIR (keep the logs, events and the downloaded outputs there), TMPDIR (the
+# scratch directory's parent, default /var/tmp).
 #
 # It writes a profile file with `default` and `colvalley-blender`, starts agent_service, sandbox_supervisor and
 # agent_sandbox_proxy from the repository's docker-compose.yml under its own project (the profile file mounted
@@ -46,7 +47,7 @@ OWN_IMAGE=
 GATEWAY_IMAGE=dify-sf-e2e-gateway:$ID
 SERVICE_KEY=e2e-service-key-$ID
 SUPERVISOR_KEY=e2e-supervisor-key-$ID
-WORK=$(mktemp -d "/var/tmp/dify-sf-e2e-$ID.XXXX")
+WORK=$(mktemp -d "${TMPDIR:-/var/tmp}/dify-sf-e2e-$ID.XXXX")   # TMPDIR: a disk directory (big outputs never in /tmp)
 EXECUTION=E2E-$ID
 FILE_ID=$(python3 -I -c 'import uuid; print(uuid.uuid4())')
 
