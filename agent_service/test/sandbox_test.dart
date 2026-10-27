@@ -215,6 +215,49 @@ void main() {
     expect((s2['result'] as Map)['message'], contains('sbx1'));
   });
 
+  test('a resume after the container was replaced keeps a disk workspace: '
+      'no sandbox_error, files not materialized again', () async {
+    final (h, sup) = await startWithSandbox(
+      [
+        ScriptedCall.toolCall('c1', 'shell_run', {'script': 'true'}),
+        ScriptedCall.toolCall('q1', 'ask_human', {'question': 'Go on?'}),
+        ScriptedCall.toolCall('c2', 'shell_run', {'script': 'cat f.txt'}),
+        ScriptedCall.text('done'),
+      ],
+      files: {
+        'f1': {'size': 1, 'content': 'x'},
+      },
+    );
+    sup.diskWorkspaces = true;
+    final files = [
+      {'file_id': 'f1', 'path': 'f.txt'},
+    ];
+    final run1 = await h.startOperation(operation(shell: true, files: files));
+    final paused = ((await h.waitEnded(run1))['result'] as Map)
+        .cast<String, Object?>();
+    final sb1 = sup.sandboxOf('E1')!;
+    sb1.files['/workspace/f.txt'] = utf8.encode('changed by the agent');
+    await sup.sandboxes.remove('sbx1')!.close();
+    final run2 = await h.startOperation(
+      operation(
+        shell: true,
+        files: files,
+        resumeSequence: 1,
+        continuation: answer(paused, {}),
+      ),
+    );
+    final s2 = await h.waitEnded(run2);
+    expect(s2['status'], 'succeeded', reason: jsonEncode(s2));
+    expect(sup.created, ['sbx1', 'sbx2']);
+    final sb2 = sup.sandboxOf('E1')!;
+    expect(
+      sb2.runRequests.where((r) => '${r['script']}'.contains('base64 -d')),
+      isEmpty,
+    );
+    expect(utf8.decode(sb2.files['/workspace/f.txt']!), 'changed by the agent');
+    expect(((s2['result'] as Map)['snapshot'] as Map)['workspace_ref'], 'sbx2');
+  });
+
   test('DELETE releases the sandbox; a failed release answers 503 and is '
       'retried', () async {
     final (h, sup) = await startWithSandbox([

@@ -17,6 +17,7 @@ class FakeDocker {
   HttpServer? _server;
   final Map<String, Map<String, Object?>> containers = {};
   final Map<String, Map<String, Object?>> networks = {};
+  final Map<String, Map<String, Object?>> volumes = {};
 
   /// Image references present on this fake host.
   final Set<String> images = {'langgenius/dify-agent-local-sandbox:1.17.1'};
@@ -30,6 +31,9 @@ class FakeDocker {
 
   /// Container starts fail with HTTP 500.
   bool failStart = false;
+
+  /// A barrier after an inspect snapshot was captured, before replying.
+  Future<void> Function(String id)? afterContainerInspect;
   var _next = 0;
 
   Future<void> start() async {
@@ -191,6 +195,14 @@ class FakeDocker {
     final wanted = filtersText == null
         ? const <String>[]
         : ((jsonDecode(filtersText) as Map)['label'] as List).cast<String>();
+    final volumeFilter = filtersText == null
+        ? null
+        : ((jsonDecode(filtersText) as Map)['volume'] as List?)?.cast<String>();
+    bool usesVolume(Map c) =>
+        volumeFilter == null ||
+        ((c['Mounts'] as List?) ?? const []).any(
+          (m) => m is Map && volumeFilter.contains(m['Source']),
+        );
     switch ((request.method, segments.sublist(1))) {
       case ('GET', ['_ping']):
         return reply(200, 'OK');
@@ -207,6 +219,7 @@ class FakeDocker {
         return reply(200, [
           for (final c in containers.values)
             if (_matches((c['Config'] as Map)['Labels'] as Map, wanted) &&
+                usesVolume(c) &&
                 (!runningOnly || (c['State'] as Map)['Running'] == true))
               {
                 'Id': c['Id'],
@@ -225,13 +238,16 @@ class FakeDocker {
         if (net == null) return reply(404, {'message': 'network not found'});
         creates.add(payload);
         final id = 'c${++_next}'.padRight(64, 'f');
-        containers[id] = _container(
-          id,
-          name,
-          (payload['Labels'] as Map).cast<String, String>(),
-          payload['Env'] as List,
-          network: network,
-        )..['State'] = {'Running': false, 'Status': 'created'};
+        containers[id] =
+            _container(
+                id,
+                name,
+                (payload['Labels'] as Map).cast<String, String>(),
+                payload['Env'] as List,
+                network: network,
+              )
+              ..['State'] = {'Running': false, 'Status': 'created'}
+              ..['Mounts'] = (payload['HostConfig'] as Map)['Mounts'];
         final endpoint =
             ((payload['NetworkingConfig'] as Map)['EndpointsConfig']
                 as Map)[network];
@@ -254,9 +270,10 @@ class FakeDocker {
         return reply(204);
       case ('GET', ['containers', final id, 'json']):
         final c = _find(id);
-        return c == null
-            ? reply(404, {'message': 'no such container'})
-            : reply(200, c);
+        if (c == null) return reply(404, {'message': 'no such container'});
+        final snapshot = jsonDecode(jsonEncode(c));
+        await afterContainerInspect?.call(id);
+        return reply(200, snapshot);
       case ('DELETE', ['containers', final id]):
         final c = _find(id);
         if (c == null) return reply(404, {'message': 'no such container'});
@@ -264,6 +281,40 @@ class FakeDocker {
           _detach(n, c['Id'] as String);
         }
         containers.remove(c['Id']);
+        return reply(204);
+      case ('POST', ['volumes', 'create']):
+        final payload = (body as Map).cast<String, Object?>();
+        volumes[payload['Name'] as String] = {
+          'Name': payload['Name'],
+          'Driver': payload['Driver'],
+          'Options': payload['DriverOpts'],
+          'Labels': payload['Labels'],
+        };
+        return reply(201, volumes[payload['Name']]);
+      case ('GET', ['volumes']):
+        return reply(200, {
+          'Volumes': [
+            for (final v in volumes.values)
+              if (_matches(v['Labels'] as Map, wanted)) v,
+          ],
+        });
+      case ('GET', ['volumes', final name]):
+        final v = volumes[name];
+        return v == null
+            ? reply(404, {'message': 'no such volume'})
+            : reply(200, v);
+      case ('DELETE', ['volumes', final name]):
+        if (volumes[name] == null) {
+          return reply(404, {'message': 'no such volume'});
+        }
+        if (containers.values.any(
+          (c) => ((c['Mounts'] as List?) ?? const []).any(
+            (m) => m is Map && m['Source'] == name,
+          ),
+        )) {
+          return reply(409, {'message': 'volume is in use'});
+        }
+        volumes.remove(name);
         return reply(204);
       case ('GET', ['networks']):
         return reply(200, [
@@ -370,6 +421,7 @@ void main() {
     String pool = '10.213.0.0/16',
     ExecutorProfiles? profiles,
     DeviceInfo? Function(String)? device,
+    DiskWorkspaceConfig? disk,
   }) => SupervisorConfig(
     key: key,
     agentPeers: ['agent_service'],
@@ -393,6 +445,7 @@ void main() {
         (p) => p == '/dev/dri/renderD128'
             ? (group: 990, sysfs: '/sys/devices/pci0000:00/0000:00:02.0')
             : null,
+    disk: disk,
   );
 
   Future<void> startSupervisor({
@@ -401,6 +454,8 @@ void main() {
     String pool = '10.213.0.0/16',
     ExecutorProfiles? profiles,
     DeviceInfo? Function(String)? device,
+    DiskWorkspaceConfig? disk,
+    DiskWorkspaces Function(DockerClient)? disks,
   }) async {
     supervisor = SandboxSupervisor(
       config(
@@ -409,7 +464,9 @@ void main() {
         pool: pool,
         profiles: profiles,
         device: device,
+        disk: disk,
       ),
+      disks: disks,
     );
     await supervisor.start(address: '127.0.0.1', port: 0);
   }
@@ -1272,6 +1329,349 @@ void main() {
     });
   });
 
+  group('disk workspaces', () {
+    const image =
+        'langgenius/dify-agent-local-sandbox@sha256:'
+        'f4d404c9dcdf80bd72f65e84c3f2bbd1f3404fd4b363db837176da8aaf771b1d';
+    const tool =
+        'example/workspace-tools@sha256:'
+        '3333333333333333333333333333333333333333333333333333333333333333';
+    late FakeLoop loop;
+    late String root;
+    var boot = 'boot-1';
+
+    final profiles = ExecutorProfiles.parse({
+      'version': 1,
+      'profiles': {
+        'default': {'image': image},
+        'modelling': {
+          'image': image,
+          'network': {'egress': 'none'},
+          'workspace': {'backing': 'disk'},
+          // The deployment target: memory above the tmpfs home only.
+          'limits': {'memory_mb': 2048, 'home_mb': 512, 'workspace_mb': 1536},
+        },
+      },
+    });
+
+    DiskWorkspaceConfig diskConfig({int budgetMb = 4096}) =>
+        DiskWorkspaceConfig(
+          root: root,
+          hostRoot: '/srv/dify-sf/workspaces',
+          toolImage: tool,
+          devices: ['/dev/loop13'],
+          budgetMb: budgetMb,
+          minFreeMb: 1024,
+        );
+
+    Future<void> start({int budgetMb = 4096, String? statePath}) async {
+      final d = diskConfig(budgetMb: budgetMb);
+      await startSupervisor(
+        statePath: statePath,
+        profiles: profiles,
+        disk: d,
+        disks: (docker) => DiskWorkspaces(
+          d,
+          docker: docker,
+          helper: loop,
+          labelKey: 'dify-sf.test',
+          labelValue: 'unit',
+          namePrefix: 'dify-sf-sandbox-',
+          freeBytes: (_) async => 1 << 40,
+          bootId: () => boot,
+        ),
+      );
+    }
+
+    Future<(int, Map<String, Object?>)> acquireDisk(String key) => call(
+      'POST',
+      '/v1/sandboxes',
+      body: {'execution_key': key, 'profile': 'modelling'},
+    );
+
+    setUp(() {
+      docker.images.addAll([image, tool]);
+      loop = FakeLoop();
+      root = (Directory('${dir.path}/ws')..createSync()).path;
+      expect(Process.runSync('chmod', ['700', root]).exitCode, 0);
+      boot = 'boot-1';
+    });
+
+    test(
+      'disk root rejects access by other host users before Docker calls',
+      () async {
+        expect(Process.runSync('chmod', ['755', root]).exitCode, 0);
+        final before = docker.requests.length;
+        await expectLater(start(), throwsA(isA<SupervisorConfigError>()));
+        expect(docker.requests, hasLength(before));
+      },
+    );
+
+    test('disk root rejects a symbolic link before Docker calls', () async {
+      final link = Link('${dir.path}/ws-link')..createSync(root);
+      root = link.path;
+      final before = docker.requests.length;
+      await expectLater(start(), throwsA(isA<SupervisorConfigError>()));
+      expect(docker.requests, hasLength(before));
+    });
+
+    test('late delete with a stale inspection keeps the replacement network '
+        'and disk workspace', () async {
+      await start();
+      final (_, first) = await acquireDisk('E1');
+      final old = first['sandbox_id'] as String;
+      (docker.containers[old]!['State'] as Map)['Running'] = false;
+      final captured = Completer<void>();
+      final release = Completer<void>();
+      docker.afterContainerInspect = (id) async {
+        if (id != old) return;
+        docker.afterContainerInspect = null;
+        captured.complete();
+        await release.future;
+      };
+      final deleting = call('DELETE', '/v1/sandboxes/$old');
+      await captured.future.timeout(const Duration(seconds: 2));
+      late Map<String, Object?> replacement;
+      try {
+        final (status, value) = await acquireDisk('E1');
+        expect(status, 201);
+        replacement = value;
+      } finally {
+        release.complete();
+      }
+      expect((await deleting).$1, 200);
+      final current = replacement['sandbox_id'] as String;
+      expect(docker.containers.containsKey(current), isTrue);
+      expect(
+        docker.networks.values.any(
+          (n) => (n['Containers'] as Map).containsKey(current),
+        ),
+        isTrue,
+      );
+      expect(docker.volumes, hasLength(1));
+      expect(loop.bound, hasLength(1));
+      expect((await acquireDisk('E1')).$2['sandbox_id'], current);
+    });
+
+    test(
+      'a missing attached image keeps the lease and device for recovery',
+      () async {
+        await start();
+        final (_, value) = await acquireDisk('E1');
+        final disks = supervisor.disks!;
+        final lease = disks.leases().single;
+        final bound = Map.of(loop.bound);
+        File('$root/${lease.hash}/workspace.img').deleteSync();
+        expect(
+          (await call('DELETE', '/v1/sandboxes/${value['sandbox_id']}')).$1,
+          200,
+        );
+        expect(disks.leases().single.state, 'conflict');
+        expect(loop.bound, bound);
+        expect(docker.volumes, hasLength(1));
+        expect(File('$root/${lease.hash}/lease.json').existsSync(), isTrue);
+      },
+    );
+
+    test('the volume replaces the /workspace tmpfs, survives a replaced '
+        'container and goes with the sandbox', () async {
+      await start();
+      final (s1, a) = await acquireDisk('E1');
+      expect(s1, 201);
+      expect(a['workspace'], 'disk');
+      expect(a['workspace_kept_from'], isEmpty);
+      final host = docker.creates.last['HostConfig'] as Map;
+      expect((host['Tmpfs'] as Map).keys, ['/home/dify']);
+      expect(host['Memory'], 2048 * 1024 * 1024);
+      final volume = (host['Mounts'] as List).cast<Map>().single;
+      expect(volume['Type'], 'volume');
+      expect(volume['Target'], '/workspace');
+      final v = docker.volumes[volume['Source']]!;
+      expect(v['Options'], {
+        'type': 'ext4',
+        'device': '/dev/loop13',
+        'o': 'rw,nosuid,nodev',
+      });
+      expect((v['Labels'] as Map)['dify-sf.sandbox.workspace'], hasLength(64));
+      expect(loop.ops, ['prepare /dev/loop13']);
+      expect(loop.args.single, [
+        '${1536 * 1024 * 1024}',
+        '${1024 * 1024 * 1024}',
+        '1000',
+        '1000',
+      ]);
+
+      // Stopped: replaced, the workspace kept after re-verifying the device.
+      final first = a['sandbox_id'] as String;
+      (docker.containers[first]!['State'] as Map)['Running'] = false;
+      final (s2, b) = await acquireDisk('E1');
+      expect(s2, 201);
+      expect(b['sandbox_id'], isNot(first));
+      expect(b['workspace_kept_from'], [first]);
+      expect(loop.ops.last, 'attach /dev/loop13');
+      expect(docker.volumes.keys, [volume['Source']]);
+
+      // Removing the old ID again keeps the live sandbox's workspace.
+      expect((await call('DELETE', '/v1/sandboxes/$first')).$1, 200);
+      expect(docker.volumes, hasLength(1));
+
+      final (s3, _) = await call('DELETE', '/v1/sandboxes/${b['sandbox_id']}');
+      expect(s3, 200);
+      expect(docker.volumes, isEmpty);
+      expect(loop.ops.last, 'detach /dev/loop13');
+      expect(loop.bound, isEmpty);
+      expect(Directory(root).listSync(), isEmpty);
+    });
+
+    test(
+      'an exhausted budget or a busy pool is 503 before anything is '
+      'created; a device bound by someone else is never pre-empted',
+      () async {
+        await start(budgetMb: 3000);
+        final (s1, a) = await acquireDisk('E1');
+        expect(s1, 201);
+        final networks = docker.networks.length;
+        final (s2, j2) = await acquireDisk('E2');
+        expect((s2, j2['error']), (503, 'disk_budget_exceeded'));
+        expect(docker.networks, hasLength(networks));
+        expect(Directory(root).listSync(), hasLength(1));
+
+        expect(
+          (await call('DELETE', '/v1/sandboxes/${a['sandbox_id']}')).$1,
+          200,
+        );
+        loop.bound['/dev/loop13'] = (dev: 1, ino: 2);
+        final (s3, j3) = await acquireDisk('E3');
+        expect((s3, j3['error']), (503, 'disk_pool_busy'));
+        expect(loop.bound, {'/dev/loop13': (dev: 1, ino: 2)});
+        expect(Directory(root).listSync(), isEmpty);
+        expect(docker.volumes, isEmpty);
+        expect(docker.containers.keys, unorderedEquals([agent, proxy]));
+      },
+    );
+
+    test('a workspace whose device holds another file in the same boot is '
+        'not reused or detached; after a reboot it is re-attached', () async {
+      await start();
+      final (_, a) = await acquireDisk('E1');
+      final first = a['sandbox_id'] as String;
+      final own = loop.bound['/dev/loop13']!;
+      (docker.containers[first]!['State'] as Map)['Running'] = false;
+
+      // A reboot dropped the binding: re-attached, the files are kept.
+      loop.bound.clear();
+      boot = 'boot-2';
+      final (s1, b) = await acquireDisk('E1');
+      expect(s1, 201);
+      expect(b['workspace_kept_from'], [first]);
+      expect(loop.bound['/dev/loop13'], own);
+
+      // Same boot, the device now holds another file: stop.
+      (docker.containers[b['sandbox_id']]!['State'] as Map)['Running'] = false;
+      loop.bound['/dev/loop13'] = (dev: 9, ino: 9);
+      final (s2, j) = await acquireDisk('E1');
+      expect((s2, j['error']), (503, 'disk_workspace_conflict'));
+      expect(loop.bound['/dev/loop13'], (dev: 9, ino: 9));
+      expect(supervisor.disks!.leases().single.state, 'conflict');
+      expect(Directory(root).listSync(), hasLength(1));
+    });
+
+    test('restart: an interrupted creation is released, a paused workspace '
+        'without a sandbox stays', () async {
+      final state = '${dir.path}/state.json';
+      await start(statePath: state);
+      final (_, a) = await acquireDisk('E1');
+      // E1's container is gone (e.g. replaced and the supervisor died).
+      docker.containers.remove(a['sandbox_id']);
+      final disks = supervisor.disks!;
+      final paused = disks.leases().single.hash;
+      // A second execution crashed after the helper bound its image.
+      final hash = 'a' * 64;
+      Directory('$root/$hash').createSync();
+      File('$root/$hash/workspace.img').writeAsStringSync('x');
+      final id = (await DiskWorkspaces.statIdentity(
+        '$root/$hash/workspace.img',
+      ))!;
+      final lease = DiskLease(
+        hash: hash,
+        state: 'preparing',
+        sizeMb: 64,
+        device: '/dev/loop14',
+        volume: 'v',
+        bootId: boot,
+        dev: id.dev,
+        ino: id.ino,
+      );
+      File('$root/$hash/lease.json')
+          .writeAsStringSync(jsonEncode(lease.toJson()));
+      loop.bound['/dev/loop14'] = id;
+      await supervisor.stop();
+
+      await start(statePath: state);
+      expect(loop.bound.keys, ['/dev/loop13']);
+      expect(Directory('$root/$hash').existsSync(), isFalse);
+      expect(supervisor.disks!.leases().single.hash, paused);
+      expect(supervisor.disks!.leases().single.state, 'ready');
+      // The paused execution resumes on its workspace.
+      final (s, b) = await acquireDisk('E1');
+      expect(s, 201);
+      expect(b['workspace_kept_from'], [a['sandbox_id']]);
+    });
+
+    test('configuration: disk profiles need SANDBOX_DISK_*; only tmpfs '
+        'directories count against memory', () {
+      SupervisorConfig make(DiskWorkspaceConfig? d) => SupervisorConfig(
+        key: 'k',
+        agentPeers: ['a'],
+        profiles: profiles,
+        disk: d,
+      );
+      root = '/srv/ws';
+      expect(make(diskConfig()).disk!.devices, ['/dev/loop13']);
+      expect(
+        () => make(null),
+        throwsA(
+          isA<SupervisorConfigError>().having(
+            (e) => e.message,
+            'message',
+            contains('SANDBOX_DISK_ROOT'),
+          ),
+        ),
+      );
+      expect(
+        () => make(diskConfig(budgetMb: 1024)),
+        throwsA(isA<SupervisorConfigError>()),
+      );
+      final env = {
+        'SANDBOX_SUPERVISOR_KEY': 'k',
+        'SANDBOX_AGENT_PEERS': 'a',
+        'SANDBOX_DISK_ROOT': '/data/workspaces',
+        'SANDBOX_DISK_HOST_ROOT': '/srv/dify-sf/workspaces',
+        'SANDBOX_DISK_TOOL_IMAGE': tool,
+        'SANDBOX_DISK_LOOP_DEVICES': '/dev/loop13',
+        'SANDBOX_DISK_BUDGET_MB': '8192',
+      };
+      final d = SupervisorConfig.fromEnv(env).disk!;
+      expect(
+        (d.root, d.hostRoot, d.budgetMb, d.minFreeMb),
+        ('/data/workspaces', '/srv/dify-sf/workspaces', 8192, 1024),
+      );
+      for (final bad in [
+        {...env, 'SANDBOX_DISK_TOOL_IMAGE': 'tools:latest'},
+        {...env, 'SANDBOX_DISK_LOOP_DEVICES': '/dev/sda'},
+        {...env, 'SANDBOX_DISK_LOOP_DEVICES': '/dev/loop13,/dev/loop13'},
+        {...env, 'SANDBOX_DISK_HOST_ROOT': '/'},
+        {...env}..remove('SANDBOX_DISK_BUDGET_MB'),
+      ]) {
+        expect(
+          () => SupervisorConfig.fromEnv(bad),
+          throwsA(isA<SupervisorConfigError>()),
+          reason: '$bad',
+        );
+      }
+    });
+  });
+
   test('Ipv4Net', () {
     final pool = Ipv4Net.tryParse('10.213.0.0/16')!;
     expect('${pool.subnet(0, 28)}', '10.213.0.0/28');
@@ -1286,4 +1686,41 @@ void main() {
     expect(Ipv4Net.tryParse('10.0.0.256/8'), isNull);
     expect(Ipv4Net.tryParse('fd00::/8'), isNull);
   });
+}
+
+/// Loop devices in memory: device → bound image identity.
+class FakeLoop implements LoopHelper {
+  final Map<String, ({int dev, int ino})> bound = {};
+  final List<String> ops = [];
+  final List<List<String>> args = [];
+
+  @override
+  Future<LoopResult> run(
+    String hash,
+    String op,
+    String device,
+    ({int dev, int ino}) identity, [
+    List<String> args = const [],
+  ]) async {
+    ops.add('$op $device');
+    if (op == 'prepare') this.args.add(args);
+    final cur = bound[device];
+    LoopResult r(int code, String state) => (
+      exitCode: code,
+      out: {'state': state, 'dev': identity.dev, 'ino': identity.ino},
+    );
+    switch (op) {
+      case 'prepare' || 'attach':
+        if (cur == identity && op == 'attach') return r(0, 'attached');
+        if (cur != null) return r(3, 'busy');
+        bound[device] = identity;
+        return r(0, 'attached');
+      case 'detach':
+        if (cur == null) return r(0, 'free');
+        if (cur != identity) return r(5, 'other');
+        bound.remove(device);
+        return r(0, 'detached');
+    }
+    return r(2, 'unknown_op');
+  }
 }

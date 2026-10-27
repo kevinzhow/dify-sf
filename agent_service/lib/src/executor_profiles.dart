@@ -76,6 +76,11 @@ class ProfileLoadError implements Exception {
 
 enum Egress { none, allowlist }
 
+/// Where a profile's `/workspace` lives: a tmpfs charged to the memory
+/// limit, or a fixed-size ext4 image on the host's disk (see the supervisor's
+/// disk workspaces).
+enum WorkspaceBacking { tmpfs, disk }
+
 class ProfileMount {
   const ProfileMount(this.source, this.target);
   final String source;
@@ -115,6 +120,7 @@ class ExecutorProfile {
     this.devices = const [],
     this.limits = const ProfileLimits(),
     this.env = const {},
+    this.workspaceBacking = WorkspaceBacking.tmpfs,
   });
 
   final String name;
@@ -132,6 +138,9 @@ class ExecutorProfile {
   final List<String> devices;
   final ProfileLimits limits;
   final Map<String, String> env;
+
+  /// `workspace.backing`; the size stays `limits.workspace_mb`.
+  final WorkspaceBacking workspaceBacking;
 
   int get timeoutSecondsMax => limits.timeoutSecondsMax;
   int get maxTurnsMax => limits.maxTurnsMax;
@@ -240,6 +249,7 @@ class ExecutorProfiles {
       'devices',
       'limits',
       'env',
+      'workspace',
     }, where);
     final description = p['description'] ?? '';
     if (description is! String || description.length > 200) {
@@ -322,6 +332,19 @@ class ExecutorProfiles {
       devices.add(d);
     }
 
+    var backing = WorkspaceBacking.tmpfs;
+    if (p['workspace'] != null) {
+      final w = _obj(p['workspace'], '$where workspace');
+      _onlyKeys(w, const {'backing'}, '$where workspace');
+      backing = switch (w['backing'] ?? 'tmpfs') {
+        'tmpfs' => WorkspaceBacking.tmpfs,
+        'disk' => WorkspaceBacking.disk,
+        final other => throw ProfileLoadError(
+          '$where: workspace.backing must be "tmpfs" or "disk"; got ${jsonEncode(other)}',
+        ),
+      };
+    }
+
     var limits = const ProfileLimits();
     if (p['limits'] != null) {
       final l = _obj(p['limits'], '$where limits');
@@ -364,10 +387,16 @@ class ExecutorProfiles {
             integer('max_turns_max', 1, maxMaxTurnsMax) ?? defaultMaxTurnsMax,
       );
       final (m, w, h) = (limits.memoryMb, limits.workspaceMb, limits.homeMb);
-      if (m != null && w != null && h != null && w + h >= m) {
+      final disk = backing == WorkspaceBacking.disk;
+      if (m != null && w != null && h != null && w + h >= m && !disk) {
         // tmpfs pages are charged to the container's memory limit.
         throw ProfileLoadError(
           '$where: limits.workspace_mb + limits.home_mb must be below limits.memory_mb',
+        );
+      }
+      if (m != null && h != null && h >= m && disk) {
+        throw ProfileLoadError(
+          '$where: limits.home_mb must be below limits.memory_mb',
         );
       }
     }
@@ -403,6 +432,7 @@ class ExecutorProfiles {
       devices: List.unmodifiable(devices),
       limits: limits,
       env: Map.unmodifiable(env),
+      workspaceBacking: backing,
     );
   }
 

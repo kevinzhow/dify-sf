@@ -114,17 +114,21 @@ class DockerClient {
   }
 
   /// Containers carrying every label in [labels] (`key=value` or `key`), in
-  /// any state unless [runningOnly].
+  /// any state unless [runningOnly]; with [volume], only those using it.
   Future<List<Map<String, Object?>>> listContainers(
     List<String> labels, {
     bool runningOnly = false,
+    String? volume,
   }) async {
     final r = await send(
       'GET',
       '/containers/json',
       query: {
         'all': runningOnly ? '0' : '1',
-        'filters': jsonEncode({'label': labels}),
+        'filters': jsonEncode({
+          'label': labels,
+          if (volume != null) 'volume': [volume],
+        }),
       },
     );
     expect(r, {200}, 'list containers');
@@ -178,6 +182,91 @@ class DockerClient {
     if (r.status == 404) return false;
     expect(r, {204}, 'remove container');
     return true;
+  }
+
+  /// The container's stdout and stderr so far (multiplexed stream headers
+  /// stripped; containers without a TTY).
+  Future<String> logs(String id) async {
+    final uri = Uri(
+      scheme: 'http',
+      host: 'docker',
+      path: '/$dockerApiVersion/containers/$id/logs',
+      queryParameters: {'stdout': '1', 'stderr': '1'},
+    );
+    try {
+      final request = await _http.openUrl('GET', uri).timeout(timeout);
+      final response = await request.close().timeout(timeout);
+      final raw = <int>[];
+      await for (final chunk in response.timeout(timeout)) {
+        raw.addAll(chunk);
+      }
+      if (response.statusCode != 200) {
+        throw DockerException(
+          response.statusCode,
+          'container logs: ${utf8.decode(raw, allowMalformed: true)}',
+        );
+      }
+      return demux(raw);
+    } on TimeoutException {
+      throw DockerException(0, 'docker logs of $id timed out');
+    } on SocketException catch (e) {
+      throw DockerException(0, 'docker socket $socketPath: ${e.message}');
+    }
+  }
+
+  /// The payloads of a multiplexed attach/logs stream, concatenated.
+  static String demux(List<int> raw) {
+    final out = StringBuffer();
+    var i = 0;
+    while (i + 8 <= raw.length) {
+      final size =
+          (raw[i + 4] << 24) |
+          (raw[i + 5] << 16) |
+          (raw[i + 6] << 8) |
+          raw[i + 7];
+      final end = (i + 8 + size).clamp(0, raw.length);
+      out.write(utf8.decode(raw.sublist(i + 8, end), allowMalformed: true));
+      i = end;
+    }
+    return out.toString();
+  }
+
+  // ---- volumes ------------------------------------------------------------
+
+  Future<void> createVolume(Map<String, Object?> payload) async {
+    final r = await send('POST', '/volumes/create', body: payload);
+    expect(r, {201}, 'create volume');
+  }
+
+  /// The volume's inspect document, or null when it does not exist.
+  Future<Map<String, Object?>?> inspectVolume(String name) async {
+    final r = await send('GET', '/volumes/$name');
+    if (r.status == 404) return null;
+    expect(r, {200}, 'inspect volume');
+    return r.json;
+  }
+
+  /// Removes a volume; false when absent. A volume in use is refused by
+  /// Docker (409, thrown).
+  Future<bool> removeVolume(String name) async {
+    final r = await send('DELETE', '/volumes/$name');
+    if (r.status == 404) return false;
+    expect(r, {204}, 'remove volume');
+    return true;
+  }
+
+  /// Volumes carrying every label in [labels].
+  Future<List<Map<String, Object?>>> listVolumes(List<String> labels) async {
+    final r = await send(
+      'GET',
+      '/volumes',
+      query: {'filters': jsonEncode({'label': labels})},
+    );
+    expect(r, {200}, 'list volumes');
+    return [
+      for (final v in ((r.body as Map)['Volumes'] as List?) ?? const [])
+        (v as Map).cast<String, Object?>(),
+    ];
   }
 
   // ---- networks -----------------------------------------------------------
@@ -281,21 +370,9 @@ class DockerClient {
     await for (final chunk in response.timeout(timeout)) {
       raw.addAll(chunk);
     }
-    final out = StringBuffer();
-    var i = 0;
-    while (i + 8 <= raw.length) {
-      final size =
-          (raw[i + 4] << 24) |
-          (raw[i + 5] << 16) |
-          (raw[i + 6] << 8) |
-          raw[i + 7];
-      final end = (i + 8 + size).clamp(0, raw.length);
-      out.write(utf8.decode(raw.sublist(i + 8, end), allowMalformed: true));
-      i = end;
-    }
     final inspected = expect(await send('GET', '/exec/$execId/json'), {
       200,
     }, 'inspect exec');
-    return (inspected.json['ExitCode'] as int? ?? -1, out.toString());
+    return (inspected.json['ExitCode'] as int? ?? -1, demux(raw));
   }
 }

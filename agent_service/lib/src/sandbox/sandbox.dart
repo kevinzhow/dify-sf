@@ -38,6 +38,7 @@ class SandboxGrant {
     this.gateway,
     this.profile,
     this.codexGatewayUrl,
+    this.workspaceKeptFrom = const [],
   });
   final String sandboxId;
   final Uri url;
@@ -55,6 +56,10 @@ class SandboxGrant {
   /// The sandbox network's reserved gateway address (no host owns it when
   /// the network is set up as required); probed for host reachability.
   final String? gateway;
+
+  /// Earlier sandboxes of the execution whose disk workspace this one keeps
+  /// (the supervisor replaced a stopped container; the files are there).
+  final List<String> workspaceKeptFrom;
 }
 
 /// Client of the sandbox supervisor.
@@ -124,6 +129,10 @@ class SupervisorClient {
       codexGatewayUrl: j['codex_gateway_url'] is String
           ? Uri.parse(j['codex_gateway_url'] as String)
           : null,
+      workspaceKeptFrom: [
+        for (final id in (j['workspace_kept_from'] as List?) ?? const [])
+          if (id is String) id,
+      ],
     );
   }
 
@@ -719,7 +728,8 @@ class SandboxManager {
   /// The execution's sandbox, created on first use: probed before any
   /// command and, when new, with `files[]` materialized into the workspace.
   /// [expectedRef] is the snapshot's `workspace_ref`: a different sandbox
-  /// means the workspace was lost (`sandbox_error`).
+  /// means the workspace was lost (`sandbox_error`), unless the new one
+  /// keeps its disk workspace (`workspace_kept_from`).
   Future<ExecutionSandbox> open(
     OperationRequest request,
     InnerClient inner, {
@@ -759,7 +769,9 @@ class SandboxManager {
         );
       }
       store.setSandbox(executionId, grant.sandboxId);
-      if (expectedRef != null && expectedRef != grant.sandboxId) {
+      if (expectedRef != null &&
+          expectedRef != grant.sandboxId &&
+          !grant.workspaceKeptFrom.contains(expectedRef)) {
         throw SandboxFailure(
           'sandbox_error',
           'the workspace of this execution is gone: sandbox $expectedRef was '
@@ -802,7 +814,9 @@ class SandboxManager {
         _unavailable = false;
         sandbox.probed = true;
       }
-      if (grant.created) await _materialize(sandbox, request, inner);
+      if (grant.created && grant.workspaceKeptFrom.isEmpty) {
+        await _materialize(sandbox, request, inner);
+      }
       return sandbox;
     });
   }

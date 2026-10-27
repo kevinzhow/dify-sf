@@ -43,7 +43,10 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 
 import '../executor_profiles.dart';
+import 'disk_workspace.dart';
 import 'docker.dart';
+
+export 'disk_workspace.dart';
 
 /// The shellctl port of the sandbox image.
 const shellctlPort = 5004;
@@ -206,6 +209,7 @@ class SupervisorConfig {
     this.startTimeout = const Duration(seconds: 60),
     ExecutorProfiles? profiles,
     this.device = statDevice,
+    this.disk,
   }) : subnetPool = _pool(subnetPool),
        profiles = profiles ?? ExecutorProfiles.implicit() {
     if (agentPeers.isEmpty) {
@@ -216,11 +220,29 @@ class SupervisorConfig {
     }
     for (final p in this.profiles.profiles.values) {
       final l = limitsOf(p);
-      if (l.homeMb + l.workspaceMb >= l.memoryMb) {
-        // tmpfs pages are charged to the container's memory limit.
+      final diskBacked = p.workspaceBacking == WorkspaceBacking.disk;
+      // tmpfs pages are charged to the container's memory limit; a disk
+      // workspace is not.
+      final tmpfsMb = l.homeMb + (diskBacked ? 0 : l.workspaceMb);
+      if (tmpfsMb >= l.memoryMb) {
         throw SupervisorConfigError(
-          'profile ${p.name}: home_mb + workspace_mb (${l.homeMb} + '
-          '${l.workspaceMb}) must be below memory_mb (${l.memoryMb})',
+          diskBacked
+              ? 'profile ${p.name}: home_mb (${l.homeMb}) must be below '
+                    'memory_mb (${l.memoryMb})'
+              : 'profile ${p.name}: home_mb + workspace_mb (${l.homeMb} + '
+                    '${l.workspaceMb}) must be below memory_mb (${l.memoryMb})',
+        );
+      }
+      if (diskBacked && disk == null) {
+        throw SupervisorConfigError(
+          'profile ${p.name} has a disk workspace: SANDBOX_DISK_ROOT and the '
+          'other SANDBOX_DISK_* settings are required',
+        );
+      }
+      if (diskBacked && l.workspaceMb > disk!.budgetMb) {
+        throw SupervisorConfigError(
+          'profile ${p.name}: workspace_mb (${l.workspaceMb}) exceeds '
+          'SANDBOX_DISK_BUDGET_MB (${disk!.budgetMb})',
         );
       }
     }
@@ -296,6 +318,10 @@ class SupervisorConfig {
   /// Resolves a profile device on this host (default: [statDevice]).
   final DeviceInfo? Function(String path) device;
 
+  /// Disk workspaces (`SANDBOX_DISK_*`); required by profiles with
+  /// `workspace.backing: disk`.
+  final DiskWorkspaceConfig? disk;
+
   /// The image of [profile]: its pinned image, or [image] for the implicit
   /// `default`.
   String imageOf(ExecutorProfile profile) => profile.image ?? image;
@@ -366,6 +392,7 @@ class SupervisorConfig {
       for (final p in req('SANDBOX_AGENT_PEERS').split(','))
         if (p.trim().isNotEmpty) p.trim(),
     ];
+    final disk = DiskWorkspaceConfig.fromEnv(opt);
     final ExecutorProfiles profiles;
     try {
       profiles = ExecutorProfiles.load(
@@ -373,6 +400,8 @@ class SupervisorConfig {
         forbiddenSources: [
           opt('DOCKER_SOCKET') ?? '/var/run/docker.sock',
           ?opt('SANDBOX_STATE_FILE'),
+          ?disk?.root,
+          ?disk?.hostRoot,
         ],
       );
     } on ProfileLoadError catch (e) {
@@ -405,6 +434,7 @@ class SupervisorConfig {
       statePath: opt('SANDBOX_STATE_FILE'),
       startTimeout: Duration(seconds: intOf('SANDBOX_START_TIMEOUT', 60)),
       profiles: profiles,
+      disk: disk,
     );
     if (config.homeMb + config.workspaceMb >= config.memoryMb) {
       // tmpfs pages are charged to the container's memory limit.
@@ -427,12 +457,42 @@ class SupervisorError implements Exception {
 }
 
 class SandboxSupervisor {
-  SandboxSupervisor(this.config, {DockerClient? docker, this.log})
-    : docker = docker ?? DockerClient(config.dockerSocket);
+  SandboxSupervisor(
+    this.config, {
+    DockerClient? docker,
+    this.log,
+    DiskWorkspaces Function(DockerClient docker)? disks,
+  }) : docker = docker ?? DockerClient(config.dockerSocket) {
+    final d = config.disk;
+    if (disks != null) {
+      this.disks = disks(this.docker);
+    } else if (d != null) {
+      this.disks = DiskWorkspaces(
+        d,
+        docker: this.docker,
+        helper: DockerLoopHelper(
+          this.docker,
+          d,
+          labelKey: config.labelKey,
+          labelValue: config.labelValue,
+          namePrefix: config.namePrefix,
+        ),
+        labelKey: config.labelKey,
+        labelValue: config.labelValue,
+        namePrefix: config.namePrefix,
+        uid: config.uid,
+        gid: config.gid,
+        log: log,
+      );
+    }
+  }
 
   final SupervisorConfig config;
   final DockerClient docker;
   final void Function(String message)? log;
+
+  /// Disk workspaces; null without `SANDBOX_DISK_*`.
+  DiskWorkspaces? disks;
 
   final Random _random = Random.secure();
 
@@ -536,6 +596,7 @@ class SandboxSupervisor {
     required Ipv4Net subnet,
     ExecutorProfile? profile,
     Map<String, DeviceInfo> devices = const {},
+    String? workspaceVolume,
   }) {
     final c = config;
     final p = profile ?? c.profiles[defaultProfileName]!;
@@ -587,7 +648,7 @@ class SandboxSupervisor {
         'ReadonlyRootfs': true,
         'Tmpfs': {
           '/home/dify': tmpfs(limits.homeMb),
-          '/workspace': tmpfs(limits.workspaceMb),
+          if (workspaceVolume == null) '/workspace': tmpfs(limits.workspaceMb),
         },
         'CapDrop': ['ALL'],
         'SecurityOpt': ['no-new-privileges:true'],
@@ -601,6 +662,13 @@ class SandboxSupervisor {
               'Target': m.target,
               'ReadOnly': true,
               'BindOptions': {'Propagation': 'rprivate'},
+            },
+          if (workspaceVolume != null)
+            {
+              'Type': 'volume',
+              'Source': workspaceVolume,
+              'Target': '/workspace',
+              'VolumeOptions': {'NoCopy': true},
             },
         ],
         if (p.devices.isNotEmpty) ...{
@@ -638,6 +706,7 @@ class SandboxSupervisor {
   // ---- lifecycle ----------------------------------------------------------
 
   Future<int> start({Object address = '0.0.0.0', int? port}) async {
+    disks?.checkRoot();
     _loadState();
     await sweep();
     final server = _server = await HttpServer.bind(
@@ -660,6 +729,7 @@ class SandboxSupervisor {
   /// labels are never listed, so never touched.
   Future<List<String>> sweep() async {
     final removed = <String>[];
+    final removedHashes = <String>{};
     final present = <String>{};
     final keptNetworks = <String>{};
     for (final c in await docker.listContainers(config.sandboxFilters)) {
@@ -672,8 +742,11 @@ class SandboxSupervisor {
       }
       await docker.removeContainer(id);
       removed.add(id);
+      final hash = (c['Labels'] as Map?)?[executionLabel];
+      if (hash is String) removedHashes.add(hash);
       log?.call('sweep removed unknown sandbox $id');
     }
+    await disks?.sweep(removedHashes);
     for (final n in await docker.listNetworks(config.sandboxFilters)) {
       final name = n['Name'] as String;
       if (keptNetworks.contains(name) || keptNetworks.contains(n['Id'])) {
@@ -896,6 +969,12 @@ class SandboxSupervisor {
     if (await docker.inspectImage(config.imageOf(profile)) == null) {
       return 'image_missing';
     }
+    final disk = config.disk;
+    if (profile.workspaceBacking == WorkspaceBacking.disk &&
+        disk != null &&
+        await docker.inspectImage(disk.toolImage) == null) {
+      return 'image_missing';
+    }
     for (final d in profile.devices) {
       if (config.device(d) == null) return 'device_missing';
     }
@@ -906,11 +985,14 @@ class SandboxSupervisor {
   Future<Map<String, Object?>> acquire(
     String executionKey, {
     String profileName = defaultProfileName,
-  }) => _locked(executionKey, () async {
+  }) => _locked(hashKey(executionKey), () async {
     final profile = _profile(profileName);
     final withProxy = profile.egress == Egress.allowlist;
     final name = containerName(executionKey);
     final hash = hashKey(executionKey);
+    final disks = profile.workspaceBacking == WorkspaceBacking.disk
+        ? this.disks
+        : null;
     for (var attempt = 0; attempt < 3; attempt++) {
       final existing = await docker.inspectContainer(name);
       if (existing != null) {
@@ -943,10 +1025,16 @@ class SandboxSupervisor {
           _saveState();
           await _attachPeers(name, subnet, await _peers(withProxy: withProxy));
           final ready = await _waitHealthy(id);
-          return _describe(ready, subnet, created: false);
+          await disks?.addSandbox(hash, id);
+          return _describe(
+            ready,
+            subnet,
+            created: false,
+            keptFrom: disks?.keptFrom(hash, id),
+          );
         }
-        // Stopped (its tmpfs workspace is gone), unhealthy or without its
-        // network: replace it.
+        // Stopped (its tmpfs workspace is gone; a disk workspace stays),
+        // unhealthy or without its network: replace it.
         log?.call('replacing stopped sandbox $id');
         await _removeSandbox(id, name);
       }
@@ -964,7 +1052,18 @@ class SandboxSupervisor {
           );
       }
       final devices = {for (final d in profile.devices) d: config.device(d)!};
-      final subnet = await _createNetwork(name, hash);
+      // Before the network: a busy pool or budget answers without leftovers.
+      final workspace = await disks?.ensure(
+        hash,
+        config.limitsOf(profile).workspaceMb,
+      );
+      final Ipv4Net subnet;
+      try {
+        subnet = await _createNetwork(name, hash);
+      } catch (_) {
+        if (workspace?.fresh == true) await _releaseDisk(hash);
+        rethrow;
+      }
       String? id;
       try {
         if (peers.proxy case final proxy?) {
@@ -984,6 +1083,7 @@ class SandboxSupervisor {
             subnet: subnet,
             profile: profile,
             devices: devices,
+            workspaceVolume: workspace?.volume,
           ),
         );
         if (id == null) {
@@ -993,13 +1093,19 @@ class SandboxSupervisor {
         }
         _known[id] = hash;
         _saveState();
+        await disks?.addSandbox(hash, id);
         for (final a in peers.agents) {
           await docker.connectNetwork(name, a);
         }
         await docker.startContainer(id);
         final ready = await _waitHealthy(id);
         log?.call('created sandbox $id on $subnet');
-        return _describe(ready, subnet, created: true);
+        return _describe(
+          ready,
+          subnet,
+          created: true,
+          keptFrom: workspace?.keptFrom,
+        );
       } catch (e) {
         if (id != null) {
           await docker.removeContainer(id).catchError((_) => false);
@@ -1007,6 +1113,9 @@ class SandboxSupervisor {
           _saveState();
         }
         await _removeNetwork(name).catchError((_) => false);
+        // A new disk workspace goes with the failed sandbox; a kept one
+        // stays for the execution.
+        if (workspace?.fresh == true) await _releaseDisk(hash);
         rethrow;
       }
     }
@@ -1041,10 +1150,22 @@ class SandboxSupervisor {
     }
   }
 
+  /// Releases a disk workspace on a failure path (logged, never thrown).
+  Future<void> _releaseDisk(String hash) async {
+    try {
+      await disks?.release(hash);
+    } catch (e) {
+      log?.call('disk workspace $hash not released: $e');
+    }
+  }
+
+  /// [keptFrom]: a disk workspace, with the earlier sandboxes whose files it
+  /// keeps (`workspace_kept_from`).
   Map<String, Object?> _describe(
     Map<String, Object?> inspect,
     Ipv4Net subnet, {
     required bool created,
+    List<String>? keptFrom,
   }) {
     final id = inspect['Id'] as String;
     final env = ((inspect['Config'] as Map?)?['Env'] as List?) ?? const [];
@@ -1074,6 +1195,10 @@ class SandboxSupervisor {
       'gateway': subnet.host(gatewayHost),
       'created': created,
       'profile': profileOf(inspect),
+      if (keptFrom != null) ...{
+        'workspace': 'disk',
+        'workspace_kept_from': keptFrom,
+      },
       if (config.codexGateway &&
           config.profiles[profileOf(inspect)]?.egress == Egress.allowlist)
         'codex_gateway_url':
@@ -1099,18 +1224,55 @@ class SandboxSupervisor {
     final inspect = await docker.inspectContainer(sandboxId);
     if (inspect == null) {
       if (_known.remove(sandboxId) != null) _saveState();
+      // Its container is gone; its disk workspace goes unless another
+      // sandbox of the execution uses it (a retried or late removal).
+      final lease = disks?.leaseOfSandbox(sandboxId);
+      if (lease != null) {
+        await _locked(lease.hash, () async {
+          final users = await docker.listContainers([
+            ...config.sandboxFilters,
+            '$executionLabel=${lease.hash}',
+          ]);
+          if (users.isEmpty) await disks!.release(lease.hash);
+        });
+      }
       return false;
     }
     if (!_labelled(inspect)) {
       throw SupervisorError(404, 'not_found', 'no sandbox $sandboxId');
     }
     final id = inspect['Id'] as String;
-    final network =
-        (inspect['HostConfig'] as Map?)?['NetworkMode'] as String? ??
-        (inspect['Name'] as String? ?? '').replaceFirst('/', '');
-    final removed = await _removeSandbox(id, network);
-    log?.call('removed sandbox $id and its network');
-    return removed;
+    final hash =
+        ((inspect['Config'] as Map?)?['Labels'] as Map)[executionLabel]
+            as String;
+    return _locked(hash, () async {
+      // The initial inspection can precede a concurrent acquire that
+      // replaces this container and reuses its network name. Recheck the
+      // immutable container ID after taking the execution lock before
+      // removing any network or disk belonging to that execution.
+      final current = await docker.inspectContainer(id);
+      if (current == null) {
+        if (_known.remove(id) != null) _saveState();
+        final users = await docker.listContainers([
+          ...config.sandboxFilters,
+          '$executionLabel=$hash',
+        ]);
+        if (users.isEmpty) await disks?.release(hash);
+        return false;
+      }
+      if (!_labelled(current) ||
+          ((current['Config'] as Map?)?['Labels'] as Map?)?[executionLabel] !=
+              hash) {
+        throw SupervisorError(404, 'not_found', 'no sandbox $sandboxId');
+      }
+      final network =
+          (current['HostConfig'] as Map?)?['NetworkMode'] as String? ??
+          (current['Name'] as String? ?? '').replaceFirst('/', '');
+      final removed = await _removeSandbox(id, network);
+      log?.call('removed sandbox $id and its network');
+      await disks?.release(hash);
+      return removed;
+    });
   }
 
   Future<List<Map<String, Object?>>> list() async => [

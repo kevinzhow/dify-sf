@@ -358,6 +358,11 @@ class FakeSupervisor {
   /// Answer acquires with this status instead (e.g. 503).
   int? failAcquire;
 
+  /// Workspaces live on disk: a sandbox replacing a gone one of the same
+  /// key keeps its files and reports `workspace_kept_from`.
+  bool diskWorkspaces = false;
+  final Map<String, List<(String, FakeShellctl)>> _history = {};
+
   /// Answer deletes with this status instead.
   int? failDelete;
 
@@ -416,6 +421,11 @@ class FakeSupervisor {
           final s = FakeShellctl(token: 'tok-$id');
           configure?.call(s);
           await s.start();
+          final history = _history.putIfAbsent(k, () => []);
+          if (diskWorkspaces && history.isNotEmpty) {
+            s.files.addAll(history.last.$2.files);
+          }
+          history.add((id, s));
           sandboxes[id] = s;
           _idByKey[k] = id;
           created.add(id);
@@ -429,6 +439,13 @@ class FakeSupervisor {
           'created': isNew,
           if (reportProfile != '')
             'profile': reportProfile ?? body['profile'] ?? 'default',
+          if (diskWorkspaces) ...{
+            'workspace': 'disk',
+            'workspace_kept_from': [
+              for (final (old, _) in _history[k]!)
+                if (old != id) old,
+            ],
+          },
         });
       case ('DELETE', ['v1', 'sandboxes', final id]):
         deletes.add(id);
