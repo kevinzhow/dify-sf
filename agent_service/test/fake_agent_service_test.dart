@@ -156,6 +156,7 @@ void main() {
                     'renderer',
                 'status': blender,
                 'timeout_seconds_max': 10800,
+                'max_turns_max': 200,
                 'env': ['BLENDER', 'CV3D_PYTHON'],
               },
             ],

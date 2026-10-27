@@ -1,9 +1,10 @@
 /// `view_image` (a dify-sf extension; Dify's agent has no such tool): the
 /// model looks at an image file of its workspace. The file is uploaded to
 /// the Swift server as a file of the execution and attached, as a
-/// `dify-sf-file:<upload_id>` reference, to the model call that follows the
-/// tool result only. Later calls get the tool's text alone, so an image is
-/// never re-sent with every turn.
+/// `dify-sf-file:<upload_id>` reference, after the tool result. It stays in
+/// the conversation: every later model call sends the same history, so the
+/// request prefix stays byte-stable and the provider's prompt cache can
+/// serve it (docs/agent-v2.md, "Prompt cache").
 library;
 
 import 'dart:typed_data';
@@ -11,19 +12,26 @@ import 'dart:typed_data';
 /// Name of the tool.
 const viewImageToolName = 'view_image';
 
-/// Largest total size of the images attached to one model call (all
-/// `view_image` calls of one turn). The Swift gateway accepts at most 6 MiB
-/// of files per model request, task images included.
-const viewImageTurnBytes = 3 * 1024 * 1024;
+/// Largest total size of the viewed images kept in one conversation (every
+/// `view_image` of the execution, resumes and output retries included).
+/// Kept images are re-sent with every model call, and the Swift gateway
+/// accepts at most 6 MiB of files per model request: this half is for
+/// viewed images, the other half for the task's images.
+const viewImageConversationBytes = 3 * 1024 * 1024;
 
-/// Metadata key on the attached `MediaPart`: `{"path", "detail"}`.
+/// Metadata key on the attached `MediaPart`: `{"path", "detail", "size",
+/// "sha256"}`. A part without `size` comes from a snapshot taken before
+/// images were kept; it is never sent again.
 const viewImageMetadataKey = 'dify_sf_view_image';
 
 const viewImageDescription =
-    'Look at an image file in the workspace (PNG, JPEG or WebP, at most 3 MiB '
-    'per turn). The image is shown to you once, in your next step, and is not '
-    'kept in the conversation: call view_image again to look at it later. Use '
-    'it to check renders, plots and screenshots you made with the shell.';
+    'Look at an image file in the workspace (PNG, JPEG or WebP). The image is '
+    'attached after the result and stays in the conversation, so you can '
+    'refer back to it later; do not view the same image twice. All viewed '
+    'images together may have at most 3 MiB per conversation: view small '
+    'copies (for example a JPEG at most 1500 pixels on its longest side) '
+    'rather than large renders. Use it to check renders, plots and '
+    'screenshots you made with the shell.';
 
 const viewImageInputSchema = <String, Object?>{
   'type': 'object',

@@ -72,6 +72,8 @@ void main() {
       'completion_tokens': 12,
       'total_tokens': 42,
       'reasoning_tokens': 3,
+      'prompt_cache_hit_tokens': null,
+      'prompt_cache_miss_tokens': null,
     });
   });
 
@@ -90,6 +92,8 @@ void main() {
       'completion_tokens': 10,
       'total_tokens': 30,
       'reasoning_tokens': null,
+      'prompt_cache_hit_tokens': null,
+      'prompt_cache_miss_tokens': null,
     });
   });
 

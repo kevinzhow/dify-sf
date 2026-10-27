@@ -17,10 +17,11 @@
 ///  "snapshot_check": "envelope",            // or "full" (the real check), "none"
 ///  "health": {"status": "ok", "sandbox": "disabled"},
 ///  "profiles": [{"name": "default", "description": "…", "status": "ok",
-///                "timeout_seconds_max": 1800, "env": ["BLENDER"]}]}
+///                "timeout_seconds_max": 1800, "max_turns_max": 50,
+///                "env": ["BLENDER"]}]}
 ///                // GET /v1/profiles, health `profiles` and the checks of a
 ///                // shell operation (`env`: the names the profile sets).
-///                // Default: only `default` (1800 s), status `unavailable`
+///                // Default: only `default` (1800 s, 50 turns), status `unavailable`
 ///                // with sandbox `disabled`, else `ok`.
 ///
 /// <operation> = {
@@ -185,6 +186,7 @@ class FakeAgentService {
           'description': p['description'] ?? '',
           'status': p['status'] ?? (disabled ? 'unavailable' : 'ok'),
           'timeout_seconds_max': p['timeout_seconds_max'] ?? 1800,
+          'max_turns_max': p['max_turns_max'] ?? 50,
           'env': p['env'] ?? const <String>[],
         },
     ];
@@ -289,6 +291,7 @@ class FakeAgentService {
                   'description': p['description'],
                   'status': p['status'],
                   'timeout_seconds_max': p['timeout_seconds_max'],
+                  'max_turns_max': p['max_turns_max'],
                 },
             ],
           });
@@ -503,6 +506,7 @@ class FakeAgentService {
             ? null
             : (
                 timeoutSecondsMax: p['timeout_seconds_max'] as int,
+                maxTurnsMax: p['max_turns_max'] as int,
                 envNames: (p['env'] as List).cast<String>(),
               ),
         p?['status'] as String?,
@@ -631,6 +635,8 @@ class FakeAgentService {
     'completion_tokens': 0,
     'total_tokens': 0,
     'reasoning_tokens': null,
+    'prompt_cache_hit_tokens': null,
+    'prompt_cache_miss_tokens': null,
   };
 
   /// A plain success with a snapshot built from the request.
@@ -641,6 +647,8 @@ class FakeAgentService {
       'completion_tokens': 5,
       'total_tokens': 15,
       'reasoning_tokens': null,
+      'prompt_cache_hit_tokens': null,
+      'prompt_cache_miss_tokens': null,
     };
     final previous = op.continuation?.snapshot;
     final messages = <Map<String, Object?>>[

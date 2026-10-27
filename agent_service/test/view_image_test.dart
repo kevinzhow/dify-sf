@@ -112,8 +112,8 @@ void main() {
     expect(imageInfo(const <int>[]), isNull);
   });
 
-  test('the image goes to the next model call only, as a user message after '
-      'the tool message; later calls carry the tool text alone', () async {
+  test('the image follows the tool message as a user message and stays in '
+      'every later call: each request extends the previous one', () async {
     final image = png(1600, 900, size: 4096);
     final (h, sup) = await startViewing(
       [
@@ -154,8 +154,8 @@ void main() {
     expect(
       tool['content'],
       'The image out/board.png (image/png, 1600x900, 4096 bytes) is attached '
-      'after this result, for your next step only. It is not kept in the '
-      'conversation; call view_image again to look at it later.',
+      'after this result and stays in the conversation (4096 of '
+      '$viewImageConversationBytes bytes of viewed images used).',
     );
     expect(second.last, {
       'role': 'user',
@@ -173,14 +173,19 @@ void main() {
       ],
       'name': null,
     });
-    // Call 3: the same history without the image.
-    expect(imagePartsOf(h.gateway.llmRequests[2]), isEmpty);
+    // Call 3: call 2's messages unchanged, then the new turn.
     final third = messagesOf(h.gateway.llmRequests[2]);
-    expect(
-      third.where((m) => m['role'] == 'tool' && m['tool_call_id'] == 'c1'),
-      hasLength(1),
-    );
-    expect(third.where((m) => m['role'] == 'user'), hasLength(1)); // the task
+    expect(jsonEncode(third.sublist(0, second.length)), jsonEncode(second));
+    expect(imagePartsOf(h.gateway.llmRequests[2]), hasLength(1));
+    // The model_call events report the stable prefix.
+    final calls = (await h.events(run))
+        .where((e) => e.event == 'model_call')
+        .map((e) => e.data['prompt']);
+    expect(calls, [
+      {'messages': 2, 'prefix_stable': null, 'first_changed_message': null},
+      {'messages': 5, 'prefix_stable': true, 'first_changed_message': null},
+      {'messages': 7, 'prefix_stable': true, 'first_changed_message': null},
+    ]);
 
     // The snapshot keeps the reference, never the bytes.
     final snapshot = jsonEncode((status['result'] as Map)['snapshot']);
@@ -231,8 +236,9 @@ void main() {
   test(
     'problems are tool errors the model can act on; the run goes on',
     () async {
-      final big = png(4000, 4000, size: viewImageTurnBytes + 1);
-      final half = png(100, 100, size: viewImageTurnBytes ~/ 2 + 10);
+      final big = png(4000, 4000, size: viewImageConversationBytes + 1);
+      final half = png(100, 100, size: viewImageConversationBytes ~/ 2 + 10);
+      final half2 = png(100, 101, size: viewImageConversationBytes ~/ 2 + 10);
       final (h, _) = await startViewing(
         [
           toolCalls([
@@ -253,7 +259,7 @@ void main() {
           '/workspace/notes.png': utf8.encode('just some notes'),
           '/workspace/big.png': big,
           '/workspace/half1.png': half,
-          '/workspace/half2.png': half,
+          '/workspace/half2.png': half2,
           '/etc/shadow': [1, 2, 3],
         },
         symlinks: {'/workspace/link.png': '/etc/shadow'},
@@ -267,7 +273,10 @@ void main() {
       };
       expect(tools['c1'], contains('does not exist'));
       expect(tools['c2'], contains('is not a PNG, JPEG or WebP image'));
-      expect(tools['c3'], contains('at most $viewImageTurnBytes bytes'));
+      expect(
+        tools['c3'],
+        contains('at most $viewImageConversationBytes bytes together'),
+      );
       expect(tools['c4'], contains('outside the workspace'));
       expect(tools['c5'], isNotEmpty);
       expect(tools['c5'], contains('error'));
@@ -275,14 +284,15 @@ void main() {
       expect(imagePartsOf(h.gateway.llmRequests[1]), isEmpty);
       // Only the image of the second step that fits was uploaded.
       expect(h.gateway.uploads, hasLength(1));
-      // The second step: one image fits, the other exceeds the step's budget.
+      // The second step: one image fits, the other exceeds what is left of
+      // the conversation's budget.
       final second = {
         for (final m in messagesOf(h.gateway.llmRequests[2]))
           if (m['role'] == 'tool') m['tool_call_id']: m['content'] as String,
       };
       final errors = [
         for (final id in ['d1', 'd2'])
-          if (second[id]!.contains('already viewed in this step')) id,
+          if (second[id]!.contains('are used')) id,
       ];
       expect(errors, hasLength(1));
       expect(imagePartsOf(h.gateway.llmRequests[2]), hasLength(1));
@@ -333,33 +343,56 @@ void main() {
     );
   });
 
-  test('a resumed history never re-sends a viewed image', () async {
+  test('the same bytes are not attached twice and cost nothing', () async {
+    final image = png(20, 20, size: 1000);
+    final (h, _) = await startViewing(
+      [
+        ScriptedCall.toolCall('c1', 'view_image', {'path': 'a.png'}),
+        ScriptedCall.toolCall('c2', 'view_image', {'path': 'copy.png'}),
+        ScriptedCall.text('ok'),
+      ],
+      files: {'/workspace/a.png': image, '/workspace/copy.png': image},
+    );
+    final run = await h.startOperation(viewOp());
+    expect((await h.waitEnded(run))['status'], 'succeeded');
+    final tool = messagesOf(h.gateway.llmRequests[2])
+        .lastWhere((m) => m['role'] == 'tool');
+    expect(
+      tool['content'],
+      'The image copy.png has the same bytes as a.png, which is already in '
+      'the conversation; it is not attached again.',
+    );
+    expect(h.gateway.uploads, hasLength(1));
+    expect(imagePartsOf(h.gateway.llmRequests[2]), hasLength(1));
+  });
+
+  Message toolMessage(Map<String, Object?> meta) => Message(
+    role: Role.tool,
+    content: [
+      ToolResponsePart(
+        toolResponse: ToolResponse(
+          ref: 'c1',
+          name: 'view_image',
+          output: 'attached',
+          content: [
+            MediaPart(
+              media: Media(url: 'dify-sf-file:up1', contentType: 'image/png'),
+              metadata: {viewImageMetadataKey: meta},
+            ).toJson(),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  test('a resumed history sends kept images at the same place; parts of '
+      'snapshots from before images were kept are not sent', () async {
     final inner = InnerClient(
       baseUrl: Uri.parse('http://unused.invalid'),
       serviceKey: 'k',
       runToken: 't',
     );
     addTearDown(inner.close);
-    final toolMessage = Message(
-      role: Role.tool,
-      content: [
-        ToolResponsePart(
-          toolResponse: ToolResponse(
-            ref: 'c1',
-            name: 'view_image',
-            output: 'attached',
-            content: [
-              MediaPart(
-                media: Media(url: 'dify-sf-file:up1', contentType: 'image/png'),
-                metadata: {
-                  viewImageMetadataKey: {'path': 'a.png', 'detail': 'high'},
-                },
-              ).toJson(),
-            ],
-          ),
-        ),
-      ],
-    );
     final call = Message(
       role: Role.model,
       content: [
@@ -372,13 +405,19 @@ void main() {
       role: Role.user,
       content: [TextPart(text: 'go')],
     );
-    final last = await toPromptMessages([task, call, toolMessage], inner);
-    expect(last.last['role'], 'user');
-    expect((last.last['content'] as List).length, 2);
+    final kept = toolMessage({
+      'path': 'a.png',
+      'detail': 'high',
+      'size': 10,
+      'sha256': 'x',
+    });
+    final first = await toPromptMessages([task, call, kept], inner);
+    expect(first.last['role'], 'user');
+    expect((first.last['content'] as List).length, 2);
     final later = await toPromptMessages([
       task,
       call,
-      toolMessage,
+      kept,
       Message(
         role: Role.model,
         content: [TextPart(text: 'seen')],
@@ -388,6 +427,12 @@ void main() {
         content: [TextPart(text: 'Your previous output failed')],
       ),
     ], inner);
-    expect(jsonEncode(later), isNot(contains('dify-sf-file:up1')));
+    expect(jsonEncode(later.sublist(0, first.length)), jsonEncode(first));
+    final legacy = await toPromptMessages([
+      task,
+      call,
+      toolMessage({'path': 'a.png', 'detail': 'high'}),
+    ], inner);
+    expect(jsonEncode(legacy), isNot(contains('dify-sf-file:up1')));
   });
 }

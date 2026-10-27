@@ -172,6 +172,8 @@
               "message": "AgentLLMQuotaExceededError: Insufficient quota",
               "usage": {
                 "completion_tokens": 0,
+                "prompt_cache_hit_tokens": null,
+                "prompt_cache_miss_tokens": null,
                 "prompt_tokens": 0,
                 "reasoning_tokens": null,
                 "total_tokens": 0
@@ -204,6 +206,8 @@
             "message": "AgentLLMQuotaExceededError: Insufficient quota",
             "usage": {
               "completion_tokens": 0,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 0,
               "reasoning_tokens": null,
               "total_tokens": 0
@@ -242,6 +246,8 @@
             "message": "AgentLLMQuotaExceededError: Insufficient quota",
             "usage": {
               "completion_tokens": 0,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 0,
               "reasoning_tokens": null,
               "total_tokens": 0
