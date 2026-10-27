@@ -97,8 +97,12 @@ struct Routes: Sendable {
 
     /// Runs the handler in its own unstructured task: a client that hangs up (timeout, reset, retry) must not
     /// cancel work that is half-way through the database (a cancelled COMMIT is an uncertain commit).
-    func handle(_ req: Request, _ body: @escaping @Sendable () async throws -> Response) async -> Response {
+    func handle(_ req: Request, cancellable: Bool = false, _ body: @escaping @Sendable () async throws -> Response) async -> Response {
         do {
+            // Read-only streaming callbacks must observe a disconnected caller,
+            // including while awaiting upstream response headers. Mutating API
+            // handlers retain the existing commit protection below.
+            if cancellable { return try await body() }
             return try await Task { try await body() }.value
         } catch let e as ServerError {
             switch e {

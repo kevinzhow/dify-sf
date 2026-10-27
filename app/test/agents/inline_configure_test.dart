@@ -46,6 +46,42 @@ void main() {
     }
   }
 
+  testWidgets('harness choice is saved and switching to Dify removes the Codex plan tool', (t) async {
+    final f = Fixture();
+    addTearDown(f.changes.close);
+    f.api.write = (body) async => {...composerReply(), 'agent_soul': body['agent_soul']};
+    await mount(t, f);
+    final picker = find.byKey(const ValueKey('inline-agent-harness-style'));
+    expect(t.widget<DifySelect<String>>(picker).value, 'dify');
+    await t.tap(picker);
+    await t.pumpAndSettle();
+    await t.tap(find.text('Codex').last);
+    await t.pumpAndSettle();
+    expect(t.widget<DifySelect<String>>(picker).value, 'codex');
+    final plan = find.byKey(const ValueKey('inline-agent-update-plan'));
+    await t.tap(plan);
+    await t.pumpAndSettle();
+    expect(t.widget<DifySwitch>(plan).checked, isTrue);
+    await t.tap(find.byKey(const ValueKey('inline-agent-save')));
+    for (var i = 0; i < 4; i++) {
+      await t.runAsync(() => Future<void>.delayed(Duration.zero));
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect((f.api.requests.last), contains('"harness_style":"codex"'));
+    await t.tap(picker);
+    await t.pumpAndSettle();
+    await t.tap(find.text('Dify').last);
+    await t.pumpAndSettle();
+    expect(plan, findsNothing);
+    await t.tap(find.byKey(const ValueKey('inline-agent-save')));
+    for (var i = 0; i < 4; i++) {
+      await t.runAsync(() => Future<void>.delayed(Duration.zero));
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(f.api.requests.last, isNot(contains('"update_plan"')));
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+  });
   testWidgets('uncertain save preserves entered prompt and retries one exact request', (t) async {
     final f = Fixture();
     addTearDown(f.changes.close);

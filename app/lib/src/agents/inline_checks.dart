@@ -155,13 +155,19 @@ class InlineAgentChecks {
     return false;
   }
 
-  static bool hasUnsupported(Map<String, Object?> soul) => [
+  static bool hasUnsupported(Map<String, Object?> soul) =>
+      !const {'dify', 'codex'}.contains(soul['harness_style'] ?? 'dify') ||
+      (_mapPlan(soul) != null && (soul['harness_style'] != 'codex' || _mapPlan(soul) is! bool)) ||
+      [
+
     jsGet(soul['tools'], 'dify_tools'),
     jsGet(soul['tools'], 'cli_tools'),
     jsGet(soul['knowledge'], 'sets'),
     soul['config_skills'],
     jsGet(soul['human'], 'tools'),
   ].any((value) => value is List && value.isNotEmpty);
+
+  static Object? _mapPlan(Map<String, Object?> soul) => jsGet(soul['tools'], 'update_plan');
 
   static List<({String namespace, String key})> issues(
     Map<String, Object?>? soul, {

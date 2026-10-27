@@ -54,6 +54,12 @@
     "inline.progressStarted": "Agent を開始しています…",
     "inline.partialResult": "部分完了：呼び出し回数または時間の上限が近づいたため、Agent は現在の成果を提出しました。",
     "inline.cacheHitTokens": "プロンプトキャッシュヒット：{{count}} tokens",
-    "inline.unknownUsage": "不明"
+    "inline.unknownUsage": "不明",
+    "inline.harnessStyle": "Harness style",
+    "inline.harnessHint": "Agent の計画、ツール利用、作業の進め方を選びます。モデルの接続方式は設定済みのプロバイダーに応じて自動で選ばれます。",
+    "inline.updatePlan": "計画の更新を許可",
+    "inline.event.commentary": "Agent の報告",
+    "inline.event.plan": "計画",
+    "inline.event.model_retry": "モデル呼び出しを再試行"
   }
 }

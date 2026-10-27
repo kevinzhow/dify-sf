@@ -27,7 +27,7 @@ enum AgentTrace {
         let safe = redacted(.object(terminal ? JSONObject(data.filter { ["status", "error_type", "usage", "partial"].contains($0.key) }) : data), secrets: secrets)
         let key = "\(run):\(event)"
         let record: JSONValue = ["event_key": .string(key), "event": .string(name), "data": safe]
-        guard ["run_started", "thought", "tool_call", "model_call", "progress", "budget_notice", "error"].contains(name) else { return (record, nil) }
+        guard ["run_started", "thought", "tool_call", "model_call", "progress", "budget_notice", "commentary", "plan", "model_retry", "error"].contains(name) else { return (record, nil) }
         let label = name == "tool_call" ? (safe["name"]?.string ?? "Tool") : name
         let log: JSONValue = ["message_id": .string(key), "node_id": .string(node), "label": .string(label),
             "status": name == "error" ? "failed" : (data["phase"] == "started" ? "start" : "success"),
@@ -110,7 +110,7 @@ actor AgentTraceWriter {
     func record(routes: Routes, session: StoredAgentSession, run: String, event: Int, name: String, data: JSONObject) async throws {
         var next = reasoning
         var safe = AgentTrace.redacted(.object(data), secrets: secrets).object ?? [:]
-        if name == "thought", let text = data["text"]?.string { safe["text"] = .string(next.redact(text)) }
+        if ["thought", "commentary"].contains(name), let text = data["text"]?.string { safe["text"] = .string(next.redact(text)) }
         try await routes.recordAgentEvent(session: session, run: run, event: event, name: name, data: safe, secrets: [])
         reasoning = next
     }

@@ -475,6 +475,43 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   spacing: 20,
                   children: [
+                    _field(
+                      _a('inline.harnessStyle'),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: 8,
+                        children: [
+                          DifySelect<String>(
+                            key: const ValueKey('inline-agent-harness-style'),
+                            value: '${soul['harness_style'] ?? 'dify'}',
+                            disabled: _locked,
+                            semanticLabel: _a('inline.harnessStyle'),
+                            options: const [(value: 'dify', label: 'Dify'), (value: 'codex', label: 'Codex')],
+                            onChanged: (style) {
+                              _section('harness_style', style);
+                              if (style == 'dify' && _map(soul['tools']).containsKey('update_plan')) {
+                                _section('tools', {..._map(soul['tools'])}..remove('update_plan'));
+                              }
+                            },
+                          ),
+                          _text(_a('inline.harnessHint')),
+                        ],
+                      ),
+                    ),
+                    if (soul['harness_style'] == 'codex')
+                      _field(
+                        _a('inline.updatePlan'),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: DifySwitch(
+                            key: const ValueKey('inline-agent-update-plan'),
+                            checked: _map(soul['tools'])['update_plan'] == true,
+                            disabled: _locked,
+                            semanticLabel: _a('inline.updatePlan'),
+                            onCheckedChange: (enabled) => _section('tools', {..._map(soul['tools']), 'update_plan': enabled}),
+                          ),
+                        ),
+                      ),
                     if (_executors?.shellEnabled == true) _executorPicker(soul),
                     _field(
                       _a('inline.maxTurns'),

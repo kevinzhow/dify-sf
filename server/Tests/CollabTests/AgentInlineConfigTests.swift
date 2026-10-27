@@ -20,6 +20,17 @@ struct AgentInlineConfigTests {
         }
         #expect(throws: NodeDataError.self) { try AgentInlineConfig(["executor_profile": ["image": "arbitrary"]]) }
     }
+    @Test func harnessStyleIsPinnedAndPlanToolsCannotLeakIntoTheDefaultStyle() throws {
+        let original = try AgentInlineConfig([:])
+        #expect(original.harnessStyle == "dify" && !original.updatePlan)
+        #expect(original.json["harness_style"] == nil)
+        let codex = try AgentInlineConfig(["harness_style": "codex", "tools": ["update_plan": true]])
+        #expect(codex.harnessStyle == "codex" && codex.updatePlan)
+        for value in [["harness_style": "unknown"], ["harness_style": 1], ["tools": ["update_plan": true]],
+                      ["harness_style": "codex", "tools": ["update_plan": "yes"]]] as [JSONObject] {
+            #expect(throws: NodeDataError.self) { try AgentInlineConfig(value) }
+        }
+    }
     @Test func productConfigShapeAndExactModelProviderArePreserved() throws {
         var soul = AgentInlineConfig.empty
         soul["model"] = Self.model

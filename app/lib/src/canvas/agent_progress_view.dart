@@ -51,6 +51,9 @@ class AgentProgressView {
     if (!const {
       'run_started',
       'thought',
+      'commentary',
+      'plan',
+      'model_retry',
       'tool_call',
       'model_call',
       'progress',
@@ -75,8 +78,15 @@ class AgentProgressView {
     } else if (kind == 'model_call') {
       final index = data['call_index'];
       calls = index is int && index > 0 && index <= 1000 ? index : calls + 1;
-    } else if (kind == 'thought') {
+    } else if (kind == 'thought' || kind == 'commentary') {
       summary = bounded(data['text']);
+    } else if (kind == 'plan') {
+      final plan = data['plan'];
+      final steps = plan is List ? plan.map(map).toList() : const <Map<String, Object?>>[];
+      final active = steps.where((step) => step['status'] == 'in_progress');
+      summary = bounded(active.isNotEmpty ? active.first['step'] : data['explanation']);
+    } else if (kind == 'model_retry') {
+      summary = bounded(data['message']);
     } else if (kind == 'tool_call') {
       final name = bounded(data['name'], 64), input = map(data['input']);
       final command = bounded(input['script'] ?? input['command'], 120).split('\n').first;

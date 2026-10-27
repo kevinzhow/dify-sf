@@ -15,12 +15,26 @@ public struct AgentInlineConfig: Sendable {
     public var executorProfile: String
     /// Maximum model calls requested by this immutable node configuration.
     public var maxTurns: Int
+    public var harnessStyle: String
+    public var updatePlan: Bool
     public var askHuman: Bool { !contacts.isEmpty }
 
     public init(_ value: JSONObject, requireModel: Bool = false) throws {
         let allowed: Set<String> = ["schema_version", "prompt", "tools", "knowledge", "human", "env", "config_skills",
-            "config_files", "config_note", "sandbox", "memory", "model", "app_features", "app_variables", "misc_legacy", "executor_profile", "limits"]
+            "config_files", "config_note", "sandbox", "memory", "model", "app_features", "app_variables", "misc_legacy", "executor_profile", "limits", "harness_style"]
         guard Set(value.keys).isSubset(of: allowed) else { throw NodeDataError("Unknown agent config field") }
+        if let style = value["harness_style"] {
+            guard let name = style.string, ["dify", "codex"].contains(name) else {
+                throw NodeDataError("Unsupported agent harness style")
+            }
+            harnessStyle = name
+        } else { harnessStyle = "dify" }
+        if let plan = value["tools"]?["update_plan"] {
+            guard case .bool(let enabled) = plan, harnessStyle == "codex" else {
+                throw NodeDataError("Agent tools.update_plan requires the codex harness style")
+            }
+            updatePlan = enabled
+        } else { updatePlan = false }
         if let profile = value["executor_profile"] {
             guard let name = profile.string, name.isEmpty || Self.validExecutorProfile(name) else {
                 throw NodeDataError("Invalid agent executor profile name")
@@ -41,7 +55,7 @@ public struct AgentInlineConfig: Sendable {
             }
         }
         let sectionKeys: [String: Set<String>] = [
-            "prompt": ["system_prompt"], "tools": ["dify_tools", "cli_tools"], "knowledge": ["sets"],
+            "prompt": ["system_prompt"], "tools": ["dify_tools", "cli_tools", "update_plan"], "knowledge": ["sets"],
             "human": ["contacts", "tools"], "env": ["variables", "secret_refs"],
             "memory": ["scope", "budget", "artifacts"], "sandbox": ["provider", "config"]]
         for (name, keys) in sectionKeys {
@@ -112,6 +126,11 @@ public struct AgentInlineConfig: Sendable {
             throw NodeDataError("Agent model_settings must be an object")
         }
         modelParameters = selection?["model_settings"]?.object ?? [:]
+        if harnessStyle == "codex", let effort = modelParameters["reasoning_effort"] {
+            guard let effort = effort.string, ["none", "minimal", "low", "medium", "high", "xhigh", "max"].contains(effort) else {
+                throw NodeDataError("Unsupported reasoning effort for the codex harness style")
+            }
+        }
         contacts = try Self.objects(value["human"]?["contacts"], name: "human.contacts")
         for contact in contacts {
             let channel = contact["channel"]?.string ?? contact["method"]?.string ?? contact["contact_method"]?.string ?? "web_app"

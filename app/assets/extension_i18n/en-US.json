@@ -50,7 +50,13 @@
     "inline.progressStarted": "Agent is starting…",
     "inline.partialResult": "Partial result: the Agent submitted its current work as the call or time limit approached.",
     "inline.cacheHitTokens": "Prompt cache hits: {{count}} tokens",
-    "inline.unknownUsage": "Unknown"
+    "inline.unknownUsage": "Unknown",
+    "inline.harnessStyle": "Harness style",
+    "inline.harnessHint": "The style controls how the Agent plans, uses tools and continues its work. The model channel is selected automatically from the configured provider.",
+    "inline.updatePlan": "Allow plan updates",
+    "inline.event.commentary": "Agent update",
+    "inline.event.plan": "Plan",
+    "inline.event.model_retry": "Retrying model call"
   },
   "common": {
     "web.fontLoadFailed": "Some text could not be loaded. Reconnect and retry.",

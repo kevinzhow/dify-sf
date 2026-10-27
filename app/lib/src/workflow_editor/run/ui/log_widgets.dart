@@ -596,7 +596,10 @@ class _AgentLogItemState extends State<AgentLogItem> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
-    final label = '${item['label'] ?? ''}';
+    final event = (item['metadata'] as Map?)?['event'];
+    final label = const {'commentary', 'plan', 'model_retry'}.contains(event)
+        ? DifyI18n.tr('agent-v-2', 'inline.event.$event')
+        : '${item['label'] ?? ''}';
     final status = item['status'] == 'start' ? 'running' : item['status'] as String?;
     final metadata = item['metadata'] as Map?;
     final icon = metadata?['icon'];
