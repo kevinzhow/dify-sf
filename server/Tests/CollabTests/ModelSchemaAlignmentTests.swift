@@ -129,7 +129,7 @@ struct ModelSchemaAlignmentTests {
                     }
                     // Compare the wire representation: JSON serializes whole
                     // floating values as integers on both sides.
-                    let expectedRules = try JSONCoding.decode(JSONCoding.encode(.array(normalizedRules))).array ?? []
+                    let expectedRules = try JSONCoding.decode(JSONCoding.encode(JSON.array(normalizedRules))).array ?? []
                     #expect(parameters.status == 200 && parameters.data == expectedRules, "\(provider) \(parameters.text)")
                     // The editor runtime sees precisely the same original plugin schema.
                     let runtime = PluginDaemonModelRuntime(daemon: routes.providerPluginDaemon(), credentialsOf: { _, _, _ in [:] }, appId: nil)
