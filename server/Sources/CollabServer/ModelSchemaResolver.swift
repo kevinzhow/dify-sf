@@ -72,7 +72,7 @@ extension Routes {
         return await models.schemas.resolve(key) {
             do {
                 let runtime = PluginDaemonModelRuntime(daemon: daemon, credentialsOf: { _, _, _ in [:] }, appId: nil)
-                let input = try JSONValue.parse(Data(try JSONCoding.encode(.object(credentials))))
+                let input = try JSONValue.parse(Data(try JSONCoding.encode(JSON.object(credentials))))
                 guard let result = try await runtime.modelSchema(provider: provider, model: name, modelType: type, credentials: input.object ?? [:]) else { return .missing }
                 let raw = try JSONCoding.decode(Data(result.json.compactJSON().utf8))
                 guard raw["model_type"]?.string == type, let props = raw["model_properties"]?.object,
