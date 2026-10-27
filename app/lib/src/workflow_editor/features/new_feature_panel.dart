@@ -301,7 +301,14 @@ class FeatureCard extends StatelessWidget {
                   child: Row(
                     children: [
                       if (t is String)
-                        Flexible(child: DifyText(t, DifyType.systemSmSemibold, color: DifyColors.textSecondary))
+                        Flexible(
+                          child: DifyText(
+                            t,
+                            DifyType.systemSmSemibold,
+                            color: DifyColors.textSecondary,
+                            maxLines: null,
+                          ),
+                        )
                       else if (t is Widget)
                         Flexible(child: t),
                       if (tooltip != null)
