@@ -442,6 +442,22 @@ struct AgentCodexResponsesTests {
         let b: JSONObject = ["model": ["name": "fixture", "run_token": "fixture-temporary-two"], "env": [:]]
         #expect(ServerAgentRuntime.operationDigest(a) == ServerAgentRuntime.operationDigest(b))
     }
+
+    @Test func turnCompletionKeepsKnownUsageBeforeHTTPClosureWithoutCountingItTwice() async throws {
+        let scopes = AgentModelScopes(); var scope = AgentResponsesTests.scope(); scope.maxCalls = 2
+        let token = try await scopes.activate(scope)
+        let first = try await scopes.claimCodex(token: token)
+        let child = try await scopes.claimCodex(token: token)
+        let usage = LLMUsage(json: ["input_tokens": 20, "output_tokens": 3, "total_tokens": 23,
+            "input_tokens_details": ["cached_tokens": 12]])
+        await scopes.observeCodexUsage(usage, for: first)
+        await scopes.finish(first, usage: usage)
+        await scopes.observeCodexUsage(usage, for: child)
+        let total = await scopes.revoke(token: token) // Child HTTP body is still open.
+        #expect(total.totalTokens == 46 && total.cachedTokens == 24)
+        await scopes.finish(child, usage: usage)
+        #expect(await scopes.revoke(token: token).totalTokens == 0)
+    }
 }
 
 @Suite("Official Codex Responses route", .enabled(if: testDbHost != nil))

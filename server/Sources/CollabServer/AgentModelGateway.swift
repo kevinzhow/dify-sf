@@ -262,7 +262,9 @@ actor AgentModelScopes {
     func finish(_ claim: Claim, usage: LLMUsage?, succeeded: Bool = true) {
         guard var entry = entries[claim.digest],
               claim.codex ? entry.codexActive.contains(claim.index) : (entry.activeCall == claim.index && entry.activeAttempt == claim.attempt) else { return }
-        if let usage { entry.usage[claim.index] = entry.usage[claim.index].map { $0.plus(usage) } ?? usage }
+        if let usage {
+            entry.usage[claim.index] = claim.codex ? usage : (entry.usage[claim.index].map { $0.plus(usage) } ?? usage)
+        }
         if claim.codex {
             entry.codexActive.remove(claim.index)
             entry.tasks[claim.index] = nil
@@ -273,6 +275,14 @@ actor AgentModelScopes {
         entry.activeAttempt = nil
         entry.tasks[claim.index] = nil
         if entry.activeCall == claim.index { entry.activeCall = nil }
+        entries[claim.digest] = entry
+    }
+
+    /// Codex may finish its turn as soon as it reads response.completed,
+    /// before the provider closes HTTP. Revocation must already see that usage.
+    func observeCodexUsage(_ usage: LLMUsage, for claim: Claim) {
+        guard claim.codex, var entry = entries[claim.digest], entry.codexActive.contains(claim.index) else { return }
+        entry.usage[claim.index] = usage
         entries[claim.digest] = entry
     }
 

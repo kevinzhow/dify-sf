@@ -294,6 +294,13 @@ struct ServerAgentRuntime: AgentRuntime {
         if let models = routes.runtimeServices(appId: appID, userId: userID).models,
            let schema = try await models.modelSchema(provider: soul.provider!, model: soul.model!, modelType: "llm", credentials: credentials) {
             if let context = schema.json["model_properties"]?["context_size"]?.int, context > 0 { result["context_window"] = .int(context) }
+            if let efforts = schema.json["parameter_rules"]?.array?.first(where: { $0["name"] == "reasoning_effort" })?["options"]?.array,
+               !efforts.isEmpty, efforts.allSatisfy({ $0.string?.isEmpty == false }) {
+                result["reasoning_efforts"] = .array(efforts)
+            }
+            if let features = schema.features {
+                result["input_modalities"] = .array(features.contains("vision") ? ["text", "image"] : ["text"])
+            }
             if let output = schema.json["parameter_rules"]?.array?.first(where: {
                 ["max_tokens", "max_completion_tokens", "max_output_tokens"].contains($0["name"]?.string ?? "")
             })?["max"]?.int, output > 0 { result["max_output_tokens"] = .int(output) }
