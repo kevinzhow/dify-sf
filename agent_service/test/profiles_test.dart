@@ -465,6 +465,54 @@ void main() {
         );
       }
     });
+
+    test('codex.skills_dirs: normalized paths inside a mount target; absent '
+        'means no skills; part of the digest', () {
+      Map<String, Object?> withSkills(Object? codex) =>
+          profileFile({...blenderProfile(), 'codex': codex});
+      final p = parse(
+        withSkills({
+          'skills_dirs': [
+            '/opt/colvalley-3d/tools/skills',
+            '/opt/colvalley-3d',
+          ],
+        }),
+      )['colvalley-blender']!;
+      expect(p.codexSkillsDirs, [
+        '/opt/colvalley-3d/tools/skills',
+        '/opt/colvalley-3d',
+      ]);
+      final plain = parse(profileFile())['colvalley-blender']!;
+      expect(plain.codexSkillsDirs, isEmpty);
+      expect(p.digest, isNot(plain.digest));
+      final many = [for (var i = 0; i < 17; i++) '/opt/colvalley-3d/$i'];
+      for (final (Object? dirs, why) in [
+        ('/opt/colvalley-3d/tools/skills', 'a list of 1 to'),
+        (<Object?>[], 'a list of 1 to'),
+        (many, 'a list of 1 to'),
+        (['opt/colvalley-3d/tools/skills'], 'absolute path'),
+        (['/opt/colvalley-3d/../etc'], 'normalized'),
+        (['/opt/colvalley-3d/tools/skills/'], 'normalized'),
+        (['/opt/colvalley-3dx/skills'], 'inside a mount'),
+        (['/workspace/.agents/skills'], 'inside a mount'),
+        (['/opt'], 'inside a mount'),
+        (['/opt/colvalley-3d', '/opt/colvalley-3d'], 'repeats'),
+      ]) {
+        expect(
+          () => parse(withSkills({'skills_dirs': dirs})),
+          refused(why),
+          reason: '$dirs',
+        );
+      }
+      expect(
+        () => parse(withSkills({'skills_dir': <Object?>[]})),
+        refused('unknown fields skills_dir'),
+      );
+      expect(
+        () => parse(withSkills('/opt/colvalley-3d')),
+        refused('codex must be a JSON object'),
+      );
+    });
   });
 
   group('service', () {

@@ -278,6 +278,75 @@ class _OfficialCodexRun {
     );
   }
 
+  /// The profile's `codex.skills_dirs` as the sandbox resolves them (Codex
+  /// reports skills by their resolved paths); a missing one ends the run.
+  Future<List<String>> _skillsDirs(ExecutionSandbox sandbox) async {
+    final dirs = run._codexSkillsDirs;
+    if (dirs.isEmpty) return const [];
+    final out = await _controlOk(
+      sandbox,
+      [
+        for (final d in dirs)
+          'if [ -d ${shellQuote(d)} ]; then readlink -f -- ${shellQuote(d)}; '
+              'else echo; fi',
+      ].join('\n'),
+    );
+    final resolved = const LineSplitter().convert(out);
+    final mounts = [
+      for (final m
+          in run.sandboxes?.profiles[r.executorProfile]?.mounts ?? const [])
+        m.target,
+    ];
+    for (var i = 0; i < dirs.length; i++) {
+      final d = i < resolved.length ? resolved[i] : '';
+      if (!d.startsWith('/')) {
+        throw SandboxFailure(
+          'sandbox_error',
+          'the Codex skills directory ${dirs[i]} of executor profile '
+              '${r.executorProfile} is not a directory in the sandbox',
+        );
+      }
+      // Symlinks must not lead out of the read-only mounts.
+      if (!mounts.any((t) => d == t || d.startsWith('$t/'))) {
+        throw SandboxFailure(
+          'sandbox_error',
+          'the Codex skills directory ${dirs[i]} of executor profile '
+              '${r.executorProfile} resolves to $d, outside its mounts',
+        );
+      }
+    }
+    return resolved.take(dirs.length).toList();
+  }
+
+  /// Points Codex at the profile's skills (`skills/extraRoots/set`), lists
+  /// what it found for the workspace and writes the names into the held
+  /// `run_started`. Returns the paths of the other skills Codex found, which
+  /// the thread disables: a run offers exactly the profile's skills.
+  Future<List<String>> _loadSkills(
+    CodexAppServer server,
+    ExecutionSandbox sandbox,
+    List<String> dirs,
+  ) async {
+    if (dirs.isEmpty) return const [];
+    await server.request('skills/extraRoots/set', {'extraRoots': dirs});
+    final listed = await server.request('skills/list', {
+      'cwds': [sandbox.layout.workspaceDir],
+      'forceReload': true,
+    });
+    final s = codexSkillSelection(listed, dirs);
+    for (final e in s.errors) {
+      run.log?.call('run ${run.runId}: codex skill not loaded: $e');
+    }
+    if (s.others.isNotEmpty) {
+      run.log?.call(
+        'run ${run.runId}: codex skills outside the profile disabled: '
+        '${s.others.join(', ')}',
+      );
+    }
+    run._runStarted({'skills': s.names});
+    return s.others;
+  }
+
   /// Task files go into the workspace; images are given to Codex as local
   /// images (Codex inlines them as data URLs), other files by path.
   Future<List<Map<String, Object?>>> _input(ExecutionSandbox sandbox) async {
@@ -367,6 +436,7 @@ class _OfficialCodexRun {
     );
     _checkStopped();
 
+    final skillsDirs = await _skillsDirs(sandbox);
     final home = _home = '${sandbox.layout.homeDir}/.codex-runs/${run.runId}';
     await _controlOk(sandbox, 'mkdir -p -- ${shellQuote(home)}');
     final schema = r.outputSchema;
@@ -377,10 +447,12 @@ class _OfficialCodexRun {
         model: r.model.name,
         baseUrl: baseUrl,
         catalogPath: '$home/models.json',
+        workspace: sandbox.layout.workspaceDir,
         effort: r.reasoningEffort,
         shell: r.shell,
         viewImage: r.viewImage,
         updatePlan: r.updatePlan,
+        skills: skillsDirs.isNotEmpty,
         commandEnv: {
           'NO_PROXY': noProxy.isEmpty ? '' : noProxy[0],
           'no_proxy': noProxy.length < 2 ? '' : noProxy[1],
@@ -474,11 +546,18 @@ class _OfficialCodexRun {
       'capabilities': {'experimentalApi': true},
     });
     server.notify('initialized');
+    final disabledSkills = await _loadSkills(server, sandbox, skillsDirs);
     final thread = await server.request('thread/start', {
       'cwd': sandbox.layout.workspaceDir,
       'approvalPolicy': 'never',
       'sandbox': 'danger-full-access',
       'ephemeral': true,
+      if (disabledSkills.isNotEmpty)
+        'config': {
+          'skills.config': [
+            for (final p in disabledSkills) {'path': p, 'enabled': false},
+          ],
+        },
       'dynamicTools': [
         if (r.reportProgress)
           {

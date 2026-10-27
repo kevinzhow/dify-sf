@@ -61,6 +61,7 @@ void main() {
       model: 'deepseek-v4.1-flash',
       baseUrl: 'http://gw/inner/agent/codex/v1',
       catalogPath: '/home/dify/agent/.codex-runs/r/models.json',
+      workspace: '/workspace',
       effort: 'max',
       shell: true,
       viewImage: false,
@@ -86,6 +87,7 @@ void main() {
         model: 'm',
         baseUrl: 'u',
         catalogPath: 'c',
+        workspace: '/workspace',
         effort: 'ultra',
         shell: true,
         viewImage: true,
@@ -93,6 +95,154 @@ void main() {
       ),
       contains('multi_agent = true'),
     );
+    // Skills: the catalog only with the profile's skills; never bundled
+    // skills or the MCP-dependency install prompt.
+    expect(toml, contains('[skills]\ninclude_instructions = false\n'));
+    expect(toml, contains('[skills.bundled]\nenabled = false\n'));
+    expect(toml, contains('skill_mcp_dependency_install = false'));
+    final withSkills = codexConfigToml(
+      model: 'm',
+      baseUrl: 'u',
+      catalogPath: 'c',
+      workspace: '/workspace',
+      shell: true,
+      viewImage: true,
+      updatePlan: true,
+      skills: true,
+    );
+    expect(withSkills, contains('[skills]\ninclude_instructions = true\n'));
+    expect(withSkills, contains('[skills.bundled]\nenabled = false\n'));
+    expect(withSkills, contains('skill_mcp_dependency_install = false'));
+    // The workspace is an untrusted project (no project config.toml, hooks,
+    // exec policies or AGENTS.md from it), declared once, as the last table.
+    for (final t in [toml, withSkills]) {
+      expect(
+        t,
+        endsWith('\n[projects."/workspace"]\ntrust_level = "untrusted"\n'),
+      );
+      expect('[projects.'.allMatches(t), hasLength(1));
+    }
+  });
+
+  test('skills: the profile directories\' enabled skills by name, every '
+      'other skill Codex found to be disabled', () {
+    Map<String, Object?> skill(String name, String path, {bool on = true}) => {
+      'name': name,
+      'path': path,
+      'scope': 'user',
+      'enabled': on,
+    };
+    final s = codexSkillSelection(
+      {
+        'data': [
+          {
+            'cwd': '/workspace',
+            'skills': [
+              skill('render', '/opt/kit/tools/skills/render/SKILL.md'),
+              skill('board', '/opt/kit/tools/skills/board/SKILL.md'),
+              skill('off', '/opt/kit/tools/skills/off/SKILL.md', on: false),
+              skill('repo', '/workspace/.agents/skills/repo/SKILL.md'),
+              skill('home', '/home/dify/agent/.agents/skills/home/SKILL.md'),
+              skill('near', '/opt/kit/tools/skillsx/near/SKILL.md'),
+            ],
+            'errors': [
+              {'path': '/opt/kit/tools/skills/bad/SKILL.md', 'message': 'no'},
+            ],
+          },
+        ],
+      },
+      ['/opt/kit/tools/skills'],
+    );
+    expect(s.names, ['board', 'render']);
+    expect(s.others, [
+      '/workspace/.agents/skills/repo/SKILL.md',
+      '/home/dify/agent/.agents/skills/home/SKILL.md',
+      '/opt/kit/tools/skillsx/near/SKILL.md',
+    ]);
+    expect(s.errors, ['/opt/kit/tools/skills/bad/SKILL.md: no']);
+    expect(codexSkillSelection({'data': []}, ['/opt/kit']).names, isEmpty);
+  });
+
+  group('profile skills before Codex starts', () {
+    const image =
+        'dify-sf/sandbox@sha256:'
+        '1111111111111111111111111111111111111111111111111111111111111111';
+    Future<(Harness, String)> start(String resolved) async {
+      final profiles = ExecutorProfiles.parse({
+        'version': 1,
+        'profiles': {
+          'default': {
+            'image': image,
+            'mounts': [
+              {'source': '/srv/codex', 'target': '/opt/codex'},
+              {'source': '/srv/kit', 'target': '/opt/kit'},
+            ],
+            'codex': {
+              'skills_dirs': ['/opt/kit/tools/skills'],
+            },
+          },
+        },
+      });
+      final sup =
+          FakeSupervisor(
+              key: testSupervisorKey,
+              configure: (s) => s
+                ..onControl = ((script) async => script.contains('--version')
+                    ? (
+                        0,
+                        'version codex-cli $officialCodexVersion\n'
+                            'sha256 $officialCodexSha256\n',
+                      )
+                    : null)
+                ..onJob = (script) => FakeJobSpec(
+                  output: script.contains('debug models --bundled')
+                      ? '{"models": []}'
+                      : script.contains('readlink -f')
+                      ? resolved
+                      : '\n\n',
+                ),
+            )
+            ..profiles = {
+              for (final p in profiles.profiles.values)
+                p.name: {'status': 'ok', 'digest': p.digest},
+            };
+      await sup.start();
+      final h = await Harness.start(
+        supervisorUrl: sup.url,
+        profiles: profiles,
+        codexRuntime: CodexRuntime.official,
+        codexGatewayUrl: 'http://gw/inner/agent/codex/v1',
+      );
+      addTearDown(() async {
+        await h.close();
+        await sup.close();
+      });
+      return (h, await h.startOperation(codexOp()));
+    }
+
+    for (final (resolved, message) in [
+      ('\n', 'is not a directory in the sandbox'),
+      (
+        '/home/dify/agent/skills\n',
+        'resolves to /home/dify/agent/skills, '
+            'outside its mounts',
+      ),
+    ]) {
+      test('a skills directory that ${message.split(',').first} ends the run '
+          'sandbox_error; the held run_started comes first', () async {
+        final (h, run) = await start(resolved);
+        final status = await h.waitEnded(run);
+        expect(status['status'], 'failed', reason: jsonEncode(status));
+        final result = status['result'] as Map;
+        expect(result['error_type'], 'sandbox_error');
+        expect(result['message'], contains(message));
+        final events = await h.events(run);
+        expect(events.map((e) => e.event), ['run_started', 'failed']);
+        final runtime = events.first.data['runtime'] as Map;
+        expect(runtime['version'], officialCodexVersion);
+        expect(runtime.containsKey('skills'), isFalse);
+      });
+    }
   });
 
   group('catalog entry', () {

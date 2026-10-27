@@ -220,7 +220,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 
 | `event` | `data` |
 |---|---|
-| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style", "model_wire"?, "runtime"?}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex`; with the official Codex runtime `model_wire.wire` is `responses` and `runtime` is `{"name": "codex-cli", "version": "0.163.0", "sha256"}` (see [Codex runtime](#codex-runtime)) |
+| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style", "model_wire"?, "runtime"?}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex`; with the official Codex runtime `model_wire.wire` is `responses` and `runtime` is `{"name": "codex-cli", "version": "0.163.0", "sha256", "skills"?}`; `skills` (names, sorted) when the profile declares `codex.skills_dirs`, and then `run_started` is written once Codex has listed them, still before any other event (see [Codex runtime](#codex-runtime)) |
 | `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB of UTF-8 is split into several, cut only between code points |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
 | `model_call` | `{"invocation_id", "usage", "prompt"}` after each model call; `prompt` is `{"messages", "prefix_stable", "first_changed_message"}` (see [Prompt cache](#prompt-cache)). Not emitted by the official Codex runtime: the Swift server records those calls from its gateway |
@@ -537,13 +537,31 @@ binary ends the run `sandbox_error`.
 `config.toml` (provider `difysf`: `base_url` = the Codex entry, `wire_api = "responses"`, `env_key =
 "DIFYSF_RUN_TOKEN"`, `supports_websockets = false`; `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`
 (the container is the sandbox), `web_search = "disabled"`; `shell_environment_policy` without Codex's KEY/SECRET/TOKEN
-filter but excluding `DIFYSF_RUN_TOKEN` and `SHELLCTL_*`; request_user_input, skills, goals, apps, plugins, memories,
-image generation and analytics off; `instant_interrupt = false`, so input sent during a turn waits for the next model
-request instead of discarding a response the gateway already counted), `models.json` (`model_catalog_json`: one entry,
+filter but excluding `DIFYSF_RUN_TOKEN` and `SHELLCTL_*`; request_user_input, skills (unless the profile declares
+them, below), bundled skills, the skill MCP-dependency install prompt, goals, apps, plugins, memories, image generation
+and analytics off; `instant_interrupt = false`, so input sent during a turn waits for the next model
+request instead of discarding a response the gateway already counted; `[projects."/workspace"] trust_level = "untrusted"`:
+Codex would otherwise trust its cwd at `thread/start` (danger-full-access) and load `/workspace/.codex/config.toml`,
+its hooks and exec policies and `/workspace/AGENTS.md`, which an earlier operation of the execution may have written
+(a planted `shell_environment_policy` handed the run token to the commands); untrusted, none of them is read, and the
+provider, sandbox, approval and skill settings come only from this file and `thread/start`), `models.json` (`model_catalog_json`: one entry,
 see below) and `AGENTS.md` = the node's `system_prompt` (Codex puts it in its `# AGENTS.md instructions` user message).
 The base URL is the grant's `codex_gateway_url` (the supervisor gives it only to profiles with network egress
 `allowlist`; without it the run ends `sandbox_unavailable`), else `AGENT_CODEX_GATEWAY_URL` (local tests). Codex runs
 with `NO_PROXY=*` (it calls the gateway route directly); the commands it runs keep the sandbox's own `NO_PROXY`.
+
+**Skills.** A profile may declare `"codex": {"skills_dirs": ["/opt/colvalley-3d/tools/skills"]}` (see [Executor
+profiles](#executor-profiles)); without it skills stay off. Codex 0.163.0 reads a skill from `<dir>/<name>/SKILL.md`
+with YAML front matter between `---` lines: `description` required, `name` optional (default: the directory name, at
+most 64 characters). At run start agent_service resolves each directory in the sandbox (`readlink -f`; missing, or
+resolved outside the profile's mounts: `sandbox_error`), sets `skills.include_instructions = true`, sends
+`skills/extraRoots/set` with the directories and `skills/list` for `/workspace`, and starts the thread with every other
+skill Codex found (`/workspace/.agents/skills`, `/workspace/.codex/skills`, the home's `.agents/skills`) disabled
+through `thread/start`'s `config` (`skills.config` path rules), so a run offers exactly the profile's skills. Codex
+puts them in a `<skills_instructions>` developer message (name, description, path; the model reads `SKILL.md` with
+its shell). Skills add no tool, network or approval: there are no approvals (`approval_policy = "never"`), and the
+MCP-dependency prompt is off. Skills whose `SKILL.md` Codex could not parse are logged and left out;
+`run_started.runtime.skills` lists the names offered.
 
 **Catalog entry.** Codex's bundled catalog is read from the binary (`codex debug models --bundled`). The entry is the
 one Codex itself would pick (longest slug prefix, then after one `namespace/` segment), else `gpt-6-astra` for
@@ -1050,6 +1068,7 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
 | `limits` | `cpus`, `memory_mb` (the tmpfs pages of `/workspace` and the home count here; `workspace_mb + home_mb` must be below it, `home_mb` alone with a disk workspace), `pids`, `workspace_mb`, `home_mb`. `timeout_seconds_max` (1..86400, default 1800) is the largest `limits.timeout_seconds` a run of this profile may have. `max_turns_max` (1..1000, default 50) is the largest `limits.max_turns`. Another missing value takes the supervisor's current default (`SANDBOX_*`). |
 | `devices` | Optional GPU access: host device nodes passed into the container (`Devices`, `rw`). Only DRI render nodes (`/dev/dri/renderD<n>`) are accepted, without `/dev/dri/card*` (no display or modesetting); the container gets the node's group ID on the host (K17: `render`, 990) as a supplementary group (`GroupAdd`), and the Landlock paths of the [Sandbox](#sandbox) table. The supervisor reads the group with `stat` and the GPU's sysfs directory from `/sys/dev/char`, so a containerized supervisor needs `/dev/dri` bound read-only (it opens nothing there). Anything else stops the process at load. NVIDIA (`--gpus`) is out of the MVP: the executor host K17 has an Intel GPU only. |
 | `env` | Fixed variables for the sandbox's commands, set by the administrator. They are not secrets and are not shown to the model. The reserved names are refused at load. A node's `env` cannot override them (`400 reserved_env`, compared case-insensitively). The agent service adds them to every shell job under the node's `env`; they are not in the container's environment. |
+| `codex` | Optional `{"skills_dirs": [<path>, …]}` (1 to 16): directories in the sandbox, each a mount target or inside one, normalized, no repeats, whose skills the official Codex runtime offers (see [Codex runtime](#codex-runtime)). Absent: no Codex skills. Ignored by the other runtimes. |
 | `description` | Optional, at most 200 characters; shown by `GET /v1/profiles`. |
 
 ### Protocol

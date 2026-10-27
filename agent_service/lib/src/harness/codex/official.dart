@@ -65,10 +65,12 @@ String codexConfigToml({
   required String model,
   required String baseUrl,
   required String catalogPath,
+  required String workspace,
   String? effort,
   required bool shell,
   required bool viewImage,
   required bool updatePlan,
+  bool skills = false,
   Map<String, String> commandEnv = const {},
 }) {
   final b = StringBuffer()
@@ -113,8 +115,10 @@ String codexConfigToml({
     ..writeln('[tools.update_plan]')
     ..writeln('enabled = $updatePlan')
     ..writeln()
+    // The catalog of the profile's skills (`codex.skills_dirs`); none
+    // bundled.
     ..writeln('[skills]')
-    ..writeln('include_instructions = false')
+    ..writeln('include_instructions = $skills')
     ..writeln()
     ..writeln('[skills.bundled]')
     ..writeln('enabled = false')
@@ -128,6 +132,7 @@ String codexConfigToml({
     ..writeln('remote_plugin = false')
     ..writeln('image_generation = false')
     ..writeln('memories = false')
+    ..writeln('skill_mcp_dependency_install = false')
     // Input sent during a turn (the near-budget notice) waits for the next
     // model request instead of discarding a response the gateway counted.
     ..writeln('instant_interrupt = false')
@@ -142,8 +147,43 @@ String codexConfigToml({
     ..writeln('enabled = false')
     ..writeln()
     ..writeln('[history]')
-    ..writeln('persistence = "none"');
+    ..writeln('persistence = "none"')
+    ..writeln()
+    // The workspace is an untrusted project: no project config, hooks, exec
+    // policies or AGENTS.md from it (a previous operation may have written
+    // them); Codex would otherwise trust it at thread/start.
+    ..writeln('[projects.${tomlString(workspace)}]')
+    ..writeln('trust_level = "untrusted"');
   return b.toString();
+}
+
+/// The skills of a run, from Codex's `skills/list` answer for the
+/// workspace: [names] are the enabled skills whose `SKILL.md` lies in one of
+/// the profile's [dirs] (sorted); [others] are the paths of every other
+/// enabled skill Codex found (the workspace's `.agents/skills` and
+/// `.codex/skills`, the home's `.agents/skills`), which the run disables;
+/// [errors] are the `SKILL.md` files Codex could not load.
+({List<String> names, List<String> others, List<String> errors})
+codexSkillSelection(Map<String, Object?> listed, List<String> dirs) {
+  final names = <String>{};
+  final others = <String>[];
+  final errors = <String>[];
+  for (final entry in (listed['data'] as List?) ?? const []) {
+    if (entry is! Map) continue;
+    for (final s in (entry['skills'] as List?) ?? const []) {
+      if (s is! Map || s['enabled'] != true) continue;
+      final path = '${s['path']}';
+      if (dirs.any((d) => path.startsWith('$d/'))) {
+        names.add('${s['name']}');
+      } else if (!others.contains(path)) {
+        others.add(path);
+      }
+    }
+    for (final e in (entry['errors'] as List?) ?? const []) {
+      if (e is Map) errors.add('${e['path']}: ${e['message']}');
+    }
+  }
+  return (names: names.toList()..sort(), others: others, errors: errors);
 }
 
 /// Codex's `model_info_from_slug` (fallback metadata), as catalog JSON.
