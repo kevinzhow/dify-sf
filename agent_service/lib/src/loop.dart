@@ -479,7 +479,7 @@ class AgentRun {
       'harness_style': r.harnessStyle.wire,
       if (r.officialCodex) ...{
         'model_wire': {
-          'wire': 'codex',
+          'wire': 'responses',
           'reason': 'the official Codex CLI in the sandbox calls the '
               'gateway\'s Codex Responses entry',
           'reduced_fidelity': false,

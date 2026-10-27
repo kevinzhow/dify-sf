@@ -302,7 +302,7 @@ for b in open(sys.argv[1]).read().strip().split("\n\n"):
 names = [n for n, _ in events]
 first, last = events[0], events[-1]
 assert first[0] == "run_started" and first[1]["harness_style"] == "codex", first
-assert first[1]["runtime"]["version"] == "0.163.0" and first[1]["model_wire"]["wire"] == "codex", first
+assert first[1]["runtime"]["version"] == "0.163.0" and first[1]["model_wire"]["wire"] == "responses", first
 assert last[0] == "succeeded", last
 assert "model_call" not in names, "the official runtime must not emit model_call"
 done = {d["name"]: d for n, d in events if n == "tool_call" and d["phase"] == "finished"}
