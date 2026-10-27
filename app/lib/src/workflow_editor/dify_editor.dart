@@ -290,6 +290,10 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
         for (final n in controller.doc.nodes.values)
           if (!isNoteNode(n)) n.type,
       ],
+      graphNodes: () => [
+        for (final n in controller.doc.nodes.values)
+          if (!isNoteNode(n)) RunGraphNode(id: n.id, type: n.type, title: n.title),
+      ],
     );
   }
 

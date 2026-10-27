@@ -182,14 +182,12 @@ class DebugChatController extends ChangeNotifier {
     this.fetchInspectVars,
     RunStreamHandle Function(String workflowRunId, RunCallbacks callbacks)? resumeStream,
     void Function(DifyToastType type, String message)? toast,
-  }) : canRun = canRun ?? _always,
+  }) : canRun = (() => (canRun?.call() ?? true) && run.validateBeforeRun()),
        toast = toast ?? difyToast,
        resumeStream = resumeStream ?? ((id, cb) => listenRunEvents(service.workflowEvents(id), cb)) {
     _chatTree = prevChatTree ?? [];
     if (prevChatTree == null) unawaited(restoreConversation());
   }
-
-  static bool _always() => true;
 
   final WorkflowRunController run;
   final WorkflowRunService service;
@@ -534,7 +532,20 @@ class DebugChatController extends ChangeNotifier {
     _conversationEpoch++; // An older asynchronous history read must not replace this newly started turn.
     _workflowEventsAbort?.abort();
     final thread = threadMessages;
-    final parentMessageId = params['parent_message_id'] as String?;
+    // A request rejected before workflow_started has no server message ID. Its local
+    // placeholder stays visible, but must never become a parent on the wire. Walk
+    // back through that question to the last accepted answer, preserving branches.
+    var parentMessageId = params['parent_message_id'] as String?;
+    final seenParents = <String>{};
+    while (parentMessageId != null && parentMessageId.startsWith('answer-placeholder-')) {
+      if (!seenParents.add(parentMessageId)) {
+        parentMessageId = null;
+        break;
+      }
+      final answer = thread.where((m) => m['id'] == parentMessageId).firstOrNull;
+      final question = thread.where((m) => m['id'] == answer?['parentMessageId']).firstOrNull;
+      parentMessageId = question?['parentMessageId'] as String?;
+    }
     final parentMessage = thread.where((m) => m['id'] == parentMessageId).firstOrNull;
     final now = DateTime.now().millisecondsSinceEpoch;
     final placeholderQuestionId = 'question-$now';
@@ -586,6 +597,7 @@ class DebugChatController extends ChangeNotifier {
       ),
       for (final e in params.entries)
         if (e.key != 'files' && e.key != 'inputs') e.key: e.value,
+      if (params.containsKey('parent_message_id')) 'parent_message_id': parentMessageId,
     };
     var hasSetResponseId = false;
     void update() => _updateCurrentQAOnTree(

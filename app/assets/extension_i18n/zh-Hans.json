@@ -47,6 +47,7 @@
     "release.mail": "邮件",
     "release.enabled": "已启用",
     "release.disabled": "未启用",
-    "release.unknown": "未报告"
+    "release.unknown": "未报告",
+    "runtime.unsupportedNodes": "此服务器无法运行以下节点：{{nodes}}。请配置或替换这些节点后重试。"
   }
 }

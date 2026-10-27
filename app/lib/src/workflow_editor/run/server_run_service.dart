@@ -11,6 +11,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../store/workflow_store.dart' show DifyJson;
 import '../variable_inspect/inspect_vars.dart' show VariableInspectServices;
 import 'run_service.dart';
+import 'run_graph.dart';
+import 'unavailable_run_service.dart';
+import '../../i18n/dify_i18n.dart';
 
 /// What the server's runtime offers a session: its run API and the node types it runs ([WorkflowRunApi],
 /// [WorkflowRuntimeFeatures.singleNodeRun], [WorkflowRuntimeFeatures.draftRun]). An app detail service
@@ -58,6 +61,7 @@ class ServerRunService extends WorkflowRunService {
     required this.fallback,
     required this.nodeTypeOf,
     this.graphNodeTypes = _noTypes,
+    this.graphNodes = _noNodes,
   });
 
   final ServerWorkflowRuntime runtime;
@@ -65,8 +69,24 @@ class ServerRunService extends WorkflowRunService {
   final WorkflowRunService fallback;
   final String? Function(String nodeId) nodeTypeOf;
   final Iterable<String> Function() graphNodeTypes;
+  final Iterable<RunGraphNode> Function() graphNodes;
 
   static Iterable<String> _noTypes() => const [];
+  static Iterable<RunGraphNode> _noNodes() => const [];
+
+  RunServiceException? _unsupportedDraft() {
+    if (fallback is! UnavailableWorkflowRunService || !runtime.runsDrafts) return null;
+    final types = graphNodeTypes().where((t) => !runtime.draftRun.contains(t)).toSet();
+    if (types.isEmpty) return null;
+    final nodes = graphNodes().where((n) => types.contains(n.type)).toList();
+    final names = nodes.isEmpty
+        ? types.join(', ')
+        : nodes.map((n) => '${n.title.isEmpty ? n.id : n.title} (${n.type}, ${n.id})').join(', ');
+    return RunServiceException(
+      DifyI18n.tr('common', 'runtime.unsupportedNodes', {'nodes': names}),
+      code: 'runtime_node_not_supported',
+    );
+  }
 
   bool _onServer(String nodeId) => runtime.singleNodeRun.contains(nodeTypeOf(nodeId));
 
@@ -128,6 +148,10 @@ class ServerRunService extends WorkflowRunService {
   @override
   Stream<RunEvent> runWorkflowDraft(WorkflowDraftRunRequest request) async* {
     if (request.mode != TriggerType.userInput || !draftRunsOnServer) {
+      if (request.mode == TriggerType.userInput) {
+        final unsupported = _unsupportedDraft();
+        if (unsupported != null) throw unsupported;
+      }
       yield* fallback.runWorkflowDraft(request);
       return;
     }
@@ -211,6 +235,10 @@ class ServerRunService extends WorkflowRunService {
   @override
   Stream<RunEvent> sendChatMessage(ChatMessageRequest request) async* {
     if (!runtime.chatflow || !draftRunsOnServer) {
+      if (runtime.chatflow) {
+        final unsupported = _unsupportedDraft();
+        if (unsupported != null) throw unsupported;
+      }
       yield* fallback.sendChatMessage(request);
       return;
     }
