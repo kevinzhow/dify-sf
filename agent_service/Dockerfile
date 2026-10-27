@@ -24,6 +24,8 @@ RUN apt-get update \
  && chmod 0700 /data
 COPY --from=build /out/agent_service /usr/local/bin/agent_service
 COPY --from=build /out/sandbox_supervisor /usr/local/bin/sandbox_supervisor
+# Portions of the agent service are derived from OpenAI Codex (Apache-2.0).
+COPY third_party_licenses/codex/ /usr/share/doc/dify-sf-agent-service/codex/
 USER 10001:10001
 ENV AGENT_SERVICE_PORT=5050 \
     AGENT_DATA_DIR=/data
