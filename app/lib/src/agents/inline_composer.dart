@@ -147,7 +147,8 @@ class InlineAgentComposer {
     if (api is! AgentClipboardApi) throw const AgentComposerConflict('clipboard_unavailable');
     await _until((s) => s.ready);
     return (api as AgentClipboardApi).exportAgentClipboard(appId, {
-      'expected_seq': state().seq, 'node_ids': nodes,
+      'expected_seq': state().seq,
+      'node_ids': nodes,
       'expected_nodes': {for (final id in nodes) id: state().document.nodes[id]?.toJson()},
     });
   }
@@ -175,7 +176,10 @@ class InlineAgentComposer {
       _pendingPasteSource = null;
       return saved;
     } on Object catch (error) {
-      if (!agentSaveUncertain(error)) { _pendingPaste = null; _pendingPasteSource = null; }
+      if (!agentSaveUncertain(error)) {
+        _pendingPaste = null;
+        _pendingPasteSource = null;
+      }
       rethrow;
     }
   }

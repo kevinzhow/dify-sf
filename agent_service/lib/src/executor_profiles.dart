@@ -36,8 +36,7 @@ const maxTimeoutSecondsMax = 86400;
 const defaultMaxTurnsMax = 50;
 
 /// Largest `max_turns_max` a profile may set. The Swift gateway also bounds
-/// the messages of one model request (512 today), which a long run reaches
-/// first; this is the protocol's ceiling, not a recommendation.
+/// the messages and bytes of one model request; this is the protocol's ceiling, not a recommendation.
 const maxMaxTurnsMax = 1000;
 
 /// `name[:tag]@sha256:<64 hex>`, optionally with a registry host.

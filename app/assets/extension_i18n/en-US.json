@@ -39,7 +39,18 @@
     "inline.executorStatus.image_missing": "Image missing",
     "inline.executorStatus.device_missing": "Device missing",
     "inline.executorStatus.unavailable": "Unavailable",
-    "inline.refreshProfiles": "Refresh environments"
+    "inline.refreshProfiles": "Refresh environments",
+    "inline.maxTurns": "Maximum model calls",
+    "inline.maxTurnsHint": "This execution environment allows at most {{max}} calls. Existing configurations default to 50.",
+    "inline.invalidMaxTurns": "Set a positive whole-number call limit within the execution environment maximum.",
+    "inline.progressCalls": "Model calls {{count}} / {{max}}",
+    "inline.progressDetails": "Agent activity",
+    "inline.progressImageUnavailable": "Progress image is unavailable or expired.",
+    "inline.enlargeProgressImage": "Enlarge progress image",
+    "inline.progressStarted": "Agent is starting…",
+    "inline.partialResult": "Partial result: the Agent submitted its current work as the call or time limit approached.",
+    "inline.cacheHitTokens": "Prompt cache hits: {{count}} tokens",
+    "inline.unknownUsage": "Unknown"
   },
   "common": {
     "web.fontLoadFailed": "Some text could not be loaded. Reconnect and retry.",

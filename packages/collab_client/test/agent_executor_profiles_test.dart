@@ -11,6 +11,17 @@ class _Tokens implements TokenProvider {
 }
 
 void main() {
+  test('profile call caps remain bounded and old catalogs default to fifty', () {
+    Map<String, Object?> catalog(Object? limit, {bool omit = false}) => {'shell_enabled': true, 'profiles': [{
+      'name': 'default', 'description': 'Default', 'status': 'ok', 'timeout_seconds_max': 1800,
+      if (!omit) 'max_turns_max': limit,
+    }]};
+    expect(AgentExecutorContext.parse(catalog(null, omit: true)).named('default')!.maxTurnsMax, 50);
+    expect(AgentExecutorContext.parse(catalog(200)).named('default')!.maxTurnsMax, 200);
+    for (final limit in [0, -1, 1001, 1.5, '200', true, null]) {
+      expect(() => AgentExecutorContext.parse(catalog(limit)), throwsFormatException);
+    }
+  });
   final entry = <String, Object?>{
     'name': 'default',
     'description': 'Default shell',

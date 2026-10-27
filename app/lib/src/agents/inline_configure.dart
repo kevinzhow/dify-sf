@@ -130,6 +130,14 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
 
   Future<void> _save(String strategy) async {
     if (_busy || _loaded == null || _soul == null || widget.readOnly) return;
+    if (!InlineAgentChecks.validTurnLimit({
+      ..._soul!,
+      if (_executors?.named(InlineAgentChecks.executorName(_soul)) case final profile?)
+        '_max_turns_max': profile.maxTurnsMax,
+    })) {
+      setState(() => _error = 'inline.invalidMaxTurns');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -468,6 +476,33 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                   spacing: 20,
                   children: [
                     if (_executors?.shellEnabled == true) _executorPicker(soul),
+                    _field(
+                      _a('inline.maxTurns'),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: 8,
+                        children: [
+                          DifyInput(
+                            key: const ValueKey('inline-agent-max-turns'),
+                            value: '${_map(soul['limits'])['max_turns'] ?? 50}',
+                            semanticLabel: _a('inline.maxTurns'),
+                            disabled: _locked,
+                            invalid: !InlineAgentChecks.validTurnLimit({
+                              ...soul,
+                              if (_executors?.named(InlineAgentChecks.executorName(soul)) case final profile?)
+                                '_max_turns_max': profile.maxTurnsMax,
+                            }),
+                            onChanged: (value) => _section('limits', {'max_turns': int.tryParse(value) ?? value}),
+                          ),
+                          if (_executors?.unknown != true)
+                            _text(
+                              _a('inline.maxTurnsHint', {
+                                'max': _executors?.named(InlineAgentChecks.executorName(soul))?.maxTurnsMax ?? 50,
+                              }),
+                            ),
+                        ],
+                      ),
+                    ),
                     _field(
                       _a('inline.model'),
                       ModelParameterModal(

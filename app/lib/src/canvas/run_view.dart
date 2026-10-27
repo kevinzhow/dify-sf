@@ -8,6 +8,9 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 
 import '../design/dify_tokens.g.dart';
+import 'agent_progress_view.dart';
+
+export 'agent_progress_view.dart';
 
 /// A node's run fields: `_runningStatus`, `_waitingRun`, `_singleRunningStatus`, `_iterationIndex`,
 /// `_iterationLength`, `_loopIndex`, `_retryIndex`, and whether the node has inspect variables (`hasNodeInspectVars`).
@@ -23,6 +26,7 @@ class NodeRunView {
     this.iterationLength,
     this.loopIndex,
     this.retryIndex,
+    this.agentProgress,
   });
 
   static const idle = NodeRunView();
@@ -46,6 +50,9 @@ class NodeRunView {
       iterationLength: n('_iterationLength'),
       loopIndex: n('_loopIndex'),
       retryIndex: n('_retryIndex'),
+      agentProgress: data['_agentProgress'] is Map
+          ? AgentProgressView.parse(AgentProgressView.map(data['_agentProgress']))
+          : null,
     );
   }
 
@@ -74,6 +81,7 @@ class NodeRunView {
   final int? iterationLength;
   final int? loopIndex;
   final int? retryIndex;
+  final AgentProgressView? agentProgress;
 
   /// The status the card's border and header icon show (getNodeStatusBorders / NodeHeaderMeta): `running`,
   /// `paused`, `succeeded` (also with inspect variables and no running status), `failed`, `exception`, or `idle`.
@@ -87,9 +95,11 @@ class NodeRunView {
   bool get isLoading => runningStatus == 'running' || singleRunningStatus == 'running';
 
   /// What the card itself draws (everything but the dimming, which the renderer applies to the whole node).
-  NodeRunView get forCard => waiting || dimmed ? copyWith(waiting: false, dimmed: false) : this;
+  NodeRunView get forCard => waiting || dimmed || agentProgress != null
+      ? copyWith(waiting: false, dimmed: false, agentProgress: agentProgress?.forLayout)
+      : this;
 
-  NodeRunView copyWith({bool? waiting, bool? dimmed}) => NodeRunView(
+  NodeRunView copyWith({bool? waiting, bool? dimmed, AgentProgressView? agentProgress}) => NodeRunView(
     runningStatus: runningStatus,
     waiting: waiting ?? this.waiting,
     dimmed: dimmed ?? this.dimmed,
@@ -99,6 +109,7 @@ class NodeRunView {
     iterationLength: iterationLength,
     loopIndex: loopIndex,
     retryIndex: retryIndex,
+    agentProgress: agentProgress ?? this.agentProgress,
   );
 
   @override
@@ -112,7 +123,8 @@ class NodeRunView {
       other.iterationIndex == iterationIndex &&
       other.iterationLength == iterationLength &&
       other.loopIndex == loopIndex &&
-      other.retryIndex == retryIndex;
+      other.retryIndex == retryIndex &&
+      other.agentProgress == agentProgress;
 
   @override
   int get hashCode => Object.hash(
@@ -125,6 +137,7 @@ class NodeRunView {
     iterationLength,
     loopIndex,
     retryIndex,
+    agentProgress,
   );
 
   @override

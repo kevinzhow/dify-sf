@@ -380,8 +380,8 @@ gets `view_image {"path", "detail"?}` (`path` relative to `/workspace` or absolu
 default, or `low`):
 
 1. The service resolves the path in the sandbox (inside `/workspace` after symlinks, a regular file) and reads it. It
-   must be a PNG, JPEG or WebP by its header. All images viewed in one model step together may have at most 16 MiB
-   (the gateway's file budget per model request is 20 MiB, task images included).
+   must be a PNG, JPEG or WebP by its header. All images viewed in one conversation together may have at most 16 MiB
+   (the gateway's file budget per model request is 6 MiB, task images included).
 2. It uploads the bytes as a file of the execution (`files/upload-request` and `PUT`; the Swift server grants a
    received upload to the run token's model files, `grantFiles`) and returns the tool result: a text with the path,
    type, dimensions and size, and the image as a multipart part (`dify-sf-file:<upload_id>`).
@@ -391,25 +391,14 @@ default, or `low`):
    request stays append-only (see [Prompt cache](#prompt-cache)). The same bytes viewed again (SHA-256) are not
    attached a second time; the tool answers that they are already in the conversation.
 4. Budget: kept images are sent with every model call, and the Swift gateway accepts at most 20 MiB of files per
-   model request (task images included; 8,192 messages; 32 MiB per converted request). The viewed images of one
-   conversation (the execution's snapshot history plus this run) may therefore have at most 16 MiB together, leaving
-   the rest for the task's images. A view beyond it is a tool error that names what is used and asks for a smaller copy; the tool
+   model request (task images included). The viewed images of one conversation (the execution's snapshot history
+   plus this run) may therefore have at most 16 MiB together, leaving 4 MiB of the gateway budget for the task's
+   images. A view beyond it is a tool error that names what is used and asks for a smaller copy; the tool
    description asks the model to view small JPEG copies. A larger budget needs a larger gateway budget first.
 
-Trade-off (decided 2026-10-27): before this, an image was sent with the next call only, so it cost its tokens once;
-removing it from later calls changed the history and cut the provider's prefix cache at that place. Keeping it
-makes every later call carry it (at most 1024 tokens per image on `deepseek-flash`), served from the prefix cache
-at the hit price (about 1/50 of a miss on DeepSeek), and lets the model refer back to it. The budget above, not the
-token count, is what limits how many images a run can view: the measured modelling run (2026-10-27, 11 views,
-3.0 MB, plus 3.8 MB of task images) would have reached it.
-
-The tool's description changed with this rule, so the tool definitions digest did too: a paused execution with
-`view_image` whose snapshot was taken before it answers `422 snapshot_incompatible` on resume.
-
-The snapshot keeps the reference, never the bytes; the attached part's metadata keeps `path`, `detail`, `size` and
-`sha256`. Snapshots taken before images were kept have parts without `size`; they are never sent again. A missing
-file, a path outside the workspace, another format, the budget and a failed upload are tool errors the model can act
-on, not run failures. Viewed images are uploads of the execution like file outputs, but they are not node outputs.
+Keeping viewed images in later calls preserves the earlier request prefix and lets the model refer back to them.
+This can allow a provider's prompt cache to reuse earlier input, but byte stability alone does not establish a
+cache hit, a token count or a price. Only counters reported by the provider establish observed cache usage.
 
 ### Progress previews
 
@@ -466,35 +455,18 @@ what it has before the limit is reached:
 
 ### Prompt cache
 
-Long agent runs re-send their whole history with every model call (the modelling run of 2026-10-27: 50 calls, 3.34M
-prompt tokens, up to 149k per call). Providers with prefix caching bill the repeated part at a fraction of the price
-when the request starts with exactly the bytes of an earlier one. The service therefore keeps the request prefix
-byte-stable and append-only, and reports the provider's cache counters when they reach it.
+Long agent runs re-send their history with every model call. The service keeps unchanged earlier messages and
+tools byte-stable and appends new messages. Cache policies, image tokenization and pricing remain provider-specific;
+see the provider's documentation, such as the [DeepSeek context caching guide](https://api-docs.deepseek.com/guides/kv_cache).
+The service reports cache counters only when they reach it; missing counters stay unknown.
 
-DeepSeek (checked 2026-10-27, [context caching guide](https://api-docs.deepseek.com/guides/kv_cache),
-[pricing](https://api-docs.deepseek.com/quick_start/pricing), [vision guide](https://api-docs.deepseek.com/guides/vision)):
-
-- Automatic and on by default, best effort. A request hits only on a prefix that matches a stored cache prefix unit
-  exactly, from token 0. Units are stored at the end of each request's input and of its output, where requests share
-  a prefix, and at fixed intervals in long inputs; the storage unit is 64 tokens (shorter content is not cached).
-  Unused entries go after hours to days.
-- `usage` gives `prompt_cache_hit_tokens` and `prompt_cache_miss_tokens`. `deepseek-flash` input: $0.006 per million
-  hit tokens vs $0.30 miss (peak; off-peak half).
-- Images: `deepseek-flash` takes images in `user` messages only, at most 1024 tokens each (`low`: 512x512). The
-  guides say nothing about caching image inputs; since matching is on the token prefix, an unchanged image at an
-  unchanged place is expected to hit, but this is not documented. `tool/cache_probe.dart probe` measures it with
-  one's own key.
-- With tools, DeepSeek's thinking mode requires every earlier `reasoning_content` to be sent back (else `400`); it is
-  then part of the prefix. The plugin's `<think>` marker round trip below keeps it.
-
-The path, checked on the trial's versions (langgenius/deepseek 0.0.24 with dify_plugin 0.10.2, plugin daemon
-0.6.10, the Swift gateway of main d73a5d9):
+The protocol path (the installed plugin and daemon determine which optional usage fields reach the gateway):
 
 | Component | Byte-stable? | Cache counters |
 |---|---|---|
 | Agent service | Yes, from this version: `toPromptMessages` depends on the history only and every request extends the previous one. Before it, `view_image` sent an image with the next call only and removed it afterwards: the one rewrite of earlier history. Reasoning parts, tool arguments (`dify_sf_arguments`, the provider's raw text), tool outputs and the snapshot round trip are kept unchanged | Reads them when reported (above) |
 | Swift gateway | Yes. `dify-sf-file:<id>` becomes `base64_data` read from storage on every call: the same bytes each time, no signed or expiring URL in the model path. `JSONObject` keeps key order, so tool schemas keep theirs. It calls the plugin without streaming when tools are offered (no effect on the bytes) | Passes `cached_tokens` / `prompt_tokens_details.cached_tokens` through (`LLMUsage.cachedTokens`) when the daemon sends them |
-| Plugin daemon 0.6.10 | Passes the request through | Its `LLMUsage` is a typed struct without a cache field: anything extra is dropped |
+| Plugin daemon 0.6.x | Passes the request through | Its `LLMUsage` is a typed struct without a cache field: anything extra is dropped |
 | deepseek plugin 0.0.24 | Deterministic: merges consecutive same-role messages (a pure function of the list), turns `<think>\n<!--dify-deepseek-reasoning-->…\n</think>` back into `reasoning_content`, sends images as `image_url` data URLs, adds a fixed `user_id` | Reads only `prompt_tokens` and `completion_tokens` (dify_plugin's OpenAI-compatible base; Dify's `LLMUsage` has no cache field) |
 
 So the only prefix break was the agent service's `view_image`, and the cache counters are lost twice, in the plugin
@@ -703,16 +675,16 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
  "profiles": {
    "default": {"description": "Dify's shell sandbox",
                "image": "langgenius/dify-agent-local-sandbox@sha256:…"},
-   "colvalley-blender": {
-     "description": "Blender 5.2.3, colvalley-3d (read-only) and its board renderer",
-     "image": "dify-sf/sandbox-colvalley-blender@sha256:…",
-     "mounts": [{"source": "/srv/dify-sf/checkouts/colvalley-3d-77b81f5", "target": "/opt/colvalley-3d"}],
+   "rendering": {
+     "description": "Prepared rendering tools (read-only)",
+     "image": "example/rendering-sandbox@sha256:…",
+     "mounts": [{"source": "/srv/dify-sf/checkouts/rendering-tools-v1", "target": "/opt/rendering-tools"}],
      "network": {"egress": "none"},
      "devices": ["/dev/dri/renderD128"],
      "limits": {"cpus": 4, "memory_mb": 6144, "pids": 1024, "workspace_mb": 1536, "home_mb": 512,
                 "timeout_seconds_max": 10800, "max_turns_max": 200},
-          "env": {"BLENDER": "/opt/blender/blender", "CV3D_PYTHON": "/opt/cv3d-venv/bin/python",
-             "FS_IMPORTER": "/opt/colvalley-3d/.cv3d-prepared/fs_importer"}}}}
+          "env": {"BLENDER": "/opt/blender/blender", "RENDER_PYTHON": "/opt/render-venv/bin/python",
+             "FS_IMPORTER": "/opt/rendering-tools/bin/importer"}}}}
 ```
 
 | Field | Rule |
@@ -720,7 +692,7 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
 | `image` | Pinned by digest (`name@sha256:…`); a tag alone stops the process at load. Images are built from `agent_service/sandbox-images/<name>/` (Dockerfile and `VERSION`) in this repository. Every image keeps shellctl (they derive from `langgenius/dify-agent-local-sandbox:1.17.1`), because the service's probes, file staging, output files and process cleanup use it. |
 | `mounts` | Read-only bind mounts only (`Mounts` of type `bind`, `ReadOnly`; a missing source fails, it is never created). The source is an absolute, normalized host path (no `.`, `..`, `//`, trailing `/`, `:` or `,`); it must not be `/` and must not be, contain or lie inside the Docker socket (`/var/run/docker.sock`, `/run/docker.sock`, the configured one), Docker's or containerd's state (`/var/lib/docker`, `/var/lib/containerd`, `/run/containerd`), `/proc`, `/sys`, `/dev`, the service's data directory, the supervisor's state file or the profile file. The target is under `/opt` (not `/opt` itself), never `/workspace` or the home; targets do not nest. This replaces the sandbox rule "no binds or mounts" with "only the profile's read-only binds". Symlinks in the source are resolved by Docker on the host. |
 | `network.egress` | `none`: the proxy is not connected, so there is no egress. `allowlist`: the proxy as today, with its default domains. Per-profile domain lists come later. Default `allowlist`. |
-| `limits` | `cpus`, `memory_mb` (the tmpfs pages of `/workspace` and the home count here; `workspace_mb + home_mb` must be below it), `pids`, `workspace_mb`, `home_mb`. `timeout_seconds_max` (1..86400, default 1800) is the largest `limits.timeout_seconds` a run of this profile may have. `max_turns_max` (1..1000, default 50, today's fixed value) is the largest `limits.max_turns`. Another missing value takes the supervisor's current default (`SANDBOX_*`). |
+| `limits` | `cpus`, `memory_mb` (the tmpfs pages of `/workspace` and the home count here; `workspace_mb + home_mb` must be below it), `pids`, `workspace_mb`, `home_mb`. `timeout_seconds_max` (1..86400, default 1800) is the largest `limits.timeout_seconds` a run of this profile may have. `max_turns_max` (1..1000, default 50) is the largest `limits.max_turns`. Another missing value takes the supervisor's current default (`SANDBOX_*`). |
 | `devices` | Optional GPU access: host device nodes passed into the container (`Devices`, `rw`). Only DRI render nodes (`/dev/dri/renderD<n>`) are accepted, without `/dev/dri/card*` (no display or modesetting); the container gets the node's group ID on the host (K17: `render`, 990) as a supplementary group (`GroupAdd`), and the Landlock paths of the [Sandbox](#sandbox) table. The supervisor reads the group with `stat` and the GPU's sysfs directory from `/sys/dev/char`, so a containerized supervisor needs `/dev/dri` bound read-only (it opens nothing there). Anything else stops the process at load. NVIDIA (`--gpus`) is out of the MVP: the executor host K17 has an Intel GPU only. |
 | `env` | Fixed variables for the sandbox's commands, set by the administrator. They are not secrets and are not shown to the model. The reserved names are refused at load. A node's `env` cannot override them (`400 reserved_env`, compared case-insensitively). The agent service adds them to every shell job under the node's `env`; they are not in the container's environment. |
 | `description` | Optional, at most 200 characters; shown by `GET /v1/profiles`. |
@@ -760,9 +732,9 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
   agent service never runs longer than Swift waits. `default` keeps 1800 s.
 - `limits.max_turns`: the node's setting (Swift, default 50), capped by the profile's `max_turns_max`; a larger value
   is refused with `422 invalid_request` as for the timeout. Without the shell the profile is not checked, as for
-  every other profile rule. The Swift gateway's own per-operation call limit (`AgentModelScope.maxCalls`, 50 today)
-  must be the same number, and its 512-message cap per model request must allow the history of that many calls.
-  The modelling run of 2026-10-27 reached 50 calls; `colvalley-blender` allows 200.
+  every other profile rule. The Swift gateway's own per-operation call limit (`AgentModelScope.maxCalls`)
+  uses the same configured number. The gateway permits at most 8192 messages per model request; provider context
+  windows and byte limits still apply.
 - Rollout of `max_turns_max`: the service and the supervisor (same image) ship before a profile file that sets it:
   an older one refuses the unknown field at load.
 - Rollout order: the agent service with the echo ships first; the Swift echo check goes live after it. Otherwise an
@@ -801,60 +773,13 @@ attempted and fails, if at all, with the service's own answer.
 - Out of the MVP: a profile administration UI (it will write the same file format), per-profile egress domain lists,
   and choosing profiles per workspace or tenant.
 
-### Profile `colvalley-blender` (MVP)
+### Rendering profile example
 
-Built and checked on K17 on 2026-10-27: image `dify-sf/sandbox-colvalley-blender@sha256:438f4d80139973fe258beaffbd28346c931db841e8a676ed0eb9bbfcfce7e9b3`
-(`agent_service/sandbox-images/colvalley-blender/`, VERSION 1), colvalley-3d `alice/board-readonly` 26ea1f4.
-
-| Part | Where | Content |
-|---|---|---|
-| Base | Image | `langgenius/dify-agent-local-sandbox:1.17.1` pinned by digest (Debian 12, glibc 2.36, GLib 2.74; shellctl, Python 3.12, Node, git) |
-| Blender | Image | The official 5.2.3 Linux x64 archive (`blender-5.2.3-linux-x64.tar.xz`, SHA-256 from Blender's published list, checked in the build; given to the build as a named context, never downloaded there) at `/opt/blender`; used with `-b` |
-| Renderer runtime | Image | Weston 10, D-Bus, GTK 3, fonts (DejaVu, Noto Sans CJK for the board's labels) and Mesa 25.0.7 from bookworm-backports: Debian 12's Mesa 22.3 cannot drive K17's Lunar Lake GPU on the `xe` kernel driver (it would fall back to llvmpipe). With the render node the board renders with `FS_RENDERER=gl` (MSAA effective, the reference path on K17); without it, `pixman` |
-| GPU | Profile | K17's Intel render node `/dev/dri/renderD128` (group `render` 990): Weston gl (`GL renderer: Mesa Intel(R) Graphics (LNL)`), the Flutter client (`iris`), and EEVEE/Workbench in Blender `-b` through EGL (`gpu.platform`: OPENGL, INTEL, `Mesa Intel(R) Graphics (LNL)`; EEVEE 640x480 8.6 s vs 45 s on llvmpipe). shellctl's Landlock must grant the node and the GPU's sysfs (see [Sandbox](#sandbox)) |
-| Python tools | Image | `/opt/cv3d-venv` with numpy 2.5.4, scipy 1.18.1, trimesh 5.2.0, rtree 1.4.1, Pillow 13.0.0 (pinned in `requirements.txt`), because there is no egress |
-| colvalley-3d | Mount `/opt/colvalley-3d` | A checkout made by colvalley-3d's `tools/board/prepare_checkout.sh <commit> <dir>` on the executor host (below) |
-| Env | Profile | `BLENDER=/opt/blender/blender`, `CV3D_PYTHON=/opt/cv3d-venv/bin/python`, `FS_IMPORTER=/opt/colvalley-3d/.cv3d-prepared/fs_importer` |
-| Limits | Profile | 4 CPUs, 6 GiB memory (1.5 GiB of it the `/workspace` tmpfs, 512 MiB the home), 1024 PIDs, up to 3 hours, one run at a time. K17 has 15 GiB and 8 CPUs shared with the whole trial. Measured (below): one board run peaks at 454–647 MiB of cgroup memory (tmpfs included) and 3.5 CPUs; the limits stay at the MVP ceiling until a real modelling run is measured (never below 2 GiB memory) |
-
-colvalley-3d `alice/board-readonly` makes the board tool (`tools/board/render_board.sh`) run from a read-only checkout:
-
-1. `--work-dir DIR` (or `CV3D_WORK`): every write goes under it: outputs (default `-o DIR/board/<time>`), the baseline
-   cache, Weston scratch, `TMPDIR`, the D-Bus session socket (the stock session bus listens in `/tmp`, read-only in a
-   sandbox), Python bytecode caches and the uv cache. `-o`, `CV3D_BOARD_CACHE`, `FS_TMP` or the work dir inside the
-   checkout are refused; `git status` runs without optional locks and without the LFS filter process (both write
-   into `.git`).
-2. `FS_IMPORTER`: the scene importer compiled ahead of time (`dart compile exe` of flutter_scene's `bin/import.dart`
-   with `app/`'s package config), used instead of `dart run flutter_scene:import` in `app/`; no Flutter SDK in the
-   image. The importer self-check stays and passes. (`app/.dart_tool/package_config.json` holds absolute host paths,
-   so `dart run` could not work in a sandbox anyway; the copy-`app/` fallback was not needed.)
-3. `CV3D_PYTHON`: an interpreter with the packages installed, used instead of `uv run --with …`.
-4. The Linux runner is built for Debian 12 although K17 builds it (glibc 2.43, GLib 2.8x): `g_ascii_strtoll` instead of
-   `atoi` (no `__isoc23_strtol@GLIBC_2.38`) and `GLIB_VERSION_MIN_REQUIRED/MAX_ALLOWED` 2.74 (no
-   `g_once_init_enter_pointer`). `run_linux.sh` gives Weston 10 `--use-gl` / `--use-pixman` (no `--renderer=` before
-   Weston 12).
-
-`tools/board/prepare_checkout.sh <commit> <dir>` clones the commit with its LFS files, runs `flutter pub get
---enforce-lockfile` and `flutter build linux --profile` (Flutter 3.47.6) and compiles the importer, then checks: every
-LFS file present, a clean index, glibc ≤ 2.36 for the bundle and the importer, every symbol resolving in
-`CV3D_CHECK_IMAGE` (`ldd -r` in a throwaway container of the sandbox image) and the importer self-check; it writes
-`.cv3d-prepared/checkout.txt`. The image depends on no colvalley-3d commit; a new commit needs a new checkout directory
-and a profile change, not a new image.
-
-Boards compared on K17 (fujiya, r6 `.blend`, collection `Model`): the reference from a writable clone run twice
-differs in 240 pixels (0.010 %, largest channel difference 12): the known K17 gl noise. The read-only mode on the host
-differs from the reference in 151 pixels (max 12); inside the sandbox image in 269 pixels (0.011 %, max 18; Mesa 25.0
-in the image, 26.0 on the host). The exported `.glb`, the `.fsceneb` and the measurements are byte-identical in all
-three.
-
-Measured end to end (`agent_service/tool/profile_e2e.sh`: the agent service, the supervisor and the profile file in
-compose, a scripted model running `render_board.sh --object fujiya` on the r6 `.blend` given as an input file, then
-`view_image` and `final_output` with the board as a declared file output): 28.9 s from `POST` to the terminal
-event, 24.3 s of it the board; the sandbox's cgroup peaked at 536 MiB (`memory.peak`, tmpfs included; three direct
-runs of the board in the image: 454–647 MiB), 37.7 CPU-seconds, at most 3.46 CPUs over 0.5 s samples under the
-4-CPU limit; `/workspace` held 19 MB. That board is byte-identical to the writable-clone reference. The sandbox had
-exactly the profile's image digest, the checkout read-only, the render node with group 990, no proxy endpoint and no
-egress (`direct=blocked`); DELETE removed it and its network.
+A rendering environment can combine a pinned sandbox image, a read-only prepared tool checkout, an optional render
+device and explicit resource limits. Build tools and importers for the sandbox's runtime libraries, place all task
+writes under the execution workspace and keep mounted checkouts immutable. Validate image/device availability,
+file hashes, no-egress behavior and cleanup on the executor host before enabling a profile. Business inputs,
+operational mount paths and per-run measurements belong in the deployment's private evidence.
 
 ## Swift server summary
 
@@ -870,7 +795,7 @@ egress (`direct=blocked`); DELETE removed it and its network.
   context exists, MCP reports agent nodes as incomplete.
 - DSL export removes secrets and file locators and carries file contents as resources; import checks them. Settings
   outside the first phase are rejected, never silently dropped.
-- Run records (thoughts, tool calls, usage) are stored by the server and shown when the node ends (a dify-sf
+- Run records (thoughts, tool calls, usage) are stored by the server and shown live and retained when the node ends (a dify-sf
   extension). They are truncated at 256 KB on a UTF-8 boundary with a marker and a reference to the full record file;
   credentials are removed first.
 
@@ -880,17 +805,11 @@ egress (`direct=blocked`); DELETE removed it and its network.
   `422`/`503` answers as node errors, and the timeout capped by the profile's `timeout_seconds_max`.
 - `tools.view_image` set when the shell is on and the model declares `vision` (see
   [Viewing workspace images](#viewing-workspace-images)); viewed images arrive as ordinary agent uploads.
-- From the 2026-10-27 cache, budget and progress changes (agent service done; Swift to do):
-  - `tools.report_progress` when the shell is on; `progress` projected into `agent_log` with the `upload_id` checked
-    against the execution's received uploads and replaced by a client-previewable file (see
-    [Progress previews](#progress-previews)).
-  - `limits.max_turns` from the node setting, capped by the profile's `max_turns_max` from `GET /v1/profiles`, and
-    the gateway's `maxCalls` set to the same value; the 512-message cap of a model request raised to fit.
-  - `partial` of `succeeded` shown as partial outputs; `budget_notice` may be projected into `agent_log`.
-  - The usage counters `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` kept in the run record (they are
-    `null` until a plugin and the daemon report them, see [Prompt cache](#prompt-cache)).
-  - Raising the gateway's 6 MiB file budget per model request (DeepSeek accepts 48 MiB bodies) is what would let
-    runs keep more viewed images; the agent service's 3 MiB conversation budget follows it.
+- Progress and budgets: `tools.report_progress` is pinned for new executions with the shell enabled; completed
+  upload receipts are normalized to scoped preview files in live `agent_log` events. The node's `limits.max_turns`
+  is checked against the environment and used by the gateway. Partial submissions are labeled explicitly.
+- The model gateway allows at most 8192 messages, 20 MiB of decoded files and 32 MiB after normalization per request;
+  `view_image` retains at most 16 MiB per conversation. Missing cache-hit statistics remain unknown.
 
 ## Tests that must stay
 

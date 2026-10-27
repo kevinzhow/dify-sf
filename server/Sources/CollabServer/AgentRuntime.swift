@@ -25,7 +25,8 @@ struct ServerAgentRuntime: AgentRuntime {
         guard app.mode == "workflow" else { throw NodeError("AgentModeUnsupported", "Inline Agent v2 is available only in workflows") }
         guard routes.config.agentService.isConfigured else { throw NodeError("AgentServiceUnavailable", "The agent service is not configured") }
         let (_, soul) = try await configuration(nodeID, data)
-        _ = try await executorProfile(soul)
+        let profile = try await executorProfile(soul)
+        _ = try AgentExecutionPolicy.turns(node: soul.maxTurns, profile: profile?.maxTurnsMax)
         guard let provider = soul.provider, let model = soul.model,
               let models = routes.runtimeServices(appId: appID, userId: userID).models else { throw ServiceNotConfigured(service: .models) }
         let credentials = try await routes.agentCredentials(provider: provider, model: model, reference: soul.json["model"]?["credential_ref"])
@@ -45,6 +46,7 @@ struct ServerAgentRuntime: AgentRuntime {
         let activeWallStarted = Date()
         let (stored, soul) = try await configuration(nodeID, data)
         let profile = try await executorProfile(soul)
+        let maxTurns = try AgentExecutionPolicy.turns(node: soul.maxTurns, profile: profile?.maxTurnsMax)
         let timeout = AgentExecutionPolicy.timeout(node: routes.config.agentService.timeoutSeconds,
             profile: profile?.timeoutSecondsMax ?? (soul.executorProfile == "default" ? 1800 : nil),
             server: routes.config.agentService.timeoutSecondsMax)
@@ -103,6 +105,13 @@ struct ServerAgentRuntime: AgentRuntime {
             let vision = shellAvailable && !legacyContinuation ? try await modelSupportsVision(soul) : false
             viewImage = try await routes.store.pinAgentViewImage(session: session, enabled: vision)
         }
+        let reportProgress: Bool
+        if let pinned = try JSONValue.parse(session.usage)["report_progress"]?.bool { reportProgress = pinned && shellAvailable }
+        else {
+            // Existing snapshots must resume with their original tool definitions.
+            reportProgress = try await routes.store.pinAgentReportProgress(session: session,
+                enabled: shellAvailable && continuation["snapshot"]?.object == nil)
+        }
         var roundUsage = LLMUsage.empty
         var recordedUsage = try JSONValue.parse(session.usage)
         var cumulative = LLMUsage(json: recordedUsage)
@@ -118,6 +127,7 @@ struct ServerAgentRuntime: AgentRuntime {
             json["node_started"] = recordedUsage["node_started"] ?? .null
             json["shell_enabled"] = .bool(shellAvailable)
             json["view_image"] = .bool(viewImage)
+            json["report_progress"] = .bool(reportProgress)
             return JSONValue.object(json).compactJSON()
         }
         var inputs = JSONObject(); inputs["task"] = .string(data.task)
@@ -144,11 +154,11 @@ struct ServerAgentRuntime: AgentRuntime {
                 "model": ["provider": .string(soul.provider!), "name": .string(soul.model!), "parameters": .object(soul.modelParameters)],
                 "system_prompt": .string(prompt.system), "task": .array(prompt.task), "output_schema": data.outputSchema ?? .null,
                 "executor_profile": .string(soul.executorProfile),
-                "tools": ["ask_human": .bool(soul.askHuman), "shell": .bool(shellAvailable), "view_image": .bool(viewImage)], "env": .object(env), "files": .array(prompt.files),
-                "limits": ["max_turns": 50, "timeout_seconds": .int(max(1, Int(deadline.timeIntervalSinceNow)))], "continuation": continuation]
+                "tools": ["ask_human": .bool(soul.askHuman), "shell": .bool(shellAvailable), "view_image": .bool(viewImage), "report_progress": .bool(reportProgress)], "env": .object(env), "files": .array(prompt.files),
+                "limits": ["max_turns": .int(maxTurns), "timeout_seconds": .int(max(1, Int(deadline.timeIntervalSinceNow)))], "continuation": continuation]
             // Identities are fixed across uncertain transport retries. Secrets are never persisted in the operation ledger.
             let scope = AgentModelScope(operationID: operation, generation: session.generation, execution: identity,
-                provider: soul.provider!, model: soul.model!, maxCalls: 50, expiresAt: deadline, inputFileIDs: prompt.inputFileIDs,
+                provider: soul.provider!, model: soul.model!, maxCalls: maxTurns, expiresAt: deadline, inputFileIDs: prompt.inputFileIDs,
                 endUserID: endUserID, modelParameters: soul.modelParameters, credentialReference: soul.json["model"]?["credential_ref"], durableOwner: routes.agentOwner)
             let token = try await routes.agentModelScopes.activate(scope)
             do {
@@ -162,11 +172,15 @@ struct ServerAgentRuntime: AgentRuntime {
                 let trace = AgentTraceWriter(secrets: env.values.compactMap(\.string))
                 let terminal = try await service.result(run: remote, operation: operation, deadline: deadline,
                     expectedProfile: soul.executorProfile, generation: session.generation, isAborted: context.isAborted) { event, name, data in
-                    try await trace.record(routes: routes, session: activeSession, run: remote, event: event, name: name, data: data)
+                    var display = data
+                    if name == "run_started" { display["max_turns"] = .int(maxTurns) }
+                    if name == "progress" { display = try await routes.normalizeAgentProgress(data, session: activeSession, files: files) }
+                    try await trace.record(routes: routes, session: activeSession, run: remote, event: event, name: name, data: display)
                 }
                 let usage = await routes.agentModelScopes.revoke(token: token)
                 roundUsage = roundUsage.plus(usage); cumulative = cumulative.plus(usage)
                 let result = terminal["result"] ?? [:]
+                let partial = Self.partialResult(result["partial"])
                 try await routes.store.recordAgentResult(session: session, run: remote, event: terminal["last_event_id"]!.int!, result: result.compactJSON())
                 session = try requireAgentSession(try await routes.store.agentSession(execution: execution))
                 recordedUsage = try JSONValue.parse(session.usage)
@@ -209,7 +223,7 @@ struct ServerAgentRuntime: AgentRuntime {
                     let succeeded = decision.action == .succeeded
                     var value = NodeRunResult(status: succeeded ? .succeeded : .failed, inputs: inputs,
                         processData: ["agent_id": .string(data.agentID), "agent_config_snapshot_id": .string(data.snapshotID), "workflow_agent_binding_id": data.bindingID.map(JSONValue.string) ?? .null, "agent_output_checks": .array(decision.checks.map(\.json))], outputs: decision.outputs,
-                        metadata: ["agent_config_snapshot_id": .string(data.snapshotID), "total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_log": try await routes.agentLogPreview(session)], llmUsage: roundUsage,
+                        metadata: ["agent_config_snapshot_id": .string(data.snapshotID), "total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_partial": partial ?? .null, "agent_log": try await routes.agentLogPreview(session)], llmUsage: roundUsage,
                         error: succeeded ? "" : "Declared agent outputs failed validation",
                         errorType: succeeded ? "" : (decision.action == .failBranch ? "output_type_check_failed_fail_branch" : "output_type_check_failed"))
                     value.edgeSourceHandle = "source"
@@ -221,7 +235,7 @@ struct ServerAgentRuntime: AgentRuntime {
                     let errorType = result["error_type"]?.string ?? "cancel_lost"
                     let known: Set<String> = ["model_error", "model_quota", "max_turns", "timeout", "ask_human_invalid", "sandbox_unavailable", "sandbox_error", "file_error", "cancel_lost", "internal"]
                     pending.addAgentOutcome(.init(session: session, status: "failed", usage: usageJSON()))
-                    let value = NodeRunResult(status: .failed, inputs: inputs, metadata: ["total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_log": try await routes.agentLogPreview(session)], llmUsage: roundUsage,
+                    let value = NodeRunResult(status: .failed, inputs: inputs, metadata: ["total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_partial": partial ?? .null, "agent_log": try await routes.agentLogPreview(session)], llmUsage: roundUsage,
                         error: "The agent operation did not complete", errorType: known.contains(errorType) ? errorType : "internal")
                     try await pending.agentCommits.commit(execution, result: value)
                     return .completed(value)
@@ -235,6 +249,12 @@ struct ServerAgentRuntime: AgentRuntime {
                 throw NodeError("AgentExecutionFailed", "The agent operation could not be committed")
             }
         }
+    }
+
+    static func partialResult(_ value: JSONValue?) -> JSONValue? {
+        guard let reason = value?["reason"]?.string, ["max_turns", "timeout"].contains(reason),
+              case .int(let call)? = value?["notice_call_index"], (1...1000).contains(call) else { return nil }
+        return ["reason": .string(reason), "notice_call_index": .int(call)]
     }
 
     private func executorProfile(_ soul: AgentInlineConfig) async throws -> AgentExecutorProfile? {

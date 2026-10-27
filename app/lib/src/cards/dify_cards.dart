@@ -22,6 +22,7 @@ import '../workflow_editor/canvas_plus/aggregator_controls.dart';
 import 'node_extras.dart';
 import 'node_helpers.dart';
 import '../design/widgets/widgets.dart';
+import '../agents/canvas_progress.dart';
 
 /// Dify's node cards: the shared chrome (nodes/_base/node.tsx) around a body per node type.
 class DifyCards extends CardSpec {
@@ -32,6 +33,21 @@ class DifyCards extends CardSpec {
 
   @override
   List<({Rect rect, Widget child})> controls(BuildContext context, CanvasNode node, CanvasGraph graph) {
+    final progress = node.run.value.agentProgress;
+    if (NodeExtras.hasRunPreview(node.node.value) && progress != null) {
+      final ctx = DifyCards.context(node.node.value, (id) => graph[id]?.node.value, graph.startNode);
+      return [
+        (
+          rect: Rect.fromLTWH(
+            node.rect.left + border,
+            node.rect.top + border + header + bodyOf(node.type).height(ctx),
+            node.rect.width - 2 * border,
+            progress.height,
+          ),
+          child: AgentCanvasProgress(nodeId: node.id, progress: progress),
+        ),
+      ];
+    }
     if (node.type == 'question-classifier') {
       final ctx = DifyCards.context(node.node.value, (id) => graph[id]?.node.value, graph.startNode);
       return [
@@ -191,7 +207,7 @@ class DifyCards extends CardSpec {
       BodyContext(n, lookup, start: start, viewOrigin: viewOrigin);
 
   @override
-  bool layoutDependsOnRun(Node node) => NodeExtras.hasRetry(node);
+  bool layoutDependsOnRun(Node node) => NodeExtras.hasRetry(node) || NodeExtras.hasRunPreview(node);
 
   @override
   List<Rect> spinners(CanvasNode node, CanvasGraph graph) {

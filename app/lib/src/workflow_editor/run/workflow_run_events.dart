@@ -4,6 +4,7 @@
 /// ops. Ported one handler per Dify hook, quirks included (noted where they show).
 library;
 
+import '../../canvas/agent_progress_view.dart';
 import '../store/workflow_store.dart';
 import '../variable_inspect/value_content_helpers.dart' show getProcessedFilesFromResponse;
 import 'run_events.dart';
@@ -205,6 +206,15 @@ class WorkflowRunEvents {
     final nodeId = data['node_id'] as String?;
     if (_node(nodeId) == null) return;
     final patch = <String, Object?>{'_runningStatus': data['status']};
+    if (data['node_type'] == 'agent') {
+      final raw = _nodeData(nodeId!)['_agentProgress'];
+      final progress = AgentProgressView.finished(
+        raw is Map ? AgentProgressView.parse(raw.cast<String, Object?>()) : null,
+        _map(data['execution_metadata']),
+      );
+      if (progress != null) patch['_agentProgress'] = progress.json;
+    }
+
     if (data['status'] == NodeRunningStatus.exception) {
       if (_map(data['execution_metadata'])['error_strategy'] == errorHandleFailBranch) {
         patch['_runningBranchId'] = errorHandleFailBranch;
@@ -393,6 +403,19 @@ class WorkflowRunEvents {
   /// use-workflow-agent-log.ts.
   void handleWorkflowAgentLog(AgentLogEvent params) {
     final data = params.data;
+    final nodeId = data['node_id'];
+    if (nodeId is String && _node(nodeId) != null) {
+      final previous = _nodeData(nodeId)['_agentProgress'];
+      final next = AgentProgressView.advance(
+        previous is Map ? AgentProgressView.parse(previous.cast<String, Object?>()) : null,
+        data,
+      );
+      if (next != null) {
+        _patchNodes({
+          nodeId: {'_agentProgress': next.json},
+        });
+      }
+    }
     final draft = _data;
     final tracing = _tracing(draft);
     final currentIndex = tracing.indexWhere((t) => t['node_id'] == data['node_id']);
@@ -513,7 +536,7 @@ class WorkflowRunEvents {
 
   /// handleRun's first step: every node's `_runningStatus` cleared.
   void clearNodesRunningStatus() => _patchNodes({
-    for (final n in graph.nodes) n.id: {'_runningStatus': null},
+    for (final n in graph.nodes) n.id: {'_runningStatus': null, '_agentProgress': null},
   });
 }
 

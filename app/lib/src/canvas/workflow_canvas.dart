@@ -401,6 +401,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
     final n = graph[id];
     if (n == null || n.run.value == run) return;
     final statusChanged = n.run.value.status != run.status;
+    final progressChanged = n.run.value.agentProgress != run.agentProgress;
     n.run.value = run;
     n.cardRun.value = run.forCard;
     if (widget.cards.layoutDependsOnRun(n.node.value) && graph.relayout(n, c.doc)) {
@@ -410,6 +411,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
       renderer.apply(change);
     }
     renderer.statusChanged(n.slot);
+    if (progressChanged) canvas.visualChanges.changed();
     if (statusChanged) a11y.changed();
   }
 

@@ -8,9 +8,10 @@ struct AgentExecutorProfile: Sendable {
     var description: String
     var status: String
     var timeoutSecondsMax: Int
+    var maxTurnsMax: Int = 50
     var json: JSONValue {
         ["name": .string(name), "description": .string(description), "status": .string(status),
-         "timeout_seconds_max": .int(timeoutSecondsMax)]
+         "timeout_seconds_max": .int(timeoutSecondsMax), "max_turns_max": .int(maxTurnsMax)]
     }
 
     static func parse(_ value: JSONValue) throws -> [Self] {
@@ -21,7 +22,12 @@ struct AgentExecutorProfile: Sendable {
                   let description = item["description"]?.string, description.count <= 200,
                   let status = item["status"]?.string, ["ok", "image_missing", "device_missing", "unavailable"].contains(status),
                   case .int(let timeout)? = item["timeout_seconds_max"], (1...86400).contains(timeout) else { throw invalid() }
-            return Self(name: name, description: description, status: status, timeoutSecondsMax: timeout)
+            let maxTurns: Int
+            if let value = item["max_turns_max"] {
+                guard case .int(let count) = value, (1...1000).contains(count) else { throw invalid() }
+                maxTurns = count
+            } else { maxTurns = 50 }
+            return Self(name: name, description: description, status: status, timeoutSecondsMax: timeout, maxTurnsMax: maxTurns)
         }
         guard names.contains("default") else { throw invalid() }
         return profiles
@@ -31,6 +37,12 @@ struct AgentExecutorProfile: Sendable {
 }
 
 enum AgentExecutionPolicy {
+    static func turns(node: Int, profile: Int?) throws -> Int {
+        guard (1...1000).contains(node), node <= (profile ?? 50) else {
+            throw NodeError("AgentTurnLimitExceeded", "The requested model-call limit exceeds the executor environment limit")
+        }
+        return node
+    }
     /// The existing node timeout is supplied by the server configuration; profiles can only reduce it.
     static func timeout(node: Int, profile: Int?, server: Int) -> Int {
         max(1, min(node, profile ?? node, server))

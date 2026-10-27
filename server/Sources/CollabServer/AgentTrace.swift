@@ -24,10 +24,10 @@ enum AgentTrace {
 
     static func project(run: String, node: String, event: Int, name: String, data: JSONObject, secrets: [String]) -> (record: JSONValue, log: JSONValue?) {
         let terminal = ["succeeded", "paused", "failed", "cancelled"].contains(name)
-        let safe = redacted(.object(terminal ? JSONObject(data.filter { ["status", "error_type", "usage"].contains($0.key) }) : data), secrets: secrets)
+        let safe = redacted(.object(terminal ? JSONObject(data.filter { ["status", "error_type", "usage", "partial"].contains($0.key) }) : data), secrets: secrets)
         let key = "\(run):\(event)"
         let record: JSONValue = ["event_key": .string(key), "event": .string(name), "data": safe]
-        guard ["thought", "tool_call", "model_call", "error"].contains(name) else { return (record, nil) }
+        guard ["run_started", "thought", "tool_call", "model_call", "progress", "budget_notice", "error"].contains(name) else { return (record, nil) }
         let label = name == "tool_call" ? (safe["name"]?.string ?? "Tool") : name
         let log: JSONValue = ["message_id": .string(key), "node_id": .string(node), "label": .string(label),
             "status": name == "error" ? "failed" : (data["phase"] == "started" ? "start" : "success"),

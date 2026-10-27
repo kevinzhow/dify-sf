@@ -26,7 +26,7 @@ final class DaemonLog: Sendable {
 /// A local stand-in for Dify's plugin daemon (`dispatch/model/schema`, `dispatch/llm/invoke`), answering the daemon's
 /// line stream. The model answers `echo: <last user message>` in two chunks plus a usage chunk; a message containing
 /// `[[fail]]` gets the daemon's error line for an `InvokeAuthorizationError`.
-func withFakeDaemon(_ body: @Sendable @escaping (String, DaemonLog) async throws -> Void) async throws {
+func withFakeDaemon(maxBodyBytes: Int = 1 << 20, _ body: @Sendable @escaping (String, DaemonLog) async throws -> Void) async throws {
     let log = DaemonLog()
     @Sendable func lines(_ items: [JSONValue]) -> Response {
         var h = HTTPFields()
@@ -35,7 +35,7 @@ func withFakeDaemon(_ body: @Sendable @escaping (String, DaemonLog) async throws
         return Response(status: .ok, headers: h, body: .init(string: text))
     }
     @Sendable func record(_ req: Request, _ path: String) async -> JSONValue {
-        let data = (try? await req.body.collect(max: .specified(ByteCount(value: 1 << 20)))) ?? Data()
+        let data = (try? await req.body.collect(max: .specified(ByteCount(value: maxBodyBytes)))) ?? Data()
         let body = (try? JSONValue.parse(data)) ?? .null
         log.add(.init(path: path, apiKey: req.headers[HTTPField.Name("X-Api-Key")!], pluginId: req.headers[HTTPField.Name("X-Plugin-ID")!],
                       body: body))
