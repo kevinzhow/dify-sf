@@ -23,7 +23,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/app_fonts.dart';
 
-/// The run UI in the editor with the mock runtime (dify-sf has no workflow runtime): a test run from the header, the
+/// The run UI in the editor with an explicit mock runtime: a test run from the header, the
 /// chatflow preview, a single node run and the run history. Run state stays local: no document ops.
 
 class _Backend extends DemoBackend {
@@ -124,6 +124,10 @@ Future<_Backend> _open(WidgetTester t, {bool chat = false}) async {
     ),
   );
   await _settle(t);
+  // These UI fixtures intentionally use a synthetic model without a configured
+  // workspace. Preflight behavior is covered by chat_request_validation_test;
+  // give the mock runtime a successful preflight to exercise its result UI.
+  _store(t).computeRunChecklist = () => const [];
   return backend;
 }
 

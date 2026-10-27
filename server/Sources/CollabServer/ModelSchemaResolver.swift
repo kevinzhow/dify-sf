@@ -35,6 +35,9 @@ actor ModelSchemaCache {
         }
         if let task = pending[key] { return await task.value }
         let previous = entries[key]?.value.schema
+        // Keep settings responsive when many saved models share an unavailable
+        // daemon, without starting an unbounded number of metadata requests.
+        guard pending.count < 32 else { return .init(schema: previous, status: "unknown", error: "model_schema_unavailable") }
         let started = generation
         let task = Task {
             var value = await load()
@@ -85,7 +88,7 @@ extension Routes {
         let digest = SHA256.hash(data: Data(encoded.utf8)).map { String(format: "%02x", $0) }.joined()
         let key = [config.pluginDaemonTenant, def.id.description, name, type, credentialId ?? "", digest].joined(separator: "\u{0}")
         let daemon = PluginDaemonClient(baseURL: config.pluginDaemonURL, key: config.pluginDaemonKey, tenant: config.pluginDaemonTenant,
-                                        timeoutSeconds: min(15, max(1, config.pluginDaemonTimeoutSeconds)))
+                                        timeoutSeconds: min(5, max(1, config.pluginDaemonTimeoutSeconds)))
         let provider = def.id.description
         return await models.schemas.resolve(key) {
             do {

@@ -88,7 +88,7 @@ extension PluginDaemonClient {
 extension Routes {
     func providerPluginDaemon() -> PluginDaemonClient {
         PluginDaemonClient(baseURL: config.pluginDaemonURL, key: config.pluginDaemonKey, tenant: config.pluginDaemonTenant,
-                           timeoutSeconds: min(15, max(1, config.pluginDaemonTimeoutSeconds)))
+                           timeoutSeconds: min(5, max(1, config.pluginDaemonTimeoutSeconds)))
     }
 
     func installedProviderPlugins(force: Bool = false) async -> InstalledProviderPlugins {

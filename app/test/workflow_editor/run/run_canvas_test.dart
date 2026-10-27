@@ -34,6 +34,9 @@ void main() {
     final canvasState = t.state<WorkflowCanvasState>(find.byType(WorkflowCanvas));
     final scope = WorkflowRunScope.of(t.element(find.byType(WorkflowCanvas)));
     final store = WorkflowStoreScope.of(t.element(find.byType(WorkflowCanvas)));
+    // The synthetic demo model has no workspace credentials. This test covers
+    // mock run events; preflight validation has separate integration coverage.
+    store.computeRunChecklist = () => const [];
     expect(scope.service, isA<MockWorkflowRunService>());
 
     // Every card's status as it changes.

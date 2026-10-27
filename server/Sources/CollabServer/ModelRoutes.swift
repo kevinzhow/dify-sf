@@ -167,7 +167,7 @@ extension Routes {
     // MARK: - Views (Dify's provider configurations)
 
     /// One provider's configuration as Dify's `ProviderConfiguration` sees it.
-    struct ProviderView {
+    struct ProviderView: Sendable {
         let def: ProviderDefinition
         let credentials: [StoredModelCredential]
         let hasRecord: Bool
@@ -182,7 +182,7 @@ extension Routes {
         var currentUnreadable: Bool { current != nil && currentConfig == nil }
     }
 
-    struct CustomModelView {
+    struct CustomModelView: Sendable {
         let key: ModelKey
         let credentials: [StoredModelCredential]
         let currentId: String?
@@ -213,7 +213,7 @@ extension Routes {
                             hasCustomModels: !custom.isEmpty)
     }
 
-    struct ModelEntry {
+    struct ModelEntry: Sendable {
         let schema: ModelSchema
         let status: String
         var schemaStatus: String = "ready"
@@ -236,8 +236,17 @@ extension Routes {
                 out.append(ModelEntry(schema: m.schema, status: status, schemaStatus: pluginMissing ? "unavailable" : "ready", schemaError: pluginMissing ? "plugin_not_installed" : nil))
             }
         }
-        for c in v.customModels where !c.unadded && types.contains(c.key.modelType) {
-            let resolved = await customModelSchema(v.def, c)
+        let custom = v.customModels.filter { !$0.unadded && types.contains($0.key.modelType) }
+        let resolved = await withTaskGroup(of: (Int, ResolvedModelSchema).self, returning: [Int: ResolvedModelSchema].self) { group in
+            for (index, model) in custom.enumerated() {
+                group.addTask { (index, await customModelSchema(v.def, model)) }
+            }
+            var values: [Int: ResolvedModelSchema] = [:]
+            for await (index, value) in group { values[index] = value }
+            return values
+        }
+        for (index, c) in custom.enumerated() {
+            let resolved = resolved[index] ?? .unknown
             let schema = resolved.schema ?? ModelSchema(model: c.key.model,
                 label: ["en_US": .string(c.key.model), "zh_Hans": .string(c.key.model)], modelType: c.key.modelType,
                 features: nil, fetchFrom: "customizable-model", modelProperties: [:], deprecated: false, parameterRules: [])
@@ -265,6 +274,19 @@ extension Routes {
             let ka = (a.element.schema.modelType, position(a.element)), kb = (b.element.schema.modelType, position(b.element))
             return ka != kb ? ka < kb : a.offset < b.offset
         }.map(\.element)
+    }
+
+    /// Resolve independent providers together so an unavailable daemon costs
+    /// one metadata timeout rather than one timeout per provider and model.
+    func modelEntries(_ views: [ProviderView], type: String) async -> [[ModelEntry]] {
+        await withTaskGroup(of: (Int, [ModelEntry]).self, returning: [[ModelEntry]].self) { group in
+            for (index, value) in views.enumerated() {
+                group.addTask { (index, await modelEntries(value, type: type)) }
+            }
+            var values = Array(repeating: [ModelEntry](), count: views.count)
+            for await (index, value) in group { values[index] = value }
+            return values
+        }
     }
 
     // MARK: - JSON shapes
@@ -403,8 +425,9 @@ extension Routes {
         let type = try modelType(req.parameters.get("type").map(JSON.string))
         let s = try await state()
         var data: [JSON] = []
-        for def in models.catalog.providers {
-            let list = await modelEntries(view(def, s), type: type).filter { $0.status == "active" && !$0.schema.deprecated }
+        let lists = await modelEntries(models.catalog.providers.map { view($0, s) }, type: type)
+        for (def, entries) in zip(models.catalog.providers, lists) {
+            let list = entries.filter { $0.status == "active" && !$0.schema.deprecated }
             guard !list.isEmpty else { continue }
             data.append([
                 "provider": .string(def.id.description),
@@ -435,8 +458,9 @@ extension Routes {
         let s = try await state()
         var chosen = s.defaults[type]
         if chosen == nil {
-            for def in models.catalog.providers {
-                if let first = await modelEntries(view(def, s), type: type).first(where: { $0.status == "active" }) {
+            let lists = await modelEntries(models.catalog.providers.map { view($0, s) }, type: type)
+            for (def, entries) in zip(models.catalog.providers, lists) {
+                if let first = entries.first(where: { $0.status == "active" }) {
                     chosen = try await modelStoreCall { try await store.defaultModelIfAbsent(type: type, provider: def.id.description, model: first.schema.model) }
                     break
                 }
@@ -521,10 +545,8 @@ extension Routes {
             guard let providerId = setting.provider else { continue }
             guard let def = models.catalog.provider(providerId) else { throw ServerError.badRequest("Provider \(providerId) does not exist.") }
             // Dify checks the model name among the active models of the type (of every provider).
-            var active: [ModelEntry] = []
-            for candidate in models.catalog.providers {
-                active += await modelEntries(view(candidate, s), type: setting.type).filter { $0.status == "active" }
-            }
+            let lists = await modelEntries(models.catalog.providers.map { view($0, s) }, type: setting.type)
+            let active = lists.flatMap { $0 }.filter { $0.status == "active" }
             guard let model = setting.model, active.contains(where: { $0.schema.model == model }) else {
                 throw ServerError.badRequest("Model \(setting.model ?? "") does not exist.")
             }

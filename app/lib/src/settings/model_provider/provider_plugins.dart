@@ -184,7 +184,11 @@ class _ProviderPluginsDialogState extends State<ProviderPluginsDialog> {
             ),
             Align(
               alignment: AlignmentDirectional.centerEnd,
-              child: DifyButton(loading: _loading, onPressed: _load, child: Text(_t('modelProvider.plugins.refresh'))),
+              child: DifyButton(
+                loading: _loading,
+                onPressed: _load,
+                child: DifyTextLine(_t('modelProvider.plugins.refresh')),
+              ),
             ),
           ],
         ),
@@ -233,7 +237,7 @@ class _ProviderPluginsDialogState extends State<ProviderPluginsDialog> {
                     semanticLabel:
                         '${_t(update ? 'modelProvider.plugins.update' : 'modelProvider.plugins.install')} $label',
                     onPressed: () => _install(row),
-                    child: Text(_t(update ? 'modelProvider.plugins.update' : 'modelProvider.plugins.install')),
+                    child: DifyTextLine(_t(update ? 'modelProvider.plugins.update' : 'modelProvider.plugins.install')),
                   ),
                 if (installed)
                   DifyButton(
@@ -241,7 +245,7 @@ class _ProviderPluginsDialogState extends State<ProviderPluginsDialog> {
                     disabled: busy,
                     semanticLabel: '${_t('modelProvider.plugins.remove')} $label',
                     onPressed: () => _remove(row),
-                    child: Text(_t('modelProvider.plugins.remove')),
+                    child: DifyTextLine(_t('modelProvider.plugins.remove')),
                   ),
               ],
             ),

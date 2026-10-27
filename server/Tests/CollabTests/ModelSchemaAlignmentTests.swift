@@ -19,6 +19,8 @@ final class SchemaScenario: Sendable {
     let failure = Mutex(false)
     let catalogFails = Mutex(false)
     let taskStatus = Mutex("failed")
+    let schemaDelay = Mutex(false)
+    let schemaRequests = Mutex((active: 0, peak: 0))
 }
 
 /// Uses schemas captured from all ten actual signed plugins, without provider calls.
@@ -43,8 +45,11 @@ private func withOriginalSchemaDaemon(_ body: @Sendable @escaping (String, Daemo
         }
         app.post("plugin", ":tenant", "dispatch", "model", "schema") { req async throws -> Response in
             let raw = try await req.body.collect(max: .specified(ByteCount(value: 1 << 20)))
-            let input = try JSONValue.parse(raw)
+            let input = try JSONValue.parse(raw ?? Data())
             log.add(.init(path: "schema", body: input))
+            scenario.schemaRequests.withLock { $0.active += 1; $0.peak = max($0.peak, $0.active) }
+            defer { scenario.schemaRequests.withLock { $0.active -= 1 } }
+            if scenario.schemaDelay.withLock({ $0 }) { try await Task.sleep(for: .milliseconds(100)) }
             let name = input["data"]?["model"]?.string, provider = input["data"]?["provider"]?.string
             let found = cases.first { $0["model"]?.string == name && $0["provider"]?.string?.split(separator: "/").last.map(String.init) == provider }
             var value: JSONValue
@@ -73,6 +78,25 @@ private func withOriginalSchemaDaemon(_ body: @Sendable @escaping (String, Daemo
 
 @Suite("Original provider metadata alignment", .enabled(if: testDbHost != nil))
 struct ModelSchemaAlignmentTests {
+    @Test func slowMetadataReadsOverlapAndRetainEverySavedModelInOrder() async throws {
+        try await withOriginalSchemaDaemon { daemon, _, scenario in
+            scenario.schemaDelay.withLock { $0 = true }
+            try await withServer(config: runtimeConfig(daemon: daemon)) { api, store, _ in
+                let owner = try await api.setupOwner(), provider = "langgenius/openai_api_compatible/openai_api_compatible"
+                let names = (0..<8).map { "unrecognized-alias-\($0)" }
+                for name in names {
+                    _ = try await store.createModelCredential(.init(provider: provider, model: name, modelType: "llm"),
+                        name: nil, config: #"{"api_key":"fixture-not-a-key","endpoint_url":"https://example.com/v1"}"#, createdBy: nil)
+                }
+                let result = try await api.get("/v1/workspace/model-providers/\(provider)/models", token: owner)
+                #expect(result.status == 200)
+                #expect(result.data.compactMap { $0["model"]?.string } == names)
+                #expect(result.data.allSatisfy { $0["schema_status"] == "unavailable" && $0["model_properties"] == [:] })
+                #expect(scenario.schemaRequests.withLock { $0.peak } > 1)
+            }
+        }
+    }
+
     @Test func tenProvidersPreserveOriginalCapabilitiesAndParameterRules() async throws {
         let cases = try originalSchemaCases()
         #expect(Set(cases.compactMap { $0["provider"]?.string }).count == 10)
@@ -86,7 +110,7 @@ struct ModelSchemaAlignmentTests {
                     if definition.supportsCustomModels {
                         _ = try await store.createModelCredential(.init(provider: provider, model: model, modelType: "llm"), name: nil, config: config, createdBy: nil)
                     } else {
-                        _ = try await store.createProviderCredential(provider, name: nil, config: config, createdBy: nil)
+                        _ = try await store.createProviderCredential(provider: provider, name: nil, config: config, createdBy: nil)
                     }
                     let list = try await api.get("/v1/workspace/model-providers/\(provider)/models", token: owner)
                     let entry = try #require(list.data.first { $0["model"]?.string == model })
@@ -193,7 +217,7 @@ struct ModelSchemaCacheTests {
 }
 
 private struct MetadataNoopChecker: CredentialChecker {
-    func check(_ plan: Validation.Plan) async -> String? { nil }
+    func check(_ plan: CollabModels.Validation.Plan) async -> String? { nil }
 }
 
 private final class WrongProviderPackage: ProviderPluginPackageSource, Sendable {
