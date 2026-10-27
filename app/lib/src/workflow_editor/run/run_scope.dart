@@ -154,6 +154,12 @@ class WorkflowRunHostState extends State<WorkflowRunHost> {
     isChatMode: () => widget.isChatMode?.call() ?? false,
     fetchInspectVars: () => widget.fetchInspectVars?.call(),
     onCancelSelection: () => cancelNodesSelectedOn(widget.canvas, widget.controller),
+    onValidationFailed: (issue) {
+      final id = issue['id'];
+      if (id is! String || !widget.controller.doc.nodes.containsKey(id)) return;
+      widget.controller.selectNode(id);
+      if (issue['openInlineAgentPanel'] == true) store.setOpenInlineAgentPanelNodeId(id);
+    },
   );
   late final binding = RunCanvasBinding(store, widget.canvas);
   final _singleRuns = <String, SingleRunController>{};

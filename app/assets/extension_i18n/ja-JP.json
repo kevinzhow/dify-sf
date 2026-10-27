@@ -13,6 +13,7 @@
     "release.mail": "メール",
     "release.enabled": "有効",
     "release.disabled": "無効",
-    "release.unknown": "未報告"
+    "release.unknown": "未報告",
+    "runtime.unsupportedNodes": "このサーバーでは次のノードを実行できません：{{nodes}}。設定または置き換えてから再実行してください。"
   }
 }

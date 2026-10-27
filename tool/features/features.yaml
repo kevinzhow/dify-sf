@@ -707,7 +707,7 @@ features:
   title: 'Checklist: warning count, groups, Go to fix, publish blocked while items remain'
   dify: [web/app/components/workflow/header/checklist, web/app/components/workflow/hooks/use-checklist.ts]
   status: ported
-  deviation: "'Configure a model' follows the workspace's model providers (protocol 1.9; empty while loading or without a server, as Dify's query default); Agent v2 inline-agent checks are left out (they need Dify's agent composer service)."
+  deviation: "'Configure a model' follows the workspace's model providers; inline Agent checks use its server-pinned configuration. Run validation recomputes the existing checklist from the current document at send time. Unlike Dify's summary toast, it intentionally names each affected node and missing item, includes disconnected nodes and selects the first navigable issue; the existing Go to fix checklist remains available."
   evidence: ['spec:web/app/components/workflow/header/checklist', 'spec:web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts', visual:toast-publish]
   ours: [app/lib/src/workflow_editor/header/checklist/use_checklist.dart, app/lib/src/workflow_editor/header/checklist/checklist.dart]
 - id: header.publish

@@ -47,6 +47,7 @@
     "release.mail": "Email",
     "release.enabled": "Enabled",
     "release.disabled": "Disabled",
-    "release.unknown": "Not reported"
+    "release.unknown": "Not reported",
+    "runtime.unsupportedNodes": "This server cannot run these nodes: {{nodes}}. Configure or replace them before running."
   }
 }

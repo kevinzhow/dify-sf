@@ -5,6 +5,15 @@ import '../../store/workflow_store.dart';
 /// hooks/use-checklist.ts `ChecklistItem`: one entry of the checklist (a node with problems, or a missing node).
 @immutable
 class ChecklistItem {
+  factory ChecklistItem.fromJson(DifyJson item) => ChecklistItem(
+    id: '${item['id'] ?? ''}', type: '${item['type'] ?? ''}', title: '${item['title'] ?? item['id'] ?? ''}',
+    toolIcon: item['toolIcon'], unConnected: item['unConnected'] == true,
+    errorMessages: [for (final e in item['errorMessages'] as List? ?? const []) '$e'],
+    canNavigate: item['canNavigate'] == true, disableGoTo: item['disableGoTo'] == true,
+    isPluginMissing: item['isPluginMissing'] == true, pluginUniqueIdentifier: item['pluginUniqueIdentifier'] as String?,
+    openInlineAgentPanel: item['openInlineAgentPanel'] == true,
+  );
+
   const ChecklistItem({
     required this.id,
     required this.type,

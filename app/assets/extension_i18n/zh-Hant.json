@@ -13,6 +13,7 @@
     "release.mail": "郵件",
     "release.enabled": "已啟用",
     "release.disabled": "未啟用",
-    "release.unknown": "未回報"
+    "release.unknown": "未回報",
+    "runtime.unsupportedNodes": "此伺服器無法執行以下節點：{{nodes}}。請設定或替換這些節點後重試。"
   }
 }

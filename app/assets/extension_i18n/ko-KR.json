@@ -13,6 +13,7 @@
     "release.mail": "메일",
     "release.enabled": "활성화",
     "release.disabled": "비활성화",
-    "release.unknown": "보고되지 않음"
+    "release.unknown": "보고되지 않음",
+    "runtime.unsupportedNodes": "이 서버에서 다음 노드를 실행할 수 없습니다: {{nodes}}. 설정하거나 교체한 후 다시 실행하세요."
   }
 }

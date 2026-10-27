@@ -330,6 +330,9 @@ class WorkflowStore {
   // ----- node-slice.ts -----
 
   late final checklistItems = _v(const <DifyJson>[]);
+  /// Recompute from the current document and configuration at the instant Run is pressed.
+  /// The header binding owns this callback; checklistItems remains the displayed snapshot.
+  List<DifyJson> Function()? computeRunChecklist;
   late final showSingleRunPanel = _v(false);
   void setShowSingleRunPanel(bool v) => showSingleRunPanel.value = v;
   late final nodeAnimation = _v(false);
