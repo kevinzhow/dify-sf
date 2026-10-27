@@ -8,6 +8,13 @@ public struct ModelSchema: Sendable, Equatable {
     public var modelProperties: [String: JSON]
     public var deprecated: Bool
     public var parameterRules: [JSON]
+
+    public init(model: String, label: JSON, modelType: String, features: [String]?, fetchFrom: String,
+                modelProperties: [String: JSON], deprecated: Bool, parameterRules: [JSON]) {
+        self.model = model; self.label = label; self.modelType = modelType; self.features = features
+        self.fetchFrom = fetchFrom; self.modelProperties = modelProperties; self.deprecated = deprecated
+        self.parameterRules = parameterRules
+    }
 }
 
 extension ModelDefinition {
