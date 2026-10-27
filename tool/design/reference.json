@@ -19,6 +19,7 @@
     "packages/dify-ui/src/textarea/index.tsx": "9501ce851826eb78a32a8c1835598225a9c83c225349dfeffc7ff9acf6050cb4",
     "packages/dify-ui/src/form-control-shared.ts": "92f28cb63dc943a0180b3907b5eb680988368953ad33dc80aca94488d736daf6",
     "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": "9cb052a78eb73da9c0be0369efbaa9203b10818dffcf1afc4916eea339c3d130",
-    "web/app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": "c3ed02c1820c8ca2b47aa0fb082a7fa5a91c370c1208d9993f0076fcf2c763a7"
+    "web/app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": "c3ed02c1820c8ca2b47aa0fb082a7fa5a91c370c1208d9993f0076fcf2c763a7",
+    "web/app/components/base/features/new-feature-panel/feature-card.tsx": "ac1d426d287f78a2f63fb8b4fbd7dc1d3819bb3e7339e9e40bb32779a0831ee4"
   }
 }

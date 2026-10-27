@@ -279,56 +279,58 @@ class FeatureCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = title;
     final titleText = t is String ? t : '';
+    final side = BorderSide(color: DifyFeatureCardRecipe.border, width: Css.border(DifyFeatureCardRecipe.borderWidth));
     Widget card = Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: EdgeInsets.only(top: Css.hairline, left: Css.hairline),
+      margin: const EdgeInsets.only(bottom: DifyFeatureCardRecipe.marginBottom),
+      padding: const EdgeInsets.all(DifyFeatureCardRecipe.padding),
       decoration: BoxDecoration(
-        color: DifyColors.effectsHighlight,
-        borderRadius: BorderRadius.circular(DifyRadius.xl),
+        color: DifyFeatureCardRecipe.background,
+        border: Border(top: side, left: side),
+        borderRadius: BorderRadius.circular(DifyFeatureCardRecipe.radius),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: DifyColors.backgroundSectionBurn,
-          borderRadius: BorderRadius.circular(DifyRadius.xl),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                spacing: 8,
-                children: [
-                  icon,
-                  Expanded(
-                    child: Row(
-                      children: [
-                        if (t is String)
-                          Flexible(child: DifyText(t, DifyType.systemSmSemibold, color: DifyColors.textSecondary))
-                        else if (t is Widget)
-                          Flexible(child: t),
-                        if (tooltip != null)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 2),
-                            child: DifyInfotip(label: tooltip!, content: DifyTextLine(tooltip!)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: DifyFeatureCardRecipe.headerBottom),
+            child: Row(
+              spacing: DifyFeatureCardRecipe.headerGap,
+              children: [
+                icon,
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (t is String)
+                        Flexible(
+                          child: DifyText(
+                            t,
+                            DifyType.systemSmSemibold,
+                            color: DifyColors.textSecondary,
+                            maxLines: null,
                           ),
-                      ],
-                    ),
+                        )
+                      else if (t is Widget)
+                        Flexible(child: t),
+                      if (tooltip != null)
+                        Padding(
+                          padding: const EdgeInsets.only(left: DifyFeatureCardRecipe.tooltipMargin),
+                          child: DifyInfotip(label: tooltip!, content: DifyTextLine(tooltip!)),
+                        ),
+                    ],
                   ),
-                  DifySwitch(
-                    checked: value,
-                    disabled: disabled,
-                    semanticLabel: titleText,
-                    onCheckedChange: (v) => onChange?.call(v),
-                  ),
-                ],
-              ),
+                ),
+                DifySwitch(
+                  checked: value,
+                  disabled: disabled,
+                  semanticLabel: titleText,
+                  onCheckedChange: (v) => onChange?.call(v),
+                ),
+              ],
             ),
-            if (description != null && description!.isNotEmpty) FeatureDescription(description!),
-            ?child,
-          ],
-        ),
+          ),
+          if (description != null && description!.isNotEmpty) FeatureDescription(description!),
+          ?child,
+        ],
       ),
     );
     if (onMouseEnter == null && onMouseLeave == null) return card;

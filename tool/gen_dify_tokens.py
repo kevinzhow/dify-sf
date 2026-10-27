@@ -295,6 +295,51 @@ out.append('abstract final class DifyDrawerRecipe {')
 out.append(f'  static const width = {drawer_widths[0]};')
 out.append(f'  static const viewportGutter = {drawer_gutters[0]};')
 out.append('}')
+
+# The application-level FeatureCard uses the same package tokens. Keep its
+# partial border and spacing recipe source-derived, including unknown-class rejection.
+feature_card = (root / 'web/app/components/base/features/new-feature-panel/feature-card.tsx').read_text()
+surface = re.search(r'className="([^"]*border-effects-highlight[^"]*)"', feature_card)
+header = re.search(r'className="([^"]*mb-[\d.]+ flex items-center gap-[\d.]+[^"]*)"', feature_card)
+tooltip = re.search(r'className="(ml-[\d.]+ size-[\d.]+)"', feature_card)
+if not surface or not header or not tooltip:
+    raise ValueError('Unrecognized FeatureCard recipe structure; review before generating')
+
+def take_utility(classes, pattern):
+    matches = [(c, re.fullmatch(pattern, c)) for c in classes]
+    matches = [(c, m) for c, m in matches if m]
+    if len(matches) != 1:
+        raise ValueError(f'Unrecognized FeatureCard utility {pattern}: {classes}')
+    c, m = matches[0]
+    classes.remove(c)
+    return m[1]
+
+surface_classes = surface[1].split()
+card_padding = float(take_utility(surface_classes, r'p-([\d.]+)')) * 4
+card_margin = float(take_utility(surface_classes, r'mb-([\d.]+)')) * 4
+card_radius = take_utility(surface_classes, r'rounded-(xs|sm|md|lg|xl|2xl|3xl)')
+card_top = float(take_utility(surface_classes, r'border-t-\[([\d.]+)px\]'))
+card_left = float(take_utility(surface_classes, r'border-l-\[([\d.]+)px\]'))
+card_border = take_utility(surface_classes, r'border-(effects-highlight)')
+card_background = take_utility(surface_classes, r'bg-(background-section-burn)')
+header_classes = header[1].split()
+card_header_bottom = float(take_utility(header_classes, r'mb-([\d.]+)')) * 4
+card_header_gap = float(take_utility(header_classes, r'gap-([\d.]+)')) * 4
+tooltip_classes = tooltip[1].split()
+card_tooltip_margin = float(take_utility(tooltip_classes, r'ml-([\d.]+)')) * 4
+take_utility(tooltip_classes, r'size-([\d.]+)')  # Owned by the canonical Infotip trigger.
+if surface_classes or set(header_classes) != {'flex', 'items-center'} or tooltip_classes or card_top != card_left:
+    raise ValueError('Unknown FeatureCard classes or asymmetric borders; review the affected recipe')
+card_radius = {'2xl': 'xxl', '3xl': 'xxxl'}.get(card_radius, card_radius)
+out.append(f'/// Dify {version}: web/app/components/base/features/new-feature-panel/feature-card.tsx.')
+out.append('abstract final class DifyFeatureCardRecipe {')
+for name, value in [('padding', card_padding), ('marginBottom', card_margin), ('borderWidth', card_top),
+                    ('headerBottom', card_header_bottom), ('headerGap', card_header_gap), ('tooltipMargin', card_tooltip_margin)]:
+    out.append(f'  static const {name} = {value};')
+out.append(f'  static const radius = DifyRadius.{card_radius};')
+out.append(f'  static Color get background => DifyColors.{camel(card_background)};')
+out.append(f'  static Color get border => DifyColors.{camel(card_border)};')
+out.append('}')
 print('\n'.join(out))
 if light_only:
     print(f'// {len(light_only)} variables have no plain dark value (the light one is used in both themes): ' + ', '.join(light_only))
