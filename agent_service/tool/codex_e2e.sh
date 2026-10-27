@@ -15,14 +15,16 @@
 # own project, with the scripted fake gateway as the inner gateway AND as the gateway's Codex Responses entry (it is
 # attached to every sandbox network as a second agent peer; AGENT_CODEX_GATEWAY_URL points Codex at it). Three runs:
 #   1. exec_command (writes a PNG, prints the environment), apply_patch, update_plan + report_progress, view_image,
-#      final answer with declared outputs (a text file and the PNG); max_turns 5 gives the near-budget notice;
+#      final answer with declared outputs (a text file and the PNG); max_turns 5 gives the near-budget notice; the
+#      profile's skill (codex.skills_dirs, a kit mounted at /opt/e2e-kit) is listed to the model and in run_started;
 #   2. a model call that hangs: cancelled; the Codex process must be gone and the gateway stream closed;
-#   3. the gateway's call limit (429 usage_limit_reached): the run must fail max_turns.
+#   3. the gateway's call limit (429 usage_limit_reached): the run must fail max_turns; its profile has no skills,
+#      so Codex lists none.
 # Everything created carries dify-sf.test=<random> and is removed at the end, also on failure.
 set -euo pipefail
 
 if [[ $# -lt 2 || $# -gt 3 ]]; then
-  sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'
   exit 64
 fi
 SUBNET=$1
@@ -110,13 +112,26 @@ fi
 GATEWAY_IMAGE=$IMAGE
 
 # ---- the profile file: Dify's sandbox with the Codex release mounted at /opt/codex -------------------------------
-python3 -I - "$WORK/executor-profiles.json" "$DEFAULT_REF" "$CODEX_DIR" <<'EOF'
+# `default` also mounts a kit with one skill and declares its skills directory; `plain` has no skills.
+mkdir -p "$WORK/kit/tools/skills/e2e-render"
+cat >"$WORK/kit/tools/skills/e2e-render/SKILL.md" <<'EOF'
+---
+name: e2e-render
+description: Render an e2e preview image with the kit's tools.
+---
+Run the kit's renderer and report the image.
+EOF
+chmod -R a+rX "$WORK/kit"
+python3 -I - "$WORK/executor-profiles.json" "$DEFAULT_REF" "$CODEX_DIR" "$WORK/kit" <<'EOF'
 import json, sys
-path, default, codex = sys.argv[1:]
+path, default, codex, kit = sys.argv[1:]
+plain = {"description": "Dify's shell sandbox with Codex", "image": default,
+         "mounts": [{"source": codex, "target": "/opt/codex"}],
+         "limits": {"memory_mb": 2048, "pids": 1024}}
 json.dump({"version": 1, "profiles": {
-  "default": {"description": "Dify's shell sandbox with Codex", "image": default,
-              "mounts": [{"source": codex, "target": "/opt/codex"}],
-              "limits": {"memory_mb": 2048, "pids": 1024}}}}, open(path, "w"), indent=1)
+  "default": {**plain, "mounts": plain["mounts"] + [{"source": kit, "target": "/opt/e2e-kit"}],
+              "codex": {"skills_dirs": ["/opt/e2e-kit/tools/skills"]}},
+  "plain": plain}}, open(path, "w"), indent=1)
 EOF
 
 # ---- the model script (Responses events, as a provider streams them) ---------------------------------------------
@@ -164,10 +179,10 @@ calls = [
 json.dump({"calls": calls, "codex_run_token": token, "codex_call_limit": 6}, open(path, "w"))
 EOF
 
-operation() { # FILE EXECUTION MAX_TURNS
-  python3 -I - "$1" "$2" "$3" "$RUN_TOKEN" <<'EOF'
+operation() { # FILE EXECUTION MAX_TURNS PROFILE
+  python3 -I - "$1" "$2" "$3" "$RUN_TOKEN" "$4" <<'EOF'
 import json, sys
-path, execution, max_turns, token = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+path, execution, max_turns, token, profile = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5]
 json.dump({
   "protocol": "dify-sf-agent/1", "operation_id": f"{execution}:0:0", "generation": 1,
   "execution": {"tenant_id": "T1", "app_id": "A1", "workflow_run_id": "W1", "node_id": "N1",
@@ -176,7 +191,7 @@ json.dump({
   "model": {"provider": "langgenius/deepseek/deepseek", "name": "deepseek-v4.1-flash",
             "parameters": {"reasoning_effort": "max"}, "context_window": 1000000,
             "reasoning_efforts": ["high", "max"], "input_modalities": ["text", "image"], "run_token": token},
-  "harness_style": "codex",
+  "harness_style": "codex", "executor_profile": profile,
   "system_prompt": "You are the e2e node. Keep answers short.",
   "task": [{"type": "text", "text": "Make a preview image and a hello file, then report."}],
   "output_schema": {"type": "object", "properties": {
@@ -190,9 +205,9 @@ json.dump({
   "continuation": None}, open(path, "w"))
 EOF
 }
-operation "$WORK/op1.json" "CX1-$ID" 5
-operation "$WORK/op2.json" "CX2-$ID" 5
-operation "$WORK/op3.json" "CX3-$ID" 5
+operation "$WORK/op1.json" "CX1-$ID" 5 default
+operation "$WORK/op2.json" "CX2-$ID" 5 default
+operation "$WORK/op3.json" "CX3-$ID" 5 plain
 
 DOCKER_SOCKET=${DOCKER_SOCKET:-/var/run/docker.sock}
 DOCKER_GID=$(stat -c %g "$DOCKER_SOCKET")
@@ -303,6 +318,7 @@ names = [n for n, _ in events]
 first, last = events[0], events[-1]
 assert first[0] == "run_started" and first[1]["harness_style"] == "codex", first
 assert first[1]["runtime"]["version"] == "0.163.0" and first[1]["model_wire"]["wire"] == "responses", first
+assert first[1]["runtime"]["skills"] == ["e2e-render"], first
 assert last[0] == "succeeded", last
 assert "model_call" not in names, "the official runtime must not emit model_call"
 done = {d["name"]: d for n, d in events if n == "tool_call" and d["phase"] == "finished"}
@@ -330,6 +346,11 @@ print("request 1 tools: " + json.dumps([(t["type"], t.get("name")) for t in b0["
 print("request 1 input roles: " + json.dumps([(i.get("role"), i["content"][0]["text"][:60]) for i in b0["input"] if i.get("type") == "message"], ensure_ascii=False), file=sys.stderr)
 assert b0["model"] == "deepseek-v4.1-flash" and b0["reasoning"]["effort"] == "max", b0["reasoning"]
 assert any("You are the e2e node" in json.dumps(i) for i in b0["input"]), "AGENTS.md instructions missing"
+skills = [c["text"] for i in b0["input"] if i.get("role") == "developer" for c in i.get("content", [])
+          if "<skills_instructions>" in c.get("text", "")]
+assert len(skills) == 1, "the skills catalog is not in request 1"
+assert "- e2e-render: Render an e2e preview image" in skills[0] and "/opt/e2e-kit/tools/skills" in skills[0], skills
+print("request 1 skills catalog:\n" + skills[0].split("### How to use")[0].strip(), file=sys.stderr)
 images = [c for r in reqs[4:] for i in r["body"]["input"] for c in (i.get("content") or i.get("output") or [])
           if isinstance(c, dict) and c.get("type") == "input_image"]
 assert images and all(c["image_url"].startswith("data:image/png;base64,") for c in images), images
@@ -371,4 +392,13 @@ RUN3=$(start_run "$WORK/op3.json"); log "run 3 $RUN3 started"
 curl -sS -N -m 120 -H "Authorization: Bearer $SERVICE_KEY" "$BASE/v1/runs/$RUN3/events" >"$WORK/events-3.txt"
 summary "$WORK/events-3.txt"
 grep -A1 '^event: failed' "$WORK/events-3.txt" | grep -q '"error_type":"max_turns"' || fail "run 3 did not fail max_turns"
+curl -sS "$GW/debug/codex-requests" >"$WORK/codex-requests-3.json"
+python3 -I - "$WORK/events-3.txt" "$WORK/codex-requests-3.json" <<'EOF' || fail "run 3: skills without codex.skills_dirs"
+import json, sys
+first = json.loads(open(sys.argv[1]).read().split("data: ", 1)[1].split("\n", 1)[0])
+assert first["executor_profile"] == "plain" and "skills" not in first["runtime"], first
+body = json.load(open(sys.argv[2]))["requests"][-1]["body"]
+assert "<skills_instructions>" not in json.dumps(body), "a skills catalog without codex.skills_dirs"
+print("run 3 (profile plain): no skills in run_started or the request", file=sys.stderr)
+EOF
 log "all three runs as expected"
