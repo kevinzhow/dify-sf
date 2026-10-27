@@ -94,6 +94,12 @@ The supervisor (`sandbox_supervisor`) reads:
 | `SANDBOX_ADDRESS` | `name` | Sandbox URLs by container `name` (Docker DNS on the sandbox network) or `ip` |
 | `SANDBOX_STATE_FILE` | none | Known sandboxes; without it a restart sweeps every labelled container and network |
 | `SANDBOX_START_TIMEOUT` | `60` | Seconds to wait for a healthy shellctl |
+| `SANDBOX_DISK_ROOT` | none | Disk workspaces (profiles with `workspace.backing: disk`; docs/agent-v2.md, "Disk workspaces"): the dedicated directory as the supervisor sees it (must exist, writable by its user). Without it disk profiles stop the process |
+| `SANDBOX_DISK_HOST_ROOT` | required with the root | The same directory on the Docker host (bind source of the helper) |
+| `SANDBOX_DISK_TOOL_IMAGE` | required with the root | Helper image pinned by digest, with `python3`, `mke2fs` and `debugfs` (never pulled) |
+| `SANDBOX_DISK_LOOP_DEVICES` | required with the root | Comma-separated `/dev/loopN` the supervisor may bind; one active disk execution per device |
+| `SANDBOX_DISK_BUDGET_MB` | required with the root | Sum of all workspace images |
+| `SANDBOX_DISK_MIN_FREE_MB` | `1024` | Free space that must remain on the root's filesystem after a new image |
 
 `SIGTERM` stops the service: running operations end `failed` (`internal`) and their results are stored.
 
