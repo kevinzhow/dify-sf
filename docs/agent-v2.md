@@ -380,8 +380,8 @@ gets `view_image {"path", "detail"?}` (`path` relative to `/workspace` or absolu
 default, or `low`):
 
 1. The service resolves the path in the sandbox (inside `/workspace` after symlinks, a regular file) and reads it. It
-   must be a PNG, JPEG or WebP by its header. All images viewed in one model step together may have at most 3 MiB
-   (the gateway's file budget per model request is 6 MiB, task images included).
+   must be a PNG, JPEG or WebP by its header. All images viewed in one model step together may have at most 16 MiB
+   (the gateway's file budget per model request is 20 MiB, task images included).
 2. It uploads the bytes as a file of the execution (`files/upload-request` and `PUT`; the Swift server grants a
    received upload to the run token's model files, `grantFiles`) and returns the tool result: a text with the path,
    type, dimensions and size, and the image as a multipart part (`dify-sf-file:<upload_id>`).
@@ -390,10 +390,10 @@ default, or `low`):
    and in every later call, resumes and output retries included: the image stays in the conversation and the
    request stays append-only (see [Prompt cache](#prompt-cache)). The same bytes viewed again (SHA-256) are not
    attached a second time; the tool answers that they are already in the conversation.
-4. Budget: kept images are sent with every model call, and the Swift gateway accepts at most 6 MiB of files per
-   model request (task images included). The viewed images of one conversation (the execution's snapshot history
-   plus this run) may therefore have at most 3 MiB together, the half of the gateway budget not left for the task's
-   images. A view beyond it is a tool error that names what is used and asks for a smaller copy; the tool
+4. Budget: kept images are sent with every model call, and the Swift gateway accepts at most 20 MiB of files per
+   model request (task images included; 8,192 messages; 32 MiB per converted request). The viewed images of one
+   conversation (the execution's snapshot history plus this run) may therefore have at most 16 MiB together, leaving
+   the rest for the task's images. A view beyond it is a tool error that names what is used and asks for a smaller copy; the tool
    description asks the model to view small JPEG copies. A larger budget needs a larger gateway budget first.
 
 Trade-off (decided 2026-10-27): before this, an image was sent with the next call only, so it cost its tokens once;

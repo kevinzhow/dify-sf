@@ -15,9 +15,9 @@ const viewImageToolName = 'view_image';
 /// Largest total size of the viewed images kept in one conversation (every
 /// `view_image` of the execution, resumes and output retries included).
 /// Kept images are re-sent with every model call, and the Swift gateway
-/// accepts at most 6 MiB of files per model request: this half is for
-/// viewed images, the other half for the task's images.
-const viewImageConversationBytes = 3 * 1024 * 1024;
+/// accepts at most 20 MiB of files per model request: 16 MiB are for viewed
+/// images, the rest for the task's images.
+const viewImageConversationBytes = 16 * 1024 * 1024;
 
 /// Metadata key on the attached `MediaPart`: `{"path", "detail", "size",
 /// "sha256"}`. A part without `size` comes from a snapshot taken before
@@ -28,7 +28,7 @@ const viewImageDescription =
     'Look at an image file in the workspace (PNG, JPEG or WebP). The image is '
     'attached after the result and stays in the conversation, so you can '
     'refer back to it later; do not view the same image twice. All viewed '
-    'images together may have at most 3 MiB per conversation: view small '
+    'images together may have at most 16 MiB per conversation: view small '
     'copies (for example a JPEG at most 1500 pixels on its longest side) '
     'rather than large renders. Use it to check renders, plots and '
     'screenshots you made with the shell.';
