@@ -10,7 +10,7 @@ import '../providers/model_providers_api.dart';
 
 /// [ModelProvidersApi] against a real server at [baseUrl] (protocol 1.9). Pass the signed-in user's [auth]: every
 /// request carries its bearer token (refreshed once on a `401`).
-class HttpModelProvidersApi implements ModelProvidersApi, ModelProviderPluginsApi {
+class HttpModelProvidersApi implements ModelProvidersApi, ModelProviderPluginsApi, ModelDiscoveryApi {
   HttpModelProvidersApi(
     this.baseUrl, {
     http.Client? client,
@@ -469,4 +469,53 @@ class HttpModelProvidersApi implements ModelProvidersApi, ModelProviderPluginsAp
   );
 
   void close() => _client.close();
+
+  @override
+  Future<Map<String, Object?>> discoverModels(String provider, {required Map<String, Object?> credentials}) async =>
+      (await _send(
+        'POST',
+        '${_p(provider)}/models/discover',
+        ok: const [200],
+        body: {'credentials': credentials},
+        requestTimeout: const Duration(seconds: 30),
+      )) as Map<String, Object?>;
+
+  @override
+  Future<Map<String, Object?>> probeModel(
+    String provider, {
+    required Map<String, Object?> credentials,
+    required String model,
+    required String apiType,
+    required bool consent,
+  }) async => (await _send(
+    'POST',
+    '${_p(provider)}/models/probe',
+    ok: const [200],
+    body: {
+      'credentials': credentials,
+      'model': model,
+      'api_type': apiType,
+      'consent': consent,
+    },
+    requestTimeout: const Duration(seconds: 160),
+  )) as Map<String, Object?>;
+
+  @override
+  Future<void> createAutofilledModel(
+    String provider, {
+    required String model,
+    required Map<String, Object?> credentials,
+    String? discoveryId,
+    String? probeId,
+  }) => _send(
+    'POST',
+    '${_p(provider)}/models/autofill',
+    ok: const [201],
+    body: {
+      'model': model,
+      'credentials': credentials,
+      'discovery_id': ?discoveryId,
+      'probe_id': ?probeId,
+    },
+  );
 }

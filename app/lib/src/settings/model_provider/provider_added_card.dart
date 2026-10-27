@@ -904,13 +904,18 @@ class _LazyCustomModelActionsState extends State<LazyCustomModelActions> {
       setState(() => _addOpen = true);
       return;
     }
-    ModelAuth(
+    openNewCustomModel(
+      context,
       env: env,
       provider: detail,
-      configurationMethod: ConfigurationMethodEnum.customizableModel,
-      isModelCredential: true,
-      mode: ModelModalModeEnum.configCustomModel,
-    ).handleOpenModal(context);
+      auth: ModelAuth(
+        env: env,
+        provider: detail,
+        configurationMethod: ConfigurationMethodEnum.customizableModel,
+        isModelCredential: true,
+        mode: ModelModalModeEnum.configCustomModel,
+      ),
+    );
   }
 
   Future<void> _manage(ModelProviderEnv env) async {

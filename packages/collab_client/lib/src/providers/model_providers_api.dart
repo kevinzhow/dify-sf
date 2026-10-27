@@ -52,6 +52,26 @@
 /// OpenAI-API-compatible).
 library;
 
+/// Optional extension for compatible LLM discovery. Discovery never invokes a
+/// model; probing is a separate operation requiring explicit consent.
+abstract interface class ModelDiscoveryApi {
+  Future<Map<String, Object?>> discoverModels(String provider, {required Map<String, Object?> credentials});
+  Future<Map<String, Object?>> probeModel(
+    String provider, {
+    required Map<String, Object?> credentials,
+    required String model,
+    required String apiType,
+    required bool consent,
+  });
+  Future<void> createAutofilledModel(
+    String provider, {
+    required String model,
+    required Map<String, Object?> credentials,
+    String? discoveryId,
+    String? probeId,
+  });
+}
+
 /// Dify's `ModelTypeEnum` values, in Dify's order.
 abstract final class ModelProviderModelTypes {
   static const llm = 'llm';
