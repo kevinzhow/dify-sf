@@ -10,7 +10,9 @@ import 'package:agent_service/testing.dart';
 /// ADDRESS defaults to 127.0.0.1; a container uses 0.0.0.0 so that the agent
 /// service can reach it (see tool/compose_smoke.sh).
 ///
-/// The script format is documented in lib/src/testing/scripted_gateway.dart.
+/// It answers `POST /inner/agent/llm/invoke` and `POST /inner/agent/responses`
+/// (the `codex` style's native wire); the script format is documented in
+/// lib/src/testing/scripted_gateway.dart.
 /// If AGENT_SERVICE_KEY is set, requests must carry it as a bearer key.
 Future<void> main(List<String> args) async {
   if (args.isEmpty) {

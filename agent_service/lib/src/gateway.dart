@@ -21,6 +21,34 @@ class GatewayException implements Exception {
   String toString() => 'GatewayException($errorType: $message)';
 }
 
+/// A non-200 answer of `llm/invoke` (the `codex` style's retries read the
+/// status, the error code and `Retry-After`).
+class GatewayHttpException extends GatewayException {
+  GatewayHttpException(
+    super.errorType,
+    super.message, {
+    required this.status,
+    this.errorCode,
+    this.retryAfter,
+  });
+  final int status;
+  final String? errorCode;
+  final String? retryAfter;
+}
+
+/// An error envelope in the stream of `llm/invoke` (`code` -429 or -500;
+/// [difyErrorType] from its message).
+class GatewayEnvelopeException extends GatewayException {
+  GatewayEnvelopeException(
+    super.errorType,
+    super.message, {
+    required this.code,
+    this.difyErrorType,
+  });
+  final int code;
+  final String? difyErrorType;
+}
+
 /// Per-run client of the inner endpoints. [close] aborts every call in
 /// flight (the Swift server then cancels the plugin call on its side).
 class InnerClient {
@@ -77,13 +105,19 @@ class InnerClient {
     final response = await _client.send(request);
     if (response.statusCode != 200) {
       final text = await response.stream.bytesToString();
-      throw GatewayException(switch (response.statusCode) {
-        429 => 'model_quota',
-        422 when _errorCode(text) == 'file_error' => 'file_error',
-        // The request's files exceed the gateway's byte budget.
-        413 => 'file_error',
-        _ => 'model_error',
-      }, 'model gateway answered HTTP ${response.statusCode}: ${_short(text)}');
+      throw GatewayHttpException(
+        switch (response.statusCode) {
+          429 => 'model_quota',
+          422 when _errorCode(text) == 'file_error' => 'file_error',
+          // The request's files exceed the gateway's byte budget.
+          413 => 'file_error',
+          _ => 'model_error',
+        },
+        'model gateway answered HTTP ${response.statusCode}: ${_short(text)}',
+        status: response.statusCode,
+        errorCode: _errorCodeLoose(text),
+        retryAfter: response.headers['retry-after'],
+      );
     }
     await for (final data in parseSse(response.stream)) {
       final Object? envelope;
@@ -101,11 +135,49 @@ class InnerClient {
         if (chunk is Map) yield chunk.cast<String, Object?>();
         continue;
       }
-      throw GatewayException(
+      throw GatewayEnvelopeException(
         code == -429 ? 'model_quota' : 'model_error',
         _errorMessage(envelope['message']),
+        code: code is int ? code : -500,
+        difyErrorType: _difyErrorType(envelope['message']),
       );
     }
+  }
+
+  /// `POST /inner/agent/responses` (the `codex` style's native wire): the
+  /// raw Responses request body goes to the provider through the Swift
+  /// server, whose answer is the provider's event stream unchanged. Returns
+  /// the response headers and the `data` of every event. A non-200 answer
+  /// throws [GatewayHttpException]. An `invocation_id` is never sent twice.
+  Future<({Map<String, String> headers, Stream<String> events})> openResponses(
+    Map<String, Object?> body,
+  ) async {
+    final caller = body['caller'] as Map;
+    final invocationId = caller['invocation_id'] as String;
+    if (!_invocationIds.add(invocationId)) {
+      throw StateError('invocation_id $invocationId was already sent');
+    }
+    final request = http.Request('POST', _url('/inner/agent/responses'))
+      ..headers.addAll(_headers)
+      ..headers['Accept'] = 'text/event-stream'
+      ..body = jsonEncode(body);
+    final response = await _client.send(request);
+    if (response.statusCode != 200) {
+      final text = await response.stream.bytesToString();
+      throw GatewayHttpException(
+        switch (response.statusCode) {
+          429 => 'model_quota',
+          422 when _errorCodeLoose(text) == 'file_error' => 'file_error',
+          413 => 'file_error',
+          _ => 'model_error',
+        },
+        'responses gateway answered HTTP ${response.statusCode}: ${_short(text)}',
+        status: response.statusCode,
+        errorCode: _errorCodeLoose(text),
+        retryAfter: response.headers['retry-after'],
+      );
+    }
+    return (headers: response.headers, events: parseSse(response.stream));
   }
 
   /// `POST /inner/agent/files/download-request`.
@@ -213,6 +285,17 @@ class InnerClient {
       return message;
     }
     return 'model gateway error';
+  }
+
+  static String? _difyErrorType(Object? message) {
+    if (message is! String) return null;
+    try {
+      final inner = jsonDecode(message);
+      final t = inner is Map ? inner['error_type'] : null;
+      return t is String ? t : null;
+    } on FormatException {
+      return null;
+    }
   }
 
   static String _short(String text) =>
@@ -473,6 +556,20 @@ String? _errorCode(String body) {
   try {
     final j = jsonDecode(body);
     return j is Map ? j['error'] as String? : null;
+  } on FormatException {
+    return null;
+  }
+}
+
+/// The error code of a JSON error body: `{"error": "<code>"}` (the
+/// gateway) or `{"error": {"code": "<code>"}}` (an OpenAI-style body).
+String? _errorCodeLoose(String body) {
+  try {
+    final j = jsonDecode(body);
+    final e = j is Map ? j['error'] : null;
+    if (e is String) return e;
+    if (e is Map && e['code'] is String) return e['code'] as String;
+    return null;
   } on FormatException {
     return null;
   }

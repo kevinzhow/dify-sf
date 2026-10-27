@@ -24,7 +24,47 @@ const operationFields = {
   'files',
   'limits',
   'executor_profile',
+  'harness_style',
   'continuation',
+};
+
+/// `harness_style` of an operation: how the agent loop is built (tool set,
+/// prompt assembly, loop policy, reasoning round trip). See docs/agent-v2.md,
+/// "Harness styles".
+enum HarnessStyle {
+  /// Dify's agent (Genkit loop, Dify's shell tools and prompt): the default.
+  dify('dify'),
+
+  /// A port of the OpenAI Codex CLI harness (rust-v0.163.0), Direct tools.
+  codex('codex');
+
+  const HarnessStyle(this.wire);
+  final String wire;
+}
+
+/// Reasoning levels the `codex` style accepts in
+/// `model.parameters.reasoning_effort`, sent unchanged (Codex 0.163.0's
+/// `ReasoningEffort` without `ultra` and `persistent`).
+const codexReasoningEfforts = [
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+];
+
+/// Levels Codex knows that the `codex` style refuses, with the reason given
+/// in `422 unsupported_reasoning_effort`.
+const codexRefusedReasoningEfforts = {
+  'ultra':
+      'ultra means "max reasoning plus proactive delegation to sub-agents" in '
+      'Codex (it sends effort xhigh and enables sub-agents); sub-agents are '
+      'not implemented in this harness. Use max',
+  'persistent':
+      'persistent is an interactive Codex mode (sent as "disabled"); it is '
+      'not implemented in this harness',
 };
 
 /// Protocol name and version sent in every request and response body.
@@ -187,12 +227,19 @@ class ModelSpec {
       name = _string(json, 'name', 'model'),
       parameters = json['parameters'] == null
           ? const {}
-          : _object(json['parameters'], 'model.parameters');
+          : _object(json['parameters'], 'model.parameters'),
+      apiType = _optString(json, 'api_type', 'model');
 
   final Map<String, Object?> json;
   final String provider;
   final String name;
   final Map<String, Object?> parameters;
+
+  /// `model.api_type` (optional): the API mode of the provider credential as
+  /// the Swift server knows it, for example `responses` for an
+  /// `openai_api_compatible` credential in Responses mode. The `codex` style
+  /// selects its model wire from it.
+  final String? apiType;
 }
 
 /// One element of `task`.
@@ -314,6 +361,8 @@ class OperationRequest {
     required this.viewImage,
     required this.reportProgress,
     required this.executorProfile,
+    required this.harnessStyle,
+    required this.updatePlan,
     required this.env,
     required this.files,
     required this.maxTurns,
@@ -343,6 +392,19 @@ class OperationRequest {
   /// The requested executor profile; `default` when absent. Used only with
   /// the shell.
   final String executorProfile;
+
+  /// `harness_style`; absent means [HarnessStyle.dify].
+  final HarnessStyle harnessStyle;
+
+  /// `tools.update_plan` (`codex` style only; off by default as in Codex).
+  final bool updatePlan;
+
+  /// `model.parameters.reasoning_effort` when it is a string, else null.
+  String? get reasoningEffort {
+    final v = model.parameters['reasoning_effort'];
+    return v is String ? v : null;
+  }
+
   final Map<String, String> env;
   final List<FileRef> files;
   final int maxTurns;
@@ -423,6 +485,43 @@ class OperationRequest {
         'omit it for "default"',
       );
     }
+    final rawStyle = json['harness_style'];
+    final HarnessStyle harnessStyle;
+    if (rawStyle == null) {
+      harnessStyle = HarnessStyle.dify;
+    } else if (rawStyle is! String) {
+      throw invalidRequest('harness_style must be a string');
+    } else {
+      harnessStyle =
+          HarnessStyle.values.where((h) => h.wire == rawStyle).firstOrNull ??
+          (throw ApiError(
+            422,
+            'unsupported_harness_style',
+            'harness_style ${jsonEncode(rawStyle)} is not supported; use '
+                '${HarnessStyle.values.map((h) => '"${h.wire}"').join(' or ')}',
+          ));
+    }
+    final updatePlan = tools['update_plan'] == true;
+    if (updatePlan && harnessStyle != HarnessStyle.codex) {
+      throw invalidRequest('tools.update_plan needs harness_style "codex"');
+    }
+    if (harnessStyle == HarnessStyle.codex &&
+        model.parameters.containsKey('reasoning_effort')) {
+      final effort = model.parameters['reasoning_effort'];
+      if (effort is! String || !codexReasoningEfforts.contains(effort)) {
+        final refused = effort is String
+            ? codexRefusedReasoningEfforts[effort]
+            : null;
+        throw ApiError(
+          422,
+          'unsupported_reasoning_effort',
+          refused ??
+              'model.parameters.reasoning_effort ${jsonEncode(effort)} is not '
+                  'one of ${codexReasoningEfforts.join(', ')}',
+          extra: {'reasoning_effort': effort},
+        );
+      }
+    }
     final env = <String, String>{};
     if (json['env'] != null) {
       final rawEnv = _object(json['env'], 'env');
@@ -497,6 +596,8 @@ class OperationRequest {
       viewImage: viewImage,
       reportProgress: reportProgress,
       executorProfile: profile,
+      harnessStyle: harnessStyle,
+      updatePlan: updatePlan,
       env: env,
       files: files,
       maxTurns: maxTurns,
