@@ -196,9 +196,8 @@ class _FeaturePanelDrawerState extends State<FeaturePanelDrawer> with SingleTick
             Positioned(
               top: widget.top,
               bottom: 8,
-              // The right border sits outside the window (`border-r-0`).
-              right: -Css.hairline,
-              width: width + Css.hairline,
+              right: 0,
+              width: width,
               child: AnimatedBuilder(
                 animation: curve,
                 builder: (context, child) =>

@@ -482,6 +482,20 @@
       "scope": "shared visual family; representative declared states, not every possible prop combination"
     },
     {
+      "source": "app/lib/src/design/widgets/main_nav_link.dart",
+      "visual": true,
+      "publicClasses": [
+        "MainNavLink"
+      ],
+      "cases": [
+        "pages.integrations-models.light.en-US",
+        "pages.integrations-models.dark.en-US",
+        "pages.studio-toolbar-default.light.zh-Hans",
+        "pages.studio-toolbar-default.dark.zh-Hans"
+      ],
+      "scope": "actual active primary-navigation control on English/Chinese product pages; pointer/keyboard/font-scale regression"
+    },
+    {
       "source": "app/lib/src/design/widgets/menu.dart",
       "visual": true,
       "cases": [
@@ -579,6 +593,22 @@
         "DifyPopoverSurface"
       ],
       "scope": "shared visual family; representative declared states, not every possible prop combination"
+    },
+    {
+      "source": "app/lib/src/design/widgets/public_app_layout.dart",
+      "visual": true,
+      "cases": [
+        "pages.public-workflow.light.en-US",
+        "pages.public-workflow.dark.en-US",
+        "pages.public-chat.light.en-US",
+        "pages.public-chat.dark.en-US"
+      ],
+      "publicClasses": [
+        "DifyPublicWorkflowLayout",
+        "DifyPublicChatLayout",
+        "DifyPublicChatComposer"
+      ],
+      "scope": "Actual published app layouts; transport and form state remain in PublicAppPage"
     },
     {
       "source": "app/lib/src/design/widgets/qrcode.dart",
@@ -895,6 +925,14 @@
       "scope": "shared visual family; representative declared states, not every possible prop combination"
     },
     {
+      "source": "app/lib/src/design/widgets/text_input_scope.dart",
+      "visual": false,
+      "reason": "Shared focus-ancestry boundary for code editors and ordinary inputs. Owns shortcut routing, with no painting, typography or layout. Mounted shortcut tests cover behavior; the actual controls and pages own visual captures.",
+      "publicClasses": [
+        "DifyTextInputScope"
+      ]
+    },
+    {
       "source": "app/lib/src/design/widgets/text_line.dart",
       "visual": true,
       "cases": [
@@ -972,36 +1010,6 @@
         "DifyWorkspaceAvatar"
       ],
       "scope": "shared visual family; representative declared states, not every possible prop combination"
-    },
-    {
-      "source": "app/lib/src/design/widgets/main_nav_link.dart",
-      "visual": true,
-      "publicClasses": [
-        "MainNavLink"
-      ],
-      "cases": [
-        "pages.integrations-models.light.en-US",
-        "pages.integrations-models.dark.en-US",
-        "pages.studio-toolbar-default.light.zh-Hans",
-        "pages.studio-toolbar-default.dark.zh-Hans"
-      ],
-      "scope": "actual active primary-navigation control on English/Chinese product pages; pointer/keyboard/font-scale regression"
-    },
-    {
-      "source": "app/lib/src/design/widgets/public_app_layout.dart",
-      "visual": true,
-      "cases": [
-        "pages.public-workflow.light.en-US",
-        "pages.public-workflow.dark.en-US",
-        "pages.public-chat.light.en-US",
-        "pages.public-chat.dark.en-US"
-      ],
-      "publicClasses": [
-        "DifyPublicWorkflowLayout",
-        "DifyPublicChatLayout",
-        "DifyPublicChatComposer"
-      ],
-      "scope": "Actual published app layouts; transport and form state remain in PublicAppPage"
     }
   ],
   "pages": [

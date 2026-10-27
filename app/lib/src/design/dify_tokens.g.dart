@@ -4288,4 +4288,10 @@ abstract final class DifyRadius {
   static const container = 10.0;
   static const badge = 5.0;
 }
+
+/// @langgenius/dify-ui 0.0.1: drawer/index.tsx side-drawer sizing.
+abstract final class DifyDrawerRecipe {
+  static const width = 480.0;
+  static const viewportGutter = 32.0;
+}
 // 1 variables have no plain dark value (the light one is used in both themes): premium-badge-background

@@ -66,6 +66,21 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('DetailSidebarFrame', () {
+    testWidgets('keeps unsaved page input across desktop and phone layout changes', (t) async {
+      await _render(t);
+      final note = find.byKey(const ValueKey('Note'));
+      await t.enterText(note, 'Unsaved draft with 中文 and emoji 🚀');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await t.pump();
+      for (final width in [390.0, 800.0, 320.0, 1440.0]) {
+        t.view.physicalSize = Size(width, 900);
+        await settle(t);
+        final input = t.widget<EditableText>(find.descendant(of: note, matching: find.byType(EditableText)));
+        expect(input.controller.text, 'Unsaved draft with 中文 and emoji 🚀', reason: 'width $width');
+        expect(t.takeException(), isNull);
+      }
+    });
+
     testWidgets('renders expanded detail content by default', (t) async {
       await _render(t);
       expect(find.byKey(const ValueKey('detail-top-true')), findsOneWidget);

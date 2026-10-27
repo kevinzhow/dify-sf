@@ -13,6 +13,7 @@
     "packages/dify-ui/src/themes/light.css": "2a682fda1e785d33f7b7711221ea63ab25f4dd1ec64a4032d84a8572dc51797c",
     "packages/dify-ui/src/themes/dark.css": "a6e4f2b0004b863a36c37a48374cecb193e970cdfbf4c00791c6d29e65e1e6cc",
     "web/themes/manual-light.css": "bd5516f8380c01c1462a4c7525a412e74984cb275d70018e74636e1036854bb3",
-    "web/themes/manual-dark.css": "d4d037e8663ecc720c6aaae533ae4c01e0fe69d3ab8657beca12f63d9c0520a5"
+    "web/themes/manual-dark.css": "d4d037e8663ecc720c6aaae533ae4c01e0fe69d3ab8657beca12f63d9c0520a5",
+    "packages/dify-ui/src/drawer/index.tsx": "aed31d4a902a017ee3de32e786d6d9370beb2b0676fee77ff25a236f80a3d105"
   }
 }
