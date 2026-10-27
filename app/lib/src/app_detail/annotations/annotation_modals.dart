@@ -56,6 +56,9 @@ class AddAnnotationEditItem extends StatelessWidget {
               ),
               DifyTextarea(
                 key: ValueKey('add-annotation-${type.name}'),
+                // React mounts two autoFocus fields; the final Answer wins.
+                // Flutter chooses the first request, so select that same field once.
+                autofocus: !query,
                 value: content,
                 semanticLabel: name,
                 placeholder: _a(query ? 'addModal.queryPlaceholder' : 'addModal.answerPlaceholder'),
@@ -360,6 +363,7 @@ class _AnnotationEditItemState extends State<AnnotationEditItem> {
                       AnnotationEditTitle(title: editTitle),
                       DifyTextarea(
                         key: ValueKey('edit-annotation-${widget.type.name}'),
+                        autofocus: true,
                         value: _newContent,
                         semanticLabel: editTitle,
                         placeholder: _a(query ? 'editModal.queryPlaceholder' : 'editModal.answerPlaceholder'),

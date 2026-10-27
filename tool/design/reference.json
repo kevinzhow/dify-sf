@@ -14,6 +14,11 @@
     "packages/dify-ui/src/themes/dark.css": "a6e4f2b0004b863a36c37a48374cecb193e970cdfbf4c00791c6d29e65e1e6cc",
     "web/themes/manual-light.css": "bd5516f8380c01c1462a4c7525a412e74984cb275d70018e74636e1036854bb3",
     "web/themes/manual-dark.css": "d4d037e8663ecc720c6aaae533ae4c01e0fe69d3ab8657beca12f63d9c0520a5",
-    "packages/dify-ui/src/drawer/index.tsx": "aed31d4a902a017ee3de32e786d6d9370beb2b0676fee77ff25a236f80a3d105"
+    "packages/dify-ui/src/drawer/index.tsx": "aed31d4a902a017ee3de32e786d6d9370beb2b0676fee77ff25a236f80a3d105",
+    "packages/dify-ui/src/input/index.tsx": "ee6eb67b7834d90a44241c501fa4d76780c51e67039bc1b5bfe8054f2736146d",
+    "packages/dify-ui/src/textarea/index.tsx": "9501ce851826eb78a32a8c1835598225a9c83c225349dfeffc7ff9acf6050cb4",
+    "packages/dify-ui/src/form-control-shared.ts": "92f28cb63dc943a0180b3907b5eb680988368953ad33dc80aca94488d736daf6",
+    "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": "9cb052a78eb73da9c0be0369efbaa9203b10818dffcf1afc4916eea339c3d130",
+    "web/app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": "c3ed02c1820c8ca2b47aa0fb082a7fa5a91c370c1208d9993f0076fcf2c763a7"
   }
 }
