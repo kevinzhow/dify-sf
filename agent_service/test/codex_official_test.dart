@@ -61,6 +61,7 @@ void main() {
       model: 'deepseek-v4.1-flash',
       baseUrl: 'http://gw/inner/agent/codex/v1',
       catalogPath: '/home/dify/agent/.codex-runs/r/models.json',
+      workspace: '/workspace',
       effort: 'max',
       shell: true,
       viewImage: false,
@@ -86,6 +87,7 @@ void main() {
         model: 'm',
         baseUrl: 'u',
         catalogPath: 'c',
+        workspace: '/workspace',
         effort: 'ultra',
         shell: true,
         viewImage: true,
@@ -102,6 +104,7 @@ void main() {
       model: 'm',
       baseUrl: 'u',
       catalogPath: 'c',
+      workspace: '/workspace',
       shell: true,
       viewImage: true,
       updatePlan: true,
@@ -110,6 +113,15 @@ void main() {
     expect(withSkills, contains('[skills]\ninclude_instructions = true\n'));
     expect(withSkills, contains('[skills.bundled]\nenabled = false\n'));
     expect(withSkills, contains('skill_mcp_dependency_install = false'));
+    // The workspace is an untrusted project (no project config.toml, hooks,
+    // exec policies or AGENTS.md from it), declared once, as the last table.
+    for (final t in [toml, withSkills]) {
+      expect(
+        t,
+        endsWith('\n[projects."/workspace"]\ntrust_level = "untrusted"\n'),
+      );
+      expect('[projects.'.allMatches(t), hasLength(1));
+    }
   });
 
   test('skills: the profile directories\' enabled skills by name, every '

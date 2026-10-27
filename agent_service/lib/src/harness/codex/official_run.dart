@@ -447,6 +447,7 @@ class _OfficialCodexRun {
         model: r.model.name,
         baseUrl: baseUrl,
         catalogPath: '$home/models.json',
+        workspace: sandbox.layout.workspaceDir,
         effort: r.reasoningEffort,
         shell: r.shell,
         viewImage: r.viewImage,

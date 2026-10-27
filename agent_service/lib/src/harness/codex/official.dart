@@ -65,6 +65,7 @@ String codexConfigToml({
   required String model,
   required String baseUrl,
   required String catalogPath,
+  required String workspace,
   String? effort,
   required bool shell,
   required bool viewImage,
@@ -146,7 +147,13 @@ String codexConfigToml({
     ..writeln('enabled = false')
     ..writeln()
     ..writeln('[history]')
-    ..writeln('persistence = "none"');
+    ..writeln('persistence = "none"')
+    ..writeln()
+    // The workspace is an untrusted project: no project config, hooks, exec
+    // policies or AGENTS.md from it (a previous operation may have written
+    // them); Codex would otherwise trust it at thread/start.
+    ..writeln('[projects.${tomlString(workspace)}]')
+    ..writeln('trust_level = "untrusted"');
   return b.toString();
 }
 
