@@ -545,7 +545,17 @@ void main() {
       for (final s in [400, 401, 403, 404, 409, 410, 413, 422]) {
         expect(classifyHttpStatus(s), ModelFailureKind.invalidRequest);
       }
-      expect(classifyHttpStatus(429), ModelFailureKind.quota);
+      expect(classifyHttpStatus(429), ModelFailureKind.rateLimited);
+      expect(
+        classifyHttpStatus(429, errorCode: 'rate_limit_exceeded'),
+        ModelFailureKind.rateLimited,
+      );
+      for (final code in ['agent_call_limit', 'insufficient_quota']) {
+        expect(
+          classifyHttpStatus(429, errorCode: code),
+          ModelFailureKind.quota,
+        );
+      }
       expect(
         classifyEnvelope(-429, 'InvokeRateLimitError'),
         ModelFailureKind.rateLimited,

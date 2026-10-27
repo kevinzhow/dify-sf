@@ -144,15 +144,39 @@ ModelFailureKind classifyEnvelope(int code, String? difyErrorType) {
 
 /// Classifies a non-200 answer of the gateway. The gateway's own refusals
 /// (400, 401, 403, 404, 409, 410, 413, 422, and 429 `agent_call_limit`)
-/// are terminal; 5xx are retried as Codex retries them.
+/// and provider quota errors are terminal; 5xx and other 429s are retried
+/// as Codex retries them.
 ModelFailureKind classifyHttpStatus(int status, {String? errorCode}) {
   if (status == 503 && errorCode == 'server_is_overloaded') {
     return ModelFailureKind.overloaded;
   }
   if (status >= 500) return ModelFailureKind.serverError;
-  if (status == 429) return ModelFailureKind.quota;
+  if (status == 429) {
+    // As Codex (codex-api api_bridge.rs): usage and quota errors end the
+    // run; any other 429 (e.g. `rate_limit_exceeded`) is a temporary rate
+    // limit and is retried, honouring `Retry-After`. The gateway's own
+    // `agent_call_limit` is terminal.
+    return terminal429Codes.contains(errorCode)
+        ? ModelFailureKind.quota
+        : ModelFailureKind.rateLimited;
+  }
   return ModelFailureKind.invalidRequest;
 }
+
+/// 429 error codes or types that mean the request cannot succeed by waiting:
+/// the gateway's call limit and the provider's usage and quota errors that
+/// Codex maps to `UsageLimitReached`, `UsageNotIncluded` and
+/// `QuotaExceeded`.
+const terminal429Codes = {
+  'agent_call_limit',
+  'usage_limit_reached',
+  'usage_not_included',
+  'insufficient_quota',
+  'credit_balance_exhausted',
+  'organization_spend_limit_exceeded',
+  'project_spend_limit_exceeded',
+  'organization_usage_limit_exceeded',
+};
 
 /// Parses `Retry-After` (seconds, possibly fractional).
 Duration? parseRetryAfter(String? header) {

@@ -581,6 +581,9 @@ String? _errorCodeLoose(String body) {
     final e = j is Map ? j['error'] : null;
     if (e is String) return e;
     if (e is Map && e['code'] is String) return e['code'] as String;
+    // OpenAI-style bodies may carry the reason only in `error.type`
+    // (e.g. `usage_limit_reached`), which Codex also reads.
+    if (e is Map && e['type'] is String) return e['type'] as String;
     return null;
   } on FormatException {
     return null;
