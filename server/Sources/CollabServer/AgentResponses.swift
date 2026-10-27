@@ -274,6 +274,7 @@ extension Routes {
                     }
                     head.yield(.init(status: status, retryAfter: retry)); head.finish()
                     var total = 0, guarder = AgentResponsesSecretGuard(connection.secrets + (codex ? [token] : []))
+                    var recordedTerminal = false
                     for try await chunk in response.body {
                         try Task.checkCancellation()
                         total += chunk.readableBytes
@@ -281,6 +282,17 @@ extension Routes {
                         let bytes = Array(chunk.readableBytesView)
                         try await observer.consume(bytes)
                         let safe = try guarder.consume(bytes)
+                        if codex {
+                            let observed = await observer.snapshot()
+                            if let usage = observed.usage { await scopes.observeCodexUsage(usage, for: claim) }
+                            if observed.terminal && !recordedTerminal {
+                                // Commit the completed-call record before Codex can
+                                // finish the Agent operation on receiving this frame.
+                                try await recordCodexModelCall(scope: scope, claim: claim, phase: "finished", body: forwarded,
+                                    model: connection.model, usage: observed.usage, status: status)
+                                recordedTerminal = true
+                            }
+                        }
                         if !safe.isEmpty { output.yield(ByteBuffer(bytes: safe)) }
                     }
                     let tail = try guarder.consume([], final: true)
