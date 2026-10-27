@@ -415,11 +415,13 @@ void main() {
       final reqs = h.gateway.llmRequests;
       expect(reqs, hasLength(2));
       final caller = reqs[1]['caller'] as Map;
-      expect(caller['attempt'], 1);
+      expect(caller['attempt'], 2);
       expect(caller['call_index'], 1);
-      expect(caller['invocation_id'], endsWith(':1:1'));
+      expect(caller['invocation_id'], '${status['run_id']}:1');
+      expect((reqs[0]['caller'] as Map).containsKey('attempt'), isFalse);
       final retry = events.singleWhere((e) => e.event == 'model_retry').data;
       expect(retry['layer'], 'request');
+      expect(retry['attempt'], 2);
       expect(retry['kind'], 'serverError');
       expect(retry['delay_ms'], inInclusiveRange(179, 220));
       expect(events.where((e) => e.event == 'model_call'), hasLength(1));
@@ -448,7 +450,7 @@ void main() {
           for (final r in h.gateway.llmRequests)
             (r['caller'] as Map)['attempt'],
         ],
-        [null, 1, 2],
+        [null, 2, 3],
       );
     });
 

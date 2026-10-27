@@ -133,7 +133,8 @@ class SampleRequest {
 
   final int callIndex;
 
-  /// 0 for the first attempt; retries count up (same [callIndex]).
+  /// 0 for the first attempt; retries count up (same [callIndex]); the
+  /// wire numbers attempts from 1 ([wireAttempt]).
   final int attempt;
   final List<Item> items;
   final List<CodexToolSpec> tools;
@@ -195,10 +196,13 @@ abstract class ModelTransport {
   void close();
 }
 
-/// `<run_id>:<call_index>` for the first attempt (as the dify style), and
-/// `<run_id>:<call_index>:<attempt>` for retries (with `caller.attempt`).
-String invocationIdFor(String runId, int callIndex, int attempt) =>
-    attempt == 0 ? '$runId:$callIndex' : '$runId:$callIndex:$attempt';
+/// `<run_id>:<call_index>`: the same for every attempt of a call; the
+/// attempt travels separately (`caller.attempt`, `X-Agent-Attempt`).
+String invocationIdFor(String runId, int callIndex) => '$runId:$callIndex';
+
+/// The wire's attempt number of [SampleRequest.attempt]: 1 for the first
+/// try, one more per retry.
+int wireAttempt(SampleRequest req) => req.attempt + 1;
 
 /// The `caller` of a gateway model request (`llm/invoke` and `responses`).
 Map<String, Object?> callerJson(
@@ -212,7 +216,7 @@ Map<String, Object?> callerJson(
     'invocation_id': invocationId,
     'run_id': runId,
     'call_index': req.callIndex,
-    if (req.attempt > 0) 'attempt': req.attempt,
+    if (req.attempt > 0) 'attempt': wireAttempt(req),
     'operation_id': r.operationId,
     'tenant_id': x.tenantId,
     'app_id': x.appId,
@@ -442,7 +446,7 @@ class PluginTransport implements ModelTransport {
     );
     _previousMessages = messageTexts;
     _previousTools = toolsText;
-    final invocationId = invocationIdFor(runId, req.callIndex, req.attempt);
+    final invocationId = invocationIdFor(runId, req.callIndex);
     final body = <String, Object?>{
       'caller': callerJson(r, runId, invocationId, req),
       'target': {
@@ -563,6 +567,14 @@ WireChoice selectWire(OperationRequest r) {
       wire: 'plugin',
       reason: 'harness_style dify',
       reducedFidelity: false,
+    );
+  }
+  final explicit = r.model.wire;
+  if (explicit != null) {
+    return (
+      wire: explicit,
+      reason: 'model.wire set by the Swift server',
+      reducedFidelity: explicit == 'plugin',
     );
   }
   final parts = r.model.provider.split('/');
@@ -707,7 +719,7 @@ class ResponsesTransport implements ModelTransport {
     required void Function(String text) onReasoning,
   }) async {
     final r = request;
-    final invocationId = invocationIdFor(runId, req.callIndex, req.attempt);
+    final invocationId = invocationIdFor(runId, req.callIndex);
     final body = responsesRequestBody(req, model: r.model.name);
     final itemTexts = [for (final i in body['input'] as List) jsonEncode(i)];
     final toolsText = jsonEncode(body['tools']);
@@ -719,15 +731,12 @@ class ResponsesTransport implements ModelTransport {
     );
     _previousItems = itemTexts;
     _previousTools = toolsText;
-    final opened = await inner.openResponses({
-      'caller': callerJson(r, runId, invocationId, req),
-      'target': {
-        'provider': r.model.provider,
-        'model': r.model.name,
-        'model_parameters': r.model.parameters,
-      },
-      'request': body,
-    });
+    final opened = await inner.openResponses(
+      body,
+      callIndex: req.callIndex,
+      invocationId: invocationId,
+      attempt: wireAttempt(req),
+    );
     final output = <Item>[];
     final thought = ThoughtBuffer(onReasoning);
     Map<dynamic, dynamic>? response;

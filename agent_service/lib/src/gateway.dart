@@ -95,7 +95,10 @@ class InnerClient {
   Stream<Map<String, Object?>> invokeLlm(Map<String, Object?> body) async* {
     final caller = body['caller'] as Map;
     final invocationId = caller['invocation_id'] as String;
-    if (!_invocationIds.add(invocationId)) {
+    // A retry (the `codex` style) is the same invocation with a higher
+    // `caller.attempt` (absent = 1).
+    final key = '$invocationId#${caller['attempt'] ?? 1}';
+    if (!_invocationIds.add(key)) {
       throw StateError('invocation_id $invocationId was already sent');
     }
     final request = http.Request('POST', _url('/inner/agent/llm/invoke'))
@@ -145,21 +148,30 @@ class InnerClient {
   }
 
   /// `POST /inner/agent/responses` (the `codex` style's native wire): the
-  /// raw Responses request body goes to the provider through the Swift
-  /// server, whose answer is the provider's event stream unchanged. Returns
+  /// raw Responses request body, unchanged, goes to the provider through
+  /// the Swift server, whose answer is the provider's event stream
+  /// unchanged. The call is described by `X-Agent-Call-Index`,
+  /// `X-Agent-Invocation-ID` (`<run_id>:<call_index>`) and `X-Agent-Attempt`
+  /// (1, then one more per retry); the identity is the run token. Returns
   /// the response headers and the `data` of every event. A non-200 answer
-  /// throws [GatewayHttpException]. An `invocation_id` is never sent twice.
+  /// throws [GatewayHttpException]. An attempt is never sent twice.
   Future<({Map<String, String> headers, Stream<String> events})> openResponses(
-    Map<String, Object?> body,
-  ) async {
-    final caller = body['caller'] as Map;
-    final invocationId = caller['invocation_id'] as String;
-    if (!_invocationIds.add(invocationId)) {
-      throw StateError('invocation_id $invocationId was already sent');
+    Map<String, Object?> body, {
+    required int callIndex,
+    required String invocationId,
+    required int attempt,
+  }) async {
+    if (!_invocationIds.add('$invocationId#$attempt')) {
+      throw StateError(
+        'invocation_id $invocationId attempt $attempt was already sent',
+      );
     }
     final request = http.Request('POST', _url('/inner/agent/responses'))
       ..headers.addAll(_headers)
       ..headers['Accept'] = 'text/event-stream'
+      ..headers['X-Agent-Call-Index'] = '$callIndex'
+      ..headers['X-Agent-Invocation-ID'] = invocationId
+      ..headers['X-Agent-Attempt'] = '$attempt'
       ..body = jsonEncode(body);
     final response = await _client.send(request);
     if (response.statusCode != 200) {

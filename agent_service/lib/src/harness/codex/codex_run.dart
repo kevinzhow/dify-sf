@@ -627,7 +627,7 @@ class _CodexLoop {
   void _retryEvent(int attempt, String layer, ModelCallFailure f, Duration d) =>
       run._emit('model_retry', {
         'call_index': _callIndex,
-        'attempt': attempt,
+        'attempt': attempt + 1,
         'layer': layer,
         'kind': f.kind.name,
         'message': f.message,

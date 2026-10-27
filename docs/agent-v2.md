@@ -508,6 +508,22 @@ and stays as it is. `codex` ports the OpenAI Codex CLI harness, `rust-v0.163.0` 
 header). This first step is Codex's Direct-tools mode, on the native Responses wire when the provider speaks it and on
 the plugin wire otherwise (see [Model wire](#model-wire)). Code mode, compaction and sub-agents come later.
 
+### What agent_service expects in the operation
+
+For the Swift server's harness selector, model channel and context-capacity fields:
+
+| Field | Values | Meaning and checks |
+|---|---|---|
+| `harness_style` (top level) | `"dify"` \| `"codex"`; absent = `dify` | Another string `422 unsupported_harness_style`; not a string `400 invalid_request`. In the request digest; echoed in `run_started.harness_style`. The node selector maps to it; nothing else of the editor reaches the service |
+| `tools.update_plan` | boolean, default false | `codex` only (`400 invalid_request` with `dify`) |
+| `model.parameters.reasoning_effort` | `none` … `max` | With `codex`: `ultra`, `persistent`, other strings or non-strings `422 unsupported_reasoning_effort`. Forwarded unchanged on the plugin wire (the gateway's byte-equality check still holds), sent as `reasoning.effort` on the native wire |
+| `model.wire` | `"plugin"` \| `"responses"`, optional | The channel the Swift server chose; wins over the automatic choice. `"responses"` needs `codex` (`400 invalid_request`); another value `400 invalid_request` |
+| `model.api_type` | string, optional (e.g. `"responses"`) | The credential's API mode; used for the automatic choice when `model.wire` is absent |
+| `model.context_window`, `model.max_output_tokens` | integers ≥ 1, optional | From the model schema; checked (`400 invalid_request`) and kept in the request; used by compaction in a later step |
+
+The resolved channel is echoed in `run_started.model_wire` (`codex` only). The Swift server should check that the
+echo matches its choice, as it does for `executor_profile`.
+
 ### Tools (`codex`)
 
 | Tool | When | As in Codex | dify-sf differences |
@@ -561,9 +577,10 @@ Responses API); a user message with several parts is sent as a list of text part
   `Retry-After`, else 200 ms × 2^(n-1) with ±10% jitter; an overload (`503 server_is_overloaded`) only with
   `Retry-After`. Terminal: the gateway's own refusals (400, 401, 403, 404, 409, 410, 413, 422; 429 is its call limit),
   Dify envelopes with a quota type, `InvokeAuthorizationError`, `InvokeBadRequestError`,
-  `CredentialsValidateFailedError`, and -429 without a rate-limit type. Each retry is a new invocation with the same
-  `call_index` (see [the gateway](#post-inneragentllminvoke)) and is announced by a `model_retry` event; a gateway that
-  refuses a retry (400 or 409) ends the run with the first failure. Only the successful attempt's usage counts.
+  `CredentialsValidateFailedError`, and -429 without a rate-limit type. Each retry repeats the call: the same
+  `invocation_id` and `call_index` with the next attempt number (see [the gateway](#post-inneragentllminvoke)); a
+  `model_retry` event announces it. A gateway that refuses a retry (400 or 409) ends the run with the first failure.
+  Only the successful attempt's usage counts.
 
 ### Reasoning levels
 
@@ -597,6 +614,7 @@ here, the Swift server reports what it forwarded, the provider echoes it and rep
 A `codex` run uses one of two wires, chosen when the operation starts and recorded in `run_started` as
 `"model_wire": {"wire": "responses" | "plugin", "reason", "reduced_fidelity"}`:
 
+- `model.wire`, when the Swift server sends it, decides. Otherwise:
 - **`responses`** (native): when the provider speaks the OpenAI Responses API: `model.provider` is
   `…/openai_api_compatible/openai_api_compatible` with `model.api_type: "responses"`, or `langgenius/openai/openai`.
   `model.api_type` is an optional operation field the Swift server sets from the credential's API mode (no secret);
@@ -616,21 +634,30 @@ their `encrypted_content` in the history and in snapshots and go back on every l
 
 #### `POST /inner/agent/responses` (as agent_service uses it)
 
-Authentication as for `llm/invoke` (service key and run token). Body:
+Authentication as for `llm/invoke`: the service key and the run token (`X-Agent-Run-Token`), which carry the
+identity and scope. The call is described by request headers:
+
+| Header | Value |
+|---|---|
+| `X-Agent-Call-Index` | the model call's index in the run (1, 2, …) |
+| `X-Agent-Invocation-ID` | `<run_id>:<call_index>`, the same for every attempt of the call |
+| `X-Agent-Attempt` | `1`, one more for each retry of the same call |
+
+The body is the raw Responses API request, as Codex 0.163.0 builds it; the Swift server forwards it unchanged to the
+credential's endpoint (URL rule as the plugin's: `endpoint_url` plus `/responses`, `/v1` not doubled):
 
 ```jsonc
-{"caller": { /* as llm/invoke: invocation_id, run_id, call_index, attempt?, operation_id, tenant_id, … */ },
- "target": {"provider": "…", "model": "…", "model_parameters": {…}},   // the operation's, for the scope check
- "request": {                         // the Responses API body, as Codex 0.163.0 builds it
-   "model": "<operation model name>", // to be replaced by the credential's endpoint_model_name
-   "input": [ /* items */ ], "tools": [ /* function and custom (freeform) tools */ ],
-   "tool_choice": "auto", "parallel_tool_calls": true,
-   "reasoning": {"effort": "max", "summary": "auto"?},
-   "store": false, "stream": true, "include": ["reasoning.encrypted_content"],
-   "prompt_cache_key": "<execution_id>",
-   "text": {"format": {"type": "json_schema", "name": "codex_output_schema", "strict": false, "schema": {…}}}?}}
+{"model": "<operation model name>",
+ "input": [ /* items */ ], "tools": [ /* function and custom (freeform) tools */ ],
+ "tool_choice": "auto", "parallel_tool_calls": true,
+ "reasoning": {"effort": "max", "summary": "auto"?},
+ "store": false, "stream": true, "include": ["reasoning.encrypted_content"],
+ "prompt_cache_key": "<execution_id>",
+ "text": {"format": {"type": "json_schema", "name": "codex_output_schema", "strict": false, "schema": {…}}}?}
 ```
 
+- `model` is the operation's `model.name`. Open question for the Swift server: whether the credential's
+  `endpoint_model_name` replaces it (the plugin uses `endpoint_model_name` when set).
 - `strict` is `true` only when the schema already meets OpenAI's strict rules (every object closed, every property
   required); the schema is not rewritten.
 - Files appear as `"image_url": "dify-sf-file:<file_id>"` (`input_image`, in user messages and inside
@@ -644,14 +671,15 @@ Authentication as for `llm/invoke` (service key and run token). Body:
   that ends without `response.completed` is a retryable stream error.
 - Response header `X-Dify-SF-Forwarded-Reasoning: <effort>`: the effort the Swift server forwarded; recorded as
   `model_call.reasoning.effort_forwarded`, so a rewrite on the way shows.
-- Errors before the stream: a status and `{"error", "message"}` as for `llm/invoke` (classified for retries as in
+- Errors before the stream: a status and `{"error", "message"}` (or an OpenAI-style `{"error": {"code"}}`) as for
+  `llm/invoke` (classified for retries as in
   [Loop](#loop-codex)). `response.failed` codes: `rate_limit_exceeded` and `slow_down` are retried,
   `server_is_overloaded` only with `Retry-After`, `insufficient_quota` and usage limits end the run `model_quota`,
   `context_length_exceeded`, `invalid_prompt` and `invalid_request_error` end it `model_error`, other codes are retried.
 - Usage from `response.completed`: `input_tokens` → `prompt_tokens`, `output_tokens` → `completion_tokens`,
   `output_tokens_details.reasoning_tokens` → `reasoning_tokens`, `input_tokens_details.cached_tokens` →
   `prompt_cache_hit_tokens` (misses: the difference).
-- Retries carry `caller.attempt` and `invocation_id` `<run_id>:<call_index>:<attempt>` as for `llm/invoke`.
+- A retry repeats the same `X-Agent-Call-Index` and `X-Agent-Invocation-ID` with the next `X-Agent-Attempt`.
 
 `model_call.reasoning` on this wire: `"effort_sent_by": "agent_service"`, `effort_forwarded` (the header),
 `effort_echoed` (the provider's `response.reasoning.effort`), `summary_sent` (none for gpt-6 models, `auto` for the
@@ -689,10 +717,10 @@ example, the signed `openai_api_compatible` plugin 0.0.68 removes `<think>` bloc
 drops the think blocks it returns when the model declares no reasoning support. The last chunk carries `delta.usage` and `delta.finish_reason`. Errors end the stream with
 `{"code": -429 | -500, "message": "{\"error_type\":…,\"message\":…}", "data": null}`, as in Dify. A repeated
 `invocation_id` is rejected, so usage is recorded once. The `codex` style retries a failed call (see
-[Harness styles](#harness-styles)) as a new invocation of the same `call_index`: `caller.attempt` is the retry number
-(1, 2, …; absent on the first attempt) and `invocation_id` is `<run_id>:<call_index>:<attempt>`. Proposal for the Swift
-server: accept such a retry when the earlier attempts of that `call_index` failed (today it answers `400` for the
-`invocation_id` and `409 duplicate_invocation` for the index, and the run then fails with the first error). Closing the connection closes the gateway's connection to the plugin (see below).
+[Harness styles](#harness-styles)) with the same `invocation_id` and `call_index` and `caller.attempt` 2, 3, … (absent
+on the first attempt, which means 1), as `X-Agent-Attempt` on the Responses route. Proposal for the Swift server:
+accept such a retry when the earlier attempts of that `call_index` failed (today it answers `409 duplicate_invocation`,
+and the run then fails with the first error). Closing the connection closes the gateway's connection to the plugin (see below).
 
 The gateway may complete any call without streaming and return the result as one or a few complete chunks (full
 `tool_calls` with `id`, reasoning, usage and finish reason in one delta). It does so today for every call that offers

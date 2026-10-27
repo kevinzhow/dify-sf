@@ -585,8 +585,7 @@ void main() {
       expect(f(ModelFailureKind.stream).streamRetryDelay(1, r), isNotNull);
       expect(parseRetryAfter('1.5'), const Duration(milliseconds: 1500));
       expect(parseRetryAfter('soon'), isNull);
-      expect(invocationIdFor('R', 3, 0), 'R:3');
-      expect(invocationIdFor('R', 3, 2), 'R:3:2');
+      expect(invocationIdFor('R', 3), 'R:3');
     });
   });
 
@@ -692,6 +691,20 @@ void main() {
       expect(status(op()..['harness_style'] = 3), 400);
       expect(status(op(plan: true)), 400);
       expect(status(op(style: 'codex', plan: true)), isNull);
+      Map<String, Object?> model(Map<String, Object?> o, String k, Object v) =>
+          o..['model'] = {...o['model'] as Map, k: v};
+      expect(status(model(op(style: 'codex'), 'wire', 'responses')), isNull);
+      expect(status(model(op(), 'wire', 'responses')), 400);
+      expect(status(model(op(style: 'codex'), 'wire', 'grpc')), 400);
+      expect(status(model(op(), 'context_window', 272000)), isNull);
+      expect(status(model(op(), 'context_window', 0)), 400);
+      expect(status(model(op(), 'max_output_tokens', 'many')), 400);
+      expect(
+        OperationRequest.parse(model(op(), 'context_window', 272000))
+            .model
+            .contextWindow,
+        272000,
+      );
     });
 
     test('efforts in the codex style', () {

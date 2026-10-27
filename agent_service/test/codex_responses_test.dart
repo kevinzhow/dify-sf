@@ -64,8 +64,8 @@ Map<String, Object?> functionCall(String id, String name, Object args) => {
   'arguments': jsonEncode(args),
 };
 
-Map<String, Object?> requestOf(Map<String, Object?> body) =>
-    (body['request'] as Map).cast<String, Object?>();
+/// The body is the raw Responses request.
+Map<String, Object?> requestOf(Map<String, Object?> body) => body;
 
 bool hasAnnotation(Object? v) => switch (v) {
   Map() =>
@@ -87,6 +87,16 @@ void main() {
       expect(plugin.wire, 'plugin');
       expect(plugin.reducedFidelity, isTrue);
       expect(selectWire(parse(codexOp())).reducedFidelity, isTrue);
+      // The Swift server's choice wins.
+      final chosen = nativeOp(apiType: null);
+      (chosen['model'] as Map)['wire'] = 'responses';
+      expect(selectWire(parse(chosen)), (
+        wire: 'responses',
+        reason: 'model.wire set by the Swift server',
+        reducedFidelity: false,
+      ));
+      (chosen['model'] as Map)['wire'] = 'plugin';
+      expect(selectWire(parse(chosen)).reducedFidelity, isTrue);
       final dify = nativeOp()..remove('harness_style');
       expect(selectWire(parse(dify)), (
         wire: 'plugin',
@@ -146,7 +156,15 @@ void main() {
     expect(first['prompt_cache_key'], 'E1');
     expect(first['parallel_tool_calls'], true);
     expect(first['tool_choice'], 'auto');
-    expect((bodies[0]['target'] as Map)['model'], 'codex/gpt-6.1-terra');
+    expect(first['model'], 'codex/gpt-6.1-terra');
+    final headers = h.gateway.responsesHeaders;
+    final runId = status['run_id'];
+    expect(headers[0]['x-agent-call-index'], '1');
+    expect(headers[0]['x-agent-invocation-id'], '$runId:1');
+    expect(headers[0]['x-agent-attempt'], '1');
+    expect(headers[1]['x-agent-call-index'], '2');
+    expect(headers[0]['x-agent-run-token'], runToken);
+    expect(first.containsKey('caller'), isFalse);
     final input = (first['input'] as List).cast<Map>();
     expect(
       [for (final i in input) i['role']],
@@ -318,7 +336,9 @@ void main() {
       e1.singleWhere((e) => e.event == 'model_retry').data['kind'],
       'rateLimited',
     );
-    expect((h.gateway.responsesRequests[1]['caller'] as Map)['attempt'], 1);
+    final hs = h.gateway.responsesHeaders;
+    expect([for (final x in hs) x['x-agent-attempt']], ['1', '2']);
+    expect(hs[0]['x-agent-invocation-id'], hs[1]['x-agent-invocation-id']);
 
     final (h2, _) = await start([failed('context_length_exceeded')]);
     final (s2, _) = await runToEnd(h2, nativeOp());

@@ -228,7 +228,14 @@ class ModelSpec {
       parameters = json['parameters'] == null
           ? const {}
           : _object(json['parameters'], 'model.parameters'),
-      apiType = _optString(json, 'api_type', 'model');
+      apiType = _optString(json, 'api_type', 'model'),
+      wire = _optString(json, 'wire', 'model'),
+      contextWindow = _optPositiveInt(json, 'context_window', 'model'),
+      maxOutputTokens = _optPositiveInt(json, 'max_output_tokens', 'model') {
+    if (wire != null && wire != 'plugin' && wire != 'responses') {
+      throw invalidRequest('model.wire must be "plugin" or "responses"');
+    }
+  }
 
   final Map<String, Object?> json;
   final String provider;
@@ -240,6 +247,23 @@ class ModelSpec {
   /// `openai_api_compatible` credential in Responses mode. The `codex` style
   /// selects its model wire from it.
   final String? apiType;
+
+  /// `model.wire` (optional): the model channel the Swift server chose,
+  /// `plugin` (`llm/invoke`) or `responses` (`POST /inner/agent/responses`);
+  /// without it the `codex` style chooses from [apiType] and [provider].
+  final String? wire;
+
+  /// `model.context_window` and `model.max_output_tokens` (optional, from
+  /// the model schema): accepted and checked; used by compaction later.
+  final int? contextWindow;
+  final int? maxOutputTokens;
+}
+
+int? _optPositiveInt(Map<String, Object?> o, String key, String where) {
+  final v = o[key];
+  if (v == null) return null;
+  if (v is int && v >= 1) return v;
+  throw invalidRequest('$where.$key must be an integer >= 1');
 }
 
 /// One element of `task`.
@@ -502,6 +526,11 @@ class OperationRequest {
           ));
     }
     final updatePlan = tools['update_plan'] == true;
+    if (model.wire == 'responses' && harnessStyle != HarnessStyle.codex) {
+      throw invalidRequest(
+        'model.wire "responses" needs harness_style "codex"',
+      );
+    }
     if (updatePlan && harnessStyle != HarnessStyle.codex) {
       throw invalidRequest('tools.update_plan needs harness_style "codex"');
     }

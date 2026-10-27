@@ -304,10 +304,16 @@ class ScriptedGateway {
 
   Uri get url => Uri.parse('http://127.0.0.1:${_server!.port}');
 
-  /// Native model calls (`responses` bodies) in arrival order.
+  /// Native model calls (raw Responses bodies) in arrival order.
   List<Map<String, Object?>> get responsesRequests => [
     for (final r in requests)
       if (r.path == '/inner/agent/responses') r.body,
+  ];
+
+  /// The headers of the native model calls (lower-case names).
+  List<Map<String, String>> get responsesHeaders => [
+    for (final r in requests)
+      if (r.path == '/inner/agent/responses') r.headers,
   ];
 
   /// Model calls (`llm/invoke` bodies) in arrival order.
@@ -468,7 +474,8 @@ class ScriptedGateway {
     final caller = (body['caller'] as Map?) ?? const {};
     final target = (body['target'] as Map?) ?? const {};
     final invocationId = caller['invocation_id'] as String? ?? '';
-    if (!_invocationIds.add(invocationId)) {
+    // A retry is the same invocation with a higher `caller.attempt`.
+    if (!_invocationIds.add('$invocationId#${caller['attempt'] ?? 1}')) {
       return _jsonResponse(res, 409, {
         'error': 'invocation_repeated',
         'message': 'invocation_id $invocationId was already used',
@@ -522,16 +529,28 @@ class ScriptedGateway {
     return _sse(res, obs, call, target['model'] as String? ?? '', exchange);
   }
 
-  /// `POST /inner/agent/responses`: the scripted Responses events of the
-  /// next call, with `X-Dify-SF-Forwarded-Reasoning` set from the request.
+  /// `POST /inner/agent/responses`: the body is the raw Responses request;
+  /// `X-Agent-Call-Index`, `X-Agent-Invocation-ID` and `X-Agent-Attempt`
+  /// describe the call. Answers the scripted Responses events of the next
+  /// call, with `X-Dify-SF-Forwarded-Reasoning` set from the request.
   Future<void> _responses(
     HttpResponse res,
     Map<String, Object?> body,
     RecordedExchange exchange,
   ) async {
-    final caller = (body['caller'] as Map?) ?? const {};
-    final invocationId = caller['invocation_id'] as String? ?? '';
-    if (!_invocationIds.add(invocationId)) {
+    final invocationId = exchange.headers['x-agent-invocation-id'] ?? '';
+    final attempt = exchange.headers['x-agent-attempt'] ?? '';
+    if (invocationId.isEmpty ||
+        int.tryParse(exchange.headers['x-agent-call-index'] ?? '') == null ||
+        int.tryParse(attempt) == null) {
+      return _jsonResponse(res, 400, {
+        'error': 'invalid_request',
+        'message':
+            'X-Agent-Call-Index, X-Agent-Invocation-ID and '
+            'X-Agent-Attempt are required',
+      }, exchange);
+    }
+    if (!_invocationIds.add('$invocationId#$attempt')) {
       return _jsonResponse(res, 409, {
         'error': 'invocation_repeated',
         'message': 'invocation_id $invocationId was already used',
@@ -547,7 +566,7 @@ class ScriptedGateway {
       }
     }
 
-    walk(body['request']);
+    walk(body);
     if (unknown != null) {
       return _jsonResponse(res, 422, {
         'error': 'file_error',
@@ -584,7 +603,7 @@ class ScriptedGateway {
         exchange,
       );
     }
-    final reasoning = (body['request'] as Map?)?['reasoning'];
+    final reasoning = body['reasoning'];
     final effort = reasoning is Map ? reasoning['effort'] : null;
     if (effort is String) {
       res.headers.set('X-Dify-SF-Forwarded-Reasoning', effort);
