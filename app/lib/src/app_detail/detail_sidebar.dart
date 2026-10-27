@@ -76,6 +76,11 @@ class DetailSidebarFrame extends StatefulWidget {
 }
 
 class DetailSidebarFrameState extends State<DetailSidebarFrame> {
+  // The compact rail and desktop frame place content under different layout
+  // ancestors. Reparent its existing element so a resize preserves page/editor
+  // state, including unsaved fields and an open drawer.
+  final _contentKey = GlobalKey(debugLabel: 'detail-sidebar-content');
+
   /// The remembered mode (`useDetailSidebarMode`).
   bool _expanded = true;
   bool _mobileOpen = false;
@@ -158,6 +163,7 @@ class DetailSidebarFrameState extends State<DetailSidebarFrame> {
 
   @override
   Widget build(BuildContext context) {
+    final content = KeyedSubtree(key: _contentKey, child: widget.child);
     final compact = DifyAdaptive.compactOf(context);
     final preview = !compact && previewOpen;
     final visibleExpanded = compact ? _mobileOpen : _expanded || preview;
@@ -209,7 +215,7 @@ class DetailSidebarFrameState extends State<DetailSidebarFrame> {
           Row(
             children: [
               const SizedBox(width: 64),
-              Expanded(child: widget.child),
+              Expanded(child: content),
             ],
           ),
           if (_mobileOpen) Positioned.fill(child: DifyDrawerBackdrop(onTap: toggle)),
@@ -229,7 +235,7 @@ class DetailSidebarFrameState extends State<DetailSidebarFrame> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   AnimatedContainer(duration: duration, curve: curve, width: _expanded ? 248 : 64),
-                  Expanded(child: widget.child),
+                  Expanded(child: content),
                 ],
               ),
             ),

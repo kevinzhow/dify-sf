@@ -2,6 +2,8 @@
 /// [DifyDrawerBackdrop], [DifyDrawerPopup], [DifyDrawerCloseButton].
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
@@ -14,16 +16,61 @@ import 'widgets.dart';
 /// (web/app/components/base/features/new-feature-panel/feature-panel-drawer.tsx).
 const difyDrawerBlackBackdrop = Color.fromRGBO(0, 0, 0, 0.25);
 
+/// dify-ui's DrawerPortal: retain the caller's inherited state while laying out
+/// the drawer and backdrop in the root overlay, against the full viewport.
+class DifyDrawerPortal extends StatefulWidget {
+  const DifyDrawerPortal({super.key, required this.open, required this.child});
+
+  final bool open;
+  final Widget child;
+
+  @override
+  State<DifyDrawerPortal> createState() => _DifyDrawerPortalState();
+}
+
+class _DifyDrawerPortalState extends State<DifyDrawerPortal> {
+  final _portal = OverlayPortalController();
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(DifyDrawerPortal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  void _sync() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!mounted) return;
+    if (widget.open && !_portal.isShowing) _portal.show();
+    if (!widget.open && _portal.isShowing) _portal.hide();
+  });
+
+  @override
+  Widget build(BuildContext context) => OverlayPortal(
+    controller: _portal,
+    overlayLocation: OverlayChildLocation.rootOverlay,
+    overlayChildBuilder: (_) => widget.child,
+    child: const SizedBox.shrink(),
+  );
+}
+
 /// Shows a drawer sliding in from the right (`swipeDirection="right"`, `transition-transform duration-200`): [builder]
 /// (usually a [DifyDrawerPopup]) gets the close callback and is placed against the right edge inside [insets]
-/// (`top-16 right-2 bottom-3`, …), at most [maxWidth] wide (`w-120`). [backdrop]: DrawerBackdrop's
+/// (`top-16 right-2 bottom-3`, …), at most [maxWidth] wide (`w-120`) and fills its available height.
+/// [viewportGutter] is the space excluded from the viewport width by `max-w-[calc(100vw-2rem)]`;
+/// inset callers can explicitly override it to match their source recipe. [backdrop]: DrawerBackdrop's
 /// `bg-background-overlay` (false: none, as the logs open it on desktop). Escape closes it, and so does a click outside
 /// unless [dismissible] is false (`disablePointerDismissal`). Resolves with what it pops.
 Future<T?> showDifyDrawer<T>(
   BuildContext context, {
   required Widget Function(BuildContext context, VoidCallback close) builder,
   EdgeInsets insets = EdgeInsets.zero,
-  double maxWidth = 480,
+  double maxWidth = DifyDrawerRecipe.width,
+  double viewportGutter = DifyDrawerRecipe.viewportGutter,
   bool backdrop = true,
   bool dismissible = true,
   String? barrierLabel,
@@ -45,11 +92,17 @@ Future<T?> showDifyDrawer<T>(
   pageBuilder: (dialogContext, _, _) => SafeArea(
     child: Padding(
       padding: insets + EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(dialogContext).bottom),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: DifySelectionRegion(child: builder(dialogContext, () => Navigator.of(dialogContext).maybePop())),
+      child: LayoutBuilder(
+        builder: (context, constraints) => Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            width: math.max(
+              0,
+              math.min(maxWidth, math.min(constraints.maxWidth, MediaQuery.sizeOf(context).width - viewportGutter)),
+            ),
+            height: constraints.maxHeight,
+            child: DifySelectionRegion(child: builder(dialogContext, () => Navigator.of(dialogContext).maybePop())),
+          ),
         ),
       ),
     ),
@@ -77,7 +130,7 @@ class DifyDrawerBackdrop extends StatelessWidget {
 }
 
 /// DrawerPopup: `overflow-hidden border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl`, from
-/// the right `rounded-l-2xl`. The screens restyle it by className; [color], [border], [borderRadius] and [boxShadow]
+/// the right `rounded-l-2xl border-r-0`. The screens restyle it by className; [color], [border], [borderRadius] and [boxShadow]
 /// stand for that. A dialog for assistive technology, named [label]; [scopesRoute] when it is a route's whole
 /// content. [material]: a transparent Material around it (for Material descendants such as text fields).
 class DifyDrawerPopup extends StatelessWidget {
@@ -100,7 +153,7 @@ class DifyDrawerPopup extends StatelessWidget {
   /// `bg-components-panel-bg` by default.
   final Color? color;
 
-  /// `border-[0.5px] border-components-panel-border` by default; `const Border()` for none.
+  /// `border-[0.5px] border-components-panel-border border-r-0` by default; `const Border()` for none.
   final BoxBorder? border;
   final BorderRadiusGeometry borderRadius;
 
@@ -111,12 +164,13 @@ class DifyDrawerPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final side = BorderSide(color: DifyColors.componentsPanelBorder, width: Css.hairline);
     Widget box = Container(
       width: width,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: color ?? DifyColors.componentsPanelBg,
-        border: border ?? Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+        border: border ?? Border(top: side, bottom: side, left: side),
         borderRadius: borderRadius,
         boxShadow: boxShadow ?? DifyShadows.xl,
       ),

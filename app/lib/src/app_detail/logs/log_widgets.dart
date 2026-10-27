@@ -348,6 +348,7 @@ Future<void> showLogDrawer(
   context,
   insets: EdgeInsets.fromLTRB(8, 64, 8, bottom),
   maxWidth: maxWidth,
+  viewportGutter: 16,
   backdrop: false,
   barrierLabel: _c('operation.close'),
   builder: (context, close) => DifyDrawerPopup(

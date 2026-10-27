@@ -7,6 +7,7 @@ library;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
@@ -209,6 +210,7 @@ class AnnotationDrawer extends StatelessWidget {
               key: const ValueKey('annotation-drawer'),
               label: label,
               scopesRoute: true,
+              border: Border.all(color: DifyColors.dividerSubtle, width: Css.hairline),
               borderRadius: BorderRadius.circular(DifyRadius.xl),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

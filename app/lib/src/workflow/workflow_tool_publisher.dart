@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:collab_client/collab_client.dart';
 import 'package:flutter/widgets.dart';
 
+import '../design/css_metrics.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/dify_i18n.dart';
@@ -24,6 +25,7 @@ Future<bool?> showWorkflowToolPublisher(
   context,
   insets: const EdgeInsets.all(8),
   maxWidth: 640,
+  viewportGutter: 16,
   dismissible: false,
   builder: (context, close) => WorkflowToolPublisher(
     api: api,
@@ -127,6 +129,7 @@ class _WorkflowToolPublisherState extends State<WorkflowToolPublisher> {
     final title = DifyI18n.tr('workflow', 'common.workflowAsTool');
     return DifyDrawerPopup(
       label: title,
+      border: Border.all(color: DifyColors.dividerSubtle, width: Css.hairline),
       borderRadius: BorderRadius.circular(DifyRadius.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

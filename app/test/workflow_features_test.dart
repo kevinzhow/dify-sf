@@ -283,11 +283,11 @@ void main() {
           expect(button, findsNothing);
         } else {
           await t.tap(button);
-          await t.pump(const Duration(milliseconds: 300));
+          await _settle(t, const Duration(milliseconds: 300));
           expect(find.byType(NewFeaturePanel), findsOneWidget);
           expect(find.text(DifyI18n.tr('workflow', 'common.featuresDescription')), findsOneWidget);
           await t.tapAt(const Offset(200, 450)); // the backdrop, left of the drawer
-          await t.pump(const Duration(milliseconds: 300));
+          await _settle(t, const Duration(milliseconds: 300));
           expect(find.byType(FeatureCard), findsNothing);
         }
         await t.pumpWidget(const SizedBox());
