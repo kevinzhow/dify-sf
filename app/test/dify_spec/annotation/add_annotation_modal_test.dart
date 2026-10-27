@@ -3,7 +3,7 @@
 import 'package:dify_sf_app/src/app_detail/annotations/annotation_modals.dart';
 import 'package:dify_sf_app/src/app_detail/annotations/annotation_types.dart';
 import 'package:dify_sf_app/src/design/widgets/toast.dart';
-import 'package:flutter/material.dart' show TextField;
+import 'package:flutter/material.dart' show Size, TextField;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'harness.dart';
@@ -35,6 +35,28 @@ Future<_Rig> _render(WidgetTester t) async {
 
 void main() {
   group('AddAnnotationModal', () {
+    testWidgets('opens with Answer focused and preserves user focus while resizing', (t) async {
+      await _render(t);
+      final fields = find.byType(TextField);
+      final answer = t.widgetList<TextField>(fields).last;
+      final query = t.widgetList<TextField>(fields).first;
+      expect(answer.focusNode!.hasFocus, isTrue);
+      expect(query.focusNode!.hasFocus, isFalse);
+      t.testTextInput.enterText('Answer 中文 e\u0301 🚀');
+      await settle(t);
+      expect(answer.controller!.text, 'Answer 中文 e\u0301 🚀');
+      expect(query.controller!.text, isEmpty);
+      await t.tap(fields.first);
+      t.testTextInput.enterText('Question draft');
+      await settle(t);
+      t.view.physicalSize = const Size(390, 800);
+      await settle(t);
+      expect(query.focusNode!.hasFocus, isTrue);
+      expect(query.controller!.text, 'Question draft');
+      expect(answer.controller!.text, 'Answer 中文 e\u0301 🚀');
+      expect(t.takeException(), isNull);
+    });
+
     testWidgets('should render modal title when drawer is visible', (t) async {
       await _render(t);
       expect(find.text('appAnnotation.addModal.title'), findsOneWidget);

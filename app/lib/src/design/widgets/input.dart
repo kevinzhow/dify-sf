@@ -125,6 +125,7 @@ TextField difyTextField({
   String? placeholder,
   bool readOnly = false,
   bool disabled = false,
+  bool autofocus = false,
   ValueChanged<String>? onChanged,
   ValueChanged<String>? onSubmitted,
   List<TextInputFormatter>? formatters,
@@ -140,6 +141,7 @@ TextField difyTextField({
 }) => TextField(
   controller: controller,
   focusNode: focusNode,
+  autofocus: autofocus,
   readOnly: readOnly,
   enabled: !disabled,
   obscureText: obscureText,
@@ -240,6 +242,7 @@ class DifyInput extends StatefulWidget {
     this.formatters,
     this.keyboardType,
     this.focusNode,
+    this.autofocus = false,
     this.height,
     this.leading,
     this.trailing,
@@ -261,6 +264,9 @@ class DifyInput extends StatefulWidget {
   /// `aria-label`.
   final String? semanticLabel;
   final bool readOnly, disabled, invalid;
+
+  /// Native `autoFocus`: request initial text focus, without refocusing on rebuild.
+  final bool autofocus;
   final List<TextInputFormatter>? formatters;
   final TextInputType? keyboardType;
   final FocusNode? focusNode;
@@ -326,6 +332,7 @@ class _DifyInputState extends State<DifyInput> with DifyControlledText<DifyInput
       placeholder: w.placeholder,
       readOnly: w.readOnly,
       disabled: w.disabled,
+      autofocus: w.autofocus,
       onChanged: w.onChanged,
       onSubmitted: w.onSubmitted,
       formatters: w.formatters,

@@ -19,6 +19,7 @@ class DifyTextarea extends StatefulWidget {
     this.onFocusChange,
     this.placeholder,
     this.semanticLabel,
+    this.autofocus = false,
     this.disabled = false,
     this.readOnly = false,
     this.minHeight = 80,
@@ -32,6 +33,9 @@ class DifyTextarea extends StatefulWidget {
   final ValueChanged<bool>? onFocusChange;
   final String? placeholder, semanticLabel;
   final bool disabled, readOnly, resizable;
+
+  /// Native `autoFocus`, delegated to the shared framework text-input lifecycle.
+  final bool autofocus;
   final double minHeight, verticalPadding;
   final int? maxLength;
   final DifyTextStyle textStyle;
@@ -107,6 +111,7 @@ class _DifyTextareaState extends State<DifyTextarea> with DifyControlledText<Dif
                       padding: EdgeInsets.symmetric(horizontal: 12, vertical: w.verticalPadding),
                       placeholder: w.placeholder,
                       disabled: w.disabled,
+                      autofocus: w.autofocus,
                       readOnly: w.readOnly,
                       minLines: null,
                       maxLines: null,
