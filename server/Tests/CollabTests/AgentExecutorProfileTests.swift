@@ -59,6 +59,29 @@ struct AgentExecutorProfileTests {
         }
     }
 
+    @Test func aCatalogResponseBodyCannotKeepTheAvailabilityProbePending() async throws {
+        try await withApp(configure: { app in
+            app.routes.get("v1", "profiles") { _ in
+                let body = try Response.Body(stream: { writer in
+                    try await writer.write("{")
+                    try await Task.sleep(for: .seconds(3))
+                    try await writer.write("}")
+                }, count: nil)
+                return Response(status: .ok, body: body)
+            }
+        }) { app in
+            try await app.testing(.running, options: .live(port: 21424)) { _ in
+                var config = ServerConfig.defaults.agentService
+                config.url = "http://127.0.0.1:21424"; config.key = "fixture-only"
+                let started = Date()
+                do {
+                    _ = try await AgentServiceClient(config: config).request(.GET, path: "/v1/profiles", timeoutSeconds: 1)
+                    Issue.record("A stalled catalog response exceeded its probe timeout")
+                } catch { #expect(Date().timeIntervalSince(started) < 1.8) }
+            }
+        }
+    }
+
     @Test func unavailableAndUnknownProfilesAreConcreteRejectionsWithoutRetry() async throws {
         let calls = Mutex(0)
         let unavailable = Mutex(true)

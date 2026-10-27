@@ -37,6 +37,13 @@ struct AgentServiceClient: Sendable {
     }
 
     func request(_ method: HTTPMethod, path: String, body: JSONObject? = nil, runToken: String? = nil, query: [String: String] = [:], timeoutSeconds: Int64 = 30) async throws -> (Int, JSONValue) {
+        try await agentBeforeDeadline(Date().addingTimeInterval(Double(timeoutSeconds)), isAborted: { false },
+            onTimeout: { HTTPClientError.deadlineExceeded }) {
+            try await collectResponse(method, path: path, body: body, runToken: runToken, query: query, timeoutSeconds: timeoutSeconds)
+        }
+    }
+
+    private func collectResponse(_ method: HTTPMethod, path: String, body: JSONObject?, runToken: String?, query: [String: String], timeoutSeconds: Int64) async throws -> (Int, JSONValue) {
         var destination = URLComponents(string: try endpoint(path))!
         if !query.isEmpty { destination.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) } }
         var request = HTTPClientRequest(url: destination.url!.absoluteString)
@@ -242,6 +249,7 @@ private struct AgentTransientTransport: Error {}
 private struct AgentEventCommitFailure: Error { let underlying: any Error }
 
 private func agentBeforeDeadline<T: Sendable>(_ deadline: Date, isAborted: @escaping @Sendable () -> Bool,
+        onTimeout: @escaping @Sendable () -> any Error = { NodeError("AgentTimeout", "The agent operation exceeded its deadline") },
         operation: @escaping @Sendable () async throws -> T) async throws -> T {
     try await withThrowingTaskGroup(of: T.self) { group in
         group.addTask { try await operation() }
@@ -250,7 +258,7 @@ private func agentBeforeDeadline<T: Sendable>(_ deadline: Date, isAborted: @esca
                 try Task.checkCancellation()
                 if isAborted() { throw CancellationError() }
                 let remaining = deadline.timeIntervalSinceNow
-                guard remaining > 0 else { throw NodeError("AgentTimeout", "The agent operation exceeded its deadline") }
+                guard remaining > 0 else { throw onTimeout() }
                 try await Task.sleep(for: .seconds(min(0.25, remaining)))
             }
         }
