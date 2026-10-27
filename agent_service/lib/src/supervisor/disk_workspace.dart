@@ -541,13 +541,33 @@ class DiskWorkspaces {
   File _leaseFile(String hash) => File('${config.root}/$hash/lease.json');
   File _image(String hash) => File('${config.root}/$hash/workspace.img');
 
-  /// The root must exist (created by the deployment, never here).
+  /// Images are writable by the unprivileged sandbox user through a volume,
+  /// so their host directory must be private to this supervisor. Deployment
+  /// creates it; a misconfigured or linked directory is never repaired here.
   void checkRoot() {
-    if (!Directory(config.root).existsSync()) {
+    if (FileSystemEntity.typeSync(config.root, followLinks: false) !=
+            FileSystemEntityType.directory ||
+        FileStat.statSync(config.root).mode & 0xfff != 0x1c0) {
       throw SupervisorConfigError(
-        'SANDBOX_DISK_ROOT ${config.root} does not exist',
+        'SANDBOX_DISK_ROOT must be a real directory with mode 0700',
       );
     }
+    try {
+      final owner = Process.runSync('stat', ['-c', '%u', '--', config.root]);
+      final effective = Process.runSync('id', ['-u']);
+      final uid = int.tryParse((effective.stdout as String).trim());
+      if (owner.exitCode == 0 &&
+          effective.exitCode == 0 &&
+          uid != null &&
+          int.tryParse((owner.stdout as String).trim()) == uid) {
+        return;
+      }
+    } on ProcessException {
+      // Unable to verify the owner: fail closed before Docker calls.
+    }
+    throw SupervisorConfigError(
+      'SANDBOX_DISK_ROOT must be owned by the supervisor user',
+    );
   }
 
   DiskLease? read(String hash) {
@@ -888,11 +908,26 @@ class DiskWorkspaces {
       log?.call('disk workspace $hash is in conflict; left for an operator');
       return false;
     }
+    final image = _image(hash);
+    final hasIdentity = lease.dev != null && lease.ino != null;
+    if ((lease.dev == null) != (lease.ino == null) ||
+        (lease.attached && !hasIdentity) ||
+        (hasIdentity && !image.existsSync())) {
+      // An unlink does not detach an open loop device. Keep its lease and
+      // volume so an operator can recover the recorded identity, including
+      // when attachment finished just before a crash persisted the flag.
+      lease.state = 'conflict';
+      _write(lease);
+      log?.call(
+        'disk workspace $hash: image or identity is missing; '
+        'volume and lease kept in conflict',
+      );
+      return false;
+    }
     lease.state = 'releasing';
     _write(lease);
     final v = await docker.inspectVolume(lease.volume);
     if (v != null && _ownVolume(v, hash)) await _removeVolume(lease);
-    final image = _image(hash);
     if (image.existsSync() && lease.dev != null && lease.ino != null) {
       final id = (dev: lease.dev!, ino: lease.ino!);
       final r = await helper.run(hash, 'detach', lease.device, id);

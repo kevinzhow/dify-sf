@@ -93,6 +93,7 @@ void main() {
     }
     scratch = Directory.systemTemp.createTempSync('disk-it-');
     Directory(root).createSync(recursive: true);
+    expect(Process.runSync('chmod', ['700', root]).exitCode, 0);
     peer = 'dify-sf-dit-$label-peer';
     final id = await docker.createContainer(peer, {
       'Image': sandboxImage,

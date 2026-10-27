@@ -31,6 +31,9 @@ class FakeDocker {
 
   /// Container starts fail with HTTP 500.
   bool failStart = false;
+
+  /// A barrier after an inspect snapshot was captured, before replying.
+  Future<void> Function(String id)? afterContainerInspect;
   var _next = 0;
 
   Future<void> start() async {
@@ -235,14 +238,16 @@ class FakeDocker {
         if (net == null) return reply(404, {'message': 'network not found'});
         creates.add(payload);
         final id = 'c${++_next}'.padRight(64, 'f');
-        containers[id] = _container(
-          id,
-          name,
-          (payload['Labels'] as Map).cast<String, String>(),
-          payload['Env'] as List,
-          network: network,
-        )..['State'] = {'Running': false, 'Status': 'created'}
-         ..['Mounts'] = (payload['HostConfig'] as Map)['Mounts'];
+        containers[id] =
+            _container(
+                id,
+                name,
+                (payload['Labels'] as Map).cast<String, String>(),
+                payload['Env'] as List,
+                network: network,
+              )
+              ..['State'] = {'Running': false, 'Status': 'created'}
+              ..['Mounts'] = (payload['HostConfig'] as Map)['Mounts'];
         final endpoint =
             ((payload['NetworkingConfig'] as Map)['EndpointsConfig']
                 as Map)[network];
@@ -265,9 +270,10 @@ class FakeDocker {
         return reply(204);
       case ('GET', ['containers', final id, 'json']):
         final c = _find(id);
-        return c == null
-            ? reply(404, {'message': 'no such container'})
-            : reply(200, c);
+        if (c == null) return reply(404, {'message': 'no such container'});
+        final snapshot = jsonDecode(jsonEncode(c));
+        await afterContainerInspect?.call(id);
+        return reply(200, snapshot);
       case ('DELETE', ['containers', final id]):
         final c = _find(id);
         if (c == null) return reply(404, {'message': 'no such container'});
@@ -294,9 +300,13 @@ class FakeDocker {
         });
       case ('GET', ['volumes', final name]):
         final v = volumes[name];
-        return v == null ? reply(404, {'message': 'no such volume'}) : reply(200, v);
+        return v == null
+            ? reply(404, {'message': 'no such volume'})
+            : reply(200, v);
       case ('DELETE', ['volumes', final name]):
-        if (volumes[name] == null) return reply(404, {'message': 'no such volume'});
+        if (volumes[name] == null) {
+          return reply(404, {'message': 'no such volume'});
+        }
         if (containers.values.any(
           (c) => ((c['Mounts'] as List?) ?? const []).any(
             (m) => m is Map && m['Source'] == name,
@@ -1324,8 +1334,8 @@ void main() {
         'langgenius/dify-agent-local-sandbox@sha256:'
         'f4d404c9dcdf80bd72f65e84c3f2bbd1f3404fd4b363db837176da8aaf771b1d';
     const tool =
-        'dify-sf/sandbox-colvalley-blender@sha256:'
-        '438f4d80139973fe258beaffbd28346c931db841e8a676ed0eb9bbfcfce7e9b3';
+        'example/workspace-tools@sha256:'
+        '3333333333333333333333333333333333333333333333333333333333333333';
     late FakeLoop loop;
     late String root;
     var boot = 'boot-1';
@@ -1383,8 +1393,85 @@ void main() {
       docker.images.addAll([image, tool]);
       loop = FakeLoop();
       root = (Directory('${dir.path}/ws')..createSync()).path;
+      expect(Process.runSync('chmod', ['700', root]).exitCode, 0);
       boot = 'boot-1';
     });
+
+    test(
+      'disk root rejects access by other host users before Docker calls',
+      () async {
+        expect(Process.runSync('chmod', ['755', root]).exitCode, 0);
+        final before = docker.requests.length;
+        await expectLater(start(), throwsA(isA<SupervisorConfigError>()));
+        expect(docker.requests, hasLength(before));
+      },
+    );
+
+    test('disk root rejects a symbolic link before Docker calls', () async {
+      final link = Link('${dir.path}/ws-link')..createSync(root);
+      root = link.path;
+      final before = docker.requests.length;
+      await expectLater(start(), throwsA(isA<SupervisorConfigError>()));
+      expect(docker.requests, hasLength(before));
+    });
+
+    test('late delete with a stale inspection keeps the replacement network '
+        'and disk workspace', () async {
+      await start();
+      final (_, first) = await acquireDisk('E1');
+      final old = first['sandbox_id'] as String;
+      (docker.containers[old]!['State'] as Map)['Running'] = false;
+      final captured = Completer<void>();
+      final release = Completer<void>();
+      docker.afterContainerInspect = (id) async {
+        if (id != old) return;
+        docker.afterContainerInspect = null;
+        captured.complete();
+        await release.future;
+      };
+      final deleting = call('DELETE', '/v1/sandboxes/$old');
+      await captured.future.timeout(const Duration(seconds: 2));
+      late Map<String, Object?> replacement;
+      try {
+        final (status, value) = await acquireDisk('E1');
+        expect(status, 201);
+        replacement = value;
+      } finally {
+        release.complete();
+      }
+      expect((await deleting).$1, 200);
+      final current = replacement['sandbox_id'] as String;
+      expect(docker.containers.containsKey(current), isTrue);
+      expect(
+        docker.networks.values.any(
+          (n) => (n['Containers'] as Map).containsKey(current),
+        ),
+        isTrue,
+      );
+      expect(docker.volumes, hasLength(1));
+      expect(loop.bound, hasLength(1));
+      expect((await acquireDisk('E1')).$2['sandbox_id'], current);
+    });
+
+    test(
+      'a missing attached image keeps the lease and device for recovery',
+      () async {
+        await start();
+        final (_, value) = await acquireDisk('E1');
+        final disks = supervisor.disks!;
+        final lease = disks.leases().single;
+        final bound = Map.of(loop.bound);
+        File('$root/${lease.hash}/workspace.img').deleteSync();
+        expect(
+          (await call('DELETE', '/v1/sandboxes/${value['sandbox_id']}')).$1,
+          200,
+        );
+        expect(disks.leases().single.state, 'conflict');
+        expect(loop.bound, bound);
+        expect(docker.volumes, hasLength(1));
+        expect(File('$root/${lease.hash}/lease.json').existsSync(), isTrue);
+      },
+    );
 
     test('the volume replaces the /workspace tmpfs, survives a replaced '
         'container and goes with the sandbox', () async {
@@ -1436,26 +1523,32 @@ void main() {
       expect(Directory(root).listSync(), isEmpty);
     });
 
-    test('an exhausted budget or a busy pool is 503 before anything is '
-        'created; a device bound by someone else is never pre-empted', () async {
-      await start(budgetMb: 3000);
-      final (s1, a) = await acquireDisk('E1');
-      expect(s1, 201);
-      final networks = docker.networks.length;
-      final (s2, j2) = await acquireDisk('E2');
-      expect((s2, j2['error']), (503, 'disk_budget_exceeded'));
-      expect(docker.networks, hasLength(networks));
-      expect(Directory(root).listSync(), hasLength(1));
+    test(
+      'an exhausted budget or a busy pool is 503 before anything is '
+      'created; a device bound by someone else is never pre-empted',
+      () async {
+        await start(budgetMb: 3000);
+        final (s1, a) = await acquireDisk('E1');
+        expect(s1, 201);
+        final networks = docker.networks.length;
+        final (s2, j2) = await acquireDisk('E2');
+        expect((s2, j2['error']), (503, 'disk_budget_exceeded'));
+        expect(docker.networks, hasLength(networks));
+        expect(Directory(root).listSync(), hasLength(1));
 
-      expect((await call('DELETE', '/v1/sandboxes/${a['sandbox_id']}')).$1, 200);
-      loop.bound['/dev/loop13'] = (dev: 1, ino: 2);
-      final (s3, j3) = await acquireDisk('E3');
-      expect((s3, j3['error']), (503, 'disk_pool_busy'));
-      expect(loop.bound, {'/dev/loop13': (dev: 1, ino: 2)});
-      expect(Directory(root).listSync(), isEmpty);
-      expect(docker.volumes, isEmpty);
-      expect(docker.containers.keys, unorderedEquals([agent, proxy]));
-    });
+        expect(
+          (await call('DELETE', '/v1/sandboxes/${a['sandbox_id']}')).$1,
+          200,
+        );
+        loop.bound['/dev/loop13'] = (dev: 1, ino: 2);
+        final (s3, j3) = await acquireDisk('E3');
+        expect((s3, j3['error']), (503, 'disk_pool_busy'));
+        expect(loop.bound, {'/dev/loop13': (dev: 1, ino: 2)});
+        expect(Directory(root).listSync(), isEmpty);
+        expect(docker.volumes, isEmpty);
+        expect(docker.containers.keys, unorderedEquals([agent, proxy]));
+      },
+    );
 
     test('a workspace whose device holds another file in the same boot is '
         'not reused or detached; after a reboot it is re-attached', () async {
@@ -1496,7 +1589,9 @@ void main() {
       final hash = 'a' * 64;
       Directory('$root/$hash').createSync();
       File('$root/$hash/workspace.img').writeAsStringSync('x');
-      final id = (await DiskWorkspaces.statIdentity('$root/$hash/workspace.img'))!;
+      final id = (await DiskWorkspaces.statIdentity(
+        '$root/$hash/workspace.img',
+      ))!;
       final lease = DiskLease(
         hash: hash,
         state: 'preparing',
@@ -1507,7 +1602,8 @@ void main() {
         dev: id.dev,
         ino: id.ino,
       );
-      File('$root/$hash/lease.json').writeAsStringSync(jsonEncode(lease.toJson()));
+      File('$root/$hash/lease.json')
+          .writeAsStringSync(jsonEncode(lease.toJson()));
       loop.bound['/dev/loop14'] = id;
       await supervisor.stop();
 
@@ -1556,12 +1652,10 @@ void main() {
         'SANDBOX_DISK_BUDGET_MB': '8192',
       };
       final d = SupervisorConfig.fromEnv(env).disk!;
-      expect((d.root, d.hostRoot, d.budgetMb, d.minFreeMb), (
-        '/data/workspaces',
-        '/srv/dify-sf/workspaces',
-        8192,
-        1024,
-      ));
+      expect(
+        (d.root, d.hostRoot, d.budgetMb, d.minFreeMb),
+        ('/data/workspaces', '/srv/dify-sf/workspaces', 8192, 1024),
+      );
       for (final bad in [
         {...env, 'SANDBOX_DISK_TOOL_IMAGE': 'tools:latest'},
         {...env, 'SANDBOX_DISK_LOOP_DEVICES': '/dev/sda'},

@@ -648,8 +648,7 @@ class SandboxSupervisor {
         'ReadonlyRootfs': true,
         'Tmpfs': {
           '/home/dify': tmpfs(limits.homeMb),
-          if (workspaceVolume == null)
-            '/workspace': tmpfs(limits.workspaceMb),
+          if (workspaceVolume == null) '/workspace': tmpfs(limits.workspaceMb),
         },
         'CapDrop': ['ALL'],
         'SecurityOpt': ['no-new-privileges:true'],
@@ -1243,12 +1242,32 @@ class SandboxSupervisor {
       throw SupervisorError(404, 'not_found', 'no sandbox $sandboxId');
     }
     final id = inspect['Id'] as String;
-    final hash = ((inspect['Config'] as Map?)?['Labels'] as Map)[executionLabel]
-        as String;
-    final network =
-        (inspect['HostConfig'] as Map?)?['NetworkMode'] as String? ??
-        (inspect['Name'] as String? ?? '').replaceFirst('/', '');
+    final hash =
+        ((inspect['Config'] as Map?)?['Labels'] as Map)[executionLabel]
+            as String;
     return _locked(hash, () async {
+      // The initial inspection can precede a concurrent acquire that
+      // replaces this container and reuses its network name. Recheck the
+      // immutable container ID after taking the execution lock before
+      // removing any network or disk belonging to that execution.
+      final current = await docker.inspectContainer(id);
+      if (current == null) {
+        if (_known.remove(id) != null) _saveState();
+        final users = await docker.listContainers([
+          ...config.sandboxFilters,
+          '$executionLabel=$hash',
+        ]);
+        if (users.isEmpty) await disks?.release(hash);
+        return false;
+      }
+      if (!_labelled(current) ||
+          ((current['Config'] as Map?)?['Labels'] as Map?)?[executionLabel] !=
+              hash) {
+        throw SupervisorError(404, 'not_found', 'no sandbox $sandboxId');
+      }
+      final network =
+          (current['HostConfig'] as Map?)?['NetworkMode'] as String? ??
+          (current['Name'] as String? ?? '').replaceFirst('/', '');
       final removed = await _removeSandbox(id, network);
       log?.call('removed sandbox $id and its network');
       await disks?.release(hash);

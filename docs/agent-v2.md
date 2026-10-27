@@ -962,8 +962,11 @@ under `sh -c` remained. This covers processes inside the container only; what a 
 ### Disk workspaces
 
 Status: implemented in the supervisor (2026-10-28); verified end to end on K17 in isolation. A profile with
-`"workspace": {"backing": "disk"}` gets a `/workspace` of `limits.workspace_mb` on the host's disk, so its files do not
-count against the memory limit. The home stays tmpfs. Per execution, the supervisor:
+`"workspace": {"backing": "disk"}` gets a `/workspace` of `limits.workspace_mb` on the host's disk. Its files persist
+on disk rather than occupying tmpfs; reclaimable filesystem cache still counts toward the container's memory
+usage. The home stays tmpfs. At startup the supervisor requires `SANDBOX_DISK_ROOT` to be a real directory, mode
+0700, owned by its effective user; a symlink or unverified owner is refused before any Docker calls. Per execution,
+the supervisor:
 
 1. checks the budget (sum of all images plus the new one ≤ `SANDBOX_DISK_BUDGET_MB`), the free space on the root (size
    plus `SANDBOX_DISK_MIN_FREE_MB`) and picks a pool device no lease holds; otherwise `503 disk_budget_exceeded`,
@@ -991,12 +994,15 @@ found there (no `sandbox_error`) and does not materialize `files[]` again.
 Release (`DELETE /v1/sandboxes/{id}`; the agent service calls it only after artifact collection and the result
 acknowledgement): remove the sandbox and its network, check that no container uses the volume and remove it, detach
 the device only when `LOOP_GET_STATUS64` shows this image's device and inode, delete the image, the lease, the
-directory. A repeated or late `DELETE` of an earlier sandbox ID releases the workspace only when no sandbox of the
-execution exists. At start the sweep removes leftover helpers, finishes leases in `preparing` or `releasing`, releases
+directory. A repeated or late `DELETE` of an earlier sandbox ID re-inspects that immutable ID under the execution
+lock: if a concurrent acquire has replaced it, the replacement's network is left alone and the workspace is released
+only when no sandbox of the execution exists. At start the sweep removes leftover helpers, finishes leases in `preparing` or `releasing`, releases
 the workspaces of the unknown sandboxes it removed and own volumes without a lease; a `ready` lease without a sandbox
 (a paused execution) stays. A device that holds another file while the lease says it was bound in this boot, or an
 image that was replaced, puts the lease in `conflict`: nothing is detached, deleted or reused, the execution answers
-`503 disk_workspace_conflict` and an operator resolves it (leases in `conflict` still count against the budget). With
+`503 disk_workspace_conflict` and an operator resolves it (leases in `conflict` still count against the budget). If
+an image is missing but has a recorded device/inode, or its identity is incomplete, release keeps the lease and volume in
+`conflict`: unlinking an image does not detach an open loop device. With
 one pool device (K17: `/dev/loop13`) at most one disk execution is active at a time. A disk profile's status is
 `image_missing` also when the tool image is absent.
 
