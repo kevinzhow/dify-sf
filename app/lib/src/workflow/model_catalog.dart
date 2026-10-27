@@ -100,6 +100,8 @@ class ModelItem {
     this.loadBalancingEnabled = false,
     this.deprecated = false,
     this.hasInvalidLoadBalancingConfigs = false,
+    this.schemaStatus = 'ready',
+    this.schemaError,
   });
 
   factory ModelItem.fromJson(Object? json) {
@@ -116,6 +118,8 @@ class ModelItem {
       loadBalancingEnabled: m['load_balancing_enabled'] == true,
       deprecated: m['deprecated'] == true,
       hasInvalidLoadBalancingConfigs: m['has_invalid_load_balancing_configs'] == true,
+      schemaStatus: _s(m['schema_status']).isEmpty ? 'ready' : _s(m['schema_status']),
+      schemaError: m['schema_error'] as String?,
     );
   }
 
@@ -133,6 +137,8 @@ class ModelItem {
   final bool loadBalancingEnabled;
   final bool deprecated;
   final bool hasInvalidLoadBalancingConfigs;
+  final String schemaStatus;
+  final String? schemaError;
 
   String get mode => _s(modelProperties['mode']);
 }

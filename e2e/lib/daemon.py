@@ -1,4 +1,4 @@
-"""Client for Dify's plugin daemon 0.6.10 HTTP API (the calls Dify's api makes; standard library only).
+"""Client for Dify's plugin daemon 0.6.x HTTP API (the calls Dify's api makes; standard library only).
 
 Every call carries `X-Api-Key: <SERVER_KEY>`; answers are `{code, message, data}` (code 0 = ok); dispatch calls answer
 with a stream of `data: {code, message, data}` lines. Paths and payloads as in Dify 1.17.1 api/core/plugin/impl/*.py.

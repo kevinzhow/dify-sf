@@ -22,6 +22,19 @@ private func withStreamingAgentDaemon(
 ) async throws {
     let probe = AgentTransportProbe()
     try await withApp(configure: { app in
+        // Credential setup now resolves the schema before saving. Keep this transport
+        // fixture complete so cancellation still exercises the real streaming socket.
+        app.post("plugin", ":tenant", "dispatch", "model", "schema") { _ async -> Response in
+            var headers = HTTPFields()
+            headers[.contentType] = "text/event-stream"
+            let schema: JSONValue = ["code": 0, "message": "", "data": ["model_schema": [
+                "model": "stub-chat", "label": ["en_US": "stub-chat"], "model_type": "llm",
+                "features": [], "fetch_from": "customizable-model",
+                "model_properties": ["mode": "chat", "context_size": 4096], "parameter_rules": [],
+            ]]]
+            return Response(status: .ok, headers: headers,
+                body: .init(string: "data: " + schema.compactJSON() + "\n\n"))
+        }
         app.post("plugin", ":tenant", "dispatch", "llm", "invoke") { req async throws -> Response in
             _ = try await req.body.collect(max: .specified(ByteCount(value: 1 << 20)))
             var headers = HTTPFields()

@@ -48,6 +48,25 @@
     "release.enabled": "已启用",
     "release.disabled": "未启用",
     "release.unknown": "未报告",
-    "runtime.unsupportedNodes": "此服务器无法运行以下节点：{{nodes}}。请配置或替换这些节点后重试。"
+    "runtime.unsupportedNodes": "此服务器无法运行以下节点：{{nodes}}。请配置或替换这些节点后重试。",
+    "modelProvider.metadataUnknown": "模型信息待确认",
+    "modelProvider.metadataUnknownTip": "无法从供应商读取此模型的能力和参数。请检查模型名称、接口类型与供应商配置；已保存的配置可继续编辑。",
+    "modelProvider.plugins.title": "管理模型插件",
+    "modelProvider.plugins.description": "安装和管理模型供应商所需的插件。卸载插件会保留已保存的模型配置和密钥。",
+    "modelProvider.plugins.installed": "已安装",
+    "modelProvider.plugins.missing": "插件未安装",
+    "modelProvider.plugins.unknown": "插件状态待确认",
+    "modelProvider.plugins.unavailable": "服务端尚未配置插件服务",
+    "modelProvider.plugins.failed": "插件安装失败",
+    "modelProvider.plugins.operationUnconfirmed": "暂时无法确认操作结果，请刷新插件状态后再重试。",
+    "modelProvider.plugins.removeTitle": "卸载 {{plugin}}？",
+    "modelProvider.plugins.removeDescription": "卸载后，使用此插件的模型将无法运行；重新安装即可恢复。已保存的模型配置、密钥和工作流会保留。",
+    "modelProvider.plugins.install": "安装",
+    "modelProvider.plugins.update": "更新",
+    "modelProvider.plugins.remove": "卸载",
+    "modelProvider.plugins.refresh": "刷新",
+    "modelProvider.plugins.missingTip": "请在集成页面打开“管理模型插件”安装该供应商。已有配置会保留。",
+    "modelProvider.metadataMissing": "模型未识别",
+    "modelProvider.metadataMissingTip": "当前供应商插件不识别该模型，请核对模型名称和插件版本。"
   }
 }

@@ -65,10 +65,18 @@ struct HTTPCredentialChecker: CredentialChecker {
 
 /// The catalog and the credential checker, shared by the model provider routes.
 struct ModelService: Sendable {
+    let schemas = ModelSchemaCache()
+    let plugins = ProviderPluginCache()
     let catalog: ModelCatalog
     let checker: any CredentialChecker
     /// `COLLAB_MODELS_VALIDATE`.
     let validate: Bool
+    let packages: any ProviderPluginPackageSource
+
+    init(catalog: ModelCatalog, checker: any CredentialChecker, validate: Bool,
+         packages: any ProviderPluginPackageSource = HTTPProviderPluginPackages()) {
+        self.catalog = catalog; self.checker = checker; self.validate = validate; self.packages = packages
+    }
 
     /// The vendored definitions, loaded once per process.
     static let bundledCatalog: Result<ModelCatalog, any Error> = Result { try ModelCatalog.bundled() }

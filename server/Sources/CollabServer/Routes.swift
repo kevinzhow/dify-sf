@@ -71,6 +71,7 @@ struct Routes: Sendable {
         r.get("v1", "docs", ":doc", "events") { req in await handle(req) { try await events(req, doc: try docId(req)) } }
         registerComments(on: r)
         registerModels(on: r)
+        registerProviderPlugins(on: r)
         registerAgentComposer(on: r)
         registerAgentModels(on: r)
         registerAgentUploads(on: r)

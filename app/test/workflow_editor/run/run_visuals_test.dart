@@ -129,6 +129,9 @@ void main() {
     final graph = canvasState.graph;
     final scope = WorkflowRunScope.of(t.element(find.byType(WorkflowCanvas)));
     final store = WorkflowStoreScope.of(t.element(find.byType(WorkflowCanvas)));
+    // This deliberately synthetic loop exercises run rendering. Preflight
+    // validation is tested independently of the mock runtime's event sequence.
+    store.computeRunChecklist = () => const [];
     final service = scope.service as MockWorkflowRunService;
     service.scenario = const MockRunScenario(
       stepDelay: Duration(milliseconds: 40),

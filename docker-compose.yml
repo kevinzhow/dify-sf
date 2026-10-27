@@ -83,7 +83,7 @@ services:
   # (the daemon creates it on first start); installed plugins and their virtual environments live in `plugin_storage`.
   plugin_daemon:
     profiles: [runtime]
-    image: langgenius/dify-plugin-daemon:0.6.10-local@sha256:34412a22d1e1d1a6c73727fef88cffbcdd9be7a21bf9ad3076b4bf5c1b88fd9b
+    image: langgenius/dify-plugin-daemon:0.6.11-local@sha256:9a3eaf522f20dcf8686b0a8c0db3bf9f3b5798a772f9d0b7c90cd7fd6a8c71b7
     mem_limit: 1024m
     memswap_limit: 1024m
     cpus: 1

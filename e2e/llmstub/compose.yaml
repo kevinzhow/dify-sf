@@ -6,7 +6,7 @@ name: difysf-llmstub
 
 services:
   llmstub:
-    image: langgenius/dify-plugin-daemon:0.6.10-local
+    image: langgenius/dify-plugin-daemon:0.6.11-local@sha256:9a3eaf522f20dcf8686b0a8c0db3bf9f3b5798a772f9d0b7c90cd7fd6a8c71b7
     entrypoint: ["python3", "-I", "/stub/llmstub.py"]
     command: []
     environment:

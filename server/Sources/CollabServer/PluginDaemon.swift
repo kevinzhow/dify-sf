@@ -69,7 +69,12 @@ struct PluginDaemonClient: Sendable {
                 req.headers.add(name: "Content-Type", value: "application/json")
                 req.body = .bytes(ByteBuffer(string: body.compactJSON()))
                 let res = try await client.execute(req, timeout: timeout)
-                guard res.status.code == 200 else { throw PluginDaemonWire.DaemonError(errorType: "PluginDaemonError", message: "Plugin dispatch HTTP \(res.status.code)") }
+                guard res.status.code == 200 else {
+                    let message = res.status.code == 404
+                        ? "Plugin \(pluginId) is not installed or ready. Open Integrations to install or check the plugin."
+                        : "Plugin dispatch HTTP \(res.status.code)"
+                    throw PluginDaemonWire.DaemonError(errorType: "PluginDaemonError", message: message, httpStatus: Int(res.status.code))
+                }
                 var pending: [UInt8] = []
                 for try await chunk in res.body {
                     pending.append(contentsOf: chunk.readableBytesView)

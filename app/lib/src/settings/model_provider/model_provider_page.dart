@@ -7,6 +7,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:collab_client/collab_client.dart' show ModelProviderPluginsApi;
 
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
@@ -18,6 +19,7 @@ import '../../workflow/workspace_models.dart';
 import '../../workflow_editor/block_selector/selector_widgets.dart' show SelectorSearchInput;
 import 'model_provider_env.dart';
 import 'provider_added_card.dart';
+import 'provider_plugins.dart';
 import 'system_model_selector.dart';
 
 String _t(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);
@@ -201,6 +203,13 @@ class _ModelProviderPageState extends State<ModelProviderPage> {
                 ),
               ),
               const SizedBox(width: 12),
+              if (models.api is ModelProviderPluginsApi)
+                DifyIconButton(
+                  key: const ValueKey('manage-provider-plugins'),
+                  label: _t('modelProvider.plugins.title'),
+                  icon: const RemixIcon('puzzle-2-line'),
+                  onPressed: () => showProviderPlugins(context, env),
+                ),
               const Spacer(),
               if (showWarning)
                 Flexible(

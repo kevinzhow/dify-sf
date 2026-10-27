@@ -192,6 +192,32 @@ class _ModelListItemState extends State<ModelListItem> {
               nameColor: DifyColors.textSecondary,
             ),
           ),
+          if (m.schemaStatus != 'ready')
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: DifyTooltip(
+                content: DifyTextLine(
+                  _t(
+                    m.schemaError == 'plugin_not_installed'
+                        ? 'modelProvider.plugins.missingTip'
+                        : m.schemaError == 'model_schema_missing'
+                        ? 'modelProvider.metadataMissingTip'
+                        : 'modelProvider.metadataUnknownTip',
+                  ),
+                  style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textSecondary),
+                ),
+                child: DifyTextLine(
+                  _t(
+                    m.schemaError == 'plugin_not_installed'
+                        ? 'modelProvider.plugins.missing'
+                        : m.schemaError == 'model_schema_missing'
+                        ? 'modelProvider.metadataMissing'
+                        : 'modelProvider.metadataUnknown',
+                  ),
+                  style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textWarning),
+                ),
+              ),
+            ),
           if (m.deprecated)
             DifyTooltip(
               content: DifyTextLine(

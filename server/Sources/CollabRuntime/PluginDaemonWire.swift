@@ -41,9 +41,11 @@ public enum PluginDaemonWire {
     public struct DaemonError: Error, CustomStringConvertible, Sendable {
         public var errorType: String
         public var message: String
-        public init(errorType: String, message: String) {
+        public var httpStatus: Int?
+        public init(errorType: String, message: String, httpStatus: Int? = nil) {
             self.errorType = errorType
             self.message = message
+            self.httpStatus = httpStatus
         }
         public var description: String { message }
     }

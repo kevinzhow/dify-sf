@@ -25,8 +25,7 @@ abstract final class AccountRole {
   static const assignable = [admin, editor, normal, datasetOperator];
 
   /// Dify's `has_edit_permission`: may write to workflows and their comments.
-  static bool canEdit(String? role) =>
-      role == owner || role == admin || role == editor;
+  static bool canEdit(String? role) => role == owner || role == admin || role == editor;
 
   /// Dify's `is_admin_or_owner`: may manage members and export secrets.
   static bool isPrivileged(String? role) => role == owner || role == admin;
@@ -191,9 +190,7 @@ final class AuthTokens {
 
   @override
   bool operator ==(Object other) =>
-      other is AuthTokens &&
-      other.accessToken == accessToken &&
-      other.refreshToken == refreshToken;
+      other is AuthTokens && other.accessToken == accessToken && other.refreshToken == refreshToken;
 
   @override
   int get hashCode => Object.hash(accessToken, refreshToken);
@@ -292,8 +289,7 @@ final class InvitationCheck {
   final String? accountStatus;
 
   /// Dify's invite-settings rule: `requires_setup ?? account_status == 'pending'`.
-  bool get needsSetup =>
-      requiresSetup ?? (accountStatus == null || accountStatus == 'pending');
+  bool get needsSetup => requiresSetup ?? (accountStatus == null || accountStatus == 'pending');
 }
 
 /// The members of Dify's system features (`GET /v1/system-features`) the sign-in pages read. A server that does not know
@@ -359,16 +355,12 @@ final class ServerBuildIdentity {
   static ServerBuildIdentity? fromJson(Object? json) {
     if (json is! Map) return null;
     final revision = json['revision'];
-    if (revision is! String ||
-        !(revision == 'development' ||
-            RegExp(r'^[a-f0-9]{12,40}$').hasMatch(revision)))
+    if (revision is! String || !(revision == 'development' || RegExp(r'^[a-f0-9]{12,40}$').hasMatch(revision))) {
       return null;
+    }
     String protocol(String key) {
       final value = json[key];
-      return value is String &&
-              RegExp(r'^[A-Za-z0-9./_-]{1,64}$').hasMatch(value)
-          ? value
-          : '';
+      return value is String && RegExp(r'^[A-Za-z0-9./_-]{1,64}$').hasMatch(value) ? value : '';
     }
 
     return ServerBuildIdentity(
@@ -396,9 +388,7 @@ final class WorkflowRuntimeFeatures {
   static WorkflowRuntimeFeatures? fromJson(Object? json) {
     if (json is! Map<String, Object?>) return null;
     return WorkflowRuntimeFeatures(
-      protocolVersion: json['protocol_version'] is String
-          ? json['protocol_version']! as String
-          : '',
+      protocolVersion: json['protocol_version'] is String ? json['protocol_version']! as String : '',
       singleNodeRun: {
         if (json['single_node_run'] case final List<Object?> types)
           for (final t in types)
@@ -540,23 +530,16 @@ final class ClientIdentity {
 
   @override
   bool operator ==(Object other) =>
-      other is ClientIdentity &&
-      other.account == account &&
-      other.name == name &&
-      other.avatarUrl == avatarUrl;
+      other is ClientIdentity && other.account == account && other.name == name && other.avatarUrl == avatarUrl;
 
   @override
   int get hashCode => Object.hash(account, name, avatarUrl);
 }
 
 Map<String, Object?> _map(Object? json, String what) =>
-    json is Map<String, Object?>
-    ? json
-    : throw FormatException('expected a $what object, got $json');
+    json is Map<String, Object?> ? json : throw FormatException('expected a $what object, got $json');
 
-String _str(Map<String, Object?> m, String key) => m[key] is String
-    ? m[key]! as String
-    : throw FormatException('missing or non-string "$key"');
+String _str(Map<String, Object?> m, String key) =>
+    m[key] is String ? m[key]! as String : throw FormatException('missing or non-string "$key"');
 
-DateTime? _time(Object? v) =>
-    v is String ? DateTime.tryParse(v)?.toUtc() : null;
+DateTime? _time(Object? v) => v is String ? DateTime.tryParse(v)?.toUtc() : null;

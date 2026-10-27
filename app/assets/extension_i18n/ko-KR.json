@@ -14,6 +14,25 @@
     "release.enabled": "활성화",
     "release.disabled": "비활성화",
     "release.unknown": "보고되지 않음",
-    "runtime.unsupportedNodes": "이 서버에서 다음 노드를 실행할 수 없습니다: {{nodes}}. 설정하거나 교체한 후 다시 실행하세요."
+    "runtime.unsupportedNodes": "이 서버에서 다음 노드를 실행할 수 없습니다: {{nodes}}. 설정하거나 교체한 후 다시 실행하세요.",
+    "modelProvider.metadataUnknown": "모델 정보 확인 필요",
+    "modelProvider.metadataUnknownTip": "공급자에서 모델 기능과 매개변수를 불러오지 못했습니다. 모델 이름, API 유형 및 공급자 설정을 확인하세요. 저장된 설정은 편집할 수 있습니다.",
+    "modelProvider.plugins.title": "모델 플러그인 관리",
+    "modelProvider.plugins.description": "모델 공급자의 플러그인을 관리합니다. 제거해도 저장된 모델 설정과 인증 정보는 유지됩니다.",
+    "modelProvider.plugins.installed": "설치됨",
+    "modelProvider.plugins.missing": "플러그인이 설치되지 않음",
+    "modelProvider.plugins.unknown": "플러그인 상태를 확인할 수 없음",
+    "modelProvider.plugins.unavailable": "플러그인 서비스가 구성되지 않음",
+    "modelProvider.plugins.failed": "플러그인 설치 실패",
+    "modelProvider.plugins.operationUnconfirmed": "작업 결과를 확인할 수 없습니다. 상태를 새로 고친 후 다시 시도하세요.",
+    "modelProvider.plugins.removeTitle": "{{plugin}} 플러그인을 제거할까요?",
+    "modelProvider.plugins.removeDescription": "다시 설치할 때까지 이 플러그인의 모델을 실행할 수 없습니다. 모델 설정, 인증 정보와 워크플로는 유지됩니다.",
+    "modelProvider.plugins.install": "설치",
+    "modelProvider.plugins.update": "업데이트",
+    "modelProvider.plugins.remove": "제거",
+    "modelProvider.plugins.refresh": "새로 고침",
+    "modelProvider.plugins.missingTip": "통합 페이지의 모델 플러그인 관리에서 설치하세요. 저장된 설정은 유지됩니다.",
+    "modelProvider.metadataMissing": "모델을 인식할 수 없음",
+    "modelProvider.metadataMissingTip": "이 플러그인은 모델을 인식하지 못합니다. 모델 이름과 플러그인 버전을 확인하세요."
   }
 }

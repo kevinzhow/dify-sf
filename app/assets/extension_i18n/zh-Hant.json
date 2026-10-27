@@ -14,6 +14,25 @@
     "release.enabled": "已啟用",
     "release.disabled": "未啟用",
     "release.unknown": "未回報",
-    "runtime.unsupportedNodes": "此伺服器無法執行以下節點：{{nodes}}。請設定或替換這些節點後重試。"
+    "runtime.unsupportedNodes": "此伺服器無法執行以下節點：{{nodes}}。請設定或替換這些節點後重試。",
+    "modelProvider.metadataUnknown": "模型資訊待確認",
+    "modelProvider.metadataUnknownTip": "無法從供應商讀取此模型的能力和參數。請檢查模型名稱、介面類型與供應商設定；已儲存的設定可繼續編輯。",
+    "modelProvider.plugins.title": "管理模型外掛",
+    "modelProvider.plugins.description": "安裝和管理模型供應商所需的外掛。移除外掛會保留已儲存的模型設定和金鑰。",
+    "modelProvider.plugins.installed": "已安裝",
+    "modelProvider.plugins.missing": "外掛尚未安裝",
+    "modelProvider.plugins.unknown": "外掛狀態待確認",
+    "modelProvider.plugins.unavailable": "伺服器尚未設定外掛服務",
+    "modelProvider.plugins.failed": "外掛安裝失敗",
+    "modelProvider.plugins.operationUnconfirmed": "暫時無法確認操作結果，請重新整理外掛狀態後再重試。",
+    "modelProvider.plugins.removeTitle": "移除 {{plugin}}？",
+    "modelProvider.plugins.removeDescription": "移除後，使用此外掛的模型將無法執行；重新安裝即可恢復。模型設定、金鑰和工作流程會保留。",
+    "modelProvider.plugins.install": "安裝",
+    "modelProvider.plugins.update": "更新",
+    "modelProvider.plugins.remove": "移除",
+    "modelProvider.plugins.refresh": "重新整理",
+    "modelProvider.plugins.missingTip": "請在整合頁面開啟「管理模型外掛」安裝此供應商。現有設定會保留。",
+    "modelProvider.metadataMissing": "模型未識別",
+    "modelProvider.metadataMissingTip": "目前的供應商外掛無法識別此模型，請確認模型名稱和外掛版本。"
   }
 }

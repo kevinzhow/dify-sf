@@ -78,13 +78,21 @@ const hiddenSecret = '[__HIDDEN__]';
 
 /// One entry of `POST /default-model` (Dify's `model_settings[]`): [provider] and [model] null = leave this type alone.
 final class DefaultModelSetting {
-  const DefaultModelSetting({required this.modelType, this.provider, this.model});
+  const DefaultModelSetting({
+    required this.modelType,
+    this.provider,
+    this.model,
+  });
 
   final String modelType;
   final String? provider;
   final String? model;
 
-  Map<String, Object?> toJson() => {'model_type': modelType, 'provider': provider, 'model': model};
+  Map<String, Object?> toJson() => {
+    'model_type': modelType,
+    'provider': provider,
+    'model': model,
+  };
 }
 
 /// The answer of a `validate*` call: Dify's `{"result":"success"}` or `{"result":"error","error":"..."}`.
@@ -96,7 +104,9 @@ final class CredentialValidation {
     final m = json is Map<String, Object?> ? json : const <String, Object?>{};
     return m['result'] == 'success'
         ? const CredentialValidation.success()
-        : CredentialValidation.failure(m['error'] is String ? m['error']! as String : 'Unknown error');
+        : CredentialValidation.failure(
+            m['error'] is String ? m['error']! as String : 'Unknown error',
+          );
   }
 
   final bool ok;
@@ -144,7 +154,10 @@ abstract interface class ModelProvidersApi {
   /// `GET /v1/workspace/model-providers/{provider}/models/parameter-rules?model=` (`data`): the parameter rules of an
   /// LLM (Dify's `ModelParameterRule` objects, templates resolved); `[]` when the provider has no usable credential or
   /// the model is unknown.
-  Future<List<Map<String, Object?>>> parameterRules(String provider, String model);
+  Future<List<Map<String, Object?>>> parameterRules(
+    String provider,
+    String model,
+  );
 
   /// `GET /v1/workspace/model-providers/{provider}/models` (`data`): every model of the provider with its status
   /// (`active`, `no-configure`, `disabled`, `credential-removed`) and the provider (`provider: {...}`). Dify's
@@ -160,21 +173,36 @@ abstract interface class ModelProvidersApi {
   // ----- model list (owner, admin) -----
 
   /// `PATCH .../models/enable` `{model, model_type}`.
-  Future<void> enableModel(String provider, {required String model, required String modelType});
+  Future<void> enableModel(
+    String provider, {
+    required String model,
+    required String modelType,
+  });
 
   /// `PATCH .../models/disable` `{model, model_type}`: the model gets status `disabled` (and leaves [modelsOfType]).
-  Future<void> disableModel(String provider, {required String model, required String modelType});
+  Future<void> disableModel(
+    String provider, {
+    required String model,
+    required String modelType,
+  });
 
   // ----- provider credentials (owner, admin) -----
 
   /// `GET .../credentials[?credential_id=]` (`credentials`): the values of credential [credentialId], or of the
   /// current credential when null, secrets masked; `{}` when the provider has no current credential.
-  Future<Map<String, Object?>> providerCredentials(String provider, {String? credentialId});
+  Future<Map<String, Object?>> providerCredentials(
+    String provider, {
+    String? credentialId,
+  });
 
   /// `POST .../credentials` `{credentials, name?}`: validates (one cheap request to the provider, unless the server
   /// has validation switched off), then stores a new credential. [name]: at most 30 characters, unique per provider;
   /// default `API KEY <n>`. The provider's first credential becomes its current one.
-  Future<void> createProviderCredential(String provider, {required Map<String, Object?> credentials, String? name});
+  Future<void> createProviderCredential(
+    String provider, {
+    required Map<String, Object?> credentials,
+    String? name,
+  });
 
   /// `PUT .../credentials` `{credential_id, credentials, name?}`. Secrets sent as [hiddenSecret] keep their stored value.
   Future<void> updateProviderCredential(
@@ -186,10 +214,16 @@ abstract interface class ModelProvidersApi {
 
   /// `DELETE .../credentials` `{credential_id}`. Deleting the current credential leaves the provider without one
   /// (its models become `no-configure`) until [switchProviderCredential]; deleting the last one unconfigures it.
-  Future<void> deleteProviderCredential(String provider, {required String credentialId});
+  Future<void> deleteProviderCredential(
+    String provider, {
+    required String credentialId,
+  });
 
   /// `POST .../credentials/switch` `{credential_id}`: makes it the provider's current credential.
-  Future<void> switchProviderCredential(String provider, {required String credentialId});
+  Future<void> switchProviderCredential(
+    String provider, {
+    required String credentialId,
+  });
 
   /// `POST .../credentials/validate` `{credentials}`: checks without storing.
   Future<CredentialValidation> validateProviderCredentials(
@@ -268,7 +302,11 @@ abstract interface class ModelProvidersApi {
 
   /// `DELETE .../models` `{model, model_type}`: removes a custom model from the list (its credentials stay: it shows in
   /// `can_added_models`).
-  Future<void> removeCustomModel(String provider, {required String model, required String modelType});
+  Future<void> removeCustomModel(
+    String provider, {
+    required String model,
+    required String modelType,
+  });
 
   // ----- icons (public) -----
 
@@ -277,4 +315,17 @@ abstract interface class ModelProvidersApi {
 
   /// The icon at [url] (as in a response); null if there is none.
   Future<ModelProviderIcon?> icon(String url);
+}
+
+/// Optional management surface for the server's supported, signed model-provider plugins.
+/// Reads need a workspace member; installation and removal need owner/admin.
+/// Removing a runtime retains saved model credentials and workflow documents.
+abstract interface class ModelProviderPluginsApi {
+  Future<List<Map<String, Object?>>> providerPlugins();
+  Future<Map<String, Object?>> installProviderPlugin(String pluginId);
+  Future<Map<String, Object?>> providerPluginTask(String taskId);
+  Future<void> uninstallProviderPlugin(
+    String pluginId, {
+    required String installationId,
+  });
 }

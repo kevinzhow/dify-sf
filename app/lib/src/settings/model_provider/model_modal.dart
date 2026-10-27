@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../cards/model_chip.dart' show ModelIcon;
+import '../../cards/provider_icon_image.dart' show ProviderIconScope;
 import '../../design/css_metrics.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
@@ -40,19 +41,22 @@ Future<void> showModelModal(
   context,
   builder: (dialogContext) => ModelProviderScope(
     env: env,
-    child: ModelModal(
-      provider: provider,
-      configurateMethod: configurationMethod,
-      fixedFields: fixedFields,
-      isModelCredential: isModelCredential,
-      credential: credential,
-      model: model,
-      mode: mode ?? ModelModalModeEnum.configProviderCredential,
-      onCancel: () => Navigator.of(dialogContext).pop(),
-      onSave: (values) {
-        onSave?.call(values);
-        Navigator.of(dialogContext).pop();
-      },
+    child: ProviderIconScope(
+      source: env.models.icons,
+      child: ModelModal(
+        provider: provider,
+        configurateMethod: configurationMethod,
+        fixedFields: fixedFields,
+        isModelCredential: isModelCredential,
+        credential: credential,
+        model: model,
+        mode: mode ?? ModelModalModeEnum.configProviderCredential,
+        onCancel: () => Navigator.of(dialogContext).pop(),
+        onSave: (values) {
+          onSave?.call(values);
+          Navigator.of(dialogContext).pop();
+        },
+      ),
     ),
   ),
 );
@@ -99,6 +103,15 @@ class _ModelModalState extends State<ModelModal> {
   bool _isLoading = false;
   Json _credentialData = const {};
 
+  CustomModel? get _modelContext =>
+      widget.model ??
+      (widget.fixedFields == null
+          ? null
+          : (
+              model: widget.fixedFields!.modelName,
+              modelType: widget.fixedFields!.modelType,
+            ));
+
   bool get _predefined => widget.configurateMethod == ConfigurationMethodEnum.predefinedModel;
 
   @override
@@ -114,7 +127,7 @@ class _ModelModalState extends State<ModelModal> {
       providerFormSchemaPredefined: _predefined,
       isModelCredential: widget.isModelCredential,
       credential: widget.credential,
-      model: widget.model,
+      model: _modelContext,
     );
     if (request == null) return const {};
     setState(() => _isLoading = true);
@@ -218,7 +231,7 @@ class _ModelModalState extends State<ModelModal> {
       providerFormSchemaPredefined: _predefined,
       credentials: _storedCredentials,
       credential: w.credential,
-      model: w.model,
+      model: _modelContext,
     );
     final stored = _storedCredentials ?? const {};
     final isEditMode =
@@ -296,7 +309,7 @@ class _ModelModalState extends State<ModelModal> {
               style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
             ),
           ),
-          DifyBadge(w.model!.modelType, uppercase: false),
+          DifyBadge(w.model!.modelType),
         ],
       );
     }

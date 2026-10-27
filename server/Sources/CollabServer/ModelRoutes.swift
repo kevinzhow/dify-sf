@@ -126,6 +126,18 @@ extension Routes {
     /// bad_request` for a form error and `400 credential_validation_failed` when the provider refuses them.
     func checkedCredentials(_ def: ProviderDefinition, model: String?, modelType: String?, _ input: [String: JSON]) async throws -> [String: JSON] {
         let filtered = try filtered(def, modelType: modelType, input)
+        if runtimeConfigured {
+            let installed = await installedProviderPlugins(force: true)
+            if installed.known && installed.plugin(def.id.pluginId) == nil {
+                throw ServerError.http(status: 503, code: "plugin_not_installed", message: "Install the \(def.id.pluginId) plugin in Integrations before configuring this provider.")
+            }
+            if let model, let modelType {
+                let resolved = await resolvedModelSchema(def, name: model, type: modelType, credentials: filtered, credentialId: nil)
+                guard resolved.schema != nil && resolved.status == "ready" else {
+                    throw modelSchemaError(resolved, def: def, model: model)
+                }
+            }
+        }
         if let reason = await providerCheck(def, model: model, modelType: modelType, filtered) {
             throw ServerError.http(status: 400, code: "credential_validation_failed", message: reason)
         }
@@ -155,7 +167,7 @@ extension Routes {
     // MARK: - Views (Dify's provider configurations)
 
     /// One provider's configuration as Dify's `ProviderConfiguration` sees it.
-    struct ProviderView {
+    struct ProviderView: Sendable {
         let def: ProviderDefinition
         let credentials: [StoredModelCredential]
         let hasRecord: Bool
@@ -170,7 +182,7 @@ extension Routes {
         var currentUnreadable: Bool { current != nil && currentConfig == nil }
     }
 
-    struct CustomModelView {
+    struct CustomModelView: Sendable {
         let key: ModelKey
         let credentials: [StoredModelCredential]
         let currentId: String?
@@ -201,30 +213,47 @@ extension Routes {
                             hasCustomModels: !custom.isEmpty)
     }
 
-    struct ModelEntry {
+    struct ModelEntry: Sendable {
         let schema: ModelSchema
         let status: String
+        var schemaStatus: String = "ready"
+        var schemaError: String? = nil
     }
 
     /// Dify's `get_provider_models` (custom provider type): predefined models (active with a usable provider credential,
     /// else `no-configure`; dify-sf: `credential-removed` when the current credential cannot be decrypted), then the custom
     /// models of the model list with a schema; `disabled` by setting; de-duplicated, sorted by (model type, position).
-    func modelEntries(_ v: ProviderView, type: String? = nil) -> [ModelEntry] {
+    func modelEntries(_ v: ProviderView, type: String? = nil) async -> [ModelEntry] {
         let types = type.map { [$0] } ?? v.def.supportedModelTypes
+        let plugins = await installedProviderPlugins()
+        let pluginMissing = runtimeConfigured && plugins.known && plugins.plugin(v.def.id.pluginId) == nil
         var out: [ModelEntry] = []
         for t in types where v.def.supportedModelTypes.contains(t) {
             for m in v.def.models where m.modelType == t {
                 var status = v.currentConfig != nil ? "active" : (v.currentUnreadable ? "credential-removed" : "no-configure")
+                if pluginMissing && status == "active" { status = "no-configure" }
                 if v.settings[ModelKey(provider: v.def.id.description, model: m.model, modelType: t)] == false { status = "disabled" }
-                out.append(ModelEntry(schema: m.schema, status: status))
+                out.append(ModelEntry(schema: m.schema, status: status, schemaStatus: pluginMissing ? "unavailable" : "ready", schemaError: pluginMissing ? "plugin_not_installed" : nil))
             }
         }
-        for c in v.customModels where !c.unadded && types.contains(c.key.modelType) {
-            guard let schema = CustomModels.schema(provider: v.def, model: c.key.model, modelType: c.key.modelType, credentials: c.config) else { continue }
-            var status = "active"
+        let custom = v.customModels.filter { !$0.unadded && types.contains($0.key.modelType) }
+        let resolved = await withTaskGroup(of: (Int, ResolvedModelSchema).self, returning: [Int: ResolvedModelSchema].self) { group in
+            for (index, model) in custom.enumerated() {
+                group.addTask { (index, await customModelSchema(v.def, model)) }
+            }
+            var values: [Int: ResolvedModelSchema] = [:]
+            for await (index, value) in group { values[index] = value }
+            return values
+        }
+        for (index, c) in custom.enumerated() {
+            let resolved = resolved[index] ?? .unknown
+            let schema = resolved.schema ?? ModelSchema(model: c.key.model,
+                label: ["en_US": .string(c.key.model), "zh_Hans": .string(c.key.model)], modelType: c.key.modelType,
+                features: nil, fetchFrom: "customizable-model", modelProperties: [:], deprecated: false, parameterRules: [])
+            var status = resolved.schema == nil ? "no-configure" : "active"
             if v.settings[c.key] == false { status = "disabled" }
             if !c.credentials.isEmpty && (c.config?.isEmpty ?? true) { status = "credential-removed" }
-            out.append(ModelEntry(schema: schema, status: status))
+            out.append(ModelEntry(schema: schema, status: status, schemaStatus: resolved.status, schemaError: resolved.error))
         }
         // Python's {(model, type, fetch_from): m}: first position, last value.
         var order: [String] = []
@@ -245,6 +274,19 @@ extension Routes {
             let ka = (a.element.schema.modelType, position(a.element)), kb = (b.element.schema.modelType, position(b.element))
             return ka != kb ? ka < kb : a.offset < b.offset
         }.map(\.element)
+    }
+
+    /// Resolve independent providers together so an unavailable daemon costs
+    /// one metadata timeout rather than one timeout per provider and model.
+    func modelEntries(_ views: [ProviderView], type: String) async -> [[ModelEntry]] {
+        await withTaskGroup(of: (Int, [ModelEntry]).self, returning: [[ModelEntry]].self) { group in
+            for (index, value) in views.enumerated() {
+                group.addTask { (index, await modelEntries(value, type: type)) }
+            }
+            var values = Array(repeating: [ModelEntry](), count: views.count)
+            for await (index, value) in group { values[index] = value }
+            return values
+        }
     }
 
     // MARK: - JSON shapes
@@ -275,6 +317,8 @@ extension Routes {
             "load_balancing_enabled": false,
             "has_invalid_load_balancing_configs": false,
         ]
+        if e.schemaStatus != "ready" { m["schema_status"] = .string(e.schemaStatus) }
+        if let error = e.schemaError { m["schema_error"] = .string(error) }
         if let provider { m["provider"] = simpleProvider(provider) }
         return .object(m)
     }
@@ -381,8 +425,9 @@ extension Routes {
         let type = try modelType(req.parameters.get("type").map(JSON.string))
         let s = try await state()
         var data: [JSON] = []
-        for def in models.catalog.providers {
-            let list = modelEntries(view(def, s), type: type).filter { $0.status == "active" && !$0.schema.deprecated }
+        let lists = await modelEntries(models.catalog.providers.map { view($0, s) }, type: type)
+        for (def, entries) in zip(models.catalog.providers, lists) {
+            let list = entries.filter { $0.status == "active" && !$0.schema.deprecated }
             guard !list.isEmpty else { continue }
             data.append([
                 "provider": .string(def.id.description),
@@ -401,7 +446,7 @@ extension Routes {
         _ = try await authenticate(req)
         let def = try provider(req)
         let s = try await state()
-        let list = modelEntries(view(def, s))
+        let list = await modelEntries(view(def, s))
         return try json(JSON.object(["data": .array(list.map { modelJSON($0, provider: def) })]))
     }
 
@@ -413,8 +458,9 @@ extension Routes {
         let s = try await state()
         var chosen = s.defaults[type]
         if chosen == nil {
-            for def in models.catalog.providers {
-                if let first = modelEntries(view(def, s), type: type).first(where: { $0.status == "active" }) {
+            let lists = await modelEntries(models.catalog.providers.map { view($0, s) }, type: type)
+            for (def, entries) in zip(models.catalog.providers, lists) {
+                if let first = entries.first(where: { $0.status == "active" }) {
                     chosen = try await modelStoreCall { try await store.defaultModelIfAbsent(type: type, provider: def.id.description, model: first.schema.model) }
                     break
                 }
@@ -440,14 +486,36 @@ extension Routes {
         let custom = v.customModels.first { !$0.unadded && $0.key == key && !($0.config?.isEmpty ?? true) }
         let credentials = custom?.config ?? v.currentConfig
         var rules: [JSON] = []
-        if credentials != nil {
-            if let m = def.model(model, type: "llm") {
+        if let credentials {
+            if runtimeConfigured {
+                let resolved = await resolvedModelSchema(def, name: model, type: "llm", credentials: credentials,
+                    credentialId: custom?.currentId ?? v.currentId)
+                guard let schema = resolved.schema else { throw modelSchemaError(resolved, def: def, model: model) }
+                rules = schema.parameterRules
+            } else if let m = def.model(model, type: "llm") {
                 rules = m.parameterRules
-            } else if let custom, let schema = CustomModels.schema(provider: def, model: model, modelType: "llm", credentials: custom.config) {
+            } else if let custom {
+                let resolved = await customModelSchema(def, custom)
+                guard let schema = resolved.schema else {
+                    throw modelSchemaError(resolved, def: def, model: model)
+                }
                 rules = schema.parameterRules
             }
         }
         return try json(JSON.object(["data": .array(rules)]))
+    }
+
+    func modelSchemaError(_ resolved: ResolvedModelSchema, def: ProviderDefinition, model: String) -> ServerError {
+        let message: String
+        if resolved.error == "plugin_not_installed" {
+            message = "Install the \(def.id.pluginId) plugin in Integrations to use this model."
+        } else if resolved.error == "model_schema_missing" && def.id.description == "langgenius/openai/openai" {
+            message = "The OpenAI plugin does not recognize model \(model). Update the plugin, or use the OpenAI-compatible provider for a custom endpoint and model name."
+        } else {
+            message = "Model metadata is unavailable for \(def.id)/\(model). Verify the model name, plugin and provider configuration."
+        }
+        return ServerError.http(status: resolved.error == "model_schema_missing" ? 400 : 503,
+            code: resolved.error ?? "model_schema_unavailable", message: message)
     }
 
     /// `GET .../{provider}/{icon_type}/{lang}` (public).
@@ -477,7 +545,8 @@ extension Routes {
             guard let providerId = setting.provider else { continue }
             guard let def = models.catalog.provider(providerId) else { throw ServerError.badRequest("Provider \(providerId) does not exist.") }
             // Dify checks the model name among the active models of the type (of every provider).
-            let active = models.catalog.providers.flatMap { modelEntries(view($0, s), type: setting.type).filter { $0.status == "active" } }
+            let lists = await modelEntries(models.catalog.providers.map { view($0, s) }, type: setting.type)
+            let active = lists.flatMap { $0 }.filter { $0.status == "active" }
             guard let model = setting.model, active.contains(where: { $0.schema.model == model }) else {
                 throw ServerError.badRequest("Model \(setting.model ?? "") does not exist.")
             }
