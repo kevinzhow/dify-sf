@@ -253,6 +253,10 @@ class ServerRunService extends WorkflowRunService {
     }
   }
 
+  @override
+  Stream<RunEvent> observationEvents(String workflowRunId) =>
+      runtime.api.consoleWorkflowEvents(appId, workflowRunId).map(RunEvent.fromJson);
+
   /// 1.16: Dify's `handleResume`: re-subscribed when the run pauses, so the form's answer continues the run.
   @override
   Stream<RunEvent> workflowEvents(

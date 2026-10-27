@@ -357,6 +357,9 @@ class FakeWorkflowRunApi implements WorkflowRunApi {
   }
 
   @override
+  Stream<Map<String, Object?>> consoleWorkflowEvents(String appId, String runId) => workflowEvents(runId);
+
+  @override
   Stream<Map<String, Object?>> workflowEvents(
     String runId, {
     bool includeStateSnapshot = true,

@@ -98,6 +98,9 @@ abstract class WorkflowRunService {
     bool continueOnPause = true,
   });
 
+  /// Read-only viewing of an existing run, separate from the creator's resume stream.
+  Stream<RunEvent> observationEvents(String workflowRunId) => workflowEvents(workflowRunId);
+
   /// `stopWorkflowRun('/apps/{id}/workflow-runs/tasks/{task_id}/stop')`.
   Future<void> stopWorkflowRun(String taskId);
 

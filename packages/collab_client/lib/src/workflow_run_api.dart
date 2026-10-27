@@ -187,6 +187,10 @@ abstract class WorkflowRunApi {
     bool continueOnPause = true,
   });
 
+  /// Read-only console observation under the same app membership as run logs.
+  /// Human-input capability tokens are omitted from this stream.
+  Stream<Map<String, Object?>> consoleWorkflowEvents(String appId, String runId);
+
   /// 1.16: `POST {url}/preview` (the human-input node's own form: `/apps/{app}/workflows/draft/human-input/nodes/
   /// {node}/form`): the form as the node would show it, its `form_content` rendered with `inputs` (Dify's
   /// `HumanInputRequired`: `form_id`, `form_content`, `inputs`, `actions`, `node_id`, `node_title`,

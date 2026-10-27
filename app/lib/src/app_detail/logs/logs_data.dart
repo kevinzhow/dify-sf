@@ -7,9 +7,10 @@
 library;
 
 import 'package:collab_client/collab_client.dart'
-    show AnnotationsApi, AppInfo, ChatConversationQuery, LogsApi, WorkflowLogQuery;
+    show AnnotationsApi, AppInfo, ChatConversationQuery, LogsApi, WorkflowLogQuery, WorkflowRunApi;
 
 import '../detail_page_slot.dart';
+import '../../workflow_editor/run/server_run_service.dart' show ServerWorkflowRuntime;
 
 typedef Json = Map<String, Object?>;
 
@@ -94,17 +95,22 @@ class EmptyAppLogsSource implements AppLogsSource {
 AppLogsSource appLogsSourceOf(AppDetailContext detail) {
   if (detail.service<AppLogsSource>() case final s?) return s;
   if (detail.service<LogsApi>() case final logs?) {
-    return LogsApiSource(logs, annotations: detail.service<AnnotationsApi>());
+    return LogsApiSource(
+      logs,
+      annotations: detail.service<AnnotationsApi>(),
+      workflowRuns: detail.service<ServerWorkflowRuntime>()?.api,
+    );
   }
   return const EmptyAppLogsSource();
 }
 
 /// [AppLogsSource] over collab_client's [LogsApi] (protocol 1.11).
 class LogsApiSource implements AppLogsSource {
-  LogsApiSource(this.logs, {this.annotations});
+  LogsApiSource(this.logs, {this.annotations, this.workflowRuns});
 
   final LogsApi logs;
   final AnnotationsApi? annotations;
+  final WorkflowRunApi? workflowRuns;
 
   static int _int(Object? v, int fallback) => switch (v) {
     final num n => n.toInt(),
