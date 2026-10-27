@@ -126,6 +126,11 @@ struct AgentResponsesRouteTests {
         let key = ModelKey(provider: AgentModelWire.compatible, model: "stub-chat", modelType: "llm")
         let state = try await store.modelProviderState()
         let selected = try #require(state.modelCredentials[key]?.first { $0.config?.contains("sk-native-fixture-only") == true })
+        // Extra provider headers may come from an existing server-side credential;
+        // the current public credential form intentionally drops unknown fields.
+        var stored = try JSONValue.parse(try #require(selected.config)).object!
+        stored["extra_headers"] = "{\"X-Fixture\":\"native-extra\"}"
+        try await store.updateModelCredential(key, id: selected.id, name: nil, config: JSONValue.object(stored).compactJSON())
         try await store.switchCustomModelCredential(key, id: selected.id)
         let run = UUID().uuidString.lowercased()
         try await store.insertWorkflowRun(.init(id: run, docId: app, docSeq: 0, workflowId: "draft", type: "workflow", triggeredFrom: "debugging",
