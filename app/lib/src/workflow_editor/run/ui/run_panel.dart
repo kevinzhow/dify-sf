@@ -5,6 +5,11 @@ library;
 import 'package:flutter/widgets.dart';
 
 import '../../../design/css_metrics.dart';
+import '../../../agents/canvas_progress.dart';
+import '../../../canvas/agent_progress_view.dart';
+import '../run_service.dart';
+import '../run_types.dart' show jsonCopy;
+import '../run_observation.dart';
 import '../../../design/dify_tokens.g.dart';
 import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
@@ -20,7 +25,7 @@ import 'workflow_preview.dart' show RunLoading, runPanelTab, runPanelTabs;
 
 String _tr(String key) => DifyI18n.tr('run-log', key);
 
-enum RunPanelTabType { result, detail, tracing }
+enum RunPanelTabType { result, detail, tracing, progress }
 
 /// RunPanel: fetches the run's detail and node executions ([fetchRunDetail], [fetchTracingList]; the editor's run
 /// controller by default) and shows them under RESULT (outputs), DETAIL (status, input/output, metadata) and TRACING.
@@ -33,6 +38,7 @@ class RunPanel extends StatefulWidget {
     this.getResultCallback,
     this.fetchRunDetail,
     this.fetchTracingList,
+    this.observeService,
     this.toast,
   });
 
@@ -42,6 +48,7 @@ class RunPanel extends StatefulWidget {
   final ValueChanged<DifyJson>? getResultCallback;
   final Future<DifyJson> Function(String runId)? fetchRunDetail;
   final Future<List<DifyJson>> Function(String runId)? fetchTracingList;
+  final WorkflowRunService? observeService;
   final void Function(DifyToastType type, String message)? toast;
 
   @override
@@ -54,6 +61,67 @@ class _RunPanelState extends State<RunPanel> {
   DifyJson? _runDetail;
   List<DifyJson> _list = const [];
   WorkflowStore? _store;
+  final _viewStore = WorkflowStore();
+  WorkflowRunObservation? _observation;
+  int _generation = 0;
+  bool _openedProgress = false;
+  bool _projected = false;
+  Map<String, DifyJson>? _beforeNodes, _beforeEdges, _lastNodes, _lastEdges;
+  DifyJson? _beforeRunning, _lastRunning;
+
+  void _releaseProjection() {
+    if (!_projected || _store == null) return;
+    if (identical(_store!.nodeRunData.value, _lastNodes)) _store!.nodeRunData.value = _beforeNodes!;
+    if (identical(_store!.edgeRunData.value, _lastEdges)) _store!.edgeRunData.value = _beforeEdges!;
+    if (identical(_store!.workflowRunningData.value, _lastRunning)) _store!.workflowRunningData.value = _beforeRunning;
+    _projected = false;
+  }
+
+  void _observed() {
+    if (!mounted) return;
+    final data = _viewStore.workflowRunningData.value;
+    if (data == null) return;
+    final result = data['result'];
+    final tracing = data['tracing'];
+    setState(() {
+      if (result is Map) _runDetail = {...?_runDetail, ...result.cast<String, Object?>()};
+      if (tracing is List) _list = tracing.whereType<Map>().map((v) => v.cast<String, Object?>()).toList();
+      if (!_openedProgress &&
+          _tab == RunPanelTabType.result &&
+          const {'running', 'paused'}.contains(_runDetail?['status']) &&
+          _list.any((n) => n['node_type'] == 'agent')) {
+        _openedProgress = true;
+        _tab = RunPanelTabType.progress;
+      }
+    });
+    // The editor's history is a local run view, never a collaborative document change.
+    if (_store?.historyWorkflowData.value?['id'] == widget.runId) {
+      if (!_projected) {
+        _projected = true;
+        _beforeNodes = _store!.nodeRunData.value;
+        _beforeEdges = _store!.edgeRunData.value;
+        _beforeRunning = _store!.workflowRunningData.value;
+      }
+      _store!.workflowRunningData.value = _lastRunning = jsonCopy(data);
+      _store!.nodeRunData.value = _lastNodes = {..._viewStore.nodeRunData.value};
+      _store!.edgeRunData.value = _lastEdges = {..._viewStore.edgeRunData.value};
+    }
+  }
+
+  void _followIfActive() {
+    if (_observation != null || !const {'running', 'paused'}.contains(_runDetail?['status'])) return;
+    final scope = WorkflowRunScope.maybeOf(context);
+    final service = widget.observeService ?? scope?.run.service;
+    if (service == null) return;
+    _observation = WorkflowRunObservation(store: _viewStore, service: service, graph: scope?.run.graph);
+    _observation!.follow(widget.runId);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _viewStore.workflowRunningData.addListener(_observed);
+  }
 
   Future<DifyJson> Function(String)? get _fetchDetail =>
       widget.fetchRunDetail ?? WorkflowRunScope.maybeOf(context)?.run.fetchRunDetail;
@@ -75,12 +143,25 @@ class _RunPanelState extends State<RunPanel> {
   @override
   void didUpdateWidget(RunPanel old) {
     super.didUpdateWidget(old);
-    if (old.runId != widget.runId) _getData();
+    if (old.runId != widget.runId) {
+      _releaseProjection();
+      _observation?.dispose();
+      _observation = null;
+      _runDetail = null;
+      _openedProgress = false;
+      _list = const [];
+      _getData();
+    }
   }
 
   @override
   void dispose() {
     _store?.isListening.removeListener(_listening);
+    _generation++;
+    _releaseProjection();
+    _observation?.dispose();
+    _viewStore.workflowRunningData.removeListener(_observed);
+    _viewStore.dispose();
     super.dispose();
   }
 
@@ -93,9 +174,10 @@ class _RunPanelState extends State<RunPanel> {
   Future<void> _getResult() async {
     final fetch = _fetchDetail;
     if (fetch == null) return;
+    final generation = _generation, runId = widget.runId;
     try {
-      final res = await fetch(widget.runId);
-      if (!mounted) return;
+      final res = await fetch(runId);
+      if (!mounted || generation != _generation || runId != widget.runId) return;
       setState(() => _runDetail = res);
       widget.getResultCallback?.call(res);
     } catch (e) {
@@ -106,23 +188,62 @@ class _RunPanelState extends State<RunPanel> {
   Future<void> _getTracingList() async {
     final fetch = _fetchTracing;
     if (fetch == null) return;
+    final generation = _generation, runId = widget.runId;
     try {
-      final list = await fetch(widget.runId);
-      if (mounted) setState(() => _list = list);
+      final list = await fetch(runId);
+      if (mounted && generation == _generation && runId == widget.runId) {
+        setState(() => _list = list);
+        _viewStore.workflowRunningData.value = {'result': _runDetail ?? const <String, Object?>{}, 'tracing': list};
+      }
     } catch (e) {
       _error(e);
     }
   }
 
   Future<void> _getData() async {
+    final generation = ++_generation;
+    final runId = widget.runId;
     setState(() => _loading = true);
-    await _getResult();
-    await _getTracingList();
-    if (mounted) setState(() => _loading = false);
+    DifyJson? detail;
+    List<DifyJson> list = const [];
+    try {
+      detail = await _fetchDetail?.call(runId);
+    } catch (e) {
+      if (mounted && generation == _generation) _error(e);
+    }
+    try {
+      list = await _fetchTracing?.call(runId) ?? const <DifyJson>[];
+    } catch (e) {
+      if (mounted && generation == _generation) _error(e);
+    }
+    if (!mounted || generation != _generation) return;
+    setState(() {
+      _runDetail = detail;
+      _list = list;
+      _loading = false;
+    });
+    if (detail != null) widget.getResultCallback?.call(detail);
+    final projected = <String, DifyJson>{};
+    for (final node in list) {
+      final id = node['node_id'];
+      if (id is! String) continue;
+      final progress = node['node_type'] == 'agent'
+          ? AgentProgressView.finished(null, AgentProgressView.map(node['execution_metadata']))
+          : null;
+      projected[id] = {'_runningStatus': node['status'], if (progress != null) '_agentProgress': progress.json};
+    }
+    _viewStore.nodeRunData.value = projected;
+    _viewStore.edgeRunData.value = {};
+    _viewStore.workflowRunningData.value = {
+      'result': detail ?? const <String, Object?>{},
+      'tracing': [for (final item in list) jsonCopy(item)],
+    };
+    _followIfActive();
   }
 
   Future<void> _switchTab(RunPanelTabType tab) async {
     setState(() => _tab = tab);
+    if (_observation != null) return;
     if (tab == RunPanelTabType.result) await _getResult();
     await _getTracingList();
   }
@@ -140,81 +261,111 @@ class _RunPanelState extends State<RunPanel> {
   Widget build(BuildContext context) {
     final d = _runDetail;
     final listening = _store?.isListening.value ?? false;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: DifyColors.dividerSubtle, width: Css.hairline),
+    final seen = <Object?>{};
+    final agents = _list.reversed.where((n) => n['node_type'] == 'agent' && seen.add(n['node_id'])).toList();
+    return WorkflowStoreScope(
+      store: _viewStore,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: DifyColors.dividerSubtle, width: Css.hairline),
+              ),
             ),
-          ),
-          child: runPanelTabs(
-            [
-              if (!widget.hideResult)
+            child: runPanelTabs(
+              [
+                if (agents.isNotEmpty)
+                  runPanelTab(
+                    label: DifyI18n.tr('agent-v-2', 'inline.progressDetails'),
+                    active: _tab == RunPanelTabType.progress,
+                    onTap: () => _switchTab(RunPanelTabType.progress),
+                  ),
+                if (!widget.hideResult)
+                  runPanelTab(
+                    uppercaseStyle: true,
+                    label: _tr('result'),
+                    active: _tab == RunPanelTabType.result,
+                    onTap: () => _switchTab(RunPanelTabType.result),
+                  ),
                 runPanelTab(
                   uppercaseStyle: true,
-                  label: _tr('result'),
-                  active: _tab == RunPanelTabType.result,
-                  onTap: () => _switchTab(RunPanelTabType.result),
+                  label: _tr('detail'),
+                  active: _tab == RunPanelTabType.detail,
+                  onTap: () => _switchTab(RunPanelTabType.detail),
                 ),
-              runPanelTab(
-                uppercaseStyle: true,
-                label: _tr('detail'),
-                active: _tab == RunPanelTabType.detail,
-                onTap: () => _switchTab(RunPanelTabType.detail),
-              ),
-              runPanelTab(
-                uppercaseStyle: true,
-                label: _tr('tracing'),
-                active: _tab == RunPanelTabType.tracing,
-                onTap: () => _switchTab(RunPanelTabType.tracing),
-              ),
-            ],
+                runPanelTab(
+                  uppercaseStyle: true,
+                  label: _tr('tracing'),
+                  active: _tab == RunPanelTabType.tracing,
+                  onTap: () => _switchTab(RunPanelTabType.tracing),
+                ),
+              ],
+            ),
           ),
-        ),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(DifyRadius.xl)),
-            child: ColoredBox(
-              color: DifyColors.componentsPanelBg,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  if (_loading) return const RunLoading();
-                  switch (_tab) {
-                    case RunPanelTabType.result:
-                      if (d == null) return const SizedBox.shrink();
-                      return SingleChildScrollView(
-                        child: OutputPanel(
-                          outputs: d['outputs'],
-                          error: d['error'] as String?,
-                          height: constraints.maxHeight - 16 - 16 - 2 - 1,
-                        ),
-                      );
-                    case RunPanelTabType.detail:
-                      if (d == null) {
-                        return listening
-                            ? const SingleChildScrollView(child: StatusPanel(status: 'running', isListening: true))
-                            : const SizedBox.shrink();
-                      }
-                      return SingleChildScrollView(
-                        child: ResultPanel.fromJson(
-                          d,
-                          createdBy: _executor,
-                          isListening: listening,
-                          onOpenTracingTab: () => _switchTab(RunPanelTabType.tracing),
-                        ),
-                      );
-                    case RunPanelTabType.tracing:
-                      return TracingPanel(list: _list, background: DifyColors.backgroundSectionBurn, scrollable: true);
-                  }
-                },
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(DifyRadius.xl)),
+              child: ColoredBox(
+                color: DifyColors.componentsPanelBg,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (_loading) return const RunLoading();
+                    switch (_tab) {
+                      case RunPanelTabType.result:
+                        if (d == null) return const SizedBox.shrink();
+                        return SingleChildScrollView(
+                          child: OutputPanel(
+                            outputs: d['outputs'],
+                            error: d['error'] as String?,
+                            height: constraints.maxHeight - 16 - 16 - 2 - 1,
+                          ),
+                        );
+                      case RunPanelTabType.detail:
+                        if (d == null) {
+                          return listening
+                              ? const SingleChildScrollView(child: StatusPanel(status: 'running', isListening: true))
+                              : const SizedBox.shrink();
+                        }
+                        return SingleChildScrollView(
+                          child: ResultPanel.fromJson(
+                            d,
+                            createdBy: _executor,
+                            isListening: listening,
+                            onOpenTracingTab: () => _switchTab(RunPanelTabType.tracing),
+                          ),
+                        );
+                      case RunPanelTabType.tracing:
+                        return TracingPanel(
+                          list: _list,
+                          background: DifyColors.backgroundSectionBurn,
+                          scrollable: true,
+                        );
+                      case RunPanelTabType.progress:
+                        return ListView(
+                          children: [
+                            for (final node in agents)
+                              AgentCanvasProgress(
+                                nodeId: '${node['node_id']}',
+                                progress:
+                                    AgentProgressView.finished(
+                                      null,
+                                      AgentProgressView.map(node['execution_metadata']),
+                                    ) ??
+                                    AgentProgressView(run: '${node['id']}', cursor: 0),
+                              ),
+                          ],
+                        );
+                    }
+                  },
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

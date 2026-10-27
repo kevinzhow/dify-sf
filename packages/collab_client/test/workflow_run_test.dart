@@ -21,6 +21,17 @@ const _formJSON = {
 
 /// Protocol 1.13: the workflow runtime's single node run and last run, and its discovery in `system-features`.
 void main() {
+  test('console observation is an encoded authenticated GET and never an execution POST', () async {
+    final methods = <String>[], paths = <String>[];
+    final api = HttpWorkflowRunApi(Uri.parse('http://h:1/'), client: MockClient.streaming((request, body) async {
+      methods.add(request.method); paths.add(request.url.toString());
+      expect(await utf8.decoder.bind(body).join(), isEmpty);
+      return http.StreamedResponse(Stream.value(utf8.encode('data: {"event":"workflow_finished","data":{"status":"succeeded"}}\n\n')), 200);
+    }));
+    expect((await api.consoleWorkflowEvents('app x', 'run/x').toList()).single['event'], 'workflow_finished');
+    expect(methods, ['GET']);
+    expect(paths.single, 'http://h:1/v1/apps/app%20x/workflow-runs/run%2Fx/events?include_state_snapshot=true&continue_on_pause=true');
+  });
   test('1.15 container single runs stream dedicated encoded paths and preserve inputs/refusals', () async {
     final paths = <String>[];
     final bodies = <Map<String, Object?>>[];

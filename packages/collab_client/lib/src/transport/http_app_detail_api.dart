@@ -1083,6 +1083,13 @@ class HttpWorkflowRunApi extends HttpConsoleApi implements WorkflowRunApi {
   });
 
   @override
+  Stream<Map<String, Object?>> consoleWorkflowEvents(String appId, String runId) =>
+      _getStream('/v1/apps/${HttpConsoleApi._seg(appId)}/workflow-runs/${HttpConsoleApi._seg(runId)}/events', {
+        'include_state_snapshot': ['true'],
+        'continue_on_pause': ['true'],
+      });
+
+  @override
   Future<void> humanInputDeliveryTest(
     String appId,
     String nodeId,

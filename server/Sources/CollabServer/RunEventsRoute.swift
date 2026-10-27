@@ -33,12 +33,33 @@ extension Routes {
         r.get("v1", "workflow", ":runId", "events") { req in
             await handle(req) { try await workflowRunEvents(req) }
         }
+        r.get("v1", "apps", ":app", "workflow-runs", ":run", "events") { req in
+            await handle(req) { try await workflowRunEvents(req, consoleObservation: true) }
+        }
     }
 
-    private func workflowRunEvents(_ req: Request) async throws -> Response {
-        guard let runId = req.parameters.get("runId"), !runId.isEmpty,
+    /// Console viewers already have access to run logs, but must not receive
+    /// another caller's form capability tokens through an observation stream.
+    static func consoleRunFrame(_ frame: String) -> String? {
+        guard let line = frame.split(separator: "\n").first(where: { $0.hasPrefix("data: ") }),
+              let value = try? JSONValue.parse(Data(line.dropFirst(6).utf8)),
+              let event = value["event"]?.string else { return frame }
+        if event.hasPrefix("human_input_") { return nil }
+        if event == "workflow_paused" {
+            return RunExecution.sse(["event": .string(event), "workflow_run_id": value["workflow_run_id"] ?? .null,
+                                     "task_id": value["task_id"] ?? .null, "data": ["status": "paused"]])
+        }
+        return frame
+    }
+
+    private func workflowRunEvents(_ req: Request, consoleObservation: Bool = false) async throws -> Response {
+        guard let runId = req.parameters.get(consoleObservation ? "run" : "runId"), !runId.isEmpty,
               let run = try await store.workflowRun(id: runId) else { throw ServerError.notFound }
-        if run.endUserId != nil {
+        if consoleObservation {
+            let p = try await authenticate(req)
+            let app = try await appOfMode(req, p, ["workflow"])
+            guard run.docId == app.id, run.type != "chat" else { throw ServerError.notFound }
+        } else if run.endUserId != nil {
             let caller = try await publicCaller(req)
             guard run.docId == caller.app.id, run.endUserId == caller.endUser.id else { throw ServerError.notFound }
         } else {
@@ -54,7 +75,7 @@ extension Routes {
         // must not allocate a channel and a keep-alive pinger that nothing would ever close.
         if ["succeeded", "failed", "stopped", "partial-succeeded"].contains(run.status) {
             // One frame and close, whatever was asked: there is nothing left to follow.
-            return try Self.streaming(try await terminalFrames(run))
+            return try Self.streaming(try await terminalFrames(run).compactMap { consoleObservation ? Self.consoleRunFrame($0) : $0 })
         }
 
         // Subscribe first, then read the persisted state; the frames published from the mark on are the window this
@@ -72,7 +93,7 @@ extension Routes {
             // allocated is released here, or it would keep a pinger for a run nobody can follow any more.
             await live.finish()
             await runChannels.remove(runId)
-            return try Self.streaming(try await terminalFrames(state))
+            return try Self.streaming(try await terminalFrames(state).compactMap { consoleObservation ? Self.consoleRunFrame($0) : $0 })
         }
 
         var snapshot = SnapshotFrames(frames: [], nodeIds: [], formIds: [], pauseGeneration: nil)
@@ -80,7 +101,7 @@ extension Routes {
             snapshot = try await snapshotFrames(state, paused: state.status == "paused")
         }
         if state.status == "paused" && !continueOnPause {
-            return try Self.streaming(snapshot.frames)
+            return try Self.streaming(snapshot.frames.compactMap { consoleObservation ? Self.consoleRunFrame($0) : $0 })
         }
 
         // Everything published before the snapshot was built is already described by it; everything after is new. Only the
@@ -90,7 +111,9 @@ extension Routes {
         let replay = snapshot.frames
         let covered = snapshot
         let body = try Response.Body(stream: { writer in
-            for frame in replay { try await writer.write(frame) }
+            for frame in replay {
+                if let visible = consoleObservation ? Self.consoleRunFrame(frame) : frame { try await writer.write(visible) }
+            }
             var index = mark
             for await frame in subscription {
                 let isWindow = index < coveredUpTo
@@ -100,7 +123,7 @@ extension Routes {
                 index += 1
                 guard let reconciled = Self.reconcileChatFrame(frame, snapshot: covered, answerOffset: chatOffset, reasoning: reasoning) else { continue }
                 if isWindow && Self.isCovered(reconciled, snapshot: covered, pauseGeneration: generation) { continue }
-                try await writer.write(reconciled)
+                if let visible = consoleObservation ? Self.consoleRunFrame(reconciled) : reconciled { try await writer.write(visible) }
                 if frame.contains("\"event\":\"message_end\"") { break }
                 if state.type != "chat" && frame.contains("\"event\":\"workflow_finished\"") { break }
                 if frame.contains("\"event\":\"workflow_paused\"") && !continueOnPause { break }

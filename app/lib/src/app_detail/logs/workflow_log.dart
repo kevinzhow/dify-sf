@@ -18,6 +18,8 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../auth/account_time.dart';
 import '../../workflow_editor/run/ui/run_panel.dart';
+import '../../workflow_editor/run/run_observation.dart';
+import '../../workflow_editor/run/run_events.dart';
 import '../../workflow_editor/store/workflow_store_scope.dart';
 import 'log_widgets.dart';
 import 'logs_data.dart';
@@ -616,6 +618,13 @@ class WorkflowLogDetailPanel extends StatelessWidget {
                         RunPanel(
                           key: ValueKey('workflow-log-run-$runID'),
                           runId: runID,
+                          observeService: source is LogsApiSource && (source as LogsApiSource).workflowRuns != null
+                              ? ReadOnlyRunService(
+                                  (id) => (source as LogsApiSource).workflowRuns!
+                                      .consoleWorkflowEvents(appId!, id)
+                                      .map(RunEvent.fromJson),
+                                )
+                              : null,
                           fetchRunDetail: id == null || runID.isEmpty ? null : (r) => source.workflowRun(id, r),
                           fetchTracingList: id == null || runID.isEmpty ? null : (r) => source.nodeExecutions(id, r),
                         ),
