@@ -105,7 +105,7 @@ Starts one operation. Every operation is a separate request; there is no separat
   "task": [{"type": "text", "text": "…"},
            {"type": "file", "file_id": "…", "mime_type": "image/png"}],
   "output_schema": null,
-  "tools": {"ask_human": true, "shell": false},
+    "tools": {"ask_human": true, "shell": false, "view_image": false},
   "env": {"KEY": "value"},
   "files": [{"file_id": "…", "path": "files/spec.md"}],
   "limits": {"max_turns": 50, "timeout_seconds": 1800},
@@ -122,6 +122,9 @@ Starts one operation. Every operation is a separate request; there is no separat
   delivery and recipients stay entirely in the Swift server. `tools.shell: true` gives the model Dify's shell tools
   (`shell_run`, `shell_wait`, `shell_input`, `shell_interrupt`: Dify's arguments, defaults, prompt and output text) and
   requires them: without an isolated sandbox the run fails with `sandbox_unavailable`. There is no optional shell.
+  `tools.view_image: true` (a dify-sf extension, see [Viewing workspace images](#viewing-workspace-images)) adds the
+  `view_image` tool and requires `tools.shell` (`400 invalid_request` otherwise). The Swift server sets it when the
+  shell is on and the node's model declares the `vision` feature; it is not a Soul key.
 - The `X-Agent-Run-Token` header is required for a new operation (`400 invalid_request` otherwise). The service keeps
   it in memory only.
 - Files are referenced by stable `file_id`; snapshots and model requests never contain URLs. Model inputs carry
@@ -131,8 +134,10 @@ Starts one operation. Every operation is a separate request; there is no separat
 - `env` reaches only the sandbox environment and never a prompt. Reserved names (`HOME`, `PATH`, `TMPDIR`, `TMP`,
   `TEMP`, every `SHELLCTL_*`, `*_PROXY` and `NO_PROXY` in either case) are rejected with `400 reserved_env`, and
   refused again by the sandbox layer.
-- `executor_profile` names the sandbox's executor profile (see [Executor profiles](#executor-profiles), draft);
-  absent means `default`, today's image and limits.
+- `executor_profile` names the sandbox's executor profile (see [Executor profiles](#executor-profiles)); absent
+  means `default`. It must match `^[a-z0-9][a-z0-9-]{0,63}$` (`400 invalid_request`, also for `""`: the Swift
+  server sends the Soul's `""` as `default` or omits the field).
+- Top-level fields other than the ones above are `400 invalid_request` ("unknown request fields: …").
 - `continuation` is `null` for the first run. Otherwise it is one of:
   - `{"kind": "answer", "snapshot": <envelope>, "question_id": "…", "result": <ask_human result>}` after a question.
   - `{"kind": "output_retry", "snapshot": <envelope>, "feedback": [{"field": "score", "error": "…"}]}` after the Swift
@@ -264,9 +269,9 @@ several. Runs recorded before the identity was kept list it as `null`.
 
 ### `GET /v1/health`
 
-`{"protocol", "status": "ok" | "degraded", "sandbox": "isolated" | "unavailable" | "disabled", "version"}`. `sandbox`
-is `disabled` without a supervisor, `unavailable` after the latest probe or supervisor call failed, else `isolated`.
-With executor profiles (draft), it also has `"profiles": {"<name>": "ok" | "image_missing"}`.
+`{"protocol", "status": "ok" | "degraded", "sandbox": "isolated" | "unavailable" | "disabled", "version",
+"profiles": {"<name>": <status>}}`. `sandbox` is `disabled` without a supervisor, `unavailable` after the latest probe
+or supervisor call failed, else `isolated`. `profiles` holds each executor profile's status as in `GET /v1/profiles`.
 
 ### Other responses
 
@@ -323,13 +328,16 @@ The snapshot passed back in `continuation` is a versioned envelope, not a bare G
  "agent_config_snapshot_id": "…", "tool_definitions_digest": "…", "model": {"provider": "…", "name": "…", "parameters": {…}},
  "output_attempt": 0, "resume_sequence": 1,
  "pending": {"question_id": "E1:q2", "tool_call_id": "ask_human:0"},
- "file_ids": ["…"], "workspace_ref": "<sandbox_id> | null",
+  "file_ids": ["…"], "workspace_ref": "<sandbox_id> | null", "executor_profile": "default",
  "messages": [ /* Genkit Message JSON */ ]}
 ```
 
 A snapshot whose envelope, Genkit major version, config snapshot or tool definitions differ from the request is
 rejected (`422 snapshot_incompatible`), never resumed with a different configuration. `workspace_ref` is the
 execution's sandbox (null until the shell is used); a resume whose sandbox was replaced fails with `sandbox_error`.
+`executor_profile` is the operation's profile; a snapshot without it (taken before profiles) counts as `default`. A
+continuation with the shell and a `workspace_ref` whose profile differs from the request's is `422
+snapshot_incompatible`.
 
 ## Agent loop
 
@@ -343,8 +351,30 @@ Genkit Dart supplies the tool loop, streaming, interrupts and image input. The s
 | Human question | Tool `ask_human` (Dify's arguments: `title`, `question`, `markdown`, `fields`, `actions`, `urgency`, with Dify's limits) returns a Genkit interrupt. Arguments outside the schema or limits go back to the model as a tool error, as Dify's `ModelRetry` does. The run ends `paused`. A resume answers the same tool call with Dify's tool result (`status`, `action`, `values`, `rendered_content`). As in Dify, a model turn with more than one `ask_human` call fails with `ask_human_invalid`. |
 | Cancel | Closes the run's HTTP client (the Swift server then closes its connection to the plugin), interrupts tools and stops sandbox jobs. Whether the vendor stopped generating or billing cannot be observed and is not claimed. |
 | Usage | Taken from each model call's final usage chunk, counted once per `invocation_id`. |
+| Images of the workspace | `view_image` (dify-sf extension, with `tools.view_image`), see [Viewing workspace images](#viewing-workspace-images). The image goes to the next model call only. |
 | Events | Tool starts and ends become `tool_call`. |
 | Failures | Genkit reports model errors and the turn limit in `finishReason`, not as exceptions; both map to `failed`. |
+
+### Viewing workspace images
+
+A dify-sf extension: Dify's agent has no tool that shows the model a file it made. With `tools.view_image` the model
+gets `view_image {"path", "detail"?}` (`path` relative to `/workspace` or absolute inside it; `detail` `high`, the
+default, or `low`):
+
+1. The service resolves the path in the sandbox (inside `/workspace` after symlinks, a regular file) and reads it. It
+   must be a PNG, JPEG or WebP by its header. All images viewed in one model step together may have at most 3 MiB
+   (the gateway's file budget per model request is 6 MiB, task images included).
+2. It uploads the bytes as a file of the execution (`files/upload-request` and `PUT`; the Swift server grants a
+   received upload to the run token's model files, `grantFiles`) and returns the tool result: a text with the path,
+   type, dimensions and size, and the image as a multipart part (`dify-sf-file:<upload_id>`).
+3. The model bridge sends the image only to the model call right after that tool result: after the tool messages
+   (which carry text only) as a user message `view_image <path>:` plus the image part (`detail` as asked). Every later
+   call, including a resume, sends the tool text alone. A viewed image is therefore paid for once; re-sending it with
+   every turn grew one measured run to 206k tokens.
+
+The snapshot keeps the reference, never the bytes. A missing file, a path outside the workspace, another format, the
+step budget and a failed upload are tool errors the model can act on, not run failures. Viewed images are uploads of
+the execution like file outputs, but they are not node outputs.
 
 ## Inner gateway (Swift server)
 
@@ -454,9 +484,10 @@ dify-sf therefore gives each execution that enables the shell its own container 
   accepts only "create sandbox for execution X with the fixed image and limits" and "remove it".
 
 Supervisor (`agent_service/bin/sandbox_supervisor.dart`, Docker Engine API on the unix socket, bearer key):
-`POST /v1/sandboxes {"execution_key"}` → `{"sandbox_id", "url", "token", "gateway", "created"}`, idempotent per key (a
-stopped container is replaced, with a new ID and network); `DELETE /v1/sandboxes/{id}`; `GET /v1/sandboxes`. Any other
-request field is `400`. Containers and networks carry its label and the execution label; only objects with both are
+`POST /v1/sandboxes {"execution_key", "profile"}` → `{"sandbox_id", "url", "token", "gateway", "created", "profile"}`,
+idempotent per key (a stopped container is replaced, with a new ID and network); `DELETE /v1/sandboxes/{id}`;
+`GET /v1/sandboxes`; `GET /v1/profiles`. Any other request field is `400`. Image, limits, binds, devices and egress
+come from the named executor profile (see [Executor profiles](#executor-profiles)). Containers and networks carry its label and the execution label; only objects with both are
 listed, swept at start (labelled but unknown containers, and labelled networks no known container uses) or removed.
 Each container gets a fresh random `SHELLCTL_AUTH_TOKEN` and, from the supervisor's configuration only:
 
@@ -466,7 +497,8 @@ Each container gets a fresh random `SHELLCTL_AUTH_TOKEN` and, from the superviso
 | CPU | `NanoCpus` (default 1 CPU) |
 | Processes | `PidsLimit` (default 256) |
 | Disk | `ReadonlyRootfs`; `Tmpfs` `/home/dify` (256 MiB) and `/workspace` (512 MiB), `rw,exec,nosuid,nodev,mode=0700` |
-| Privileges | `CapDrop: ["ALL"]`, `SecurityOpt: ["no-new-privileges:true"]`, not privileged, no binds or mounts |
+| Privileges | `CapDrop: ["ALL"]`, `SecurityOpt: ["no-new-privileges:true"]`, not privileged; no binds or mounts except the executor profile's read-only binds under `/opt`, no devices except its render nodes (see [Executor profiles](#executor-profiles)) |
+| Landlock (shellctl) | `SHELLCTL_LANDLOCK_RO_PATHS` = shellctl's defaults plus `/opt`; with render nodes also `/dev/dri`, `/sys/dev/char` and each GPU's sysfs directory (`/sys/dev/char/<major>:<minor>/device` resolved; K17 `/sys/devices/pci0000:00/0000:00:02.0`), which Mesa needs to identify the GPU (without them it falls back to llvmpipe). `SHELLCTL_LANDLOCK_RW_DEV_PATHS` = the defaults plus the render nodes. Set in the container's environment, which jobs inherit; a node cannot set `SHELLCTL_*` |
 | Network | `NetworkMode` = its own network (below), fixed address `.3`; IPv6 off (`Sysctls` `disable_ipv6`) |
 | Readiness | a Docker health check on shellctl `/healthz`; the supervisor waits for `healthy` |
 
@@ -517,8 +549,8 @@ under `sh -c` remained. This covers processes inside the container only; what a 
 
 ## Executor profiles
 
-Status: draft (2026-10-27); not implemented. MVP: one profile besides `default`, used only by the built-in agent
-loop and its shell tools.
+Status: implemented in the agent service and the supervisor (2026-10-27, branch `alice/executor-profiles`); the Swift
+server's part is open. MVP: one profile besides `default`, used only by the built-in agent loop and its shell tools.
 
 An executor profile is a named sandbox environment defined by an administrator on the executor host (the agent
 service and the sandbox supervisor). A node names a profile. A node, a DSL file or a request never carries an image,
@@ -529,7 +561,9 @@ Dify's own Soul `sandbox.config` (image, working directory, environment, CPU) st
 
 One JSON file, `AGENT_EXECUTOR_PROFILES` (default `/etc/dify-sf/executor-profiles.json`). It is mounted read-only into
 the agent service and the supervisor, and read at start; a change needs a restart. A file that does not validate
-stops the process. Without the file there is one profile, `default`: today's image, limits and network.
+stops the process. Without a file at the default path there is one profile, `default`: today's image
+(`SANDBOX_IMAGE`), limits and network; a path set explicitly must exist. A file must define `default`; unknown fields
+anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
 
 ```jsonc
 {"version": 1,
@@ -544,25 +578,30 @@ stops the process. Without the file there is one profile, `default`: today's ima
      "devices": ["/dev/dri/renderD128"],
      "limits": {"cpus": 4, "memory_mb": 6144, "pids": 1024, "workspace_mb": 1536, "home_mb": 512,
                 "timeout_seconds_max": 10800},
-     "env": {"BLENDER": "/opt/blender/blender", "CV3D_PYTHON": "/opt/cv3d-venv/bin/python"}}}}
+          "env": {"BLENDER": "/opt/blender/blender", "CV3D_PYTHON": "/opt/cv3d-venv/bin/python",
+             "FS_IMPORTER": "/opt/colvalley-3d/.cv3d-prepared/fs_importer"}}}}
 ```
 
 | Field | Rule |
 |---|---|
 | `image` | Pinned by digest (`name@sha256:…`); a tag alone stops the process at load. Images are built from `agent_service/sandbox-images/<name>/` (Dockerfile and `VERSION`) in this repository. Every image keeps shellctl (they derive from `langgenius/dify-agent-local-sandbox:1.17.1`), because the service's probes, file staging, output files and process cleanup use it. |
-| `mounts` | Read-only bind mounts only. The source is an absolute host path that must not be, contain or lie inside the Docker socket, the service's data directory or the profile file. The target is under `/opt`, never `/workspace` or the home. This replaces the sandbox rule "no binds or mounts" with "only the profile's read-only binds". |
+| `mounts` | Read-only bind mounts only (`Mounts` of type `bind`, `ReadOnly`; a missing source fails, it is never created). The source is an absolute, normalized host path (no `.`, `..`, `//`, trailing `/`, `:` or `,`); it must not be `/` and must not be, contain or lie inside the Docker socket (`/var/run/docker.sock`, `/run/docker.sock`, the configured one), Docker's or containerd's state (`/var/lib/docker`, `/var/lib/containerd`, `/run/containerd`), `/proc`, `/sys`, `/dev`, the service's data directory, the supervisor's state file or the profile file. The target is under `/opt` (not `/opt` itself), never `/workspace` or the home; targets do not nest. This replaces the sandbox rule "no binds or mounts" with "only the profile's read-only binds". Symlinks in the source are resolved by Docker on the host. |
 | `network.egress` | `none`: the proxy is not connected, so there is no egress. `allowlist`: the proxy as today, with its default domains. Per-profile domain lists come later. Default `allowlist`. |
-| `limits` | CPU, memory (the tmpfs pages of `/workspace` and the home count here), PIDs, and the `/workspace` and home tmpfs sizes. `timeout_seconds_max` is the largest `limits.timeout_seconds` a run of this profile may have. A missing value takes the supervisor's current default. |
-| `devices` | Optional GPU access: host device nodes passed into the container. Only DRI render nodes (`/dev/dri/renderD*`) are accepted, without `/dev/dri/card*` (no display or modesetting); the container gets the device's group (`render`) as a supplementary group. Anything else stops the process at load. NVIDIA (`--gpus`) is out of the MVP: the executor host K17 has an Intel GPU only. |
-| `env` | Fixed variables for the sandbox's commands, set by the administrator. They are not secrets and are not shown to the model. The reserved names are refused at load. A node's `env` cannot override them (`400 reserved_env`). |
+| `limits` | `cpus`, `memory_mb` (the tmpfs pages of `/workspace` and the home count here; `workspace_mb + home_mb` must be below it), `pids`, `workspace_mb`, `home_mb`. `timeout_seconds_max` (1..86400, default 1800) is the largest `limits.timeout_seconds` a run of this profile may have. Another missing value takes the supervisor's current default (`SANDBOX_*`). |
+| `devices` | Optional GPU access: host device nodes passed into the container (`Devices`, `rw`). Only DRI render nodes (`/dev/dri/renderD<n>`) are accepted, without `/dev/dri/card*` (no display or modesetting); the container gets the node's group ID on the host (K17: `render`, 990) as a supplementary group (`GroupAdd`), and the Landlock paths of the [Sandbox](#sandbox) table. The supervisor reads the group with `stat` and the GPU's sysfs directory from `/sys/dev/char`, so a containerized supervisor needs `/dev/dri` bound read-only (it opens nothing there). Anything else stops the process at load. NVIDIA (`--gpus`) is out of the MVP: the executor host K17 has an Intel GPU only. |
+| `env` | Fixed variables for the sandbox's commands, set by the administrator. They are not secrets and are not shown to the model. The reserved names are refused at load. A node's `env` cannot override them (`400 reserved_env`, compared case-insensitively). The agent service adds them to every shell job under the node's `env`; they are not in the container's environment. |
+| `description` | Optional, at most 200 characters; shown by `GET /v1/profiles`. |
 
 ### Protocol
 
 - `POST /v1/operations` gains `"executor_profile": "<name>"`. Absent means `default`. The profile is used only when
-  `tools.shell` is true; otherwise it is ignored. It is part of the request digest.
-- An unknown name answers `422 executor_profile_unknown`. A profile whose image is not on the host answers
-  `503 executor_profile_unavailable`. A `limits.timeout_seconds` above the profile's `timeout_seconds_max` answers
-  `422 invalid_request`.
+  `tools.shell` is true; otherwise it is not checked at all and only echoed. It is part of the request digest.
+- With the shell, in this order: an unknown name answers `422 executor_profile_unknown`; a `limits.timeout_seconds`
+  above the profile's `timeout_seconds_max` answers `422 invalid_request`; a node `env` name the profile sets answers
+  `400 reserved_env`; a profile whose status (below) is known and not `ok` answers `503
+  executor_profile_unavailable` with `"status"`. When the supervisor cannot be asked, the operation is accepted and
+  the run fails, if at all, with `sandbox_unavailable`. A resend of an accepted operation answers `200` with its run
+  before any of these checks.
 - From this version the service refuses unknown top-level request fields (`400 invalid_request`). An older service
   ignores `executor_profile` and would use the default image. To catch that, `run_started` gains
   `"executor_profile"` (the resolved name). If the echo is missing or different, the Swift server cancels the run and
@@ -570,17 +609,26 @@ stops the process. Without the file there is one profile, `default`: today's ima
 - A continuation must name the profile of the snapshot's sandbox (`workspace_ref`). Otherwise it answers
   `422 snapshot_incompatible`. The Soul snapshot pins the name, so this happens only when the configuration was
   changed outside the snapshot.
-- Supervisor: `POST /v1/sandboxes {"execution_key", "profile"}`. The supervisor resolves the name from its own copy of
-  the file; an unknown name is `400`. The same key with a different profile is `409`. A sandbox keeps its profile for
-  its lifetime. `GET /v1/sandboxes` lists each sandbox's profile.
-- `GET /v1/health` gains `"profiles": {"<name>": "ok" | "image_missing"}`.
+- Supervisor: `POST /v1/sandboxes {"execution_key", "profile"}` (absent: `default`). The supervisor resolves the name
+  from its own copy of the file; an unknown name is `400 unknown_profile`. The same key with a different profile is
+  `409 profile_conflict` (a container without the profile label counts as `default`). A sandbox keeps its profile
+  for its lifetime (label `dify-sf.sandbox.profile`). A missing image or render node is `503 image_missing` /
+  `503 device_missing` before anything is created; images are never pulled. The answer echoes `"profile"`; the agent
+  service fails the run with `sandbox_unavailable` when it is missing or different (a supervisor that ignores
+  profiles). `GET /v1/sandboxes` lists each sandbox's profile. `GET /v1/profiles` → `{"profiles": {"<name>":
+  {"status", "digest"}}}`, `digest` the SHA-256 of the profile's canonical JSON definition.
+- Profile status, in `GET /v1/profiles` and `GET /v1/health`: `ok`, `image_missing` or `device_missing` as the
+  supervisor reports them, or `unavailable`: no supervisor, the supervisor could not be asked, or its copy of the
+  profile differs from the service's (digest). The service caches it for 15 seconds. The Swift server treats every
+  status but `ok` as not available.
 - Timeouts: the Swift server's own run timer stays authoritative. It uses the smaller of the node's timeout, the
   profile's `timeout_seconds_max` and the server-wide cap, and sends that value as `limits.timeout_seconds`, so the
   agent service never runs longer than Swift waits. `default` keeps 1800 s.
 - `limits.max_turns` stays 50 in the MVP. A node setting with a per-profile and server-wide cap is added only if real
   modelling runs need more.
 - Rollout order: the agent service with the echo ships first; the Swift echo check goes live after it. Otherwise an
-  older service (no echo) would fail every run, including runs on `default`.
+  older service (no echo) would fail every run, including runs on `default`. The supervisor ships with the agent
+  service (same image): an older supervisor refuses the `profile` field with `400`.
 
 `GET /v1/profiles` (new) lists what the Swift server needs for the editor and the checklist:
 
@@ -614,33 +662,53 @@ attempted and fails, if at all, with the service's own answer.
 
 ### Profile `colvalley-blender` (MVP)
 
+Built and checked on K17 on 2026-10-27: image `dify-sf/sandbox-colvalley-blender@sha256:438f4d80139973fe258beaffbd28346c931db841e8a676ed0eb9bbfcfce7e9b3`
+(`agent_service/sandbox-images/colvalley-blender/`, VERSION 1), colvalley-3d `alice/board-readonly` 26ea1f4.
+
 | Part | Where | Content |
 |---|---|---|
-| Base | Image | `langgenius/dify-agent-local-sandbox:1.17.1` (Debian 12, glibc 2.36; shellctl, Python 3.12, Node, git) |
-| Blender | Image | The official 5.2.3 Linux x64 build at `/opt/blender` (SHA-256 checked), with its X11 and GL libraries; used with `-b` |
-| Renderer runtime | Image | Weston, D-Bus, GTK 3 and Mesa (Intel `iris` driver) for the Flutter Linux bundle. With the profile's render node the board renders with `FS_RENDERER=gl` (MSAA, the reference path on K17); without it, `pixman` |
-| GPU | Profile | K17's Intel Arc render node `/dev/dri/renderD128`: Weston gl for the board renderer, and EEVEE/Workbench in Blender `-b` through EGL |
-| Python tools | Image | A virtual environment `/opt/cv3d-venv` with the board tool's packages (numpy, scipy, trimesh, rtree, Pillow), because there is no egress |
-| colvalley-3d | Mount `/opt/colvalley-3d` | A prepared checkout pinned by commit on the executor host: LFS files, `flutter pub get`, the built Linux profile bundle and the precompiled scene importer (below) |
-| Limits | Profile | 4 CPUs, 6 GiB memory (1.5 GiB of it the `/workspace` tmpfs), 1024 PIDs, up to 3 hours, one run at a time. K17 has 15 GiB and 8 CPUs shared with the whole trial, so this is the MVP ceiling; the first real modelling run measures the peak and the values are set from it (never below 2 GiB memory) |
+| Base | Image | `langgenius/dify-agent-local-sandbox:1.17.1` pinned by digest (Debian 12, glibc 2.36, GLib 2.74; shellctl, Python 3.12, Node, git) |
+| Blender | Image | The official 5.2.3 Linux x64 archive (`blender-5.2.3-linux-x64.tar.xz`, SHA-256 from Blender's published list, checked in the build; given to the build as a named context, never downloaded there) at `/opt/blender`; used with `-b` |
+| Renderer runtime | Image | Weston 10, D-Bus, GTK 3, fonts (DejaVu, Noto Sans CJK for the board's labels) and Mesa 25.0.7 from bookworm-backports: Debian 12's Mesa 22.3 cannot drive K17's Lunar Lake GPU on the `xe` kernel driver (it would fall back to llvmpipe). With the render node the board renders with `FS_RENDERER=gl` (MSAA effective, the reference path on K17); without it, `pixman` |
+| GPU | Profile | K17's Intel render node `/dev/dri/renderD128` (group `render` 990): Weston gl (`GL renderer: Mesa Intel(R) Graphics (LNL)`), the Flutter client (`iris`), and EEVEE/Workbench in Blender `-b` through EGL (`gpu.platform`: OPENGL, INTEL, `Mesa Intel(R) Graphics (LNL)`; EEVEE 640x480 8.6 s vs 45 s on llvmpipe). shellctl's Landlock must grant the node and the GPU's sysfs (see [Sandbox](#sandbox)) |
+| Python tools | Image | `/opt/cv3d-venv` with numpy 2.5.4, scipy 1.18.1, trimesh 5.2.0, rtree 1.4.1, Pillow 13.0.0 (pinned in `requirements.txt`), because there is no egress |
+| colvalley-3d | Mount `/opt/colvalley-3d` | A checkout made by colvalley-3d's `tools/board/prepare_checkout.sh <commit> <dir>` on the executor host (below) |
+| Env | Profile | `BLENDER=/opt/blender/blender`, `CV3D_PYTHON=/opt/cv3d-venv/bin/python`, `FS_IMPORTER=/opt/colvalley-3d/.cv3d-prepared/fs_importer` |
+| Limits | Profile | 4 CPUs, 6 GiB memory (1.5 GiB of it the `/workspace` tmpfs, 512 MiB the home), 1024 PIDs, up to 3 hours, one run at a time. K17 has 15 GiB and 8 CPUs shared with the whole trial. Measured (below): one board run peaks at MEASURED_PEAK; the limits stay at the MVP ceiling until a real modelling run is measured (never below 2 GiB memory) |
 
-The board tool (`tools/board/render_board.sh`) today writes into the checkout: `out/board`, `out/board-cache`, and
-`dart run flutter_scene:import` in `app/`, which needs a writable `.dart_tool` and the Dart SDK. It needs these
-changes in colvalley-3d before it can run from a read-only mount:
+colvalley-3d `alice/board-readonly` makes the board tool (`tools/board/render_board.sh`) run from a read-only checkout:
 
-1. `--work-dir DIR` (or `CV3D_WORK`): every write goes under it: outputs (default `-o`), the baseline cache, Weston
-   scratch and the uv or Python cache. The tool refuses to write inside the checkout.
-2. `FS_IMPORTER`: a scene importer compiled ahead of time with the SDK that built the bundle
-   (`dart compile exe`), used instead of `dart run` in `app/`. The tool's importer self-check stays and proves it
-   matches the bundle. If the importer cannot be compiled ahead of time, fall back to copying `app/` without
-   `build/` (23 MB) into the work directory per run, with a path to `third_party/` that still resolves; that needs
-   the Flutter SDK in the image.
-3. `CV3D_PYTHON`: an interpreter with the packages already installed, used instead of `uv run --with …`.
+1. `--work-dir DIR` (or `CV3D_WORK`): every write goes under it: outputs (default `-o DIR/board/<time>`), the baseline
+   cache, Weston scratch, `TMPDIR`, the D-Bus session socket (the stock session bus listens in `/tmp`, read-only in a
+   sandbox), Python bytecode caches and the uv cache. `-o`, `CV3D_BOARD_CACHE`, `FS_TMP` or the work dir inside the
+   checkout are refused; `git status` runs without optional locks and without the LFS filter process (both write
+   into `.git`).
+2. `FS_IMPORTER`: the scene importer compiled ahead of time (`dart compile exe` of flutter_scene's `bin/import.dart`
+   with `app/`'s package config), used instead of `dart run flutter_scene:import` in `app/`; no Flutter SDK in the
+   image. The importer self-check stays and passes. (`app/.dart_tool/package_config.json` holds absolute host paths,
+   so `dart run` could not work in a sandbox anyway; the copy-`app/` fallback was not needed.)
+3. `CV3D_PYTHON`: an interpreter with the packages installed, used instead of `uv run --with …`.
+4. The Linux runner is built for Debian 12 although K17 builds it (glibc 2.43, GLib 2.8x): `g_ascii_strtoll` instead of
+   `atoi` (no `__isoc23_strtol@GLIBC_2.38`) and `GLIB_VERSION_MIN_REQUIRED/MAX_ALLOWED` 2.74 (no
+   `g_once_init_enter_pointer`). `run_linux.sh` gives Weston 10 `--use-gl` / `--use-pixman` (no `--renderer=` before
+   Weston 12).
 
-A script in colvalley-3d (`tools/board/prepare_checkout.sh <commit> <dir>`) prepares the mounted checkout on the
-executor host: checkout with LFS, `flutter pub get`, `flutter build linux --profile`, and the importer. The image
-then depends on no colvalley-3d commit. The bundle and importer always match the mounted commit, and a new commit
-needs a new checkout directory and a profile change, not a new image.
+`tools/board/prepare_checkout.sh <commit> <dir>` clones the commit with its LFS files, runs `flutter pub get
+--enforce-lockfile` and `flutter build linux --profile` (Flutter 3.47.6) and compiles the importer, then checks: every
+LFS file present, a clean index, glibc ≤ 2.36 for the bundle and the importer, every symbol resolving in
+`CV3D_CHECK_IMAGE` (`ldd -r` in a throwaway container of the sandbox image) and the importer self-check; it writes
+`.cv3d-prepared/checkout.txt`. The image depends on no colvalley-3d commit; a new commit needs a new checkout directory
+and a profile change, not a new image.
+
+Boards compared on K17 (fujiya, r6 `.blend`, collection `Model`): the reference from a writable clone run twice
+differs in 240 pixels (0.010 %, largest channel difference 12): the known K17 gl noise. The read-only mode on the host
+differs from the reference in 151 pixels (max 12); inside the sandbox image in 269 pixels (0.011 %, max 18; Mesa 25.0
+in the image, 26.0 on the host). The exported `.glb`, the `.fsceneb` and the measurements are byte-identical in all
+three.
+
+Measured end to end (`agent_service/tool/profile_e2e.sh`: the agent service, the supervisor and the profile file in
+compose, a scripted model running `render_board.sh --object fujiya` on the r6 `.blend` given as an input file, then
+`view_image` and `final_output` with the board as a declared file output): MEASURED_E2E.
 
 ## Swift server summary
 
@@ -660,10 +728,12 @@ needs a new checkout directory and a profile change, not a new image.
   extension). They are truncated at 256 KB on a UTF-8 boundary with a marker and a reference to the full record file;
   credentials are removed first.
 
-- Executor profiles (draft, see [Executor profiles](#executor-profiles)): the Soul's `executor_profile` key
+- Executor profiles (see [Executor profiles](#executor-profiles)): the Soul's `executor_profile` key
   (validation, snapshot pinning, DSL name only, checklist and MCP checks against `GET /v1/profiles`), the editor's
-  profile select, `executor_profile` in the operation, the `run_started` echo check, and the timeout capped by the
-  profile's `timeout_seconds_max`.
+  profile select, `executor_profile` in the operation (`""` sent as `default`), the `run_started` echo check, the new
+  `422`/`503` answers as node errors, and the timeout capped by the profile's `timeout_seconds_max`.
+- `tools.view_image` set when the shell is on and the model declares `vision` (see
+  [Viewing workspace images](#viewing-workspace-images)); viewed images arrive as ordinary agent uploads.
 
 ## Tests that must stay
 

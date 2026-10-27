@@ -55,15 +55,40 @@ const executionLabel = 'dify-sf.sandbox.execution';
 /// without it predates profiles and counts as `default`.
 const profileLabel = 'dify-sf.sandbox.profile';
 
-/// The group ID of a host device node, or null when it does not exist.
-int? statDeviceGroup(String path) {
+/// shellctl's Landlock defaults (dify-agent-runtime 1.17.1,
+/// `internal/landlock/config.go`): read-only (with execute) directories and
+/// read-write device files of every job. Setting the variables replaces
+/// them, so a sandbox's list starts from these.
+const shellctlLandlockRoDefaults = [
+  '/usr', '/bin', '/sbin', '/lib', '/lib64', '/etc', '/proc', //
+  '/opt/dify-agent-tools', '/opt/homebrew', '/snap',
+];
+const shellctlLandlockRwDevDefaults = [
+  '/dev/null', '/dev/zero', '/dev/urandom', '/dev/random', '/dev/tty', //
+];
+
+/// A render node on this host: its group and its device's sysfs directory
+/// (what Mesa reads to identify the GPU).
+typedef DeviceInfo = ({int group, String sysfs});
+
+/// Reads a host character device with `stat` and `/sys/dev/char`; null
+/// when it does not exist or is not a character device.
+DeviceInfo? statDevice(String path) {
   try {
-    final r = Process.runSync('stat', ['-L', '-c', '%F %g', '--', path]);
+    final r = Process.runSync('stat', ['-L', '-c', '%F|%g|%t|%T', '--', path]);
     if (r.exitCode != 0) return null;
-    final out = (r.stdout as String).trim();
-    if (!out.startsWith('character special file ')) return null;
-    return int.tryParse(out.split(' ').last);
+    final f = (r.stdout as String).trim().split('|');
+    if (f.length != 4 || f[0] != 'character special file') return null;
+    final group = int.tryParse(f[1]);
+    final major = int.tryParse(f[2], radix: 16);
+    final minor = int.tryParse(f[3], radix: 16);
+    if (group == null || major == null || minor == null) return null;
+    final sysfs = Link('/sys/dev/char/$major:$minor/device')
+        .resolveSymbolicLinksSync();
+    return (group: group, sysfs: sysfs);
   } on ProcessException {
+    return null;
+  } on FileSystemException {
     return null;
   }
 }
@@ -179,7 +204,7 @@ class SupervisorConfig {
     this.statePath,
     this.startTimeout = const Duration(seconds: 60),
     ExecutorProfiles? profiles,
-    this.deviceGroup = statDeviceGroup,
+    this.device = statDevice,
   }) : subnetPool = _pool(subnetPool),
        profiles = profiles ?? ExecutorProfiles.implicit() {
     if (agentPeers.isEmpty) {
@@ -260,8 +285,8 @@ class SupervisorConfig {
   /// implicit `default` with [image] and the limits above.
   final ExecutorProfiles profiles;
 
-  /// Resolves the group of a profile device on this host (default: `stat`).
-  final int? Function(String path) deviceGroup;
+  /// Resolves a profile device on this host (default: [statDevice]).
+  final DeviceInfo? Function(String path) device;
 
   /// The image of [profile]: its pinned image, or [image] for the implicit
   /// `default`.
@@ -466,18 +491,42 @@ class SandboxSupervisor {
     'Labels': _labels(hash),
   };
 
+  /// The Landlock variables of a sandbox (see [createPayload]).
+  static Map<String, String> landlockEnv(
+    List<String> renderNodes,
+    Iterable<String> sysfsDirs,
+  ) => {
+    'SHELLCTL_LANDLOCK_RO_PATHS': [
+      ...shellctlLandlockRoDefaults,
+      '/opt',
+      if (renderNodes.isNotEmpty) ...['/dev/dri', '/sys/dev/char'],
+      ...{...sysfsDirs},
+    ].join(','),
+    'SHELLCTL_LANDLOCK_RW_DEV_PATHS': [
+      ...shellctlLandlockRwDevDefaults,
+      ...renderNodes,
+    ].join(','),
+  };
+
   /// The container create payload: everything but the token and the
   /// network is fixed by the configuration and the [profile]: its image,
   /// limits, read-only binds under /opt, render nodes (with their host
-  /// groups as supplementary groups, from [deviceGroups]) and whether the
-  /// proxy is used.
+  /// groups as supplementary groups, from [devices]) and whether the proxy
+  /// is used.
+  ///
+  /// shellctl confines every job with Landlock. Its variables are set in the
+  /// daemon's environment, which jobs inherit (a node cannot set
+  /// `SHELLCTL_*`): the defaults plus `/opt` (profile images and binds put
+  /// their tools there; the base image's `/opt` is empty), and for render
+  /// nodes `/dev/dri`, `/sys/dev/char` and each GPU's sysfs directory
+  /// read-only and the nodes read-write (see [landlockEnv]).
   Map<String, Object?> createPayload(
     String executionKey,
     String token, {
     required String network,
     required Ipv4Net subnet,
     ExecutorProfile? profile,
-    Map<String, int> deviceGroups = const {},
+    Map<String, DeviceInfo> devices = const {},
   }) {
     final c = config;
     final p = profile ?? c.profiles[defaultProfileName]!;
@@ -487,12 +536,16 @@ class SandboxSupervisor {
     final proxy = c.proxyPeer == null || p.egress == Egress.none
         ? null
         : 'http://${subnet.host(proxyHost)}:${c.proxyPort}';
-    final groups = <String>{for (final d in p.devices) '${deviceGroups[d]}'}
+    final groups = <String>{for (final d in p.devices) '${devices[d]?.group}'}
         .toList();
+    final landlock = landlockEnv(p.devices, [
+      for (final d in p.devices) ?devices[d]?.sysfs,
+    ]);
     return {
       'Image': c.imageOf(p),
       'Env': [
         'SHELLCTL_AUTH_TOKEN=$token',
+        for (final e in landlock.entries) '${e.key}=${e.value}',
         if (proxy != null) ...[
           'HTTP_PROXY=$proxy',
           'HTTPS_PROXY=$proxy',
@@ -835,7 +888,7 @@ class SandboxSupervisor {
       return 'image_missing';
     }
     for (final d in profile.devices) {
-      if (config.deviceGroup(d) == null) return 'device_missing';
+      if (config.device(d) == null) return 'device_missing';
     }
     return 'ok';
   }
@@ -901,9 +954,7 @@ class SandboxSupervisor {
                 : 'a device of profile ${profile.name} is not on this host',
           );
       }
-      final groups = {
-        for (final d in profile.devices) d: config.deviceGroup(d)!,
-      };
+      final devices = {for (final d in profile.devices) d: config.device(d)!};
       final subnet = await _createNetwork(name, hash);
       String? id;
       try {
@@ -923,7 +974,7 @@ class SandboxSupervisor {
             network: name,
             subnet: subnet,
             profile: profile,
-            deviceGroups: groups,
+            devices: devices,
           ),
         );
         if (id == null) {

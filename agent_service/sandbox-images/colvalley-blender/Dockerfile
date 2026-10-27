@@ -9,7 +9,7 @@
 #
 # Contents: Dify's sandbox (shellctl, Python 3.12, Node, git; Debian 12) plus
 #   /opt/blender       Blender 5.2.3, used with -b; EEVEE/Workbench through EGL on a DRI render node
-#   Weston, D-Bus, GTK 3, fonts and Mesa 25 (bookworm-backports: Debian 12's Mesa 22.3 does not drive Intel Xe2 /
+#   Weston, D-Bus, GTK 3, fonts (Noto Sans CJK: the board labels) and Mesa 25 (bookworm-backports: Debian 12's Mesa 22.3 does not drive Intel Xe2 /
 #                      Lunar Lake on the `xe` kernel driver, K17's GPU) for the colvalley-3d Flutter Linux bundle
 #   /opt/cv3d-venv     Python with the board tool's packages (requirements.txt), because sandboxes have no egress
 # The colvalley-3d checkout itself is not in the image: the profile mounts a prepared checkout read-only at
@@ -26,7 +26,7 @@ RUN printf '%s\n' 'Types: deb' 'URIs: http://deb.debian.org/debian' 'Suites: boo
       'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg' > /etc/apt/sources.list.d/backports.sources \
  && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      weston dbus dbus-user-session libgtk-3-0 libgtk-3-common shared-mime-info fontconfig fonts-dejavu-core xkb-data \
+      weston dbus dbus-user-session libgtk-3-0 libgtk-3-common shared-mime-info fontconfig fonts-dejavu-core fonts-noto-cjk xkb-data \
       libx11-6 libx11-xcb1 libxi6 libxxf86vm1 libxfixes3 libxrender1 libxext6 libxrandr2 libxinerama1 libxcursor1 \
       libxkbcommon0 libxkbcommon-x11-0 libsm6 libice6 libwayland-client0 libwayland-cursor0 libwayland-egl1 \
       libdecor-0-0 libglvnd0 libgl1 libegl1 libgles2 libvulkan1 xz-utils \

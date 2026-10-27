@@ -368,7 +368,7 @@ void main() {
     String? statePath,
     String pool = '10.213.0.0/16',
     ExecutorProfiles? profiles,
-    int? Function(String)? deviceGroup,
+    DeviceInfo? Function(String)? device,
   }) => SupervisorConfig(
     key: key,
     agentPeers: ['agent_service'],
@@ -386,21 +386,25 @@ void main() {
     statePath: statePath,
     startTimeout: const Duration(seconds: 2),
     profiles: profiles,
-    deviceGroup: deviceGroup ?? (p) => p == '/dev/dri/renderD128' ? 990 : null,
+    device:
+        device ??
+        (p) => p == '/dev/dri/renderD128'
+            ? (group: 990, sysfs: '/sys/devices/pci0000:00/0000:00:02.0')
+            : null,
   );
 
   Future<void> startSupervisor({
     String? statePath,
     String pool = '10.213.0.0/16',
     ExecutorProfiles? profiles,
-    int? Function(String)? deviceGroup,
+    DeviceInfo? Function(String)? device,
   }) async {
     supervisor = SandboxSupervisor(
       config(
         statePath: statePath,
         pool: pool,
         profiles: profiles,
-        deviceGroup: deviceGroup,
+        device: device,
       ),
     );
     await supervisor.start(address: '127.0.0.1', port: 0);
@@ -489,6 +493,10 @@ void main() {
       'Image': 'langgenius/dify-agent-local-sandbox:1.17.1',
       'Env': [
         'SHELLCTL_AUTH_TOKEN=$token',
+        'SHELLCTL_LANDLOCK_RO_PATHS=/usr,/bin,/sbin,/lib,/lib64,/etc,/proc,'
+            '/opt/dify-agent-tools,/opt/homebrew,/snap,/opt',
+        'SHELLCTL_LANDLOCK_RW_DEV_PATHS=/dev/null,/dev/zero,/dev/urandom,'
+            '/dev/random,/dev/tty',
         'HTTP_PROXY=http://10.213.0.2:3128',
         'HTTPS_PROXY=http://10.213.0.2:3128',
         'http_proxy=http://10.213.0.2:3128',
@@ -965,10 +973,14 @@ void main() {
         ),
         isEmpty,
       );
-      expect(
-        (payload['Env'] as List).single,
+      expect(payload['Env'], [
         startsWith('SHELLCTL_AUTH_TOKEN='),
-      );
+        'SHELLCTL_LANDLOCK_RO_PATHS=/usr,/bin,/sbin,/lib,/lib64,/etc,/proc,'
+            '/opt/dify-agent-tools,/opt/homebrew,/snap,/opt,/dev/dri,'
+            '/sys/dev/char,/sys/devices/pci0000:00/0000:00:02.0',
+        'SHELLCTL_LANDLOCK_RW_DEV_PATHS=/dev/null,/dev/zero,/dev/urandom,'
+            '/dev/random,/dev/tty,/dev/dri/renderD128',
+      ]);
       // Profile env goes to jobs through the agent service, not the container.
       expect(jsonEncode(payload), isNot(contains('BLENDER')));
       expect((payload['Labels'] as Map)[profileLabel], 'colvalley-blender');
@@ -1113,9 +1125,12 @@ void main() {
     test('a missing image or render node is 503 before anything is created; '
         'GET /v1/profiles reports both with the digests', () async {
       docker.images.add(defaultImage);
-      var group = 990 as int?;
+      var present = true;
       final profiles = ExecutorProfiles.parse(file());
-      await startSupervisor(profiles: profiles, deviceGroup: (_) => group);
+      await startSupervisor(
+        profiles: profiles,
+        device: (_) => present ? (group: 990, sysfs: '/sys/devices/x') : null,
+      );
       var (s, j) = await call(
         'POST',
         '/v1/sandboxes',
@@ -1136,7 +1151,7 @@ void main() {
         },
       });
       docker.images.add(blenderImage);
-      group = null;
+      present = false;
       (s, j) = await call(
         'POST',
         '/v1/sandboxes',
@@ -1149,7 +1164,7 @@ void main() {
         'device_missing',
       );
       expect(docker.networkCreates, isEmpty);
-      group = 990;
+      present = true;
       await acquireWith('E1', 'colvalley-blender');
     });
 
