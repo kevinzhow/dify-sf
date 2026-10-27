@@ -427,6 +427,44 @@ void main() {
         refused('profile name "Colvalley"'),
       );
     });
+
+    test('a disk workspace is not charged to memory: the modelling target '
+        '(memory 2048, home 512 tmpfs, workspace 1536 on disk) loads', () {
+      const limits = {'memory_mb': 2048, 'workspace_mb': 1536, 'home_mb': 512};
+      final p = parse(
+        profileFile({
+          ...blenderProfile(limits: limits),
+          'workspace': {'backing': 'disk'},
+        }),
+      )['colvalley-blender']!;
+      expect(p.workspaceBacking, WorkspaceBacking.disk);
+      expect(p.limits.memoryMb, 2048);
+      expect(p.limits.workspaceMb, 1536);
+      expect(p.limits.homeMb, 512);
+      expect(
+        parse(profileFile())['colvalley-blender']!.workspaceBacking,
+        WorkspaceBacking.tmpfs,
+      );
+      // The home stays tmpfs and is still checked.
+      expect(
+        () => parse(
+          profileFile({
+            ...blenderProfile(limits: {'memory_mb': 512, 'home_mb': 512}),
+            'workspace': {'backing': 'disk'},
+          }),
+        ),
+        refused('limits.home_mb must be below limits.memory_mb'),
+      );
+      for (final bad in [
+        {'backing': 'nfs'},
+        {'backing': 'disk', 'path': '/srv'},
+      ]) {
+        expect(
+          () => parse(profileFile({...blenderProfile(), 'workspace': bad})),
+          refused('workspace'),
+        );
+      }
+    });
   });
 
   group('service', () {
