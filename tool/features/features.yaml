@@ -2484,3 +2484,12 @@ features:
   reason: 'The curated ten-provider catalog has a compact management dialog in Integrations. It uses Dify daemon management routes and signature verification, with server-pinned official package identities and checksums. Members can read status; owners and admins can install or remove. This does not implement Dify marketplace discovery, arbitrary packages or automatic updates.'
   evidence: [app/test/dify_spec/model_provider/provider_plugins_test.dart, app/test/dify_spec/model_provider/model_provider_alignment_test.dart, packages/collab_client/test/http_provider_plugins_test.dart, server/Tests/CollabTests/ModelSchemaAlignmentTests.swift, tool/check_provider_plugins.py, tool/gen_model_provider_forms_fixture.py]
   ours: [app/lib/src/settings/model_provider/provider_plugins.dart, server/Sources/CollabServer/ProviderPlugins.swift, server/Sources/CollabServer/ModelSchemaResolver.swift, server/Sources/CollabModels/ProviderPlugin.swift, server/Sources/CollabModels/Resources/provider-plugins.lock.json]
+
+- id: run.agent-executor-profiles
+  area: run
+  title: 'Agent v2: server-owned executor names, availability and enforced runtime limits'
+  dify: []
+  status: dify_sf_only
+  reason: 'The immutable inline Soul pins a server-owned environment name. The shared selector, editor and native MCP preserve imported names and distinguish unknown catalog reads from confirmed unavailable environments. Swift verifies the service echo, caps its actual active deadline and enables workspace image viewing only for declared vision capability with Shell. Host images, mounts, devices and credentials never enter the workflow.'
+  evidence: [server/Tests/CollabTests/AgentExecutorProfileTests.swift, server/Tests/CollabTests/AgentInlineConfigTests.swift, server/Tests/CollabTests/AgentPackageTests.swift, packages/collab_client/test/agent_executor_profiles_test.dart, app/test/agents/inline_checks_test.dart, app/test/agents/inline_configure_test.dart, docs/agent-executor-integration.md]
+  ours: [server/Sources/CollabServer/AgentExecutorProfiles.swift, server/Sources/CollabServer/AgentRuntime.swift, server/Sources/CollabServer/AgentServiceClient.swift, app/lib/src/agents/inline_configure.dart, app/lib/src/agents/inline_checks.dart, packages/collab_client/lib/src/agent_composer_api.dart]

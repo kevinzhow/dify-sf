@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
-import 'package:collab_client/collab_client.dart' show TransportException;
+import 'package:collab_client/collab_client.dart' show TransportException, AgentExecutorContext, AgentExecutorProfile;
 
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
@@ -51,11 +52,36 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
   final _editedSections = <String>{};
   final _editedEnvironment = <String>{};
   bool _editedJobFiles = false;
+  AgentExecutorContext? _executors;
+  Timer? _executorRefresh;
+  bool _loadingExecutors = false;
 
   @override
   void initState() {
     super.initState();
     _reload();
+    _refreshExecutors();
+    _executorRefresh = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _refreshExecutors(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _executorRefresh?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshExecutors() async {
+    if (_loadingExecutors) return;
+    _loadingExecutors = true;
+    final context = await AgentExecutorContext.load(
+      widget.composer.api,
+      widget.composer.appId,
+    );
+    if (mounted) setState(() => _executors = context);
+    _loadingExecutors = false;
   }
 
   bool get _locked => widget.readOnly || _busy || _payload != null;
@@ -87,7 +113,10 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
         }
         if (_editedJobFiles) {
           final job = _map(_loaded!['node_job']);
-          _loaded!['node_job'] = {...job, 'metadata': {..._map(job['metadata']), 'file_refs': draftFiles}};
+          _loaded!['node_job'] = {
+            ...job,
+            'metadata': {..._map(job['metadata']), 'file_refs': draftFiles},
+          };
         }
         _payload = null;
         if (draft == null) _note = '';
@@ -332,17 +361,68 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
           child: DifyButton(
             disabled: _locked,
             onPressed: () {
-              rows.add({
-                'id': newUuid(),
-                'name': '',
-                'method': 'web_app',
-              });
+              rows.add({'id': newUuid(), 'name': '', 'method': 'web_app'});
               update();
             },
             child: DifyTextLine(_a('inline.addContact')),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _executorPicker(AgentJson soul) {
+    final selected = InlineAgentChecks.executorName(soul);
+    final context = _executors!;
+    final profiles = context.profiles ?? const <AgentExecutorProfile>[];
+    final missing = context.profiles != null && context.named(selected) == null;
+    final unavailable = missing || (context.named(selected)?.status != null && context.named(selected)?.status != 'ok');
+    String label(AgentExecutorProfile profile) =>
+        '${profile.name}${profile.description.isEmpty ? '' : ' · ${profile.description}'}'
+        '${profile.status == 'ok' ? '' : ' · ${_a('inline.executorStatus.${profile.status}')}'}';
+    return _field(
+      _a('inline.executorProfile'),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 8,
+        children: [
+          DifySelect<String>(
+            key: const ValueKey('inline-agent-executor-profile'),
+            value: selected,
+            disabled: _locked,
+            semanticLabel: _a('inline.executorProfile'),
+            options: [
+              for (final profile in profiles) (value: profile.name, label: label(profile)),
+              if (context.named(selected) == null)
+                (
+                  value: selected,
+                  label:
+                      '$selected · ${_a(context.unknown ? 'inline.executorAvailabilityUnknown' : 'inline.executorStatus.unavailable')}',
+                ),
+            ],
+            disabledValues: {
+              for (final profile in profiles)
+                if (profile.status != 'ok') profile.name,
+              if (context.named(selected) == null) selected,
+            },
+            onChanged: (name) => _section('executor_profile', name),
+          ),
+          if (unavailable)
+            _text(
+              _a('inline.executorUnavailable', {'name': selected}),
+              error: true,
+            ),
+          if (context.unknown) _text(_a('inline.executorUnknown')),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: DifyButton(
+              size: DifyButtonSize.small,
+              onPressed: _refreshExecutors,
+              child: DifyTextLine(_a('inline.refreshProfiles')),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -368,7 +448,9 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                     key: const ValueKey('inline-agent-retry'),
                     loading: _busy,
                     onPressed: () => _save('save_to_current_version'),
-                    child: DifyTextLine(DifyI18n.tr('common', 'operation.retry')),
+                    child: DifyTextLine(
+                      DifyI18n.tr('common', 'operation.retry'),
+                    ),
                   ),
                 if (_payload == null)
                   DifyButton(
@@ -385,6 +467,7 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   spacing: 20,
                   children: [
+                    if (_executors?.shellEnabled == true) _executorPicker(soul),
                     _field(
                       _a('inline.model'),
                       ModelParameterModal(
@@ -393,8 +476,12 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                         completionParams: _map(model['model_settings']),
                         readonly: _locked,
                         modelPredicate: (_, item) =>
-                            inlineAgentModelCompatible(item.label['en_US'] ?? item.model) &&
-                            (item.features ?? const []).any((v) => v == 'tool-call' || v == 'multi-tool-call'),
+                            inlineAgentModelCompatible(
+                              item.label['en_US'] ?? item.model,
+                            ) &&
+                            (item.features ?? const []).any(
+                              (v) => v == 'tool-call' || v == 'multi-tool-call',
+                            ),
                         onModelChange: (choice) {
                           final id = extractPluginId(choice.provider);
                           _section('model', {
@@ -474,7 +561,9 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
                                     error: file['is_missing'] == true,
                                   ),
                                 ),
-                                _remove(() => _setJobFiles(_jobFiles..removeAt(index))),
+                                _remove(
+                                  () => _setJobFiles(_jobFiles..removeAt(index)),
+                                ),
                               ],
                             ),
                           Align(
@@ -511,7 +600,11 @@ class _InlineAgentConfigureState extends State<InlineAgentConfigure> {
               ),
             ),
           if (soul == null)
-            Expanded(child: Center(child: _busy ? _text(_a('inline.loading')) : const SizedBox.shrink())),
+            Expanded(
+              child: Center(
+                child: _busy ? _text(_a('inline.loading')) : const SizedBox.shrink(),
+              ),
+            ),
           Wrap(
             spacing: 8,
             runSpacing: 8,

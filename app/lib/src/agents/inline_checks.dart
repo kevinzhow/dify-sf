@@ -14,11 +14,14 @@ bool isInlineAgentData(Map<String, Object?> data) =>
 bool inlineAgentModelCompatible(String englishLabel) =>
     !inlineAgentExcludedModels.any((pattern) => pattern.hasMatch(englishLabel));
 
-
 /// The private half of the editor's checklist, fetched by the immutable identities in the same graph snapshot.
 /// Only issue labels reach the checklist/MCP response; masked config and credential references stay internal.
 class InlineAgentChecks {
-  const InlineAgentChecks({this.souls = const {}, this.unavailable = const [], this.retryable = false});
+  const InlineAgentChecks({
+    this.souls = const {},
+    this.unavailable = const [],
+    this.retryable = false,
+  });
   final Map<String, Map<String, Object?>> souls;
   final List<String> unavailable;
   final bool retryable;
@@ -28,7 +31,11 @@ class InlineAgentChecks {
       if (isInlineAgentData(difyDataOf(node))) '${node.id}:${plainOf(node.config['agent_binding'])}',
   ].join('|');
 
-  static Future<InlineAgentChecks> load(AgentComposerApi api, String app, Document doc) async {
+  static Future<InlineAgentChecks> load(
+    AgentComposerApi api,
+    String app,
+    Document doc,
+  ) async {
     final souls = <String, Map<String, Object?>>{};
     final unavailable = <String>[];
     var retryable = false;
@@ -59,8 +66,9 @@ class InlineAgentChecks {
         }
         souls[node.id] = {
           ...soul.cast<String, Object?>(),
-          '_missing_job_files': jsList(jsGet(jsGet(response['node_job'], 'metadata'), 'file_refs'))
-              .any(missingFileReference),
+          '_missing_job_files': jsList(
+            jsGet(jsGet(response['node_job'], 'metadata'), 'file_refs'),
+          ).any(missingFileReference),
         };
         if (hasUnsupported(souls[node.id]!)) unavailable.add('unsupported_agent_configuration:${node.id}');
       } on TransportException catch (error) {
@@ -74,8 +82,41 @@ class InlineAgentChecks {
         unavailable.add('agent_configuration:${node.id}');
       }
     }
-    return InlineAgentChecks(souls: souls, unavailable: unavailable, retryable: retryable);
+    final checks = InlineAgentChecks(
+      souls: souls,
+      unavailable: unavailable,
+      retryable: retryable,
+    );
+    return souls.isEmpty ? checks : checks.withExecutors(await AgentExecutorContext.load(api, app));
   }
+
+  InlineAgentChecks withExecutors(AgentExecutorContext context) => InlineAgentChecks(
+    souls: {
+      for (final entry in souls.entries)
+        entry.key: {
+          ...({...entry.value}
+            ..remove('_executor_profile_status')
+            ..remove('_executor_profiles_unknown')),
+          if (context.shellEnabled && context.profiles != null)
+            '_executor_profile_status': context.named(executorName(entry.value))?.status ?? 'unavailable',
+          if (context.unknown) '_executor_profiles_unknown': true,
+        },
+    },
+    unavailable: [
+      ...unavailable.where((key) => key != 'agent_executor_profiles'),
+      if (context.unknown && souls.isNotEmpty) 'agent_executor_profiles',
+    ],
+    retryable: retryable,
+  );
+
+  static String executorName(Map<String, Object?>? soul) =>
+      soul?['executor_profile'] is String && (soul!['executor_profile'] as String).isNotEmpty
+      ? soul['executor_profile'] as String
+      : 'default';
+  static bool executorUnknown(Map<String, Object?>? soul) => soul?['_executor_profiles_unknown'] == true;
+  static Map<String, Object?> profileParams(Map<String, Object?>? soul) => {
+    'name': executorName(soul),
+  };
 
   static const omittedFileReference = 'dify-file-ref:eyJyZWNvcmRfaWQiOiJvbWl0dGVkIn0=';
 
@@ -85,7 +126,11 @@ class InlineAgentChecks {
     final reference = value['reference'];
     if (id == null && reference is String && reference.startsWith('dify-file-ref:')) {
       try {
-        id = (jsonDecode(utf8.decode(base64Decode(reference.substring('dify-file-ref:'.length)))) as Map)['record_id'];
+        id = (jsonDecode(
+          utf8.decode(
+            base64Decode(reference.substring('dify-file-ref:'.length)),
+          ),
+        ) as Map)['record_id'];
       } on Object {
         return true;
       }
@@ -100,7 +145,9 @@ class InlineAgentChecks {
       return value.any((item) => _missingDefault(item, shape['array_item']));
     }
     if (shape['type'] == 'object' && value is Map) {
-      return jsList(shape['children']).any((child) => child is Map && _missingDefault(value[child['name']], child));
+      return jsList(shape['children']).any(
+        (child) => child is Map && _missingDefault(value[child['name']], child),
+      );
     }
     return false;
   }
@@ -122,19 +169,26 @@ class InlineAgentChecks {
     if (soul == null || soul['_missing'] == true) return [(namespace: 'agent-v-2', key: 'inline.configUnavailable')];
     final model = soul['model'];
     return [
+      if (soul['_executor_profile_status'] != null && soul['_executor_profile_status'] != 'ok')
+        (namespace: 'agent-v-2', key: 'inline.executorUnavailable'),
       if (model is! Map ||
-          [
-            'plugin_id',
-            'model_provider',
-            'model',
-          ].any((key) => model[key] is! String || (model[key] as String).isEmpty))
+          ['plugin_id', 'model_provider', 'model'].any(
+            (key) => model[key] is! String || (model[key] as String).isEmpty,
+          ))
         (namespace: 'workflow', key: 'nodes.agent.modelNotSelected'),
-      if (jsList(soul['config_files'])
-          .any((file) => jsGet(file, 'is_missing') == true || jsStr(jsGet(file, 'file_id'))?.isNotEmpty != true))
+      if (jsList(soul['config_files']).any(
+        (file) => jsGet(file, 'is_missing') == true || jsStr(jsGet(file, 'file_id'))?.isNotEmpty != true,
+      ))
         (namespace: 'agent-v-2', key: 'agentDetail.configure.files.missing'),
-      if (jsList(jsGet(soul['env'], 'secret_refs')).any((entry) => jsStr(jsGet(entry, 'ref'))?.isNotEmpty != true || jsGet(entry, 'is_missing') == true))
+      if (jsList(jsGet(soul['env'], 'secret_refs')).any(
+        (entry) => jsStr(jsGet(entry, 'ref'))?.isNotEmpty != true || jsGet(entry, 'is_missing') == true,
+      ))
         (namespace: 'agent-v-2', key: 'inline.secretMissing'),
-      if (model is Map && !inlineAgentModelCompatible(modelLabels?['${model['plugin_id']}/${model['model_provider']}/${model['model']}'] ?? '${model['model'] ?? ''}'))
+      if (model is Map &&
+          !inlineAgentModelCompatible(
+            modelLabels?['${model['plugin_id']}/${model['model_provider']}/${model['model']}'] ??
+                '${model['model'] ?? ''}',
+          ))
         (namespace: 'agent-v-2', key: 'inline.modelUnsupported'),
       if (modelFeatures?.containsKey('__loading__') == true) (namespace: 'agent-v-2', key: 'inline.catalogUnavailable'),
       if (model is Map &&
@@ -146,7 +200,12 @@ class InlineAgentChecks {
         (namespace: 'agent-v-2', key: 'inline.toolCallsRequired'),
       if (soul['_missing_job_files'] == true) (namespace: 'agent-v-2', key: 'inline.taskFileMissing'),
       if (declarations.any(
-        (field) => field is Map && _missingDefault(jsGet(field['failure_strategy'], 'default_value'), field),
+        (field) =>
+            field is Map &&
+            _missingDefault(
+              jsGet(field['failure_strategy'], 'default_value'),
+              field,
+            ),
       ))
         (namespace: 'agent-v-2', key: 'inline.defaultFileMissing'),
       if (hasUnsupported(soul)) (namespace: 'agent-v-2', key: 'inline.unsupported'),

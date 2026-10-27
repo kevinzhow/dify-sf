@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/agents/inline_checks.dart';
+import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/mcp/workflow_reader.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/checklist/use_checklist.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -54,6 +55,8 @@ Document workflow({Object? selected = binding}) => Document(
   ],
 );
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async { await DifyI18n.load('en-US'); });
   final configured = <String, Object?>{
     'schema_version': 1,
     'model': {'plugin_id': 'vendor/plugin', 'model_provider': 'provider', 'model': 'fixture'},
@@ -101,8 +104,8 @@ void main() {
     final issues =
         ((result['items'] as List).single as Map)['errorMessages'] ??
         ((result['items'] as List).single as Map)['error_messages'];
-    expect(jsonEncode(result), contains('modelNotSelected'));
-    expect(jsonEncode(result), contains('files.missing'));
+    expect(jsonEncode(result), contains(DifyI18n.tr('workflow', 'nodes.agent.modelNotSelected')));
+    expect(jsonEncode(result), contains(DifyI18n.tr('agent-v-2', 'agentDetail.configure.files.missing')));
     expect(issues, isNotNull);
     expect(result['publish_error'], isNotNull);
   });
@@ -214,8 +217,8 @@ void main() {
   test('roster bindings and incompatible tool-capable models cannot pass either gate', () {
     final roster = workflow(selected: {'binding_type': 'roster_agent', 'agent_id': 'other'});
     final env = ChecklistEnv(appMode: 'workflow');
-    expect(computeChecklist(roster, env).single.errorMessages.join(), contains('inline.unsupported'));
-    expect(checkBeforePublish(roster, env), contains('inline.unsupported'));
+    expect(computeChecklist(roster, env).single.errorMessages.join(), contains(DifyI18n.tr('agent-v-2', 'inline.unsupported')));
+    expect(checkBeforePublish(roster, env), contains(DifyI18n.tr('agent-v-2', 'inline.unsupported')));
     final blocked = {
       ...configured,
       'model': {'plugin_id': 'vendor/plugin', 'model_provider': 'provider', 'model': 'gpt-4o'},
@@ -244,4 +247,114 @@ void main() {
     expect(allowed.map((v) => v.key), isNot(contains('inline.modelUnsupported')));
   });
 
+  Map<String, Object?> profiles({String status = 'ok'}) => {
+    'shell_enabled': true,
+    'profiles': [
+      {
+        'name': 'default',
+        'description': 'Default shell',
+        'status': 'ok',
+        'timeout_seconds_max': 1800,
+      },
+      {
+        'name': 'rendering',
+        'description': 'Prepared rendering tools',
+        'status': status,
+        'timeout_seconds_max': 10800,
+      },
+    ],
+  };
+  test('known missing profiles block editor and native checks while imports keep their name', () async {
+    for (final name in ['rendering', 'imported-environment']) {
+      final api = _PinnedApi()
+        ..response = {
+          ...composerReply(),
+          'agent_soul': {...configured, 'executor_profile': name},
+        }
+        ..executorContext = profiles(status: 'image_missing');
+      final loaded = await InlineAgentChecks.load(api, 'app', workflow());
+      expect(loaded.souls['node']?['executor_profile'], name);
+      expect(loaded.unavailable, isEmpty);
+      final env = ChecklistEnv(inlineAgentSouls: loaded.souls);
+      expect(
+        WorkflowRunValidation.of(workflow(), env).validateBeforeRun((_) {}),
+        false,
+      );
+      expect(checkBeforePublish(workflow(), env), contains(name));
+      final checked = await reader(api).read('app', check: true);
+      expect(checked['complete'], true);
+      expect(checked['gate_passed'], false);
+    }
+  });
+  test('unknown catalog is visible but does not block an actual run; native check stays incomplete', () async {
+    final api = _PinnedApi()
+      ..response = {
+        ...composerReply(),
+        'agent_soul': {...configured, 'executor_profile': 'rendering'},
+      }
+      ..executorFailure = const TransportException('down', timeout: true);
+    final loaded = await InlineAgentChecks.load(api, 'app', workflow());
+    final env = ChecklistEnv(inlineAgentSouls: loaded.souls);
+    final warnings = computeChecklist(workflow(), env);
+    expect(
+      warnings.single.errorMessages.single,
+      contains('could not be checked'),
+    );
+    expect(warnings.single.blocksRun, false);
+    expect(
+      WorkflowRunValidation.of(
+        workflow(),
+        env,
+      ).validateBeforeRun((_) => fail('Unknown availability blocked a run')),
+      true,
+    );
+    expect(checkBeforePublish(workflow(), env), isNull);
+    final native = await reader(api).read('app', check: true);
+    expect(native['complete'], false);
+    expect(native['gate_passed'], false);
+    expect(native['unavailable_context'], contains('agent_executor_profiles'));
+    // A real configuration failure must still block when profile availability is unknown.
+    final broken = InlineAgentChecks(
+      souls: {
+        'node': {...loaded.souls['node']!, 'model': null},
+      },
+    );
+    expect(
+      WorkflowRunValidation.of(
+        workflow(),
+        ChecklistEnv(inlineAgentSouls: broken.souls),
+      ).hasValidationErrors,
+      true,
+    );
+  });
+  test('refreshing health preserves snapshots and Shell off retains the selected name', () {
+    const original = InlineAgentChecks(
+      souls: {
+        'node': {'executor_profile': 'rendering'},
+      },
+    );
+    final missing = original.withExecutors(
+      AgentExecutorContext.parse(profiles(status: 'device_missing')),
+    );
+    expect(
+      missing.souls['node']?['_executor_profile_status'],
+      'device_missing',
+    );
+    expect(
+      original.souls['node']?.containsKey('_executor_profile_status'),
+      false,
+    );
+    final disabled = missing.withExecutors(
+      const AgentExecutorContext(shellEnabled: false),
+    );
+    expect(disabled.souls['node']?['executor_profile'], 'rendering');
+    expect(
+      disabled.souls['node']?.containsKey('_executor_profile_status'),
+      false,
+    );
+    final restored = disabled.withExecutors(
+      AgentExecutorContext.parse(profiles()),
+    );
+    expect(restored.souls['node']?['_executor_profile_status'], 'ok');
+  });
 }

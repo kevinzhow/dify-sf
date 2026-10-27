@@ -11,6 +11,7 @@ public struct AgentServiceConfig: Sendable {
     public var key: String
     public var maxConcurrent: Int
     public var timeoutSeconds: Int
+    public var timeoutSecondsMax: Int
     public var inlineEnabled: Bool
     public var shellEnabled: Bool
 
@@ -21,6 +22,7 @@ public struct AgentServiceConfig: Sendable {
         key = reader.string(forKey: "collab.agent.service.key", isSecret: true, default: "")
         maxConcurrent = max(1, reader.int(forKey: "collab.agent.maxConcurrent", default: 2))
         timeoutSeconds = max(1, reader.int(forKey: "collab.agent.timeoutSeconds", default: 1800))
+        timeoutSecondsMax = max(1, min(86400, reader.int(forKey: "collab.agent.timeoutSecondsMax", default: 86400)))
     }
 
     public var isConfigured: Bool { !url.isEmpty && !key.isEmpty }

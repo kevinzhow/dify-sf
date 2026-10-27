@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import subprocess
 import time
 import urllib.error
@@ -26,6 +27,15 @@ DART_IMAGE = os.environ.get('AGENT_E2E_DART_IMAGE', 'sha256:52e3b8dd5c1ece67fa82
 PORT = int(os.environ.get('AGENT_E2E_PORT', '21406'))
 CORE_BIN = os.environ.get('AGENT_E2E_CORE_BIN', 'agent-service-core-2395331')
 SUPERVISOR_BIN = os.environ.get('AGENT_E2E_SUPERVISOR_BIN', 'agent-supervisor-2395331')
+PROFILE_NAME = os.environ.get('AGENT_E2E_PROFILE', 'default')
+PROFILE_FILE = os.environ.get('AGENT_E2E_PROFILES')
+VIEW_IMAGE = os.environ.get('AGENT_E2E_VIEW_IMAGE') == '1'
+assert re.fullmatch(r'[a-z0-9][a-z0-9-]{0,63}', PROFILE_NAME)
+if PROFILE_FILE:
+    PROFILE_FILE = pathlib.Path(PROFILE_FILE).resolve(strict=True)
+    PROFILE_DEFINITION = json.loads(PROFILE_FILE.read_text())['profiles'][PROFILE_NAME]
+else:
+    assert PROFILE_NAME == 'default'
 assert all(pathlib.PurePath(name).name == name and name not in ['', '.', '..'] for name in [CORE_BIN, SUPERVISOR_BIN])
 LABEL = 'raft.fixture=agent-restart-20261025'
 PG, ALIAS, SERVICE, SUPERVISOR, PROVIDER = [PREFIX + '-' + suffix for suffix in ['pg', 'api', 'runtime', 'supervisor', 'provider']]
@@ -87,6 +97,7 @@ def api(name):
         'COLLAB_HTTP_HOST': '0.0.0.0', 'COLLAB_HTTP_PORT': '8080', 'COLLAB_HUMAN_INPUT_WEB_ENABLED': 'true',
         'COLLAB_AGENT_INLINE_ENABLED': 'true', 'COLLAB_AGENT_SHELL_ENABLED': 'true', 'COLLAB_AGENT_SERVICE_URL': f'http://{SERVICE}:5050',
         'COLLAB_AGENT_SERVICE_KEY': 'fixture-agent-service-key', 'COLLAB_AGENT_TIMEOUT_SECONDS': '600',
+        'COLLAB_AGENT_MAX_CONCURRENT': '1',
         'COLLAB_PLUGIN_DAEMON_URL': 'http://winnie-agent-plugin-daemon:5002', 'COLLAB_PLUGIN_DAEMON_KEY': 'fixture-daemon-key',
         'COLLAB_PLUGIN_DAEMON_TENANT': '00000000-0000-0000-0000-000000000001', 'COLLAB_MODELS_VALIDATE': 'false',
         'COLLAB_SECRETS_KEY': base64.b64encode(b'F' * 32).decode(), 'COLLAB_FILES_DIRECTORY': '/files',
@@ -108,12 +119,16 @@ names = [PG, SERVICE, SUPERVISOR, PROVIDER, PREFIX + '-a', PREFIX + '-b']
 try:
     create(PG, 'postgres:15-alpine', '512m', '.5', ['-e', 'POSTGRES_USER=collab', '-e', 'POSTGRES_PASSWORD=collab', '-e', 'POSTGRES_DB=collab'], [])
     wait_until(lambda: subprocess.run(['docker', 'exec', PG, 'pg_isready', '-U', 'collab'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0)
-    create(PROVIDER, 'python:3.12-alpine', '96m', '.2', ['-v', str(ROOT / 'provider.py') + ':/provider.py:ro', '-v', str(OUT / 'provider') + ':/evidence'], ['python', '/provider.py'])
+    create(PROVIDER, 'python:3.12-alpine', '96m', '.2', ['-e', 'AGENT_E2E_VIEW_IMAGE=' + ('1' if VIEW_IMAGE else '0'),
+        '-v', str(ROOT / 'provider.py') + ':/provider.py:ro', '-v', str(OUT / 'provider') + ':/evidence'], ['python', '/provider.py'])
     group = str(os.stat('/var/run/docker.sock').st_gid)
     common = ['--read-only', '--tmpfs', '/tmp:rw,nosuid,nodev,size=32m', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges:true', '--user', '10001:10001', '-v', str(TOOLS) + ':/tools:ro']
+    if PROFILE_FILE:
+        common += ['-v', str(PROFILE_FILE) + ':/etc/dify-sf/executor-profiles.json:ro',
+            '-e', 'AGENT_EXECUTOR_PROFILES=/etc/dify-sf/executor-profiles.json']
     create(SUPERVISOR, DART_IMAGE, '256m', '.5', common + ['--group-add', group, '-v', '/var/run/docker.sock:/var/run/docker.sock',
         '-e', 'SANDBOX_SUPERVISOR_KEY=fixture-supervisor-key', '-e', 'SANDBOX_AGENT_PEERS=' + SERVICE,
-        '-e', 'SANDBOX_LABEL=winnie.agent-restart=20261025', '-e', 'SANDBOX_NAME_PREFIX=' + PREFIX + '-sandbox-',
+        '-e', 'SANDBOX_LABEL=raft.agent-restart=' + PREFIX, '-e', 'SANDBOX_NAME_PREFIX=' + PREFIX + '-sandbox-',
         '-e', 'SANDBOX_SUBNET_POOL=10.219.240.0/20', '-e', 'SANDBOX_STATE_FILE=/tmp/state.json',
         '-e', 'SANDBOX_MEMORY_MB=384', '-e', 'SANDBOX_CPUS=.5', '-e', 'SANDBOX_HOME_MB=64', '-e', 'SANDBOX_WORKSPACE_MB=128'], ['/tools/' + SUPERVISOR_BIN])
     create(SERVICE, DART_IMAGE, '384m', '.5', common + ['-e', 'AGENT_SERVICE_KEY=fixture-agent-service-key', '-e', 'AGENT_DATA_DIR=/tmp/state',
@@ -133,7 +148,8 @@ try:
     TOKEN = request('/v1/setup', {'email': 'agent-restart@example.test', 'name': 'Agent restart fixture', 'password': 'fixture-password-1234'}, token=False)['access_token']
     request('/v1/workspace/model-providers/langgenius/openai_api_compatible/openai_api_compatible/models/credentials',
         {'model': 'stub-chat', 'model_type': 'llm', 'credentials': {'endpoint_url': f'http://{PROVIDER}:8000/v1', 'api_key': 'synthetic-not-a-vendor-key',
-        'mode': 'chat', 'context_size': '4096', 'max_tokens_to_sample': '4096', 'function_calling_type': 'tool_call', 'agent_thought_support': 'only_thinking_supported'}})
+        'mode': 'chat', 'context_size': '4096', 'max_tokens_to_sample': '4096', 'function_calling_type': 'tool_call',
+        **({'vision_support': 'support'} if VIEW_IMAGE else {}), 'agent_thought_support': 'only_thinking_supported'}})
     yaml = '''app: {mode: workflow, name: Agent restart fixture}
 kind: app
 version: 0.3.1
@@ -157,7 +173,8 @@ workflow:
     - {id: b, source: inline-agent, sourceHandle: source, target: end, targetHandle: target}
 '''
     app = request('/v1/docs/import', yaml)['id']
-    soul = {'model': {'plugin_id': 'langgenius/openai_api_compatible', 'model_provider': 'openai_api_compatible', 'model': 'stub-chat', 'model_settings': {}},
+    soul = {'executor_profile': PROFILE_NAME,
+        'model': {'plugin_id': 'langgenius/openai_api_compatible', 'model_provider': 'openai_api_compatible', 'model': 'stub-chat', 'model_settings': {}},
         'prompt': {'system_prompt': 'Execute the deterministic fixture tools.'}, 'human': {'contacts': [{'id': 'operator', 'name': 'Operator', 'method': 'web_app'}], 'tools': []}}
     import uuid
     request(f'/v1/apps/{app}/workflows/draft/nodes/inline-agent/agent-composer', {'variant': 'workflow', 'expected_seq': 0,
@@ -172,6 +189,23 @@ workflow:
     run = sql('SELECT workflow_run_id FROM human_input_forms WHERE token = ' + "'" + first['form_token'] + "'")
     execution = sql("SELECT execution_id FROM agent_node_sessions WHERE workflow_run_id='" + run + "'")
     owner = sql("SELECT owner_id FROM agent_node_sessions WHERE execution_id='" + execution + "'")
+    usage = json.loads(sql("SELECT usage FROM agent_node_sessions WHERE execution_id='" + execution + "'"))
+    assert usage['shell_enabled'] is True and usage['view_image'] is VIEW_IMAGE
+    if PROFILE_FILE:
+        catalog = request(f'/v1/apps/{app}/agent-executor-profiles')
+        assert next(p for p in catalog['profiles'] if p['name'] == PROFILE_NAME)['status'] == 'ok'
+        assert all(set(p) == {'name', 'description', 'status', 'timeout_seconds_max'} for p in catalog['profiles'])
+        sandbox = docker('ps', '-q', '--filter', 'label=raft.agent-restart=' + PREFIX)
+        inspected = json.loads(docker('inspect', sandbox))[0]
+        assert inspected['Config']['Labels']['dify-sf.sandbox.profile'] == PROFILE_NAME
+        assert inspected['HostConfig']['Memory'] == PROFILE_DEFINITION['limits']['memory_mb'] * 1024 * 1024
+        (OUT / 'sandbox.json').write_text(json.dumps(inspected))
+        # A draft edit must not change the environment of the paused execution.
+        loaded = request(f'/v1/apps/{app}/workflows/draft/nodes/inline-agent/agent-composer')
+        request(f'/v1/apps/{app}/workflows/draft/nodes/inline-agent/agent-composer', {'variant': 'workflow',
+            'expected_seq': loaded['document_seq'], 'idempotency_key': str(uuid.uuid4()),
+            'save_strategy': 'save_to_current_version', 'binding': loaded['binding'],
+            'agent_soul': dict(soul, executor_profile='default'), 'node_job': loaded['node_job']}, method='PUT')
     container_a = json.loads(docker('inspect', PREFIX + '-a'))[0]
     assert sql("SELECT status FROM workflow_runs WHERE id='" + run + "'") == 'paused'
     docker('stop', '-t', '15', PREFIX + '-a')
@@ -225,14 +259,21 @@ workflow:
     downloaded = urllib.request.urlopen(artifact['url']).read()
     assert downloaded == b'owned artifact; counter=1\n', downloaded
     requests = [json.loads(line) for line in (OUT / 'provider/requests.jsonl').read_text().splitlines()]
-    assert len(requests) == 5, len(requests)
+    assert len(requests) == (6 if VIEW_IMAGE else 5), len(requests)
+    if VIEW_IMAGE:
+        def images(call):
+            return sum(p.get('type') == 'image_url' for m in call['messages']
+                for p in (m.get('content') if isinstance(m.get('content'), list) else []) if isinstance(p, dict))
+        assert [images(call) for call in requests] == [0, 0, 1, 0, 0, 0], 'Viewed image must be attached to the next call only'
+    assert json.loads(sql("SELECT usage FROM agent_node_sessions WHERE execution_id='" + execution + "'"))['view_image'] is VIEW_IMAGE
     history = requests[-1]['messages']
     assert sum(m.get('tool_call_id') == 'side-effect/once' for m in history if m.get('role') == 'tool') == 1
     assert 'counter=1' in str(next(m['content'] for m in history if m.get('tool_call_id') == 'verify/after-restart'))
     wait_until(lambda: sql("SELECT count(*) FROM agent_runtime_outbox WHERE done_at IS NULL") == '0')
     (OUT / 'result.json').write_text(json.dumps({'passed': True, 'app': app, 'run': run, 'execution': execution,
         'process_a': container_a['Id'], 'process_b': container_b['Id'], 'generation': 2, 'unanswered_wait_seconds': time.monotonic() - waited,
-        'model_calls': 5, 'shell_side_effect_count': 1, 'initial_log_count': len(initial_logs),
+        'model_calls': len(requests), 'executor_profile': PROFILE_NAME, 'view_image': VIEW_IMAGE,
+        'shell_side_effect_count': 1, 'initial_log_count': len(initial_logs),
         'recovered_log_count': len(replay_logs), 'completed_log_count': len(final_logs), 'unique_log_ids': True, 'nested_file_sha256': hashlib.sha256(downloaded).hexdigest()}, indent=2))
     print('PASS: real process restart; lease renewal beyond TTL; two questions; shell side effect once; nested uploaded file; ACK and cleanup.', flush=True)
 finally:

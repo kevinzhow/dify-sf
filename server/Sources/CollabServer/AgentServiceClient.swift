@@ -71,6 +71,10 @@ struct AgentServiceClient: Sendable {
             try Task.checkCancellation()
             do {
                 let (status, result) = try await request(.POST, path: "/v1/operations", body: operation, runToken: token)
+                if (status == 422 && result["error"] == "executor_profile_unknown") ||
+                    (status == 503 && result["error"] == "executor_profile_unavailable") {
+                    throw NodeError(result["error"]!.string!, "The selected executor profile is not available on this server")
+                }
                 if status == 503 {
                     if attempt < 2 { try await Task.sleep(for: .milliseconds(250 * (attempt + 1))); continue }
                     throw NodeError("AgentServiceUnavailable", "The agent service is temporarily unavailable")
@@ -93,12 +97,35 @@ struct AgentServiceClient: Sendable {
     }
 
     /// Durable SSE replay is independent from the browser. Reconnect with the last committed cursor, never restart a loop.
-    func result(run: String, operation: String, deadline: Date,
+    func result(run: String, operation: String, deadline: Date, expectedProfile: String? = nil, generation: Int = 0,
+                isAborted: @escaping @Sendable () -> Bool,
+                onEvent: @escaping @Sendable (Int, String, JSONObject) async throws -> Void = { _, _, _ in }) async throws -> JSONValue {
+        // AsyncHTTPClient's execute deadline ends when response headers arrive. An idle SSE body needs its own timer.
+        try await agentBeforeDeadline(deadline, isAborted: isAborted) {
+            try await collectResult(run: run, operation: operation, deadline: deadline,
+                expectedProfile: expectedProfile, generation: generation, isAborted: isAborted, onEvent: onEvent)
+        }
+    }
+
+    func begin(_ body: JSONObject, token: String, execution: String, generation: Int, deadline: Date,
+               isAborted: @escaping @Sendable () -> Bool) async throws -> String {
+        try await agentBeforeDeadline(deadline, isAborted: isAborted) {
+            try await lease(execution: execution, generation: generation)
+            return try await start(body, token: token)
+        }
+    }
+
+    private func collectResult(run: String, operation: String, deadline: Date, expectedProfile: String?, generation: Int,
                 isAborted: @Sendable () -> Bool,
-                onEvent: @Sendable (Int, String, JSONObject) async throws -> Void = { _, _, _ in }) async throws -> JSONValue {
+                onEvent: @Sendable (Int, String, JSONObject) async throws -> Void) async throws -> JSONValue {
         let id = try Self.pathID(run)
         var cursor = 0, failures = 0
         var historyExpired = false
+        var verifiedProfile = expectedProfile == nil
+        func refuseProfile() async -> NodeError {
+            try? await cancel(run: run, generation: generation)
+            return NodeError("sandbox_unavailable", "The agent service did not confirm the selected executor profile")
+        }
         while Date() < deadline {
             try Task.checkCancellation()
             if isAborted() { throw CancellationError() }
@@ -127,6 +154,10 @@ struct AgentServiceClient: Sendable {
                         guard let event = try Self.parseEvent(frame) else { continue }
                         if event.id <= cursor { continue }
                         guard event.id == cursor + 1 else { throw Self.invalidResponse() }
+                        if let expectedProfile, event.name == "run_started" {
+                            guard event.data["executor_profile"] == .string(expectedProfile) else { throw await refuseProfile() }
+                            verifiedProfile = true
+                        }
                         do { try await onEvent(event.id, event.name, event.data) }
                         catch { throw AgentEventCommitFailure(underlying: error) }
                         cursor = event.id // Advance only after the database commit succeeded.
@@ -139,6 +170,7 @@ struct AgentServiceClient: Sendable {
                 guard status == 200, value["run_id"] == .string(run), value["operation_id"] == .string(operation),
                       let state = value["status"]?.string else { throw Self.invalidResponse() }
                 if ["succeeded", "paused", "failed", "cancelled"].contains(state) {
+                    guard verifiedProfile else { throw await refuseProfile() }
                     guard value["result"]?.object != nil, case .int(let last)? = value["last_event_id"], last > 0, historyExpired || cursor == last else {
                         throw Self.invalidResponse()
                     }
@@ -208,3 +240,22 @@ struct AgentServiceClient: Sendable {
 private struct AgentTransientTransport: Error {}
 
 private struct AgentEventCommitFailure: Error { let underlying: any Error }
+
+private func agentBeforeDeadline<T: Sendable>(_ deadline: Date, isAborted: @escaping @Sendable () -> Bool,
+        operation: @escaping @Sendable () async throws -> T) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        group.addTask { try await operation() }
+        group.addTask {
+            while true {
+                try Task.checkCancellation()
+                if isAborted() { throw CancellationError() }
+                let remaining = deadline.timeIntervalSinceNow
+                guard remaining > 0 else { throw NodeError("AgentTimeout", "The agent operation exceeded its deadline") }
+                try await Task.sleep(for: .seconds(min(0.25, remaining)))
+            }
+        }
+        defer { group.cancelAll() }
+        guard let value = try await group.next() else { throw NodeError("AgentServiceProtocolError", "Missing agent response") }
+        return value
+    }
+}

@@ -34,5 +34,15 @@
     "modelProvider.plugins.missingTip": "連携ページの「モデルプラグインの管理」からインストールしてください。保存済みの設定は保持されます。",
     "modelProvider.metadataMissing": "モデルを認識できません",
     "modelProvider.metadataMissingTip": "このプラグインはモデルを認識できません。モデル名とプラグインのバージョンを確認してください。"
+  },
+  "agent-v-2": {
+    "inline.executorProfile": "実行環境",
+    "inline.executorUnavailable": "実行環境 {{name}} はこのサーバーで利用できません。",
+    "inline.executorUnknown": "実行環境を確認できませんでした。実行時のサービス応答を使用します。",
+    "inline.executorAvailabilityUnknown": "利用可否は不明",
+    "inline.executorStatus.image_missing": "イメージがありません",
+    "inline.executorStatus.device_missing": "デバイスがありません",
+    "inline.executorStatus.unavailable": "利用不可",
+    "inline.refreshProfiles": "実行環境を更新"
   }
 }

@@ -7,6 +7,7 @@ import Vapor
 
 extension Routes {
     func registerAgentComposer(on r: any RoutesBuilder) {
+        registerAgentExecutorProfiles(on: r)
         registerAgentClipboard(on: r)
         registerAgentRecords(on: r)
         let path = r.grouped("v1", "apps", ":app", "workflows", "draft", "nodes", ":node", "agent-composer")

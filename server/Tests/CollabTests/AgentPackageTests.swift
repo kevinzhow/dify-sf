@@ -12,6 +12,7 @@ struct AgentPackageTests {
         try await withServer { api, store, registry in
             let (token, _, app) = try await AgentComposerTests.seed(api, store)
             var soul = AgentInlineConfig.empty
+            soul["executor_profile"] = "imported-unknown-environment"
             soul["model"] = ["plugin_id": "fixture/plugin", "model_provider": "provider", "model": "fixture-model", "credential_ref": ["type": "model", "id": "private-credential"]]
             soul["env"] = ["variables": [["name": "PLAIN", "value": "portable"]], "secret_refs": [["name": "TOKEN", "value": "must-not-export-private-secret"]]]
             soul["config_files"] = [["name": "notes.txt", "file_kind": "upload_file", "file_id": "private-file-locator"]]
@@ -31,6 +32,7 @@ struct AgentPackageTests {
             let projected = try JSONValue.parse(response.text)
             #expect(projected["agent_packages"]?["agent_1"]?["schema_version"] == 1)
             let packageSoul = projected["agent_packages"]?["agent_1"]?["soul"]
+            #expect(packageSoul?["executor_profile"] == "imported-unknown-environment")
             #expect(packageSoul?["config_files"]?.array?.first?["is_missing"] == true)
             #expect(packageSoul?["env"]?["secret_refs"]?.array?.first?["name"] == "TOKEN")
             #expect(packageSoul?["env"]?["variables"]?.array?.first?["value"] == "portable")
@@ -38,6 +40,7 @@ struct AgentPackageTests {
             #expect(imported.status == 201, "\(imported.text)")
             let copied = imported.str("id")
             let config = try #require(try await store.currentAgentConfig(doc: copied, node: AgentComposerTests.nodeID))
+            #expect(try JSONValue.parse(config.soul)["executor_profile"] == "imported-unknown-environment")
             #expect(config.agentId != original.agentId && config.id != original.id && config.docId == copied)
             let doc = try await registry.sequencer(copied).currentSnapshot().doc
             let graphBinding = try JSONValue.parse(try WireJSON.encode(doc.nodes[AgentComposerTests.nodeID]?.config["agent_binding"]))

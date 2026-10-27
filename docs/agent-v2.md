@@ -549,8 +549,8 @@ under `sh -c` remained. This covers processes inside the container only; what a 
 
 ## Executor profiles
 
-Status: implemented in the agent service and the supervisor (2026-10-27, branch `alice/executor-profiles`); the Swift
-server's part is open. MVP: one profile besides `default`, used only by the built-in agent loop and its shell tools.
+Status: implemented in the agent service and the supervisor (2026-10-27); the Swift/editor integration is described
+in [Inline Agent executor profiles](agent-executor-integration.md). MVP: one profile besides `default`, used only by the built-in agent loop and its shell tools.
 
 An executor profile is a named sandbox environment defined by an administrator on the executor host (the agent
 service and the sandbox supervisor). A node names a profile. A node, a DSL file or a request never carries an image,
