@@ -31,7 +31,14 @@ Document document({String task = 'Current collaborator task', Object? selected =
   ],
 );
 
-class ComposerApi implements AgentComposerApi {
+class ComposerApi implements AgentComposerApi, AgentExecutorProfilesApi {
+  Map<String, Object?> executorContext = {'shell_enabled': false, 'profiles': null};
+  Object? executorFailure;
+  @override
+  Future<Map<String, Object?>> agentExecutorProfiles(String appId) async {
+    if (executorFailure != null) throw executorFailure!;
+    return executorContext;
+  }
   Map<String, Object?> response = composerReply();
   Future<Map<String, Object?>> Function(Map<String, Object?>)? write;
   final requests = <String>[];

@@ -64,6 +64,19 @@ extension PostgresStore {
         }
     }
 
+    public func pinAgentViewImage(session: StoredAgentSession, enabled: Bool) async throws -> Bool {
+        try await bounded {
+            for try await value in try await self.client.query("""
+                UPDATE agent_node_sessions SET usage = jsonb_set(usage, '{view_image}',
+                    coalesce(usage->'view_image', to_jsonb(\(enabled)::boolean)))
+                WHERE execution_id = \(session.executionID) AND generation = \(session.generation)
+                  AND owner_id = \(session.ownerID) AND lease_until > now()
+                  AND status IN ('prepared', 'paused', 'retry') RETURNING (usage->>'view_image')::boolean
+                """, logger: self.logger).decode(Bool.self) { return value }
+            throw StoreError.notCommitted("Agent capability ownership changed")
+        }
+    }
+
     /// Keyset paging keeps the download and preview bounded even for arbitrarily long reasoning histories.
     public func agentEventRecords(execution: String, after: Int = 0, limit: Int = 128) async throws -> [StoredAgentEvent] {
         try await bounded {

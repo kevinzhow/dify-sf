@@ -24,6 +24,7 @@ struct Routes: Sendable {
     let uploadBudget = UploadBudget()
     let agentModelScopes = AgentModelScopes()
     let agentShellHealth = AgentShellHealthCache()
+    let agentExecutorProfiles = AgentExecutorProfilesCache()
     let agentOwner = UUID().uuidString.lowercased()
 
     static let maxBodyBytes = 1 << 20

@@ -1326,8 +1326,12 @@ class _PublicAppClient extends http.BaseClient {
 }
 
 /// Inline workflow Agent v2 composer, using the same authentication refresh and error projection as console APIs.
-class HttpAgentComposerApi extends HttpConsoleApi implements AgentComposerApi, AgentClipboardApi {
+class HttpAgentComposerApi extends HttpConsoleApi implements AgentComposerApi, AgentClipboardApi, AgentExecutorProfilesApi {
   HttpAgentComposerApi(super.baseUrl, {super.client, super.auth, super.timeout});
+
+  @override
+  Future<Map<String, Object?>> agentExecutorProfiles(String appId) async => HttpConsoleApi._map(
+    (await _send('GET', '${HttpConsoleApi._app(appId)}/agent-executor-profiles', ok: const [200])).json);
 
   @override
   Future<Map<String, Object?>> exportAgentClipboard(String appId, Map<String, Object?> body) async => HttpConsoleApi._map(

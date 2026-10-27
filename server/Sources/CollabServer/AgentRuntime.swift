@@ -25,6 +25,7 @@ struct ServerAgentRuntime: AgentRuntime {
         guard app.mode == "workflow" else { throw NodeError("AgentModeUnsupported", "Inline Agent v2 is available only in workflows") }
         guard routes.config.agentService.isConfigured else { throw NodeError("AgentServiceUnavailable", "The agent service is not configured") }
         let (_, soul) = try await configuration(nodeID, data)
+        _ = try await executorProfile(soul)
         guard let provider = soul.provider, let model = soul.model,
               let models = routes.runtimeServices(appId: appID, userId: userID).models else { throw ServiceNotConfigured(service: .models) }
         let credentials = try await routes.agentCredentials(provider: provider, model: model, reference: soul.json["model"]?["credential_ref"])
@@ -41,7 +42,13 @@ struct ServerAgentRuntime: AgentRuntime {
 
     func run(nodeID: String, data: AgentNodeData, context: NodeRunContext) async throws -> AgentNodeDecision {
         let activeStarted = ContinuousClock.now
-        let deadline = Date().addingTimeInterval(Double(routes.config.agentService.timeoutSeconds))
+        let activeWallStarted = Date()
+        let (stored, soul) = try await configuration(nodeID, data)
+        let profile = try await executorProfile(soul)
+        let timeout = AgentExecutionPolicy.timeout(node: routes.config.agentService.timeoutSeconds,
+            profile: profile?.timeoutSecondsMax ?? (soul.executorProfile == "default" ? 1800 : nil),
+            server: routes.config.agentService.timeoutSecondsMax)
+        var deadline = activeWallStarted.addingTimeInterval(Double(timeout))
         func admitted<T>(_ work: () async throws -> T) async throws -> T {
             while true {
                 try Task.checkCancellation()
@@ -52,7 +59,6 @@ struct ServerAgentRuntime: AgentRuntime {
             }
         }
         guard let execution = context.executionId else { throw NodeError("AgentExecutionMissing", "Agent nodes require a workflow execution") }
-        let (stored, soul) = try await configuration(nodeID, data)
         let prompt = try await AgentPromptBuilder.build(node: data, config: soul, pool: context.pool, files: files,
             nodeJob: try JSONValue.parse(stored.nodeJob).object ?? [:])
         var session: StoredAgentSession
@@ -88,11 +94,20 @@ struct ServerAgentRuntime: AgentRuntime {
         let startedData = try await pending.agentCommits.startedData(execution)
         let shellAvailable: Bool
         if let pinned = try JSONValue.parse(session.usage)["shell_enabled"]?.bool { shellAvailable = pinned }
-        else { shellAvailable = try await routes.store.pinAgentShell(session: session, enabled: await routes.agentShellAvailable()) }
+        else { shellAvailable = try await routes.store.pinAgentShell(session: session, enabled: routes.config.agentService.shellEnabled) }
+        let viewImage: Bool
+        if let pinned = try JSONValue.parse(session.usage)["view_image"]?.bool { viewImage = pinned && shellAvailable }
+        else {
+            // Old paused snapshots have the old tool set. Introducing a new tool would invalidate their continuation.
+            let legacyContinuation = continuation["snapshot"]?.object != nil && continuation["snapshot"]?["executor_profile"] == nil
+            let vision = shellAvailable && !legacyContinuation ? try await modelSupportsVision(soul) : false
+            viewImage = try await routes.store.pinAgentViewImage(session: session, enabled: vision)
+        }
         var roundUsage = LLMUsage.empty
         var recordedUsage = try JSONValue.parse(session.usage)
         var cumulative = LLMUsage(json: recordedUsage)
         let previousElapsed = recordedUsage["active_elapsed_time"]?.double ?? 0
+        deadline = deadline.addingTimeInterval(-previousElapsed)
         func activeElapsed() -> Double {
             let duration = (ContinuousClock.now - activeStarted).components
             return previousElapsed + Double(duration.seconds) + Double(duration.attoseconds) / 1e18
@@ -102,6 +117,7 @@ struct ServerAgentRuntime: AgentRuntime {
             json["active_elapsed_time"] = .double(activeElapsed())
             json["node_started"] = recordedUsage["node_started"] ?? .null
             json["shell_enabled"] = .bool(shellAvailable)
+            json["view_image"] = .bool(viewImage)
             return JSONValue.object(json).compactJSON()
         }
         var inputs = JSONObject(); inputs["task"] = .string(data.task)
@@ -127,7 +143,8 @@ struct ServerAgentRuntime: AgentRuntime {
             let body: JSONObject = ["operation_id": .string(operation), "generation": .int(session.generation), "execution": .object(identity),
                 "model": ["provider": .string(soul.provider!), "name": .string(soul.model!), "parameters": .object(soul.modelParameters)],
                 "system_prompt": .string(prompt.system), "task": .array(prompt.task), "output_schema": data.outputSchema ?? .null,
-                "tools": ["ask_human": .bool(soul.askHuman), "shell": .bool(shellAvailable)], "env": .object(env), "files": .array(prompt.files),
+                "executor_profile": .string(soul.executorProfile),
+                "tools": ["ask_human": .bool(soul.askHuman), "shell": .bool(shellAvailable), "view_image": .bool(viewImage)], "env": .object(env), "files": .array(prompt.files),
                 "limits": ["max_turns": 50, "timeout_seconds": .int(max(1, Int(deadline.timeIntervalSinceNow)))], "continuation": continuation]
             // Identities are fixed across uncertain transport retries. Secrets are never persisted in the operation ledger.
             let scope = AgentModelScope(operationID: operation, generation: session.generation, execution: identity,
@@ -138,12 +155,13 @@ struct ServerAgentRuntime: AgentRuntime {
                 try await admitted { try await routes.store.startAgentOperation(session: session, operation: operation,
                     digest: Self.operationDigest(body), tokenHash: Tokens.sha256(token), startedData: startedData.compactJSON(), maxConcurrent: routes.config.agentService.maxConcurrent) }
                 session = try requireAgentSession(try await routes.store.agentSession(execution: execution))
-                try await service.lease(execution: execution, generation: session.generation)
-                let remote = try await service.start(body, token: token)
+                let remote = try await service.begin(body, token: token, execution: execution,
+                    generation: session.generation, deadline: deadline, isAborted: context.isAborted)
                 try await routes.store.recordAgentRun(session: session, run: remote)
                 let activeSession = session
                 let trace = AgentTraceWriter(secrets: env.values.compactMap(\.string))
-                let terminal = try await service.result(run: remote, operation: operation, deadline: deadline, isAborted: context.isAborted) { event, name, data in
+                let terminal = try await service.result(run: remote, operation: operation, deadline: deadline,
+                    expectedProfile: soul.executorProfile, generation: session.generation, isAborted: context.isAborted) { event, name, data in
                     try await trace.record(routes: routes, session: activeSession, run: remote, event: event, name: name, data: data)
                 }
                 let usage = await routes.agentModelScopes.revoke(token: token)
@@ -217,6 +235,26 @@ struct ServerAgentRuntime: AgentRuntime {
                 throw NodeError("AgentExecutionFailed", "The agent operation could not be committed")
             }
         }
+    }
+
+    private func executorProfile(_ soul: AgentInlineConfig) async throws -> AgentExecutorProfile? {
+        guard routes.config.agentService.shellEnabled,
+              let profiles = await routes.agentExecutorProfiles.profiles(routes.config.agentService) else { return nil }
+        guard let profile = profiles.first(where: { $0.name == soul.executorProfile }) else {
+            throw NodeError("executor_profile_unknown", "Executor profile \(soul.executorProfile) is not available on this server")
+        }
+        guard profile.status == "ok" else {
+            throw NodeError("executor_profile_unavailable", "Executor profile \(soul.executorProfile) is not available on this server")
+        }
+        return profile
+    }
+
+    private func modelSupportsVision(_ soul: AgentInlineConfig) async throws -> Bool {
+        guard let provider = soul.provider, let model = soul.model,
+              let models = routes.runtimeServices(appId: appID, userId: userID).models else { return false }
+        let credentials = try await routes.agentCredentials(provider: provider, model: model, reference: soul.json["model"]?["credential_ref"])
+        let schema = try await models.modelSchema(provider: provider, model: model, modelType: "llm", credentials: credentials)
+        return schema?.features?.contains("vision") == true
     }
     /// The audit digest identifies the public operation shape; a low-entropy secret must never be guessable from it.
     static func operationDigest(_ body: JSONObject) -> String {

@@ -194,4 +194,65 @@ void main() {
     expect(t.widget<EditableText>(prompt).controller.text, 'After save remote');
     expect(t.takeException(), isNull);
   });
+  testWidgets(
+    'profile picker keeps unavailable imports and retains selection across Shell off and on',
+    (t) async {
+      final f = Fixture();
+      addTearDown(f.changes.close);
+      f.api.response = {
+        ...composerReply(),
+        'agent_soul': {
+          'schema_version': 1,
+          'executor_profile': 'imported-environment',
+        },
+      };
+      f.api.executorContext = {
+        'shell_enabled': true,
+        'profiles': [
+          {
+            'name': 'default',
+            'description': 'Default shell',
+            'status': 'ok',
+            'timeout_seconds_max': 1800,
+          },
+          {
+            'name': 'rendering',
+            'description': 'Prepared tools',
+            'status': 'device_missing',
+            'timeout_seconds_max': 10800,
+          },
+        ],
+      };
+      await mount(t, f);
+      final picker = find.byKey(
+        const ValueKey('inline-agent-executor-profile'),
+      );
+      expect(
+        t.widget<DifySelect<String>>(picker).value,
+        'imported-environment',
+      );
+      expect(
+        t.widget<DifySelect<String>>(picker).disabledValues,
+        containsAll(['imported-environment', 'rendering']),
+      );
+      expect(
+        find.text(
+          'Executor profile imported-environment is not available on this server.',
+        ),
+        findsOneWidget,
+      );
+      f.api.executorContext = {'shell_enabled': false, 'profiles': null};
+      await t.pump(const Duration(seconds: 15));
+      await t.pump();
+      expect(picker, findsNothing);
+      f.api.executorContext = {'shell_enabled': true, 'profiles': null};
+      await t.pump(const Duration(seconds: 15));
+      await t.pump();
+      expect(
+        t.widget<DifySelect<String>>(picker).value,
+        'imported-environment',
+      );
+      expect(find.textContaining('could not be checked'), findsOneWidget);
+    },
+  );
 }

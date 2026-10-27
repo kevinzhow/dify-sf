@@ -31,7 +31,15 @@
     "inline.editForbidden": "You do not have permission to edit this workflow.",
     "inline.nodeMissing": "This node or its configuration was removed. Reload the workflow.",
     "inline.configurationTooLarge": "This configuration is too large. Remove files or shorten its text.",
-    "inline.rateLimited": "Too many requests. Wait briefly and retry."
+    "inline.rateLimited": "Too many requests. Wait briefly and retry.",
+    "inline.executorProfile": "Execution environment",
+    "inline.executorUnavailable": "Executor profile {{name}} is not available on this server.",
+    "inline.executorUnknown": "Executor profiles could not be checked. The run will use the service’s actual response.",
+    "inline.executorAvailabilityUnknown": "Availability unknown",
+    "inline.executorStatus.image_missing": "Image missing",
+    "inline.executorStatus.device_missing": "Device missing",
+    "inline.executorStatus.unavailable": "Unavailable",
+    "inline.refreshProfiles": "Refresh environments"
   },
   "common": {
     "web.fontLoadFailed": "Some text could not be loaded. Reconnect and retry.",

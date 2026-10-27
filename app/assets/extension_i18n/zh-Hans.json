@@ -31,7 +31,15 @@
     "inline.editForbidden": "你没有编辑此工作流的权限。",
     "inline.nodeMissing": "此节点或其配置已删除，请重新加载工作流。",
     "inline.configurationTooLarge": "配置过大，请减少文件或缩短文本。",
-    "inline.rateLimited": "请求过于频繁，请稍后重试。"
+    "inline.rateLimited": "请求过于频繁，请稍后重试。",
+    "inline.executorProfile": "执行环境",
+    "inline.executorUnavailable": "执行环境 {{name}} 在此服务器上不可用。",
+    "inline.executorUnknown": "无法核对执行环境；运行时以服务的实际响应为准。",
+    "inline.executorAvailabilityUnknown": "可用性未知",
+    "inline.executorStatus.image_missing": "缺少镜像",
+    "inline.executorStatus.device_missing": "缺少设备",
+    "inline.executorStatus.unavailable": "不可用",
+    "inline.refreshProfiles": "刷新执行环境"
   },
   "common": {
     "web.fontLoadFailed": "部分文字加载失败，请联网后重试。",

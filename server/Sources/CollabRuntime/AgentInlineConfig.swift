@@ -11,12 +11,20 @@ public struct AgentInlineConfig: Sendable {
     public var files: [JSONObject]
     public var environment: [JSONObject]
     public var secretReferences: [JSONObject]
+    /// The immutable Soul pins a name; the executor host owns its definition.
+    public var executorProfile: String
     public var askHuman: Bool { !contacts.isEmpty }
 
     public init(_ value: JSONObject, requireModel: Bool = false) throws {
         let allowed: Set<String> = ["schema_version", "prompt", "tools", "knowledge", "human", "env", "config_skills",
-            "config_files", "config_note", "sandbox", "memory", "model", "app_features", "app_variables", "misc_legacy"]
+            "config_files", "config_note", "sandbox", "memory", "model", "app_features", "app_variables", "misc_legacy", "executor_profile"]
         guard Set(value.keys).isSubset(of: allowed) else { throw NodeDataError("Unknown agent config field") }
+        if let profile = value["executor_profile"] {
+            guard let name = profile.string, name.isEmpty || Self.validExecutorProfile(name) else {
+                throw NodeDataError("Invalid agent executor profile name")
+            }
+            executorProfile = name.isEmpty ? "default" : name
+        } else { executorProfile = "default" }
         if let version = value["schema_version"], version != 1 { throw NodeDataError("Unsupported agent config version") }
         for name in ["prompt", "tools", "knowledge", "human", "env", "sandbox", "memory", "app_features", "misc_legacy", "model"] {
             if let section = value[name], section != .null, section.object == nil {
@@ -150,6 +158,10 @@ public struct AgentInlineConfig: Sendable {
             if let name = value[key]?.string, !name.isEmpty { return name }
         }
         return ""
+    }
+
+    public static func validExecutorProfile(_ name: String) -> Bool {
+        name.utf8.count <= 64 && name.range(of: #"^[a-z0-9][a-z0-9-]*\z"#, options: .regularExpression) != nil
     }
 
     public static func reservedEnvironment(_ name: String) -> Bool {

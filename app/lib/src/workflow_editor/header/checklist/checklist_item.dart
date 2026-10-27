@@ -6,12 +6,20 @@ import '../../store/workflow_store.dart';
 @immutable
 class ChecklistItem {
   factory ChecklistItem.fromJson(DifyJson item) => ChecklistItem(
-    id: '${item['id'] ?? ''}', type: '${item['type'] ?? ''}', title: '${item['title'] ?? item['id'] ?? ''}',
-    toolIcon: item['toolIcon'], unConnected: item['unConnected'] == true,
-    errorMessages: [for (final e in item['errorMessages'] as List? ?? const []) '$e'],
-    canNavigate: item['canNavigate'] == true, disableGoTo: item['disableGoTo'] == true,
-    isPluginMissing: item['isPluginMissing'] == true, pluginUniqueIdentifier: item['pluginUniqueIdentifier'] as String?,
+    id: '${item['id'] ?? ''}',
+    type: '${item['type'] ?? ''}',
+    title: '${item['title'] ?? item['id'] ?? ''}',
+    toolIcon: item['toolIcon'],
+    unConnected: item['unConnected'] == true,
+    errorMessages: [
+      for (final e in item['errorMessages'] as List? ?? const []) '$e',
+    ],
+    canNavigate: item['canNavigate'] == true,
+    disableGoTo: item['disableGoTo'] == true,
+    isPluginMissing: item['isPluginMissing'] == true,
+    pluginUniqueIdentifier: item['pluginUniqueIdentifier'] as String?,
     openInlineAgentPanel: item['openInlineAgentPanel'] == true,
+    blocksRun: item['blocksRun'] != false,
   );
 
   const ChecklistItem({
@@ -26,6 +34,7 @@ class ChecklistItem {
     this.isPluginMissing = false,
     this.pluginUniqueIdentifier,
     this.openInlineAgentPanel = false,
+    this.blocksRun = true,
   });
 
   final String id;
@@ -44,7 +53,14 @@ class ChecklistItem {
   final String? pluginUniqueIdentifier;
   final bool openInlineAgentPanel;
 
-  ChecklistItem copyWith({String? type, String? title, bool? openInlineAgentPanel}) => ChecklistItem(
+  /// Availability that could not be checked is shown, while the server's actual run remains authoritative.
+  final bool blocksRun;
+
+  ChecklistItem copyWith({
+    String? type,
+    String? title,
+    bool? openInlineAgentPanel,
+  }) => ChecklistItem(
     id: id,
     type: type ?? this.type,
     title: title ?? this.title,
@@ -56,6 +72,7 @@ class ChecklistItem {
     isPluginMissing: isPluginMissing,
     pluginUniqueIdentifier: pluginUniqueIdentifier,
     openInlineAgentPanel: openInlineAgentPanel ?? this.openInlineAgentPanel,
+    blocksRun: blocksRun,
   );
 
   /// The item as Dify's JSON (what the store's `checklistItems` holds).
@@ -71,6 +88,7 @@ class ChecklistItem {
     'isPluginMissing': isPluginMissing,
     'pluginUniqueIdentifier': ?pluginUniqueIdentifier,
     if (openInlineAgentPanel) 'openInlineAgentPanel': true,
+    if (!blocksRun) 'blocksRun': false,
   };
 
   @override
@@ -86,10 +104,19 @@ class ChecklistItem {
       other.disableGoTo == disableGoTo &&
       other.isPluginMissing == isPluginMissing &&
       other.pluginUniqueIdentifier == pluginUniqueIdentifier &&
-      other.openInlineAgentPanel == openInlineAgentPanel;
+      other.openInlineAgentPanel == openInlineAgentPanel &&
+      other.blocksRun == blocksRun;
 
   @override
-  int get hashCode => Object.hash(id, type, title, unConnected, Object.hashAll(errorMessages), canNavigate);
+  int get hashCode => Object.hash(
+    id,
+    type,
+    title,
+    unConnected,
+    Object.hashAll(errorMessages),
+    canNavigate,
+    blocksRun,
+  );
 
   @override
   String toString() => 'ChecklistItem($id, $type, "$title", $errorMessages${unConnected ? ', unConnected' : ''})';

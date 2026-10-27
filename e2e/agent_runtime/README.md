@@ -46,3 +46,14 @@ index, timestamp and scope fields. Both paths use the same runtime encoder.
 
 Before running a workflow, the harness waits for the scripted provider HTTP endpoint and the authenticated isolated
 sandbox health response. Container creation alone is not treated as readiness.
+
+To cover a named environment and workspace image viewing, additionally set `AGENT_E2E_PROFILE`,
+`AGENT_E2E_PROFILES` (an administrator-owned fixture profile file, mounted read-only into both services) and
+`AGENT_E2E_VIEW_IMAGE=1`. The named profile must use an available shellctl image and specify a memory limit for the
+container assertion. A short profile timeout below the fixture's 600-second node timeout also checks that Swift
+actually caps the operation accepted by the service. These profiles contain synthetic test settings only.
+
+This variant verifies the catalog's safe projection, container profile label and memory limit, changes the draft's
+profile during a pause, then resumes the original pinned profile after the process restart. The scripted provider
+creates a synthetic PNG, invokes `view_image` and verifies that only the next model request carries that image. Its
+six model calls still preserve the single shell side effect, two questions, final file upload and drained cleanup.

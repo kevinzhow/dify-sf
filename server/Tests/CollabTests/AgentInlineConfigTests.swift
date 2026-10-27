@@ -7,6 +7,19 @@ struct AgentInlineConfigTests {
         ["plugin_id": "langgenius/openai_api_compatible", "model_provider": "openai_api_compatible", "model": "fixture",
          "model_settings": ["temperature": 0.2]]
     }
+    @Test func executorProfileIsOnlyANameAndUnknownNamesRemainPortable() throws {
+        #expect(try AgentInlineConfig([:]).executorProfile == "default")
+        #expect(try AgentInlineConfig(["executor_profile": ""]).executorProfile == "default")
+        for name in ["default", "remote-environment", String(repeating: "a", count: 64)] {
+            let value: JSONObject = ["executor_profile": .string(name)]
+            #expect(try AgentInlineConfig(value).executorProfile == name)
+            #expect(try AgentInlineConfig(value).json["executor_profile"] == .string(name))
+        }
+        for invalid in [.null, 1, true, "UPPER", "bad/name", "bad_name", "bad\n", " space", .string(String(repeating: "a", count: 65))] as [JSONValue] {
+            #expect(throws: NodeDataError.self) { try AgentInlineConfig(["executor_profile": invalid]) }
+        }
+        #expect(throws: NodeDataError.self) { try AgentInlineConfig(["executor_profile": ["image": "arbitrary"]]) }
+    }
     @Test func productConfigShapeAndExactModelProviderArePreserved() throws {
         var soul = AgentInlineConfig.empty
         soul["model"] = Self.model

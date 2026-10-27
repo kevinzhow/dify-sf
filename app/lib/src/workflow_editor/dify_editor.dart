@@ -1015,6 +1015,17 @@ class _BoundHeaderState extends State<_BoundHeader> {
   String? _agentIdentity;
   int _agentLoad = 0, _agentRetryCount = 0;
   Timer? _agentRetry;
+  Timer? _executorRefresh;
+
+  Future<void> _refreshExecutors() async {
+    final api = widget.agentComposer;
+    if (api == null || _agents.souls.isEmpty) return;
+    final generation = _agentLoad;
+    final context = await AgentExecutorContext.load(api, widget.controller.docId);
+    if (!mounted || generation != _agentLoad) return;
+    _agents = _agents.withExecutors(context);
+    _binding?.refreshChecklist();
+  }
 
   void _agentGraphChanged({bool retry = false}) {
     final doc = widget.controller.doc;
@@ -1056,6 +1067,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
     super.initState();
     widget.controller.addListener(_agentGraphChanged);
     _agentGraphChanged();
+    _executorRefresh = Timer.periodic(const Duration(seconds: 15), (_) => _refreshExecutors());
     widget.models?.addListener(_modelsChanged);
     widget.versions?.addListener(_versionsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _versionsChanged());
@@ -1152,6 +1164,7 @@ class _BoundHeaderState extends State<_BoundHeader> {
   @override
   void dispose() {
     _agentRetry?.cancel();
+    _executorRefresh?.cancel();
     widget.controller.removeListener(_agentGraphChanged);
     widget.models?.removeListener(_modelsChanged);
     widget.versions?.removeListener(_versionsChanged);

@@ -595,7 +595,7 @@ List<ChecklistItem> computeChecklistOf(List<DifyFlowNode> nodes, List<DifyFlowEd
       }
       if (_isAgentV2(n.data) && hasValidInlineAgentBinding(n.data)) {
         for (final issue in InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, modelLabels: env.inlineAgentModelLabels, declarations: jsList(n.data['agent_declared_outputs']))) {
-          errors.add(t(issue.namespace, issue.key));
+          errors.add(t(issue.namespace, issue.key, InlineAgentChecks.profileParams(env.inlineAgentSouls[n.id])));
         }
       }
       if (c.hasInvalidVar(n, usedVars)) errors.add(t('workflow', 'errorMsg.invalidVariable'));
@@ -604,6 +604,9 @@ List<ChecklistItem> computeChecklistOf(List<DifyFlowNode> nodes, List<DifyFlowEd
 
     final canSkipConnectionCheck = !env.shouldCheckStartNode || c.isStartMeta(n) || n.blockType == 'start-placeholder';
     final unConnected = !c.validIds.contains(n.id) && !canSkipConnectionCheck;
+    final blocksRun = errors.isNotEmpty || unConnected;
+    final executorUnknown = _isAgentV2(n.data) && InlineAgentChecks.executorUnknown(env.inlineAgentSouls[n.id]);
+    if (executorUnknown) errors.add(t('agent-v-2', 'inline.executorUnknown'));
     if (errors.isNotEmpty || unConnected) {
       list.add(
         ChecklistItem(
@@ -613,8 +616,9 @@ List<ChecklistItem> computeChecklistOf(List<DifyFlowNode> nodes, List<DifyFlowEd
           toolIcon: env.toolIcon?.call(n),
           unConnected: unConnected,
           errorMessages: errors,
+          blocksRun: blocksRun,
           openInlineAgentPanel: _isAgentV2(n.data) && hasValidInlineAgentBinding(n.data) &&
-              InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, modelLabels: env.inlineAgentModelLabels, declarations: jsList(n.data['agent_declared_outputs'])).isNotEmpty,
+              (executorUnknown || InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, modelLabels: env.inlineAgentModelLabels, declarations: jsList(n.data['agent_declared_outputs'])).isNotEmpty),
           canNavigate: !isPluginMissing,
           disableGoTo: isPluginMissing,
           isPluginMissing: isPluginMissing,
@@ -687,7 +691,7 @@ String? checkBeforePublishOf(List<DifyFlowNode> nodes, List<DifyFlowEdge> edges,
     }
     if (_isAgentV2(n.data) && hasValidInlineAgentBinding(n.data)) {
       final issues = InlineAgentChecks.issues(env.inlineAgentSouls[n.id], modelFeatures: env.inlineAgentModelFeatures, modelLabels: env.inlineAgentModelLabels, declarations: jsList(n.data['agent_declared_outputs']));
-      if (issues.isNotEmpty) return '[${n.title}] ${t(issues.first.namespace, issues.first.key)}';
+      if (issues.isNotEmpty) return '[${n.title}] ${t(issues.first.namespace, issues.first.key, InlineAgentChecks.profileParams(env.inlineAgentSouls[n.id]))}';
     }
     final duplicates = c.duplicates[n.id] ?? const [];
     if (duplicates.isNotEmpty) return '[${n.title}] ${duplicates.first}';
@@ -722,17 +726,18 @@ class WorkflowRunValidation {
   final List<ChecklistItem> warningNodes;
   final ChecklistTranslate _t;
 
-  bool get hasValidationErrors => warningNodes.isNotEmpty;
+  bool get hasValidationErrors => warningNodes.any((item) => item.blocksRun);
 
   /// Refuse invalid graphs before sending. Named errors and navigation intentionally
   /// extend Dify's summary toast while retaining its existing checklist and validators.
   bool validateBeforeRun(void Function(String message) toastError, {void Function(ChecklistItem item)? onFirstInvalid}) {
-    if (warningNodes.isEmpty) return true;
-    toastError(warningNodes.map((item) {
+    final invalid = warningNodes.where((item) => item.blocksRun).toList();
+    if (invalid.isEmpty) return true;
+    toastError(invalid.map((item) {
       final errors = [...item.errorMessages, if (item.unConnected) _t('workflow', 'common.needConnectTip')];
       return '[${item.title}] ${errors.isEmpty ? _t('workflow', 'panel.checklistTip') : errors.join('; ')}';
     }).join('\n'));
-    final first = warningNodes.where((item) => item.canNavigate && !item.disableGoTo).firstOrNull;
+    final first = invalid.where((item) => item.canNavigate && !item.disableGoTo).firstOrNull;
     if (first != null) onFirstInvalid?.call(first);
     return false;
   }
