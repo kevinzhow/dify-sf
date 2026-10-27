@@ -161,7 +161,8 @@
       "kind": "text-composition",
       "evidence": [
         "app/test/design_typography_test.dart",
-        "app/test/dify_spec/dify_ui/drawer_test.dart"
+        "app/test/dify_spec/dify_ui/drawer_test.dart",
+        "app/test/dify_spec/features/new_feature_panel/feature_panel_drawer_test.dart"
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
     },

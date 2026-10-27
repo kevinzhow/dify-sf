@@ -1,5 +1,6 @@
 // dify-spec: web/app/components/base/features/new-feature-panel/__tests__/feature-panel-drawer.spec.tsx
 import 'package:dify_sf_app/src/workflow_editor/features/features.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +21,37 @@ Future<void> renderDrawer(WidgetTester t, {required bool show, VoidCallback? onC
 }
 
 void main() {
+  testWidgets('portal uses the full viewport and leaves a dismissible gutter beside a phone sidebar', (t) async {
+    t.view.physicalSize = const Size(390, 760);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    var closed = 0;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Material(
+          child: Row(
+            children: [
+              const SizedBox(width: 64),
+              Expanded(
+                child: FeaturePanelDrawer(
+                  show: true,
+                  onClose: () => closed++,
+                  child: const Text('Viewport drawer'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(t.getRect(find.byType(DifyDrawerPopup)), const Rect.fromLTWH(32, 112, 358, 640));
+    await t.tapAt(const Offset(16, 400));
+    await t.pump();
+    expect(closed, 1);
+    expect(t.takeException(), isNull);
+  });
+
   group('FeaturePanelDrawer', () {
     group('Rendering', () {
       testWidgets('should render children when show is true', (t) async {

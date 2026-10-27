@@ -130,7 +130,7 @@ class NewFeaturePanel extends StatelessWidget {
   }
 }
 
-/// FeaturePanelDrawer: dify-ui's Drawer from the right, modal: a `bg-black/25` backdrop over the editor (a click on
+/// FeaturePanelDrawer: dify-ui's Drawer from the right, modal: a `bg-black/25` backdrop over the viewport (a click on
 /// it closes), the popup [top] below the top, 8 px above the bottom, 420 px wide (at most the width less 2 rem),
 /// `rounded-l-2xl border-[0.5px] bg-components-panel-bg-alt shadow-xl`, sliding in over 200 ms. Escape closes it, and
 /// so does swiping it to the right (touch). Nothing is drawn while not [show]n.
@@ -177,37 +177,39 @@ class _FeaturePanelDrawerState extends State<FeaturePanelDrawer> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.show) return const SizedBox.shrink();
     final curve = CurvedAnimation(parent: _anim, curve: Curves.ease);
-    return LayoutBuilder(
-      builder: (context, c) {
-        final width = math.min(420.0, c.maxWidth - 32);
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            FadeTransition(
-              opacity: curve,
-              child: DifyDrawerBackdrop(
-                color: difyDrawerBlackBackdrop,
-                opacity: 1 - (_swipe / width).clamp(0.0, 1.0),
-                onTap: _close,
+    return DifyDrawerPortal(
+      open: widget.show,
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final width = math.min(420.0, c.maxWidth - 32);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              FadeTransition(
+                opacity: curve,
+                child: DifyDrawerBackdrop(
+                  color: difyDrawerBlackBackdrop,
+                  opacity: 1 - (_swipe / width).clamp(0.0, 1.0),
+                  onTap: _close,
+                ),
               ),
-            ),
-            Positioned(
-              top: widget.top,
-              bottom: 8,
-              right: 0,
-              width: width,
-              child: AnimatedBuilder(
-                animation: curve,
-                builder: (context, child) =>
-                    Transform.translate(offset: Offset((1 - curve.value) * (width + 2) + _swipe, 0), child: child),
-                child: _popup(width),
+              Positioned(
+                top: widget.top,
+                bottom: 8,
+                right: 0,
+                width: width,
+                child: AnimatedBuilder(
+                  animation: curve,
+                  builder: (context, child) =>
+                      Transform.translate(offset: Offset((1 - curve.value) * (width + 2) + _swipe, 0), child: child),
+                  child: _popup(width),
+                ),
               ),
-            ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 

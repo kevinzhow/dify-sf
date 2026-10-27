@@ -318,7 +318,8 @@
       "publicClasses": [
         "DifyDrawerBackdrop",
         "DifyDrawerCloseButton",
-        "DifyDrawerPopup"
+        "DifyDrawerPopup",
+        "DifyDrawerPortal"
       ],
       "scope": "shared visual family; representative declared states, not every possible prop combination"
     },

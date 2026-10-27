@@ -16,6 +16,48 @@ import 'widgets.dart';
 /// (web/app/components/base/features/new-feature-panel/feature-panel-drawer.tsx).
 const difyDrawerBlackBackdrop = Color.fromRGBO(0, 0, 0, 0.25);
 
+/// dify-ui's DrawerPortal: retain the caller's inherited state while laying out
+/// the drawer and backdrop in the root overlay, against the full viewport.
+class DifyDrawerPortal extends StatefulWidget {
+  const DifyDrawerPortal({super.key, required this.open, required this.child});
+
+  final bool open;
+  final Widget child;
+
+  @override
+  State<DifyDrawerPortal> createState() => _DifyDrawerPortalState();
+}
+
+class _DifyDrawerPortalState extends State<DifyDrawerPortal> {
+  final _portal = OverlayPortalController();
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(DifyDrawerPortal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  void _sync() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!mounted) return;
+    if (widget.open && !_portal.isShowing) _portal.show();
+    if (!widget.open && _portal.isShowing) _portal.hide();
+  });
+
+  @override
+  Widget build(BuildContext context) => OverlayPortal(
+    controller: _portal,
+    overlayLocation: OverlayChildLocation.rootOverlay,
+    overlayChildBuilder: (_) => widget.child,
+    child: const SizedBox.shrink(),
+  );
+}
+
 /// Shows a drawer sliding in from the right (`swipeDirection="right"`, `transition-transform duration-200`): [builder]
 /// (usually a [DifyDrawerPopup]) gets the close callback and is placed against the right edge inside [insets]
 /// (`top-16 right-2 bottom-3`, …), at most [maxWidth] wide (`w-120`) and fills its available height.
