@@ -43,6 +43,17 @@
     "inline.executorStatus.image_missing": "イメージがありません",
     "inline.executorStatus.device_missing": "デバイスがありません",
     "inline.executorStatus.unavailable": "利用不可",
-    "inline.refreshProfiles": "実行環境を更新"
+    "inline.refreshProfiles": "実行環境を更新",
+    "inline.maxTurns": "モデル呼び出し回数の上限",
+    "inline.maxTurnsHint": "この実行環境の上限は {{max}} 回です。既存の設定は 50 回です。",
+    "inline.invalidMaxTurns": "実行環境の上限以内の正の整数を設定してください。",
+    "inline.progressCalls": "モデル呼び出し {{count}} / {{max}}",
+    "inline.progressDetails": "Agent の実行状況",
+    "inline.progressImageUnavailable": "進捗画像を表示できないか、有効期限が切れています。",
+    "inline.enlargeProgressImage": "進捗画像を拡大",
+    "inline.progressStarted": "Agent を開始しています…",
+    "inline.partialResult": "部分完了：呼び出し回数または時間の上限が近づいたため、Agent は現在の成果を提出しました。",
+    "inline.cacheHitTokens": "プロンプトキャッシュヒット：{{count}} tokens",
+    "inline.unknownUsage": "不明"
   }
 }

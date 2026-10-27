@@ -164,7 +164,7 @@ extension Routes {
         let v = view(def, state)
         func parsed(_ text: String?) -> JSONObject? {
             guard let text, let o = (try? JSONValue.parse(text))?.object, !o.isEmpty else { return nil }
-            return o
+            return JSONObject(o.filter { $0.key != ModelDiscovery.metadataKey })
         }
         if let c = v.customModels.first(where: { !$0.unadded && $0.key.model == model && $0.key.modelType == modelType }) {
             if v.settings[c.key] == false { throw NodeError("ValueError", "Model is disabled") }

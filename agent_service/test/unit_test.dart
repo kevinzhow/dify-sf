@@ -257,6 +257,8 @@ void main() {
       'completion_tokens': 2,
       'total_tokens': 5,
       'reasoning_tokens': null,
+      'prompt_cache_hit_tokens': null,
+      'prompt_cache_miss_tokens': null,
     });
     total.add(
       Usage.fromDify({
@@ -268,6 +270,52 @@ void main() {
     );
     expect(total.toJson()['reasoning_tokens'], 3);
     expect(total.toJson()['total_tokens'], 10);
+  });
+
+  test('cache usage: DeepSeek hit and miss, Swift cached_tokens, OpenAI '
+      'prompt_tokens_details; misses derived from hits; null unless '
+      'reported; sums of the reported values', () {
+    Map<String, Object?> cache(Map<String, Object?> u) {
+      final j = Usage.fromDify(u).toJson();
+      return {
+        'hit': j['prompt_cache_hit_tokens'],
+        'miss': j['prompt_cache_miss_tokens'],
+      };
+    }
+
+    expect(
+      cache({
+        'prompt_tokens': 100,
+        'prompt_cache_hit_tokens': 64,
+        'prompt_cache_miss_tokens': 36,
+      }),
+      {'hit': 64, 'miss': 36},
+    );
+    expect(cache({'prompt_tokens': 100, 'cached_tokens': 90}), {
+      'hit': 90,
+      'miss': 10,
+    });
+    expect(
+      cache({
+        'prompt_tokens': 100,
+        'prompt_tokens_details': {'cached_tokens': 0},
+      }),
+      {'hit': 0, 'miss': 100},
+    );
+    expect(cache({'prompt_tokens': 100}), {'hit': null, 'miss': null});
+    final total = Usage()
+      ..add(Usage.fromDify({'prompt_tokens': 50}))
+      ..add(Usage.fromDify({'prompt_tokens': 100, 'cached_tokens': 80}))
+      ..add(
+        Usage.fromDify({
+          'prompt_tokens': 120,
+          'prompt_cache_hit_tokens': 100,
+          'prompt_cache_miss_tokens': 20,
+        }),
+      );
+    expect(total.promptCacheHitTokens, 180);
+    expect(total.promptCacheMissTokens, 40);
+    expect(total.promptTokens, 270);
   });
 
   test('candidate errors are reported per field', () async {

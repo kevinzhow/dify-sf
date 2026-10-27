@@ -6,6 +6,28 @@ import HTTPTypes
 import Vapor
 
 extension Routes {
+    /// Progress cannot mint file ownership from an arbitrary ID or URL. It uses
+    /// the same completed operation upload receipt as a final declared file.
+    func normalizeAgentProgress(_ data: JSONObject, session: StoredAgentSession, files: (any RuntimeFiles)?) async throws -> JSONObject {
+        var safe: JSONObject = [:]
+        if let caption = data["caption"]?.string {
+            safe["caption"] = .string(String(String.UnicodeScalarView(caption.unicodeScalars.prefix(200))))
+        }
+        if case .int(let index)? = data["call_index"], (1...1000).contains(index) {
+            safe["call_index"] = .int(index)
+        }
+        guard let file = data["file"], let id = file["upload_id"]?.string, UUID(uuidString: id) != nil,
+              let mime = file["mime_type"]?.string, ["image/png", "image/jpeg", "image/webp"].contains(mime),
+              case .int(let size)? = file["size"], size > 0, size <= 3 << 20 else {
+            safe["file_unavailable"] = true
+            return safe
+        }
+        let normalized = try await normalizeAgentFileLeaf(file, definition: ["type": "file"], session: session, files: files)
+        if RuntimeFile.isFile(normalized) { safe["file"] = normalized }
+        else { safe["file_unavailable"] = true }
+        return safe
+    }
+
     func registerAgentUploads(on r: any RoutesBuilder) {
         r.post("inner", "agent", "files", "upload-request") { req in await handle(req) { try await self.reserveAgentFile(req) } }
         r.put("inner", "agent", "files", "uploads", ":upload") { req in await handle(req) { try await self.receiveAgentFile(req) } }

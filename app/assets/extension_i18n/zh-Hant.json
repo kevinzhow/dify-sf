@@ -43,6 +43,17 @@
     "inline.executorStatus.image_missing": "缺少映像",
     "inline.executorStatus.device_missing": "缺少裝置",
     "inline.executorStatus.unavailable": "無法使用",
-    "inline.refreshProfiles": "重新整理執行環境"
+    "inline.refreshProfiles": "重新整理執行環境",
+    "inline.maxTurns": "最多模型呼叫次數",
+    "inline.maxTurnsHint": "目前執行環境最多允許 {{max}} 次呼叫；原有設定預設 50 次。",
+    "inline.invalidMaxTurns": "呼叫次數須為正整數，且不能超過執行環境的上限。",
+    "inline.progressCalls": "模型呼叫 {{count}} / {{max}}",
+    "inline.progressDetails": "Agent 執行過程",
+    "inline.progressImageUnavailable": "進度圖暫時無法使用或已過期。",
+    "inline.enlargeProgressImage": "放大進度圖",
+    "inline.progressStarted": "Agent 正在開始執行…",
+    "inline.partialResult": "部分完成：Agent 接近呼叫或時間上限，已提交目前成果。",
+    "inline.cacheHitTokens": "提示詞快取命中：{{count}} tokens",
+    "inline.unknownUsage": "未知"
   }
 }

@@ -105,7 +105,7 @@ Starts one operation. Every operation is a separate request; there is no separat
   "task": [{"type": "text", "text": "…"},
            {"type": "file", "file_id": "…", "mime_type": "image/png"}],
   "output_schema": null,
-    "tools": {"ask_human": true, "shell": false, "view_image": false},
+  "tools": {"ask_human": true, "shell": false, "view_image": false, "report_progress": false},
   "env": {"KEY": "value"},
   "files": [{"file_id": "…", "path": "files/spec.md"}],
   "limits": {"max_turns": 50, "timeout_seconds": 1800},
@@ -125,6 +125,13 @@ Starts one operation. Every operation is a separate request; there is no separat
   `tools.view_image: true` (a dify-sf extension, see [Viewing workspace images](#viewing-workspace-images)) adds the
   `view_image` tool and requires `tools.shell` (`400 invalid_request` otherwise). The Swift server sets it when the
   shell is on and the node's model declares the `vision` feature; it is not a Soul key.
+  `tools.report_progress: true` (a dify-sf extension, see [Progress previews](#progress-previews)) adds the
+  `report_progress` tool and requires `tools.shell` (`400 invalid_request` otherwise). Proposal: the Swift server sets
+  it whenever the shell is on (the image never goes to the model, so no `vision` is needed); it is not a Soul key.
+- `limits.max_turns` is the most model calls of this operation (Genkit's `maxTurns`; default 50). With the shell it
+  must not exceed the executor profile's `max_turns_max` (`422 invalid_request`, see
+  [Executor profiles](#executor-profiles)). When the calls or the time left are only what finishing needs, the
+  service tells the model to finish (see [Near-budget submit](#near-budget-submit)).
 - The `X-Agent-Run-Token` header is required for a new operation (`400 invalid_request` otherwise). The service keeps
   it in memory only.
 - Files are referenced by stable `file_id`; snapshots and model requests never contain URLs. Model inputs carry
@@ -204,8 +211,10 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 | `run_started` | `{"model", "call_index_base", "executor_profile"}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name |
 | `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB of UTF-8 is split into several, cut only between code points |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
-| `model_call` | `{"invocation_id", "usage"}` after each model call |
-| `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage"}` |
+| `model_call` | `{"invocation_id", "usage", "prompt"}` after each model call; `prompt` is `{"messages", "prefix_stable", "first_changed_message"}` (see [Prompt cache](#prompt-cache)) |
+| `budget_notice` | `{"reason": "max_turns" \| "timeout", "call_index", "remaining_calls", "remaining_seconds"?}`: the model was told to finish (see [Near-budget submit](#near-budget-submit)); at most one per run, before the model call it went with |
+| `progress` | `{"file": {"upload_id", "filename", "mime_type", "size"}, "caption", "call_index"}`: a preview from `report_progress` (see [Progress previews](#progress-previews)), between the tool's `started` and `finished` `tool_call` events |
+| `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage", "partial"}`; `partial` is `null`, or `{"reason", "notice_call_index"}` when the result came after a budget notice |
 | `paused` | `{"question_id", "tool_call_id", "question": <ask_human args>, "snapshot": <envelope>, "usage"}` |
 | `failed` | `{"error_type", "message", "usage", "snapshot"?}` |
 | `cancelled` | `{"usage", "snapshot"?}` |
@@ -220,8 +229,14 @@ streamed.
   answer that does not call `final_output` gives `candidate: null` and one error with `field: ""`. The agent service does not retry, default or branch on declared outputs; the Swift server decides
   (see [Declared outputs](#declared-outputs)).
 - `usage` is summed over the run's model calls: `{"prompt_tokens", "completion_tokens", "total_tokens",
-  "reasoning_tokens"}`. `reasoning_tokens` is `null` when the provider does not report it; it is a detail of
-  `completion_tokens` when the provider counts it there, never added a second time.
+  "reasoning_tokens", "prompt_cache_hit_tokens", "prompt_cache_miss_tokens"}`. `reasoning_tokens` is `null` when the
+  provider does not report it; it is a detail of `completion_tokens` when the provider counts it there, never added a
+  second time. The two cache counters are details of `prompt_tokens` (never added to it): hits are read from
+  DeepSeek's `prompt_cache_hit_tokens`, the Swift server's `cached_tokens` or OpenAI's
+  `prompt_tokens_details.cached_tokens`; misses from `prompt_cache_miss_tokens`, else `prompt_tokens` minus the hits.
+  Both are `null` when no hit count is reported, which is the case for every provider today (see
+  [Prompt cache](#prompt-cache)). Summed counters (reasoning and cache) are the sums of the values that were
+  reported.
 - `error_type`: `model_error`, `model_quota`, `max_turns`, `timeout`, `ask_human_invalid`, `sandbox_unavailable`,
   `sandbox_error`, `file_error`, `cancel_lost`, `internal`.
 - `paused`: `question_id` is `<execution_id>:q<resume_sequence + 1>`; `question` is the normalized ask_human arguments
@@ -350,8 +365,11 @@ Genkit Dart supplies the tool loop, streaming, interrupts and image input. The s
 | Declared outputs | As in Dify (pydantic-ai `ToolOutput`), the schema is exposed as the tool `final_output` (local `$defs` inlined, title `final_output`); there are no prompt instructions and no `response_format`. The tool is never executed: the first `final_output` call of a turn ends the run `succeeded` with its arguments as the candidate, checked against the schema for per-field errors. As with pydantic-ai's default `end_strategy='early'`, no other call of that turn is executed; the history answers them with pydantic-ai's texts (`Final result processed.`, `Output tool not used - a final result was already processed.`, `Tool not executed - a final result was already processed.`). No retries here. |
 | Human question | Tool `ask_human` (Dify's arguments: `title`, `question`, `markdown`, `fields`, `actions`, `urgency`, with Dify's limits) returns a Genkit interrupt. Arguments outside the schema or limits go back to the model as a tool error, as Dify's `ModelRetry` does. The run ends `paused`. A resume answers the same tool call with Dify's tool result (`status`, `action`, `values`, `rendered_content`). As in Dify, a model turn with more than one `ask_human` call fails with `ask_human_invalid`. |
 | Cancel | Closes the run's HTTP client (the Swift server then closes its connection to the plugin), interrupts tools and stops sandbox jobs. Whether the vendor stopped generating or billing cannot be observed and is not claimed. |
-| Usage | Taken from each model call's final usage chunk, counted once per `invocation_id`. |
-| Images of the workspace | `view_image` (dify-sf extension, with `tools.view_image`), see [Viewing workspace images](#viewing-workspace-images). The image goes to the next model call only. |
+| Usage | Taken from each model call's final usage chunk, counted once per `invocation_id`, with the cache counters when reported. |
+| History | Append-only: every model request is the previous request of the operation plus what came after it, byte for byte, so a provider's prefix cache can serve it (see [Prompt cache](#prompt-cache)). Nothing earlier is removed, reordered or re-serialized differently. |
+| Images of the workspace | `view_image` (dify-sf extension, with `tools.view_image`), see [Viewing workspace images](#viewing-workspace-images). The image stays in the conversation. |
+| Budget | Near the end of `max_turns` or `timeout_seconds` the model is told to finish now, see [Near-budget submit](#near-budget-submit). |
+| Progress | `report_progress` (dify-sf extension, with `tools.report_progress`), see [Progress previews](#progress-previews). |
 | Events | Tool starts and ends become `tool_call`. |
 | Failures | Genkit reports model errors and the turn limit in `finishReason`, not as exceptions; both map to `failed`. |
 
@@ -362,19 +380,106 @@ gets `view_image {"path", "detail"?}` (`path` relative to `/workspace` or absolu
 default, or `low`):
 
 1. The service resolves the path in the sandbox (inside `/workspace` after symlinks, a regular file) and reads it. It
-   must be a PNG, JPEG or WebP by its header. All images viewed in one model step together may have at most 3 MiB
+   must be a PNG, JPEG or WebP by its header. All images viewed in one conversation together may have at most 16 MiB
    (the gateway's file budget per model request is 6 MiB, task images included).
 2. It uploads the bytes as a file of the execution (`files/upload-request` and `PUT`; the Swift server grants a
    received upload to the run token's model files, `grantFiles`) and returns the tool result: a text with the path,
    type, dimensions and size, and the image as a multipart part (`dify-sf-file:<upload_id>`).
-3. The model bridge sends the image only to the model call right after that tool result: after the tool messages
-   (which carry text only) as a user message `view_image <path>:` plus the image part (`detail` as asked). Every later
-   call, including a resume, sends the tool text alone. A viewed image is therefore paid for once; re-sending it with
-   every turn grew one measured run to 206k tokens.
+3. The model bridge sends the image after that tool result, after the tool messages (which carry text only), as a
+   user message `view_image <path>:` plus the image part (`detail` as asked), in the call right after the tool ran
+   and in every later call, resumes and output retries included: the image stays in the conversation and the
+   request stays append-only (see [Prompt cache](#prompt-cache)). The same bytes viewed again (SHA-256) are not
+   attached a second time; the tool answers that they are already in the conversation.
+4. Budget: kept images are sent with every model call, and the Swift gateway accepts at most 20 MiB of files per
+   model request (task images included). The viewed images of one conversation (the execution's snapshot history
+   plus this run) may therefore have at most 16 MiB together, leaving 4 MiB of the gateway budget for the task's
+   images. A view beyond it is a tool error that names what is used and asks for a smaller copy; the tool
+   description asks the model to view small JPEG copies. A larger budget needs a larger gateway budget first.
 
-The snapshot keeps the reference, never the bytes. A missing file, a path outside the workspace, another format, the
-step budget and a failed upload are tool errors the model can act on, not run failures. Viewed images are uploads of
-the execution like file outputs, but they are not node outputs.
+Keeping viewed images in later calls preserves the earlier request prefix and lets the model refer back to them.
+This can allow a provider's prompt cache to reuse earlier input, but byte stability alone does not establish a
+cache hit, a token count or a price. Only counters reported by the provider establish observed cache usage.
+
+### Progress previews
+
+A dify-sf extension: Dify's agent has nothing like it. With `tools.report_progress` the model gets
+`report_progress {"path", "caption"}`: an image of the workspace (PNG, JPEG or WebP by its header, at most 3 MiB) and
+a caption (1 to 200 characters), for the people following the run.
+
+1. The image is checked like a `view_image` file (inside `/workspace` after symlinks, a regular file) and uploaded as
+   a file of the execution through `files/upload-request` and `PUT`, the same mechanism and receipt as viewed images
+   and file outputs.
+2. The service emits `progress` `{"file": {"upload_id", "filename", "mime_type", "size"}, "caption", "call_index"}`
+   (`file` as for a file output's receipt; `call_index`: the model call that asked for it) and answers the model
+   with a short text.
+   The run never waits for anyone, and the image never enters the model's context (the request prefix is not
+   affected).
+3. At most 20 previews per operation (at most 60 MiB a run can store); a preview beyond that, a bad caption, a file
+   that is not an image or is too large, and a failed upload are tool errors; the run goes on.
+4. Retention: the `progress` events are kept like every event (until the ack, or 24 hours after the run ended); the
+   uploaded files belong to the execution like viewed images. They are not node outputs.
+
+The Swift server checks that `file.upload_id` is a received upload of this execution and turns it into a file the
+client can preview (no separate download URL in the event). To show it in the run log, it must project `progress`
+into an `agent_log` entry (today only `thought`, `tool_call`, `model_call` and `error` are projected; other events
+are recorded but not published). A client of the public run stream (`GET /v1/workflow/{run_id}/events`, with
+`include_state_snapshot=true` and `continue_on_pause=true` for a driver that follows the whole run) then reads
+`event: agent_log` frames whose `data.metadata.event` is `progress`; once the run has ended, that stream answers only
+`workflow_finished`, and the previews are in the node's `metadata.agent_log`.
+
+### Near-budget submit
+
+A dify-sf extension: Dify fails the node when the agent reaches its limits. Here the model is told to finish with
+what it has before the limit is reached:
+
+- Finishing needs one model call: the one that calls `final_output` (or, without declared outputs, gives the final
+  answer as text). When the schema declares file outputs and the shell is on, it needs two: one step to write the
+  files into the workspace, then `final_output`. This number is the reserve; it is derived from what finishing
+  needs, not tuned.
+- Before each model call the service compares what is left with the reserve. Calls: `max_turns - call_index + 1`
+  (this call included) `<=` the reserve. Time: the time left of `timeout_seconds` `<=` the reserve times the longest
+  step of this run so far (a step: from one model call's start to the next one's, its tools included); before the
+  first step has ended there is no estimate and no time notice.
+- The first time either holds, it appends one user message to the history, the budget notice ("this run has N model
+  calls (this one included) [and about S seconds] left. Stop exploring. Call final_output now …"), emits
+  `budget_notice`, and sends the call. The notice stays in the history where it was added (append-only, also in the
+  snapshot); a later operation (an answer or an output retry) gets a new budget and no new notice unless it runs low
+  again.
+- A result after the notice is `succeeded` as usual, with `partial: {"reason", "notice_call_index"}`. The Swift server
+  should mark the node's outputs partial (for example in `process_data` or the run record); the outputs are still
+  checked as usual.
+- The last model call the operation may make (`call_index == max_turns`) must finish: if it calls tools and none is
+  `final_output` or `ask_human`, those tools are not run (no call is left to read their results) and the run fails
+  `max_turns` at once, with "the model was told to finish at call N" in the message. The time limit stays a hard
+  stop: `timeout` as before.
+
+### Prompt cache
+
+Long agent runs re-send their history with every model call. The service keeps unchanged earlier messages and
+tools byte-stable and appends new messages. Cache policies, image tokenization and pricing remain provider-specific;
+see the provider's documentation, such as the [DeepSeek context caching guide](https://api-docs.deepseek.com/guides/kv_cache).
+The service reports cache counters only when they reach it; missing counters stay unknown.
+
+The protocol path (the installed plugin and daemon determine which optional usage fields reach the gateway):
+
+| Component | Byte-stable? | Cache counters |
+|---|---|---|
+| Agent service | Yes, from this version: `toPromptMessages` depends on the history only and every request extends the previous one. Before it, `view_image` sent an image with the next call only and removed it afterwards: the one rewrite of earlier history. Reasoning parts, tool arguments (`dify_sf_arguments`, the provider's raw text), tool outputs and the snapshot round trip are kept unchanged | Reads them when reported (above) |
+| Swift gateway | Yes. `dify-sf-file:<id>` becomes `base64_data` read from storage on every call: the same bytes each time, no signed or expiring URL in the model path. `JSONObject` keeps key order, so tool schemas keep theirs. It calls the plugin without streaming when tools are offered (no effect on the bytes) | Passes `cached_tokens` / `prompt_tokens_details.cached_tokens` through (`LLMUsage.cachedTokens`) when the daemon sends them |
+| Plugin daemon 0.6.x | Passes the request through | Its `LLMUsage` is a typed struct without a cache field: anything extra is dropped |
+| deepseek plugin 0.0.24 | Deterministic: merges consecutive same-role messages (a pure function of the list), turns `<think>\n<!--dify-deepseek-reasoning-->…\n</think>` back into `reasoning_content`, sends images as `image_url` data URLs, adds a fixed `user_id` | Reads only `prompt_tokens` and `completion_tokens` (dify_plugin's OpenAI-compatible base; Dify's `LLMUsage` has no cache field) |
+
+So the only prefix break was the agent service's `view_image`, and the cache counters are lost twice, in the plugin
+and in the daemon: no change in Swift or the agent service can surface them without a plugin that reports them and a
+daemon that passes them (both outside dify-sf; Dify itself has no such field). Until then:
+
+- `model_call.prompt` shows what the service controls: `prefix_stable` is `true` when the call's request repeats the
+  previous call's tools and messages unchanged before appending, `false` with `first_changed_message` (`-1`: the
+  tools changed) otherwise, `null` for an operation's first call.
+- `tool/cache_probe.dart proxy` is a logging pass-through for the DeepSeek credential's `endpoint_url`: one line per
+  chat completion with the message count, images, request size, `prefix_stable` against the previous request of the
+  same conversation, and the provider's `usage` (hits and misses). It logs no headers, texts or image bytes.
+- The provider's own usage page shows hit and miss tokens per key and day.
 
 ## Inner gateway (Swift server)
 
@@ -570,16 +675,16 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
  "profiles": {
    "default": {"description": "Dify's shell sandbox",
                "image": "langgenius/dify-agent-local-sandbox@sha256:…"},
-   "colvalley-blender": {
-     "description": "Blender 5.2.3, colvalley-3d (read-only) and its board renderer",
-     "image": "dify-sf/sandbox-colvalley-blender@sha256:…",
-     "mounts": [{"source": "/srv/dify-sf/checkouts/colvalley-3d-77b81f5", "target": "/opt/colvalley-3d"}],
+   "rendering": {
+     "description": "Prepared rendering tools (read-only)",
+     "image": "example/rendering-sandbox@sha256:…",
+     "mounts": [{"source": "/srv/dify-sf/checkouts/rendering-tools-v1", "target": "/opt/rendering-tools"}],
      "network": {"egress": "none"},
      "devices": ["/dev/dri/renderD128"],
      "limits": {"cpus": 4, "memory_mb": 6144, "pids": 1024, "workspace_mb": 1536, "home_mb": 512,
-                "timeout_seconds_max": 10800},
-          "env": {"BLENDER": "/opt/blender/blender", "CV3D_PYTHON": "/opt/cv3d-venv/bin/python",
-             "FS_IMPORTER": "/opt/colvalley-3d/.cv3d-prepared/fs_importer"}}}}
+                "timeout_seconds_max": 10800, "max_turns_max": 200},
+          "env": {"BLENDER": "/opt/blender/blender", "RENDER_PYTHON": "/opt/render-venv/bin/python",
+             "FS_IMPORTER": "/opt/rendering-tools/bin/importer"}}}}
 ```
 
 | Field | Rule |
@@ -587,7 +692,7 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
 | `image` | Pinned by digest (`name@sha256:…`); a tag alone stops the process at load. Images are built from `agent_service/sandbox-images/<name>/` (Dockerfile and `VERSION`) in this repository. Every image keeps shellctl (they derive from `langgenius/dify-agent-local-sandbox:1.17.1`), because the service's probes, file staging, output files and process cleanup use it. |
 | `mounts` | Read-only bind mounts only (`Mounts` of type `bind`, `ReadOnly`; a missing source fails, it is never created). The source is an absolute, normalized host path (no `.`, `..`, `//`, trailing `/`, `:` or `,`); it must not be `/` and must not be, contain or lie inside the Docker socket (`/var/run/docker.sock`, `/run/docker.sock`, the configured one), Docker's or containerd's state (`/var/lib/docker`, `/var/lib/containerd`, `/run/containerd`), `/proc`, `/sys`, `/dev`, the service's data directory, the supervisor's state file or the profile file. The target is under `/opt` (not `/opt` itself), never `/workspace` or the home; targets do not nest. This replaces the sandbox rule "no binds or mounts" with "only the profile's read-only binds". Symlinks in the source are resolved by Docker on the host. |
 | `network.egress` | `none`: the proxy is not connected, so there is no egress. `allowlist`: the proxy as today, with its default domains. Per-profile domain lists come later. Default `allowlist`. |
-| `limits` | `cpus`, `memory_mb` (the tmpfs pages of `/workspace` and the home count here; `workspace_mb + home_mb` must be below it), `pids`, `workspace_mb`, `home_mb`. `timeout_seconds_max` (1..86400, default 1800) is the largest `limits.timeout_seconds` a run of this profile may have. Another missing value takes the supervisor's current default (`SANDBOX_*`). |
+| `limits` | `cpus`, `memory_mb` (the tmpfs pages of `/workspace` and the home count here; `workspace_mb + home_mb` must be below it), `pids`, `workspace_mb`, `home_mb`. `timeout_seconds_max` (1..86400, default 1800) is the largest `limits.timeout_seconds` a run of this profile may have. `max_turns_max` (1..1000, default 50) is the largest `limits.max_turns`. Another missing value takes the supervisor's current default (`SANDBOX_*`). |
 | `devices` | Optional GPU access: host device nodes passed into the container (`Devices`, `rw`). Only DRI render nodes (`/dev/dri/renderD<n>`) are accepted, without `/dev/dri/card*` (no display or modesetting); the container gets the node's group ID on the host (K17: `render`, 990) as a supplementary group (`GroupAdd`), and the Landlock paths of the [Sandbox](#sandbox) table. The supervisor reads the group with `stat` and the GPU's sysfs directory from `/sys/dev/char`, so a containerized supervisor needs `/dev/dri` bound read-only (it opens nothing there). Anything else stops the process at load. NVIDIA (`--gpus`) is out of the MVP: the executor host K17 has an Intel GPU only. |
 | `env` | Fixed variables for the sandbox's commands, set by the administrator. They are not secrets and are not shown to the model. The reserved names are refused at load. A node's `env` cannot override them (`400 reserved_env`, compared case-insensitively). The agent service adds them to every shell job under the node's `env`; they are not in the container's environment. |
 | `description` | Optional, at most 200 characters; shown by `GET /v1/profiles`. |
@@ -597,7 +702,8 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
 - `POST /v1/operations` gains `"executor_profile": "<name>"`. Absent means `default`. The profile is used only when
   `tools.shell` is true; otherwise it is not checked at all and only echoed. It is part of the request digest.
 - With the shell, in this order: an unknown name answers `422 executor_profile_unknown`; a `limits.timeout_seconds`
-  above the profile's `timeout_seconds_max` answers `422 invalid_request`; a node `env` name the profile sets answers
+  above the profile's `timeout_seconds_max`, then a `limits.max_turns` above its `max_turns_max`, answer
+  `422 invalid_request`; a node `env` name the profile sets answers
   `400 reserved_env`; a profile whose status (below) is known and not `ok` answers `503
   executor_profile_unavailable` with `"status"`. When the supervisor cannot be asked, the operation is accepted and
   the run fails, if at all, with `sandbox_unavailable`. A resend of an accepted operation answers `200` with its run
@@ -624,8 +730,13 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
 - Timeouts: the Swift server's own run timer stays authoritative. It uses the smaller of the node's timeout, the
   profile's `timeout_seconds_max` and the server-wide cap, and sends that value as `limits.timeout_seconds`, so the
   agent service never runs longer than Swift waits. `default` keeps 1800 s.
-- `limits.max_turns` stays 50 in the MVP. A node setting with a per-profile and server-wide cap is added only if real
-  modelling runs need more.
+- `limits.max_turns`: the node's setting (Swift, default 50), capped by the profile's `max_turns_max`; a larger value
+  is refused with `422 invalid_request` as for the timeout. Without the shell the profile is not checked, as for
+  every other profile rule. The Swift gateway's own per-operation call limit (`AgentModelScope.maxCalls`)
+  uses the same configured number. The gateway permits at most 8192 messages per model request; provider context
+  windows and byte limits still apply.
+- Rollout of `max_turns_max`: the service and the supervisor (same image) ship before a profile file that sets it:
+  an older one refuses the unknown field at load.
 - Rollout order: the agent service with the echo ships first; the Swift echo check goes live after it. Otherwise an
   older service (no echo) would fail every run, including runs on `default`. The supervisor ships with the agent
   service (same image): an older supervisor refuses the `profile` field with `400`.
@@ -634,8 +745,10 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
 
 ```jsonc
 {"protocol": "dify-sf-agent/1",
- "profiles": [{"name": "default", "description": "Dify's shell sandbox", "status": "ok", "timeout_seconds_max": 1800},
-              {"name": "colvalley-blender", "description": "…", "status": "ok", "timeout_seconds_max": 10800}]}
+ "profiles": [{"name": "default", "description": "Dify's shell sandbox", "status": "ok", "timeout_seconds_max": 1800,
+               "max_turns_max": 50},
+              {"name": "colvalley-blender", "description": "…", "status": "ok", "timeout_seconds_max": 10800,
+               "max_turns_max": 200}]}
 ```
 
 It never lists images, mounts, network rules or environment values.
@@ -660,60 +773,13 @@ attempted and fails, if at all, with the service's own answer.
 - Out of the MVP: a profile administration UI (it will write the same file format), per-profile egress domain lists,
   and choosing profiles per workspace or tenant.
 
-### Profile `colvalley-blender` (MVP)
+### Rendering profile example
 
-Built and checked on K17 on 2026-10-27: image `dify-sf/sandbox-colvalley-blender@sha256:438f4d80139973fe258beaffbd28346c931db841e8a676ed0eb9bbfcfce7e9b3`
-(`agent_service/sandbox-images/colvalley-blender/`, VERSION 1), colvalley-3d `alice/board-readonly` 26ea1f4.
-
-| Part | Where | Content |
-|---|---|---|
-| Base | Image | `langgenius/dify-agent-local-sandbox:1.17.1` pinned by digest (Debian 12, glibc 2.36, GLib 2.74; shellctl, Python 3.12, Node, git) |
-| Blender | Image | The official 5.2.3 Linux x64 archive (`blender-5.2.3-linux-x64.tar.xz`, SHA-256 from Blender's published list, checked in the build; given to the build as a named context, never downloaded there) at `/opt/blender`; used with `-b` |
-| Renderer runtime | Image | Weston 10, D-Bus, GTK 3, fonts (DejaVu, Noto Sans CJK for the board's labels) and Mesa 25.0.7 from bookworm-backports: Debian 12's Mesa 22.3 cannot drive K17's Lunar Lake GPU on the `xe` kernel driver (it would fall back to llvmpipe). With the render node the board renders with `FS_RENDERER=gl` (MSAA effective, the reference path on K17); without it, `pixman` |
-| GPU | Profile | K17's Intel render node `/dev/dri/renderD128` (group `render` 990): Weston gl (`GL renderer: Mesa Intel(R) Graphics (LNL)`), the Flutter client (`iris`), and EEVEE/Workbench in Blender `-b` through EGL (`gpu.platform`: OPENGL, INTEL, `Mesa Intel(R) Graphics (LNL)`; EEVEE 640x480 8.6 s vs 45 s on llvmpipe). shellctl's Landlock must grant the node and the GPU's sysfs (see [Sandbox](#sandbox)) |
-| Python tools | Image | `/opt/cv3d-venv` with numpy 2.5.4, scipy 1.18.1, trimesh 5.2.0, rtree 1.4.1, Pillow 13.0.0 (pinned in `requirements.txt`), because there is no egress |
-| colvalley-3d | Mount `/opt/colvalley-3d` | A checkout made by colvalley-3d's `tools/board/prepare_checkout.sh <commit> <dir>` on the executor host (below) |
-| Env | Profile | `BLENDER=/opt/blender/blender`, `CV3D_PYTHON=/opt/cv3d-venv/bin/python`, `FS_IMPORTER=/opt/colvalley-3d/.cv3d-prepared/fs_importer` |
-| Limits | Profile | 4 CPUs, 6 GiB memory (1.5 GiB of it the `/workspace` tmpfs, 512 MiB the home), 1024 PIDs, up to 3 hours, one run at a time. K17 has 15 GiB and 8 CPUs shared with the whole trial. Measured (below): one board run peaks at 454–647 MiB of cgroup memory (tmpfs included) and 3.5 CPUs; the limits stay at the MVP ceiling until a real modelling run is measured (never below 2 GiB memory) |
-
-colvalley-3d `alice/board-readonly` makes the board tool (`tools/board/render_board.sh`) run from a read-only checkout:
-
-1. `--work-dir DIR` (or `CV3D_WORK`): every write goes under it: outputs (default `-o DIR/board/<time>`), the baseline
-   cache, Weston scratch, `TMPDIR`, the D-Bus session socket (the stock session bus listens in `/tmp`, read-only in a
-   sandbox), Python bytecode caches and the uv cache. `-o`, `CV3D_BOARD_CACHE`, `FS_TMP` or the work dir inside the
-   checkout are refused; `git status` runs without optional locks and without the LFS filter process (both write
-   into `.git`).
-2. `FS_IMPORTER`: the scene importer compiled ahead of time (`dart compile exe` of flutter_scene's `bin/import.dart`
-   with `app/`'s package config), used instead of `dart run flutter_scene:import` in `app/`; no Flutter SDK in the
-   image. The importer self-check stays and passes. (`app/.dart_tool/package_config.json` holds absolute host paths,
-   so `dart run` could not work in a sandbox anyway; the copy-`app/` fallback was not needed.)
-3. `CV3D_PYTHON`: an interpreter with the packages installed, used instead of `uv run --with …`.
-4. The Linux runner is built for Debian 12 although K17 builds it (glibc 2.43, GLib 2.8x): `g_ascii_strtoll` instead of
-   `atoi` (no `__isoc23_strtol@GLIBC_2.38`) and `GLIB_VERSION_MIN_REQUIRED/MAX_ALLOWED` 2.74 (no
-   `g_once_init_enter_pointer`). `run_linux.sh` gives Weston 10 `--use-gl` / `--use-pixman` (no `--renderer=` before
-   Weston 12).
-
-`tools/board/prepare_checkout.sh <commit> <dir>` clones the commit with its LFS files, runs `flutter pub get
---enforce-lockfile` and `flutter build linux --profile` (Flutter 3.47.6) and compiles the importer, then checks: every
-LFS file present, a clean index, glibc ≤ 2.36 for the bundle and the importer, every symbol resolving in
-`CV3D_CHECK_IMAGE` (`ldd -r` in a throwaway container of the sandbox image) and the importer self-check; it writes
-`.cv3d-prepared/checkout.txt`. The image depends on no colvalley-3d commit; a new commit needs a new checkout directory
-and a profile change, not a new image.
-
-Boards compared on K17 (fujiya, r6 `.blend`, collection `Model`): the reference from a writable clone run twice
-differs in 240 pixels (0.010 %, largest channel difference 12): the known K17 gl noise. The read-only mode on the host
-differs from the reference in 151 pixels (max 12); inside the sandbox image in 269 pixels (0.011 %, max 18; Mesa 25.0
-in the image, 26.0 on the host). The exported `.glb`, the `.fsceneb` and the measurements are byte-identical in all
-three.
-
-Measured end to end (`agent_service/tool/profile_e2e.sh`: the agent service, the supervisor and the profile file in
-compose, a scripted model running `render_board.sh --object fujiya` on the r6 `.blend` given as an input file, then
-`view_image` and `final_output` with the board as a declared file output): 28.9 s from `POST` to the terminal
-event, 24.3 s of it the board; the sandbox's cgroup peaked at 536 MiB (`memory.peak`, tmpfs included; three direct
-runs of the board in the image: 454–647 MiB), 37.7 CPU-seconds, at most 3.46 CPUs over 0.5 s samples under the
-4-CPU limit; `/workspace` held 19 MB. That board is byte-identical to the writable-clone reference. The sandbox had
-exactly the profile's image digest, the checkout read-only, the render node with group 990, no proxy endpoint and no
-egress (`direct=blocked`); DELETE removed it and its network.
+A rendering environment can combine a pinned sandbox image, a read-only prepared tool checkout, an optional render
+device and explicit resource limits. Build tools and importers for the sandbox's runtime libraries, place all task
+writes under the execution workspace and keep mounted checkouts immutable. Validate image/device availability,
+file hashes, no-egress behavior and cleanup on the executor host before enabling a profile. Business inputs,
+operational mount paths and per-run measurements belong in the deployment's private evidence.
 
 ## Swift server summary
 
@@ -729,7 +795,7 @@ egress (`direct=blocked`); DELETE removed it and its network.
   context exists, MCP reports agent nodes as incomplete.
 - DSL export removes secrets and file locators and carries file contents as resources; import checks them. Settings
   outside the first phase are rejected, never silently dropped.
-- Run records (thoughts, tool calls, usage) are stored by the server and shown when the node ends (a dify-sf
+- Run records (thoughts, tool calls, usage) are stored by the server and shown live and retained when the node ends (a dify-sf
   extension). They are truncated at 256 KB on a UTF-8 boundary with a marker and a reference to the full record file;
   credentials are removed first.
 
@@ -739,6 +805,11 @@ egress (`direct=blocked`); DELETE removed it and its network.
   `422`/`503` answers as node errors, and the timeout capped by the profile's `timeout_seconds_max`.
 - `tools.view_image` set when the shell is on and the model declares `vision` (see
   [Viewing workspace images](#viewing-workspace-images)); viewed images arrive as ordinary agent uploads.
+- Progress and budgets: `tools.report_progress` is pinned for new executions with the shell enabled; completed
+  upload receipts are normalized to scoped preview files in live `agent_log` events. The node's `limits.max_turns`
+  is checked against the environment and used by the gateway. Partial submissions are labeled explicitly.
+- The model gateway allows at most 8192 messages, 20 MiB of decoded files and 32 MiB after normalization per request;
+  `view_image` retains at most 16 MiB per conversation. Missing cache-hit statistics remain unknown.
 
 ## Tests that must stay
 

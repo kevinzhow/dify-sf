@@ -43,6 +43,17 @@
     "inline.executorStatus.image_missing": "이미지 없음",
     "inline.executorStatus.device_missing": "장치 없음",
     "inline.executorStatus.unavailable": "사용 불가",
-    "inline.refreshProfiles": "실행 환경 새로 고침"
+    "inline.refreshProfiles": "실행 환경 새로 고침",
+    "inline.maxTurns": "최대 모델 호출 횟수",
+    "inline.maxTurnsHint": "이 실행 환경은 최대 {{max}}회 호출을 허용합니다. 기존 설정의 기본값은 50회입니다.",
+    "inline.invalidMaxTurns": "실행 환경 한도 이내의 양의 정수를 설정하세요.",
+    "inline.progressCalls": "모델 호출 {{count}} / {{max}}",
+    "inline.progressDetails": "Agent 실행 과정",
+    "inline.progressImageUnavailable": "진행 이미지가 없거나 만료되었습니다.",
+    "inline.enlargeProgressImage": "진행 이미지 확대",
+    "inline.progressStarted": "Agent를 시작하는 중…",
+    "inline.partialResult": "부분 완료: 호출 또는 시간 제한에 가까워져 Agent가 현재 결과를 제출했습니다.",
+    "inline.cacheHitTokens": "프롬프트 캐시 적중: {{count}} tokens",
+    "inline.unknownUsage": "알 수 없음"
   }
 }

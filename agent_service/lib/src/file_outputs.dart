@@ -128,6 +128,22 @@ List<FileSite> fileSites(
   return sites;
 }
 
+/// Whether [schema] declares any file output (`x-dify-sf-file` on any node,
+/// local `\$defs` included).
+bool declaresFileOutputs(Map<String, Object?> schema) {
+  bool walk(Object? node, int depth) {
+    if (depth > 64) return false;
+    if (node is Map) {
+      if (node.containsKey(fileOutputKeyword)) return true;
+      return node.values.any((v) => walk(v, depth + 1));
+    }
+    if (node is List) return node.any((v) => walk(v, depth + 1));
+    return false;
+  }
+
+  return walk(schema, 0);
+}
+
 /// A copy of [root] with the value at [path] replaced by [value].
 Object? replaceAt(Object? root, List<Object> path, Object? value) {
   if (path.isEmpty) return value;

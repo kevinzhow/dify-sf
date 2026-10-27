@@ -36,8 +36,16 @@ The contract it implements is [`docs/agent-v2.md`](../docs/agent-v2.md) (protoco
   (image by digest, read-only binds under `/opt`, DRI render nodes, egress `none` or `allowlist`, limits, env), read
   by the service and the supervisor; `executor_profile` in operations, `GET /v1/profiles`, `profiles` in health.
   Images are built from `sandbox-images/<name>/` with `tool/build_sandbox_image.sh`.
-- `view_image` (with `tools.view_image`, a dify-sf extension): the model looks at a workspace image once; it is sent
-  with the next model call only.
+- `view_image` (with `tools.view_image`, a dify-sf extension): the model looks at a workspace image; it stays in the
+  conversation (append-only history for the provider's prompt cache), at most 3 MiB of viewed images per
+  conversation.
+- `report_progress` (with `tools.report_progress`, a dify-sf extension): a preview image and caption for the people
+  following the run, uploaded and announced by a `progress` event; never in the model's context.
+- Near-budget submit (a dify-sf extension): when the model calls or the time left are only what finishing needs, the
+  model is told to call `final_output` now; the result is marked `partial`.
+- Prompt cache: every model request extends the previous one byte for byte (`model_call.prompt.prefix_stable`);
+  cache hit and miss tokens in `usage` when reported. `tool/cache_probe.dart` measures them (a logging proxy for the
+  provider endpoint, and a direct probe).
 
 Without `AGENT_SANDBOX_SUPERVISOR_URL`, `tools.shell: true` fails with `sandbox_unavailable` and health reports
 `"sandbox": "disabled"`.

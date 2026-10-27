@@ -143,7 +143,7 @@ json.dump({"version": 1, "profiles": {
     "network": {"egress": "none"},
     "devices": [node],
     "limits": {"cpus": 4, "memory_mb": 6144, "pids": 1024, "workspace_mb": 1536, "home_mb": 512,
-               "timeout_seconds_max": 10800},
+               "timeout_seconds_max": 10800, "max_turns_max": 200},
     "env": {"BLENDER": "/opt/blender/blender", "CV3D_PYTHON": "/opt/cv3d-venv/bin/python",
             "FS_IMPORTER": "/opt/colvalley-3d/.cv3d-prepared/fs_importer"}}}}, open(path, "w"), indent=1)
 EOF

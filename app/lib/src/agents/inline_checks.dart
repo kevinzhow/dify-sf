@@ -96,9 +96,12 @@ class InlineAgentChecks {
         entry.key: {
           ...({...entry.value}
             ..remove('_executor_profile_status')
-            ..remove('_executor_profiles_unknown')),
+            ..remove('_executor_profiles_unknown')
+            ..remove('_max_turns_max')),
           if (context.shellEnabled && context.profiles != null)
             '_executor_profile_status': context.named(executorName(entry.value))?.status ?? 'unavailable',
+          if (context.shellEnabled && context.profiles != null)
+            '_max_turns_max': context.named(executorName(entry.value))?.maxTurnsMax ?? 50,
           if (context.unknown) '_executor_profiles_unknown': true,
         },
     },
@@ -171,6 +174,7 @@ class InlineAgentChecks {
     return [
       if (soul['_executor_profile_status'] != null && soul['_executor_profile_status'] != 'ok')
         (namespace: 'agent-v-2', key: 'inline.executorUnavailable'),
+      if (!validTurnLimit(soul)) (namespace: 'agent-v-2', key: 'inline.invalidMaxTurns'),
       if (model is! Map ||
           ['plugin_id', 'model_provider', 'model'].any(
             (key) => model[key] is! String || (model[key] as String).isEmpty,
@@ -210,5 +214,14 @@ class InlineAgentChecks {
         (namespace: 'agent-v-2', key: 'inline.defaultFileMissing'),
       if (hasUnsupported(soul)) (namespace: 'agent-v-2', key: 'inline.unsupported'),
     ];
+  }
+
+  static bool validTurnLimit(Map<String, Object?> soul) {
+    final limits = soul['limits'];
+    if (limits == null) return 50 <= (soul['_max_turns_max'] as int? ?? 1000);
+    if (limits is! Map || limits.keys.any((k) => k != 'max_turns')) return false;
+    final count = limits['max_turns'];
+    final maximum = soul['_max_turns_max'] as int? ?? 1000;
+    return count is int && count >= 1 && count <= 1000 && count <= maximum;
   }
 }

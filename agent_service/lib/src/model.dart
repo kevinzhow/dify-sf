@@ -77,10 +77,75 @@ class GatewayModelContext {
   /// Called with every streamed reasoning piece (a `thought` event).
   final void Function(String text) onReasoning;
 
-  /// Called once per completed model call with its usage.
-  final void Function(String invocationId, Usage usage) onModelCall;
+  /// Called once per completed model call with its usage and the
+  /// [PromptPrefix] check of its request.
+  final void Function(String invocationId, Usage usage, PromptPrefix prefix)
+  onModelCall;
+
+  /// Called right before each model call with its index (1-based).
+  void Function(int callIndex)? onCallStart;
 
   int callIndex = 0;
+
+  /// The previous call's prompt messages and tools, each as JSON text.
+  List<String>? _previousMessages;
+  String? _previousTools;
+}
+
+/// Whether a model request repeats the previous request of the run byte for
+/// byte before appending to it: the condition for a provider's prefix cache
+/// to serve the earlier part. Compared on the request the service sends to
+/// the gateway (file references, not bytes).
+class PromptPrefix {
+  const PromptPrefix({
+    required this.messages,
+    this.stable,
+    this.firstChangedMessage,
+  });
+
+  /// Number of prompt messages of this request.
+  final int messages;
+
+  /// Null for the first call of a run; true when the previous request's
+  /// tools are unchanged and its messages are an unchanged prefix of this
+  /// request's.
+  final bool? stable;
+
+  /// The index of the first earlier message that changed or disappeared
+  /// (`-1`: only the tools changed); null when stable or first.
+  final int? firstChangedMessage;
+
+  static PromptPrefix compare(
+    List<String>? previous,
+    String? previousTools,
+    List<String> current,
+    String tools,
+  ) {
+    if (previous == null) return PromptPrefix(messages: current.length);
+    for (var i = 0; i < previous.length; i++) {
+      if (i >= current.length || previous[i] != current[i]) {
+        return PromptPrefix(
+          messages: current.length,
+          stable: false,
+          firstChangedMessage: i,
+        );
+      }
+    }
+    if (previousTools != tools) {
+      return PromptPrefix(
+        messages: current.length,
+        stable: false,
+        firstChangedMessage: -1,
+      );
+    }
+    return PromptPrefix(messages: current.length, stable: true);
+  }
+
+  Map<String, Object?> toJson() => {
+    'messages': messages,
+    'prefix_stable': stable,
+    'first_changed_message': firstChangedMessage,
+  };
 }
 
 Model defineGatewayModel(Genkit ai, GatewayModelContext c) {
@@ -123,6 +188,7 @@ Future<ModelResponse> _call(
 ) async {
   c.callIndex++;
   final callIndex = c.callIndex;
+  c.onCallStart?.call(callIndex);
   final invocationId = '${c.runId}:$callIndex';
   final r = c.request;
   final x = r.execution;
@@ -131,6 +197,16 @@ Future<ModelResponse> _call(
     for (final t in request.tools ?? const <ToolDefinition>[])
       toPromptMessageTool(t),
   ];
+  final messageTexts = [for (final m in promptMessages) jsonEncode(m)];
+  final toolsText = jsonEncode(tools);
+  final prefix = PromptPrefix.compare(
+    c._previousMessages,
+    c._previousTools,
+    messageTexts,
+    toolsText,
+  );
+  c._previousMessages = messageTexts;
+  c._previousTools = toolsText;
   final body = <String, Object?>{
     'caller': {
       'invocation_id': invocationId,
@@ -193,7 +269,7 @@ Future<ModelResponse> _call(
   acc.assignMissingIds();
 
   final usage = Usage.fromDify(acc.usage ?? const {});
-  c.onModelCall(invocationId, usage);
+  c.onModelCall(invocationId, usage, prefix);
   return ModelResponse(
     finishReason: mapFinishReason(acc.finishReason),
     message: responseMessage(acc),
@@ -295,11 +371,15 @@ Map<String, Object?> toPromptMessageTool(ToolDefinition t) => {
 /// into one leading system message (as dify-agent does); task files are
 /// sent as `dify-sf-file:<file_id>` references.
 ///
-/// Images of `view_image` results (multipart tool response content) are
-/// sent only when their tool message is the last message, i.e. to the model
-/// call right after the tool ran: as a user message after the tool
-/// messages (tool messages carry text only). In every later call the tool's
-/// text stands alone, so a viewed image costs tokens once.
+/// The result depends on [messages] only, and a longer history gives the
+/// same JSON for its earlier messages: the request prefix stays byte-stable
+/// for the provider's prompt cache.
+///
+/// Images of `view_image` results (multipart tool response content) follow
+/// their tool messages as a user message (tool messages carry text only),
+/// in every call from the one right after the tool ran. Parts from
+/// snapshots taken before images were kept (no `size` in their metadata)
+/// are not sent.
 Future<List<Map<String, Object?>>> toPromptMessages(
   List<Message> messages,
   InnerClient inner,
@@ -320,7 +400,6 @@ Future<List<Map<String, Object?>>> toPromptMessages(
       case Role.model:
         out.add(_assistant(m));
       case Role.tool:
-        final attach = identical(m, messages.last);
         final images = <Map<String, Object?>>[];
         for (final p in m.content) {
           final r = p.toolResponse;
@@ -332,12 +411,11 @@ Future<List<Map<String, Object?>>> toPromptMessages(
             'name': r.name,
             'tool_call_id': r.ref ?? '',
           });
-          if (!attach) continue;
           for (final c in r.content ?? const []) {
             if (c is! Map) continue;
             final media = c['media'];
             final meta = (c['metadata'] as Map?)?[viewImageMetadataKey];
-            if (media is! Map || meta is! Map) continue;
+            if (media is! Map || meta is! Map || meta['size'] is! int) continue;
             images.add({
               'type': 'text',
               'data':

@@ -553,8 +553,15 @@
           {
             "data": {
               "invocation_id": "run_000000000000000000000001:1",
+              "prompt": {
+                "first_changed_message": null,
+                "messages": 2,
+                "prefix_stable": null
+              },
               "usage": {
                 "completion_tokens": 5,
+                "prompt_cache_hit_tokens": null,
+                "prompt_cache_miss_tokens": null,
                 "prompt_tokens": 10,
                 "reasoning_tokens": null,
                 "total_tokens": 15
@@ -588,8 +595,15 @@
           {
             "data": {
               "invocation_id": "run_000000000000000000000001:2",
+              "prompt": {
+                "first_changed_message": null,
+                "messages": 4,
+                "prefix_stable": true
+              },
               "usage": {
                 "completion_tokens": 5,
+                "prompt_cache_hit_tokens": null,
+                "prompt_cache_miss_tokens": null,
                 "prompt_tokens": 10,
                 "reasoning_tokens": null,
                 "total_tokens": 15
@@ -604,6 +618,7 @@
                 "text": "Nothing to do."
               },
               "candidate_errors": [],
+              "partial": null,
               "snapshot": {
                 "agent_config_snapshot_id": "cfg-1",
                 "envelope": "dify-sf-agent-session/1",
@@ -681,6 +696,8 @@
               },
               "usage": {
                 "completion_tokens": 10,
+                "prompt_cache_hit_tokens": null,
+                "prompt_cache_miss_tokens": null,
                 "prompt_tokens": 20,
                 "reasoning_tokens": null,
                 "total_tokens": 30
@@ -713,6 +730,7 @@
               "text": "Nothing to do."
             },
             "candidate_errors": [],
+            "partial": null,
             "snapshot": {
               "agent_config_snapshot_id": "cfg-1",
               "envelope": "dify-sf-agent-session/1",
@@ -790,6 +808,8 @@
             },
             "usage": {
               "completion_tokens": 10,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 20,
               "reasoning_tokens": null,
               "total_tokens": 30
@@ -828,6 +848,7 @@
               "text": "Nothing to do."
             },
             "candidate_errors": [],
+            "partial": null,
             "snapshot": {
               "agent_config_snapshot_id": "cfg-1",
               "envelope": "dify-sf-agent-session/1",
@@ -905,6 +926,8 @@
             },
             "usage": {
               "completion_tokens": 10,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 20,
               "reasoning_tokens": null,
               "total_tokens": 30
@@ -961,6 +984,7 @@
               "text": "Nothing to do."
             },
             "candidate_errors": [],
+            "partial": null,
             "snapshot": {
               "agent_config_snapshot_id": "cfg-1",
               "envelope": "dify-sf-agent-session/1",
@@ -1038,6 +1062,8 @@
             },
             "usage": {
               "completion_tokens": 10,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 20,
               "reasoning_tokens": null,
               "total_tokens": 30

@@ -44,6 +44,7 @@ Map<String, Object?> blenderProfile({
         'workspace_mb': 1536,
         'home_mb': 512,
         'timeout_seconds_max': 10800,
+        'max_turns_max': 200,
       },
   'env':
       env ??
@@ -103,6 +104,7 @@ Map<String, Object?> blenderOp({
   String executionId = 'E1',
   Map<String, Object?> env = const {},
   int timeoutSeconds = 7200,
+  int maxTurns = 10,
   bool shell = true,
   Map<String, Object?>? continuation,
   int resumeSequence = 0,
@@ -114,6 +116,7 @@ Map<String, Object?> blenderOp({
   askHuman: false,
   env: env,
   timeoutSeconds: timeoutSeconds,
+  maxTurns: maxTurns,
   executorProfile: profile,
   continuation: continuation,
   resumeSequence: resumeSequence,
@@ -140,6 +143,7 @@ void main() {
       expect(b.limits.workspaceMb, 1536);
       expect(b.limits.homeMb, 512);
       expect(b.timeoutSecondsMax, 10800);
+      expect(b.maxTurnsMax, 200);
       expect(b.env, {
         'BLENDER': '/opt/blender/blender',
         'CV3D_PYTHON': '/opt/cv3d-venv/bin/python',
@@ -147,6 +151,8 @@ void main() {
       final d = p['default']!;
       expect(d.egress, Egress.allowlist);
       expect(d.timeoutSecondsMax, defaultTimeoutSecondsMax);
+      expect(d.maxTurnsMax, defaultMaxTurnsMax);
+      expect(defaultMaxTurnsMax, 50);
       expect(d.limits.memoryMb, isNull);
       // Same definition, same digest; key order does not matter.
       final again = parse(
@@ -162,6 +168,7 @@ void main() {
       expect(implicit.names, ['default']);
       expect(implicit['default']!.image, isNull);
       expect(implicit['default']!.timeoutSecondsMax, 1800);
+      expect(implicit['default']!.maxTurnsMax, 50);
       expect(
         () => ExecutorProfiles.load('/nonexistent/executor-profiles.json'),
         refused('does not exist'),
@@ -366,6 +373,14 @@ void main() {
         ),
         refused('timeout_seconds_max'),
       );
+      for (final bad in [0, maxMaxTurnsMax + 1, 'many']) {
+        expect(
+          () => parse(
+            profileFile(blenderProfile(limits: {'max_turns_max': bad})),
+          ),
+          refused('limits.max_turns_max'),
+        );
+      }
       expect(
         () => parse(profileFile(blenderProfile(limits: {'gpus': 1}))),
         refused('unknown fields gpus'),
@@ -428,12 +443,14 @@ void main() {
             'description': "Dify's shell sandbox",
             'status': 'ok',
             'timeout_seconds_max': 1800,
+            'max_turns_max': 50,
           },
           {
             'name': 'colvalley-blender',
             'description': 'Blender 5.2.3, colvalley-3d (read-only) and its board renderer',
             'status': 'ok',
             'timeout_seconds_max': 10800,
+            'max_turns_max': 200,
           },
         ],
       });
@@ -503,7 +520,8 @@ void main() {
       manager.close();
     });
 
-    test('operation answers: unknown profile 422, timeout above the cap 422, '
+    test('operation answers: unknown profile 422, timeout or max_turns above '
+        'the cap 422, '
         'a variable the profile sets 400, image missing 503, unknown fields '
         '400, an empty name 400', () async {
       final (h, sup) = await startWithProfiles(const []);
@@ -515,6 +533,13 @@ void main() {
       (s, j) = await post(blenderOp(timeoutSeconds: 10801));
       expect((s, j['error']), (422, 'invalid_request'));
       expect(j['message'], contains('10800'));
+      (s, j) = await post(blenderOp(maxTurns: 201));
+      expect((s, j['error']), (422, 'invalid_request'));
+      expect(
+        j['message'],
+        'limits.max_turns 201 exceeds the max_turns_max 200 of executor '
+        'profile colvalley-blender',
+      );
       (s, j) = await post(blenderOp(env: {'blender': '/usr/bin/blender'}));
       expect((s, j['error']), (400, 'reserved_env'));
       (s, j) = await post({...blenderOp(), 'image': 'evil@sha256:${'0' * 64}'});
@@ -542,6 +567,12 @@ void main() {
       // The default timeout cap applies to the default profile too.
       (s, j) = await post(blenderOp(profile: 'default', timeoutSeconds: 1801));
       expect((s, j['error']), (422, 'invalid_request'));
+      // And the default max_turns cap (50).
+      (s, j) = await post(
+        blenderOp(profile: 'default', maxTurns: 51, timeoutSeconds: 1800),
+      );
+      expect((s, j['error']), (422, 'invalid_request'));
+      expect(j['message'], contains('max_turns_max 50'));
       expect(sup.acquires, isEmpty);
     });
 

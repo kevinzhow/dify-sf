@@ -255,7 +255,8 @@ class AgentService {
     };
   }
 
-  /// `GET /v1/profiles`: names, descriptions, statuses and timeout caps;
+  /// `GET /v1/profiles`: names, descriptions, statuses, timeout and
+  /// max_turns caps;
   /// never images, mounts, devices, network rules or environment values.
   Future<Map<String, Object?>> _profiles() async {
     final statuses = (await sandboxes.profileStatuses()).statuses;
@@ -268,6 +269,7 @@ class AgentService {
             'description': p.description,
             'status': statuses[p.name] ?? 'unavailable',
             'timeout_seconds_max': p.timeoutSecondsMax,
+            'max_turns_max': p.maxTurnsMax,
           },
       ],
     };
@@ -320,7 +322,11 @@ class AgentService {
         op,
         p == null
             ? null
-            : (timeoutSecondsMax: p.timeoutSecondsMax, envNames: p.env.keys),
+            : (
+                timeoutSecondsMax: p.timeoutSecondsMax,
+                maxTurnsMax: p.maxTurnsMax,
+                envNames: p.env.keys,
+              ),
         profileStatus,
       );
     }

@@ -1,5 +1,5 @@
 {
-  "description": "Executor profiles: `GET /v1/profiles` and `profiles` in health; `422 executor_profile_unknown`, `422 invalid_request` (timeout above the profile's `timeout_seconds_max`), `400 reserved_env` (a variable the profile sets), `400 invalid_request` (an unknown top-level field), `503 executor_profile_unavailable` while the supervisor reports the image missing; then a shell run on the profile with the `run_started` echo, and a run without the shell, whose profile is not checked and only echoed.",
+  "description": "Executor profiles: `GET /v1/profiles` and `profiles` in health; `422 executor_profile_unknown`, `422 invalid_request` (timeout above the profile's `timeout_seconds_max`, then `max_turns` above its `max_turns_max`), `400 reserved_env` (a variable the profile sets), `400 invalid_request` (an unknown top-level field), `503 executor_profile_unavailable` while the supervisor reports the image missing; then a shell run on the profile with the `run_started` echo, and a run without the shell, whose profile is not checked and only echoed.",
   "fixture": "executor_profiles",
   "gateway_script": {
     "calls": [
@@ -598,12 +598,14 @@
           "profiles": [
             {
               "description": "Dify's shell sandbox",
+              "max_turns_max": 50,
               "name": "default",
               "status": "ok",
               "timeout_seconds_max": 1800
             },
             {
               "description": "Blender 5.2.3, colvalley-3d (read-only) and its board renderer",
+              "max_turns_max": 200,
               "name": "colvalley-blender",
               "status": "ok",
               "timeout_seconds_max": 10800
@@ -767,6 +769,70 @@
         "status": 422
       },
       "step": "timeout_above_profile_max"
+    },
+    {
+      "request": {
+        "body": {
+          "continuation": null,
+          "env": {},
+          "execution": {
+            "agent_config_snapshot_id": "cfg-1",
+            "app_id": "A1",
+            "execution_id": "E1",
+            "invoke_from": "debugger",
+            "node_id": "N1",
+            "tenant_id": "T1",
+            "user_from": "account",
+            "user_id": "U1",
+            "workflow_run_id": "W1"
+          },
+          "executor_profile": "colvalley-blender",
+          "files": [],
+          "generation": 1,
+          "limits": {
+            "max_turns": 201,
+            "timeout_seconds": 7200
+          },
+          "model": {
+            "name": "test-model",
+            "parameters": {
+              "temperature": 0.7
+            },
+            "provider": "langgenius/openai_api_compatible/openai_api_compatible"
+          },
+          "operation_id": "E1:0:0",
+          "output_schema": null,
+          "protocol": "dify-sf-agent/1",
+          "system_prompt": "You are a travel planner.",
+          "task": [
+            {
+              "text": "Plan a weekend in Kyoto.",
+              "type": "text"
+            }
+          ],
+          "tools": {
+            "ask_human": false,
+            "shell": true
+          }
+        },
+        "headers": {
+          "Authorization": "Bearer fixture-service-key",
+          "Content-Type": "application/json",
+          "X-Agent-Run-Token": "fixture-run-token"
+        },
+        "method": "POST",
+        "path": "/v1/operations"
+      },
+      "response": {
+        "body": {
+          "error": "invalid_request",
+          "message": "limits.max_turns 201 exceeds the max_turns_max 200 of executor profile colvalley-blender",
+          "protocol": "dify-sf-agent/1"
+        },
+        "content_type": "application/json; charset=utf-8",
+        "status": 422
+      },
+      "step": "max_turns_above_profile_max"
     },
     {
       "request": {
@@ -977,12 +1043,14 @@
           "profiles": [
             {
               "description": "Dify's shell sandbox",
+              "max_turns_max": 50,
               "name": "default",
               "status": "ok",
               "timeout_seconds_max": 1800
             },
             {
               "description": "Blender 5.2.3, colvalley-3d (read-only) and its board renderer",
+              "max_turns_max": 200,
               "name": "colvalley-blender",
               "status": "image_missing",
               "timeout_seconds_max": 10800
@@ -1085,8 +1153,15 @@
           {
             "data": {
               "invocation_id": "run_000000000000000000000001:1",
+              "prompt": {
+                "first_changed_message": null,
+                "messages": 2,
+                "prefix_stable": null
+              },
               "usage": {
                 "completion_tokens": 5,
+                "prompt_cache_hit_tokens": null,
+                "prompt_cache_miss_tokens": null,
                 "prompt_tokens": 10,
                 "reasoning_tokens": null,
                 "total_tokens": 15
@@ -1120,8 +1195,15 @@
           {
             "data": {
               "invocation_id": "run_000000000000000000000001:2",
+              "prompt": {
+                "first_changed_message": null,
+                "messages": 4,
+                "prefix_stable": true
+              },
               "usage": {
                 "completion_tokens": 5,
+                "prompt_cache_hit_tokens": null,
+                "prompt_cache_miss_tokens": null,
                 "prompt_tokens": 10,
                 "reasoning_tokens": null,
                 "total_tokens": 15
@@ -1136,6 +1218,7 @@
                 "text": "Blender is at /opt/blender/blender."
               },
               "candidate_errors": [],
+              "partial": null,
               "snapshot": {
                 "agent_config_snapshot_id": "cfg-1",
                 "envelope": "dify-sf-agent-session/1",
@@ -1213,6 +1296,8 @@
               },
               "usage": {
                 "completion_tokens": 10,
+                "prompt_cache_hit_tokens": null,
+                "prompt_cache_miss_tokens": null,
                 "prompt_tokens": 20,
                 "reasoning_tokens": null,
                 "total_tokens": 30
@@ -1245,6 +1330,7 @@
               "text": "Blender is at /opt/blender/blender."
             },
             "candidate_errors": [],
+            "partial": null,
             "snapshot": {
               "agent_config_snapshot_id": "cfg-1",
               "envelope": "dify-sf-agent-session/1",
@@ -1322,6 +1408,8 @@
             },
             "usage": {
               "completion_tokens": 10,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 20,
               "reasoning_tokens": null,
               "total_tokens": 30
@@ -1360,6 +1448,7 @@
               "text": "Blender is at /opt/blender/blender."
             },
             "candidate_errors": [],
+            "partial": null,
             "snapshot": {
               "agent_config_snapshot_id": "cfg-1",
               "envelope": "dify-sf-agent-session/1",
@@ -1437,6 +1526,8 @@
             },
             "usage": {
               "completion_tokens": 10,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 20,
               "reasoning_tokens": null,
               "total_tokens": 30
@@ -1540,8 +1631,15 @@
           {
             "data": {
               "invocation_id": "run_000000000000000000000002:1",
+              "prompt": {
+                "first_changed_message": null,
+                "messages": 2,
+                "prefix_stable": null
+              },
               "usage": {
                 "completion_tokens": 5,
+                "prompt_cache_hit_tokens": null,
+                "prompt_cache_miss_tokens": null,
                 "prompt_tokens": 10,
                 "reasoning_tokens": null,
                 "total_tokens": 15
@@ -1556,6 +1654,7 @@
                 "text": "No shell needed."
               },
               "candidate_errors": [],
+              "partial": null,
               "snapshot": {
                 "agent_config_snapshot_id": "cfg-1",
                 "envelope": "dify-sf-agent-session/1",
@@ -1604,6 +1703,8 @@
               },
               "usage": {
                 "completion_tokens": 5,
+                "prompt_cache_hit_tokens": null,
+                "prompt_cache_miss_tokens": null,
                 "prompt_tokens": 10,
                 "reasoning_tokens": null,
                 "total_tokens": 15
@@ -1636,6 +1737,7 @@
               "text": "No shell needed."
             },
             "candidate_errors": [],
+            "partial": null,
             "snapshot": {
               "agent_config_snapshot_id": "cfg-1",
               "envelope": "dify-sf-agent-session/1",
@@ -1684,6 +1786,8 @@
             },
             "usage": {
               "completion_tokens": 5,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 10,
               "reasoning_tokens": null,
               "total_tokens": 15
@@ -1722,6 +1826,7 @@
               "text": "No shell needed."
             },
             "candidate_errors": [],
+            "partial": null,
             "snapshot": {
               "agent_config_snapshot_id": "cfg-1",
               "envelope": "dify-sf-agent-session/1",
@@ -1770,6 +1875,8 @@
             },
             "usage": {
               "completion_tokens": 5,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 10,
               "reasoning_tokens": null,
               "total_tokens": 15

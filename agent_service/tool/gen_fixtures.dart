@@ -987,6 +987,32 @@ final scenarios = <Scenario>[
     ),
   ),
   Scenario(
+    'budget_notice',
+    'Near-budget submit (a dify-sf extension): `max_turns` 2 and declared '
+        'outputs without files, so finishing needs one model call. Before '
+        'call 2 the service appends the budget notice as a user message '
+        '(kept in the history and the snapshot) and emits `budget_notice`; '
+        'the model calls `final_output`; `succeeded` carries `partial`.',
+    {
+      'calls': [
+        toolCallScript('c1', 'shell_run', {'script': 'ls'}),
+        toolCallScript('fo_1', 'final_output', {
+          'text': 'Unfinished: only the listing was made.',
+          'score': 1,
+        }),
+      ],
+    },
+    (s) async {
+      final run = await s.start(
+        'start',
+        operation(shell: true, outputSchema: scoreSchema)
+          ..['limits'] = {'max_turns': 2, 'timeout_seconds': 60},
+      );
+      await s.finishRun(run);
+    },
+    sandbox: const SandboxSetup(jobOutput: 'inputs\r\n'),
+  ),
+  Scenario(
     'delete_cleanup_failed',
     'DELETE of an execution whose sandbox the supervisor fails to remove: '
         '`503 cleanup_failed` (records stay); the retry answers 200; a third '
@@ -1043,7 +1069,8 @@ final scenarios = <Scenario>[
     'executor_profiles',
     'Executor profiles: `GET /v1/profiles` and `profiles` in health; '
         '`422 executor_profile_unknown`, `422 invalid_request` (timeout above '
-        'the profile\'s `timeout_seconds_max`), `400 reserved_env` (a variable '
+        'the profile\'s `timeout_seconds_max`, then `max_turns` above its '
+        '`max_turns_max`), `400 reserved_env` (a variable '
         'the profile sets), `400 invalid_request` (an unknown top-level '
         'field), `503 executor_profile_unavailable` while the supervisor '
         'reports the image missing; then a shell run on the profile with the '
@@ -1076,6 +1103,16 @@ final scenarios = <Scenario>[
         body: {
           ...body,
           'limits': {'max_turns': 10, 'timeout_seconds': 20000},
+        },
+        runToken: true,
+      );
+      await s.request(
+        'max_turns_above_profile_max',
+        'POST',
+        '/v1/operations',
+        body: {
+          ...body,
+          'limits': {'max_turns': 201, 'timeout_seconds': 7200},
         },
         runToken: true,
       );
@@ -1151,6 +1188,7 @@ final scenarios = <Scenario>[
             'workspace_mb': 1536,
             'home_mb': 512,
             'timeout_seconds_max': 10800,
+            'max_turns_max': 200,
           },
           'env': {
             'BLENDER': '/opt/blender/blender',

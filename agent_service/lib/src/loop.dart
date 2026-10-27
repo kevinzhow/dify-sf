@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:genkit/genkit.dart';
 import 'package:schemantic/schemantic.dart';
 
@@ -14,6 +15,7 @@ import 'gateway.dart';
 import 'model.dart';
 import 'output_tool.dart';
 import 'protocol.dart';
+import 'report_progress.dart';
 import 'run_store.dart';
 import 'sandbox/sandbox.dart';
 import 'sandbox/shell_tools.dart';
@@ -37,6 +39,68 @@ class FinalOutputReached implements Exception {
 
   /// The model message holding the `final_output` call.
   final Message response;
+}
+
+/// The last model call the run may make answered without finishing (no
+/// `final_output`, no final answer, no question): its tools are not run,
+/// because no model call is left to read their results.
+class BudgetExhausted implements Exception {
+  BudgetExhausted(this.message);
+  final String message;
+  @override
+  String toString() => 'BudgetExhausted: $message';
+}
+
+/// Model calls the run needs to finish once told to: one for the call that
+/// gives the result (`final_output`, or the final answer without declared
+/// outputs), plus one to write declared file outputs into the workspace
+/// first when the schema declares any (they must exist when `final_output`
+/// names them). Derived from what finishing needs; not a tuned margin.
+int callsToFinish(OperationRequest r) {
+  final schema = r.outputSchema;
+  return schema != null && r.shell && declaresFileOutputs(schema) ? 2 : 1;
+}
+
+/// Why the run told the model to finish now (see `budget_notice`).
+enum BudgetReason { maxTurns, timeout }
+
+extension on BudgetReason {
+  String get wire => switch (this) {
+    BudgetReason.maxTurns => 'max_turns',
+    BudgetReason.timeout => 'timeout',
+  };
+}
+
+/// The user message appended (and kept) when the budget runs low.
+String budgetNoticeText(
+  OperationRequest r, {
+  required int remainingCalls,
+  int? remainingSeconds,
+}) {
+  final schema = r.outputSchema;
+  final files = schema != null && r.shell && declaresFileOutputs(schema);
+  final left = [
+    '$remainingCalls model call${remainingCalls == 1 ? '' : 's'} '
+        '(this one included)',
+    if (remainingSeconds != null) 'about $remainingSeconds seconds',
+  ].join(' and ');
+  final String finish;
+  if (schema == null) {
+    finish =
+        'Give your final answer as text now, without calling tools, with the '
+        'best result you have, and say what is unfinished.';
+  } else {
+    final call = files
+        ? 'If a file you will name in final_output does not exist yet, use at '
+              'most one step to write it into the workspace; then call'
+        : 'Call';
+    finish =
+        '$call final_output now with the best result you have: fill every '
+        'required field and say in `text` what is unfinished.';
+  }
+  return 'Budget notice from the agent service: this run has $left left. '
+      'Stop exploring. $finish A last step that calls other tools instead '
+      'is not run, and the run fails without a result.';
 }
 
 /// Why a run was stopped from outside the loop.
@@ -80,6 +144,12 @@ List<Map<String, Object?>> toolDefinitions(OperationRequest r) => [
       'name': viewImageToolName,
       'description': viewImageDescription,
       'parameters': viewImageInputSchema,
+    },
+  if (r.reportProgress)
+    {
+      'name': reportProgressToolName,
+      'description': reportProgressDescription,
+      'parameters': reportProgressInputSchema,
     },
 ];
 
@@ -258,9 +328,22 @@ class AgentRun {
   GatewayModelContext? _model;
   final Usage usage = Usage();
 
-  /// Bytes of `view_image` attachments per model call index (the turn whose
-  /// tool calls attach them to the next call).
-  final Map<int, int> _viewedBytes = {};
+  /// Bytes of the viewed images kept in the conversation (the snapshot's
+  /// and this run's), and the path of each by SHA-256 of its bytes.
+  int _viewedBytes = 0;
+  final Map<String, String> _viewedDigests = {};
+
+  /// `report_progress` previews of this run.
+  int _progressCount = 0;
+
+  /// When the run started and the longest step so far (from one model
+  /// call's start to the next one's: the call and its tools).
+  final Stopwatch _clock = Stopwatch();
+  Duration _longestStep = Duration.zero;
+  Duration? _lastCallStart;
+
+  /// The budget notice, once given: why and with which call.
+  ({BudgetReason reason, int callIndex})? _notice;
 
   /// The shell of this run, opened on the first shell tool call.
   Future<ShellSession>? _sessionFuture;
@@ -369,6 +452,7 @@ class AgentRun {
       Duration(seconds: r.timeoutSeconds),
       () => stop(StopReason.timeout),
     );
+    _clock.start();
     final ai = Genkit(isDevEnv: false, promptDir: null);
     try {
       final model = defineGatewayModel(
@@ -378,15 +462,20 @@ class AgentRun {
           request: r,
           runId: runId,
           onReasoning: (t) => _emit('thought', {'text': t}),
-          onModelCall: (id, u) {
+          onModelCall: (id, u, prefix) {
             usage.add(u);
-            _emit('model_call', {'invocation_id': id, 'usage': u.toJson()});
+            _emit('model_call', {
+              'invocation_id': id,
+              'usage': u.toJson(),
+              'prompt': prefix.toJson(),
+            });
           },
-        ),
+        )..onCallStart = _onCallStart,
       );
       if (r.askHuman) _defineAskHuman(ai);
       if (r.shell) _defineShellTools(ai);
       if (r.viewImage) _defineViewImage(ai);
+      if (r.reportProgress) _defineReportProgress(ai);
       final outputSchema = r.outputSchema;
       if (outputSchema != null) _defineFinalOutput(ai, outputSchema);
       final events = ai.defineGenerateMiddleware<void>(
@@ -429,6 +518,7 @@ class AgentRun {
         ];
       } else {
         messages = verifyContinuation(r).toList();
+        _countViewedImages(messages);
         revision = c.snapshot['revision'] as int;
         switch (c) {
           case AnswerContinuation():
@@ -462,6 +552,7 @@ class AgentRun {
           if (outputSchema != null) finalOutputToolName,
           if (r.shell) ...shellToolNames,
           if (r.viewImage) viewImageToolName,
+          if (r.reportProgress) reportProgressToolName,
         ],
         maxTurns: r.maxTurns,
         onChunk: (_) {},
@@ -560,6 +651,7 @@ class AgentRun {
           'candidate_errors': errors,
           'snapshot': _snapshot(revision + 1, result.messages),
           'usage': usage.toJson(),
+          'partial': _partial,
         });
     }
   }
@@ -645,7 +737,106 @@ class AgentRun {
       'candidate_errors': errors,
       'snapshot': _snapshot(revision + 1, messages),
       'usage': usage.toJson(),
+      'partial': _partial,
     });
+  }
+
+  /// `partial` of `succeeded`: the result was given after the budget notice.
+  Map<String, Object?>? get _partial => switch (_notice) {
+    null => null,
+    final n => {'reason': n.reason.wire, 'notice_call_index': n.callIndex},
+  };
+
+  void _onCallStart(int callIndex) {
+    final now = _clock.elapsed;
+    final last = _lastCallStart;
+    if (last != null && now - last > _longestStep) _longestStep = now - last;
+    _lastCallStart = now;
+  }
+
+  /// Before model call [callIndex]: when the calls or the time left are no
+  /// more than what finishing needs ([callsToFinish] calls; for time, that
+  /// many of the longest step so far), appends the budget notice to
+  /// [req]'s messages, once per run. Genkit 1.0.1 builds the next turn's
+  /// history from this same request object, so the notice stays in the
+  /// history at the place it was added (append-only; tested).
+  void _maybeNotice(ModelRequest req, int callIndex) {
+    if (_notice != null) return;
+    final r = request;
+    final need = callsToFinish(r);
+    final remainingCalls = r.maxTurns - callIndex + 1;
+    final remaining = Duration(seconds: r.timeoutSeconds) - _clock.elapsed;
+    final BudgetReason reason;
+    if (remainingCalls <= need) {
+      reason = BudgetReason.maxTurns;
+    } else if (_longestStep > Duration.zero &&
+        remaining <= _longestStep * need) {
+      reason = BudgetReason.timeout;
+    } else {
+      return;
+    }
+    final seconds = remaining.isNegative ? 0 : remaining.inSeconds;
+    _notice = (reason: reason, callIndex: callIndex);
+    req.messages = [
+      ...req.messages,
+      Message(
+        role: Role.user,
+        content: [
+          TextPart(
+            text: budgetNoticeText(
+              r,
+              remainingCalls: remainingCalls,
+              remainingSeconds: reason == BudgetReason.timeout ? seconds : null,
+            ),
+          ),
+        ],
+      ),
+    ];
+    _emit('budget_notice', {
+      'reason': reason.wire,
+      'call_index': callIndex,
+      'remaining_calls': remainingCalls,
+      if (reason == BudgetReason.timeout) 'remaining_seconds': seconds,
+    });
+  }
+
+  /// After model call [callIndex]: the last call the run may make must
+  /// finish (`final_output`, a final answer or a question); otherwise its
+  /// tools are not run and the run fails `max_turns` now.
+  void _checkLastCall(int callIndex, Message? message) {
+    if (callIndex < request.maxTurns || message == null) return;
+    final calls = [for (final p in message.content) ?p.toolRequestPart];
+    if (calls.isEmpty) return;
+    if (calls.any(
+      (c) =>
+          c.toolRequest.name == finalOutputToolName ||
+          c.toolRequest.name == askHumanToolName,
+    )) {
+      return;
+    }
+    throw BudgetExhausted(
+      'the run reached max_turns (${request.maxTurns}) without a final answer'
+      '${_notice == null ? '' : '; the model was told to finish at call ${_notice!.callIndex}'}',
+    );
+  }
+
+  /// Counts the viewed images kept in [messages] (a continuation's history).
+  void _countViewedImages(List<Message> messages) {
+    for (final m in messages) {
+      if (m.role != Role.tool) continue;
+      for (final p in m.content) {
+        for (final c in p.toolResponse?.content ?? const []) {
+          if (c is! Map) continue;
+          final meta = (c['metadata'] as Map?)?[viewImageMetadataKey];
+          if (meta is! Map || meta['size'] is! int) continue;
+          _viewedBytes += meta['size'] as int;
+          final digest = meta['sha256'];
+          if (digest is String) {
+            _viewedDigests.putIfAbsent(digest, () => '${meta['path']}');
+          }
+        }
+      }
+    }
   }
 
   (String, String) _classify(Object? cause, String? fallback) {
@@ -653,6 +844,7 @@ class AgentRun {
     for (var depth = 0; c != null && depth < 8; depth++) {
       if (c is GatewayException) return (c.errorType, c.message);
       if (c is AskHumanInvalid) return ('ask_human_invalid', c.message);
+      if (c is BudgetExhausted) return ('max_turns', c.message);
       if (c is SandboxFailure) return (c.errorType, c.message);
       if (c is GenkitException) {
         if (c.cause == null) {
@@ -821,11 +1013,88 @@ class AgentRun {
     }
   }
 
-  /// `view_image`: checks the workspace file (inside the workspace, a PNG,
-  /// JPEG or WebP by its header, within the turn's byte budget), uploads it
-  /// as a file of the execution and returns the tool text with the image as
-  /// a multipart `MediaPart`. The model bridge sends that image with the
-  /// next model call only (see `toPromptMessages`). Problems are tool
+  /// Reads an image of the workspace for `view_image` / `report_progress`:
+  /// inside the workspace, a PNG, JPEG or WebP by its header, at most
+  /// [maxBytes]. Returns the error text or the file.
+  Future<
+    ({
+      String? error,
+      String rel,
+      List<int> bytes,
+      ({String mimeType, int width, int height})? info,
+    })
+  >
+  _workspaceImage(Object? path, int maxBytes, String budgetText) async {
+    if (path is! String || path.trim().isEmpty) {
+      return (
+        error: 'path is required',
+        rel: '',
+        bytes: const <int>[],
+        info: null,
+      );
+    }
+    final sandbox = (await _shellSession()).sandbox;
+    final st = await sandbox.statFile(path.trim());
+    if (st.error != null) {
+      return (error: st.error, rel: '', bytes: const <int>[], info: null);
+    }
+    final real = st.realPath!;
+    final rel = real.substring(sandbox.layout.workspaceDir.length + 1);
+    if (st.size > maxBytes) {
+      return (
+        error:
+            '$rel is ${st.size} bytes; $budgetText. Make a smaller copy '
+            '(scaled down, or JPEG) and use that.',
+        rel: rel,
+        bytes: const <int>[],
+        info: null,
+      );
+    }
+    final List<int> bytes;
+    try {
+      bytes = await sandbox.readFile(real, st.size);
+    } on SandboxFailure catch (e) {
+      return (error: e.message, rel: rel, bytes: const <int>[], info: null);
+    }
+    final info = imageInfo(bytes);
+    if (info == null) {
+      return (
+        error: '$rel is not a PNG, JPEG or WebP image (${st.mimeType})',
+        rel: rel,
+        bytes: bytes,
+        info: null,
+      );
+    }
+    return (error: null, rel: rel, bytes: bytes, info: info);
+  }
+
+  /// Uploads [bytes] as a file of the execution; returns its `upload_id`.
+  Future<String> _upload(
+    String filename,
+    String mimeType,
+    List<int> bytes,
+  ) async {
+    final up = await _inner!.uploadRequest(
+      filename: filename,
+      mimeType: mimeType,
+      size: bytes.length,
+    );
+    final url = up['url'];
+    final id = up['upload_id'];
+    if (url is! String || id is! String) {
+      throw GatewayException('file_error', 'upload-request gave no url');
+    }
+    await _inner!.uploadBytes(url, bytes, mimeType);
+    return id;
+  }
+
+  /// `view_image`: checks the workspace file (see [_workspaceImage]; the
+  /// conversation's viewed images together at most
+  /// [viewImageConversationBytes]), uploads it as a file of the execution
+  /// and returns the tool text with the image as a multipart `MediaPart`.
+  /// The image stays in the conversation: the model bridge sends it after
+  /// the tool message in every later call (see `toPromptMessages`). The
+  /// same bytes viewed again are not attached twice. Problems are tool
   /// errors the model can act on; a sandbox that cannot be opened ends the
   /// run as for the shell tools.
   void _defineViewImage(Genkit ai) {
@@ -844,64 +1113,55 @@ class AgentRun {
         final args = input is Map
             ? input.cast<String, Object?>()
             : const <String, Object?>{};
-        final path = args['path'];
-        if (path is! String || path.trim().isEmpty) {
-          return error('path is required');
-        }
         final detail = args['detail'] == 'low' ? 'low' : 'high';
-        final turn = _model?.callIndex ?? 0;
-        final sandbox = (await _shellSession()).sandbox;
-        final st = await sandbox.statFile(path.trim());
-        if (st.error != null) return error(st.error!);
-        final real = st.realPath!;
-        final rel = real.substring(sandbox.layout.workspaceDir.length + 1);
-        final used = _viewedBytes[turn] ?? 0;
-        if (used + st.size > viewImageTurnBytes) {
-          return error(
-            '$rel is ${st.size} bytes; the images of one step may have at '
-            'most $viewImageTurnBytes bytes together${used > 0 ? ' ($used already viewed in this step)' : ''}. '
-            'Make a smaller copy (scaled down, or JPEG) and view that.',
+        final left = viewImageConversationBytes - _viewedBytes;
+        final img = await _workspaceImage(
+          args['path'],
+          left < 0 ? 0 : left,
+          'the viewed images of this conversation may have at most '
+          '$viewImageConversationBytes bytes together and $_viewedBytes '
+          'are used',
+        );
+        if (img.error != null) return error(img.error!);
+        final info = img.info!;
+        final rel = img.rel;
+        final digest = sha256.convert(img.bytes).toString();
+        final earlier = _viewedDigests[digest];
+        if (earlier != null) {
+          return ToolResult.response(
+            'The image $rel has the same bytes as $earlier, which is already '
+            'in the conversation; it is not attached again.',
           );
         }
-        _viewedBytes[turn] = used + st.size;
-        final List<int> bytes;
-        try {
-          bytes = await sandbox.readFile(real, st.size);
-        } on SandboxFailure catch (e) {
-          _viewedBytes[turn] = (_viewedBytes[turn] ?? 0) - st.size;
-          return error(e.message);
-        }
-        final info = imageInfo(bytes);
-        if (info == null) {
-          _viewedBytes[turn] = (_viewedBytes[turn] ?? 0) - st.size;
+        // Checked again and reserved synchronously: tools of one turn may run
+        // concurrently, and another view may have used the budget meanwhile.
+        if (_viewedBytes + img.bytes.length > viewImageConversationBytes) {
           return error(
-            '$rel is not a PNG, JPEG or WebP image (${st.mimeType})',
+            '$rel is ${img.bytes.length} bytes; the viewed images of this '
+            'conversation may have at most $viewImageConversationBytes bytes '
+            'together and $_viewedBytes are used. Make a smaller copy (scaled '
+            'down, or JPEG) and use that.',
           );
         }
-        final name = rel.substring(rel.lastIndexOf('/') + 1);
+        _viewedBytes += img.bytes.length;
+        _viewedDigests[digest] = rel;
         final String uploadId;
         try {
-          final up = await _inner!.uploadRequest(
-            filename: name,
-            mimeType: info.mimeType,
-            size: bytes.length,
+          uploadId = await _upload(
+            rel.substring(rel.lastIndexOf('/') + 1),
+            info.mimeType,
+            img.bytes,
           );
-          final url = up['url'];
-          final id = up['upload_id'];
-          if (url is! String || id is! String) {
-            throw GatewayException('file_error', 'upload-request gave no url');
-          }
-          await _inner!.uploadBytes(url, bytes, info.mimeType);
-          uploadId = id;
         } on GatewayException catch (e) {
-          _viewedBytes[turn] = (_viewedBytes[turn] ?? 0) - st.size;
+          _viewedBytes -= img.bytes.length;
+          _viewedDigests.remove(digest);
           return error('the image could not be attached: ${e.message}');
         }
         return ToolResult.response(
           'The image $rel (${info.mimeType}, ${info.width}x${info.height}, '
-          '${bytes.length} bytes) is attached after this result, for your '
-          'next step only. It is not kept in the conversation; call '
-          'view_image again to look at it later.',
+          '${img.bytes.length} bytes) is attached after this result and stays '
+          'in the conversation ($_viewedBytes of $viewImageConversationBytes '
+          'bytes of viewed images used).',
           parts: [
             MediaPart(
               media: Media(
@@ -909,10 +1169,92 @@ class AgentRun {
                 contentType: info.mimeType,
               ),
               metadata: {
-                viewImageMetadataKey: {'path': rel, 'detail': detail},
+                viewImageMetadataKey: {
+                  'path': rel,
+                  'detail': detail,
+                  'size': img.bytes.length,
+                  'sha256': digest,
+                },
               },
             ),
           ],
+        );
+      },
+    );
+  }
+
+  /// `report_progress`: checks the workspace image (see [_workspaceImage],
+  /// at most [progressImageBytes]) and the caption, uploads the image as a
+  /// file of the execution and emits a `progress` event. The model gets a
+  /// short text only; the image never enters its context. At most
+  /// [progressMaxPerRun] per run; problems are tool errors.
+  void _defineReportProgress(Genkit ai) {
+    ToolResult<Object?> error(String message) => ToolResult.response(
+      shellToolError(message),
+      metadata: {'dify_sf_error': message},
+    );
+    ai.defineTool<Object?, Object?>(
+      name: reportProgressToolName,
+      description: reportProgressDescription,
+      inputSchema: SchemanticType.from<Object?>(
+        jsonSchema: reportProgressInputSchema,
+        parse: (j) => j,
+      ),
+      fn: (input, _) async {
+        final args = input is Map
+            ? input.cast<String, Object?>()
+            : const <String, Object?>{};
+        final caption = args['caption'];
+        if (caption is! String || caption.trim().isEmpty) {
+          return error('caption is required');
+        }
+        final text = caption.trim();
+        if (text.runes.length > progressCaptionMaxChars) {
+          return error(
+            'caption has ${text.runes.length} characters; at most '
+            '$progressCaptionMaxChars',
+          );
+        }
+        if (_progressCount >= progressMaxPerRun) {
+          return error(
+            'this run already reported $progressMaxPerRun previews, the most '
+            'it may; continue without reporting',
+          );
+        }
+        // Reserved before the upload: tools of one turn run concurrently.
+        _progressCount++;
+        final callIndex = _model?.callIndex ?? 0;
+        final img = await _workspaceImage(
+          args['path'],
+          progressImageBytes,
+          'a preview may have at most $progressImageBytes bytes',
+        );
+        if (img.error != null) {
+          _progressCount--;
+          return error(img.error!);
+        }
+        final info = img.info!;
+        final name = img.rel.substring(img.rel.lastIndexOf('/') + 1);
+        final String uploadId;
+        try {
+          uploadId = await _upload(name, info.mimeType, img.bytes);
+        } on GatewayException catch (e) {
+          _progressCount--;
+          return error('the preview could not be uploaded: ${e.message}');
+        }
+        _emit('progress', {
+          'file': {
+            'upload_id': uploadId,
+            'filename': name,
+            'mime_type': info.mimeType,
+            'size': img.bytes.length,
+          },
+          'caption': text,
+          'call_index': callIndex,
+        });
+        return ToolResult.response(
+          'Progress reported: ${img.rel} with your caption '
+          '($_progressCount of at most $progressMaxPerRun in this run).',
         );
       },
     );
@@ -1060,6 +1402,8 @@ class _EventsMiddleware extends GenerateMiddleware {
     )
     next,
   ) async {
+    final callIndex = (run._model?.callIndex ?? 0) + 1;
+    run._maybeNotice(request, callIndex);
     final response = await next(request, ctx);
     final message = response.message;
     if (message != null &&
@@ -1078,6 +1422,7 @@ class _EventsMiddleware extends GenerateMiddleware {
         'ask_human supports exactly one call per model turn; got $asks',
       );
     }
+    run._checkLastCall(callIndex, message);
     return response;
   }
 

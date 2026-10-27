@@ -180,6 +180,8 @@
               "message": "model gateway answered HTTP 422: {\"error\":\"file_error\",\"message\":\"not a file of this execution: dify-sf-file:F404\"}",
               "usage": {
                 "completion_tokens": 0,
+                "prompt_cache_hit_tokens": null,
+                "prompt_cache_miss_tokens": null,
                 "prompt_tokens": 0,
                 "reasoning_tokens": null,
                 "total_tokens": 0
@@ -212,6 +214,8 @@
             "message": "model gateway answered HTTP 422: {\"error\":\"file_error\",\"message\":\"not a file of this execution: dify-sf-file:F404\"}",
             "usage": {
               "completion_tokens": 0,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 0,
               "reasoning_tokens": null,
               "total_tokens": 0
@@ -250,6 +254,8 @@
             "message": "model gateway answered HTTP 422: {\"error\":\"file_error\",\"message\":\"not a file of this execution: dify-sf-file:F404\"}",
             "usage": {
               "completion_tokens": 0,
+              "prompt_cache_hit_tokens": null,
+              "prompt_cache_miss_tokens": null,
               "prompt_tokens": 0,
               "reasoning_tokens": null,
               "total_tokens": 0

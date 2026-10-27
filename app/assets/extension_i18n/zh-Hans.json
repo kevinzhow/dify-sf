@@ -39,7 +39,18 @@
     "inline.executorStatus.image_missing": "缺少镜像",
     "inline.executorStatus.device_missing": "缺少设备",
     "inline.executorStatus.unavailable": "不可用",
-    "inline.refreshProfiles": "刷新执行环境"
+    "inline.refreshProfiles": "刷新执行环境",
+    "inline.maxTurns": "最多模型调用次数",
+    "inline.maxTurnsHint": "当前执行环境最多允许 {{max}} 次调用；原有配置默认 50 次。",
+    "inline.invalidMaxTurns": "调用次数须为正整数，且不能超过执行环境的上限。",
+    "inline.progressCalls": "模型调用 {{count}} / {{max}}",
+    "inline.progressDetails": "Agent 运行过程",
+    "inline.progressImageUnavailable": "进度图暂时不可用或已过期。",
+    "inline.enlargeProgressImage": "放大进度图",
+    "inline.progressStarted": "Agent 正在开始执行…",
+    "inline.partialResult": "部分完成：Agent 接近调用或时间上限，已提交当前成果。",
+    "inline.cacheHitTokens": "提示词缓存命中：{{count}} tokens",
+    "inline.unknownUsage": "未知"
   },
   "common": {
     "web.fontLoadFailed": "部分文字加载失败，请联网后重试。",

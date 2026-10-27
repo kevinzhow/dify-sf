@@ -6,6 +6,7 @@ library;
 
 import 'dart:async';
 
+import 'package:collab_client/collab_client.dart' show ModelDiscoveryApi;
 import 'package:flutter/widgets.dart';
 
 import '../../cards/model_chip.dart' show ModelIcon;
@@ -19,10 +20,29 @@ import '../../workflow/workspace_models.dart';
 import '../form/base_form.dart';
 import '../settings_kit.dart' show showSettingsAlert;
 import 'model_modal.dart';
+import 'model_autofill.dart';
 import 'model_provider_env.dart';
 import 'provider_data.dart';
 
 String _t(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);
+
+/// Shared by loaded and lazily loaded provider cards, so their first click
+/// reaches the same new-model flow.
+void openNewCustomModel(
+  BuildContext context, {
+  required ModelProviderEnv env,
+  required Json provider,
+  required ModelAuth auth,
+  CustomModelFixedFields? fixedFields,
+}) {
+  if (fixedFields == null &&
+      provider.providerName == compatibleDiscoveryProvider &&
+      env.models.api is ModelDiscoveryApi) {
+    unawaited(showModelAutofill(context, env: env, provider: provider));
+  } else {
+    auth.handleOpenModal(context);
+  }
+}
 
 // ---- useAuth -------------------------------------------------------------------------------------------------------
 
@@ -938,6 +958,9 @@ class _AddCustomModelState extends State<AddCustomModel> {
     mode: mode,
   );
 
+  void _addNew(ModelProviderEnv env, ModelAuth auth) =>
+      openNewCustomModel(context, env: env, provider: widget.provider, auth: auth, fixedFields: widget.fixedFields);
+
   @override
   Widget build(BuildContext context) {
     final env = ModelProviderScope.of(context);
@@ -950,7 +973,7 @@ class _AddCustomModelState extends State<AddCustomModel> {
     if (noModels) {
       return AddModelButton(
         disabled: (notAllowCustomCredential && noModels) || disabled,
-        onPressed: notAllowCustomCredential || !env.canCreateCredential ? null : () => addNew.handleOpenModal(context),
+        onPressed: notAllowCustomCredential || !env.canCreateCredential ? null : () => _addNew(env, addNew),
       );
     }
     return DifyFloating(
@@ -1036,7 +1059,7 @@ class _AddCustomModelState extends State<AddCustomModel> {
                 semanticLabel: _t('modelProvider.auth.addNewModel'),
                 onPressed: () {
                   _setOpen(false);
-                  addNew.handleOpenModal(context);
+                  _addNew(env, addNew);
                 },
                 builder: (context, hovered, _) => Container(
                   padding: const EdgeInsets.all(12),

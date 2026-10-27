@@ -37,14 +37,10 @@ abstract class AgentExecutorProfilesApi {
 }
 
 class AgentExecutorProfile {
-  const AgentExecutorProfile(
-    this.name,
-    this.description,
-    this.status,
-    this.timeoutSecondsMax,
-  );
+  const AgentExecutorProfile(this.name, this.description, this.status, this.timeoutSecondsMax, {this.maxTurnsMax = 50});
   final String name, description, status;
   final int timeoutSecondsMax;
+  final int maxTurnsMax;
 }
 
 /// A failed read remains unknown. An empty list must never stand in for an unreachable service.
@@ -82,7 +78,11 @@ class AgentExecutorContext {
           ].contains(entry['status']) ||
           entry['timeout_seconds_max'] is! int ||
           (entry['timeout_seconds_max'] as int) < 1 ||
-          (entry['timeout_seconds_max'] as int) > 86400) {
+          (entry['timeout_seconds_max'] as int) > 86400 ||
+          (entry.containsKey('max_turns_max') &&
+              (entry['max_turns_max'] is! int ||
+                  (entry['max_turns_max'] as int) < 1 ||
+                  (entry['max_turns_max'] as int) > 1000))) {
         throw const FormatException('executor_profile');
       }
       profiles.add(
@@ -91,6 +91,7 @@ class AgentExecutorContext {
           entry['description'] as String,
           entry['status'] as String,
           entry['timeout_seconds_max'] as int,
+          maxTurnsMax: entry['max_turns_max'] as int? ?? 50,
         ),
       );
     }

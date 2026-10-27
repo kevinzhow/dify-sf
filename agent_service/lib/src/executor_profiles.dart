@@ -31,6 +31,14 @@ const defaultTimeoutSecondsMax = 1800;
 /// Largest `timeout_seconds_max` a profile may set (24 hours).
 const maxTimeoutSecondsMax = 86400;
 
+/// `max_turns_max` of a profile that sets none: the service's default
+/// `limits.max_turns`.
+const defaultMaxTurnsMax = 50;
+
+/// Largest `max_turns_max` a profile may set. The Swift gateway also bounds
+/// the messages and bytes of one model request; this is the protocol's ceiling, not a recommendation.
+const maxMaxTurnsMax = 1000;
+
 /// `name[:tag]@sha256:<64 hex>`, optionally with a registry host.
 final _pinnedImage = RegExp(
   r'^(?:[a-z0-9.-]+(?::[0-9]+)?/)?[a-z0-9]+(?:[._-][a-z0-9]+)*'
@@ -83,6 +91,7 @@ class ProfileLimits {
     this.workspaceMb,
     this.homeMb,
     this.timeoutSecondsMax = defaultTimeoutSecondsMax,
+    this.maxTurnsMax = defaultMaxTurnsMax,
   });
   final double? cpus;
   final int? memoryMb;
@@ -90,6 +99,9 @@ class ProfileLimits {
   final int? workspaceMb;
   final int? homeMb;
   final int timeoutSecondsMax;
+
+  /// The largest `limits.max_turns` a run of this profile may have.
+  final int maxTurnsMax;
 }
 
 class ExecutorProfile {
@@ -122,6 +134,7 @@ class ExecutorProfile {
   final Map<String, String> env;
 
   int get timeoutSecondsMax => limits.timeoutSecondsMax;
+  int get maxTurnsMax => limits.maxTurnsMax;
 }
 
 class ExecutorProfiles {
@@ -319,6 +332,7 @@ class ExecutorProfiles {
         'workspace_mb',
         'home_mb',
         'timeout_seconds_max',
+        'max_turns_max',
       }, '$where limits');
       final cpus = l['cpus'];
       if (cpus != null && (cpus is! num || cpus <= 0 || cpus > 256)) {
@@ -346,6 +360,8 @@ class ExecutorProfiles {
         timeoutSecondsMax:
             integer('timeout_seconds_max', 1, maxTimeoutSecondsMax) ??
             defaultTimeoutSecondsMax,
+        maxTurnsMax:
+            integer('max_turns_max', 1, maxMaxTurnsMax) ?? defaultMaxTurnsMax,
       );
       final (m, w, h) = (limits.memoryMb, limits.workspaceMb, limits.homeMb);
       if (m != null && w != null && h != null && w + h >= m) {
@@ -448,12 +464,17 @@ class ExecutorProfiles {
 }
 
 /// What an operation is checked against (also used by the fake service).
-typedef ProfileTerms = ({int timeoutSecondsMax, Iterable<String> envNames});
+typedef ProfileTerms = ({
+  int timeoutSecondsMax,
+  int maxTurnsMax,
+  Iterable<String> envNames,
+});
 
 /// The executor-profile answers of an operation that uses the shell, in
 /// this order: `422 executor_profile_unknown` ([terms] null), `422
 /// invalid_request` (`limits.timeout_seconds` above the profile's
-/// `timeout_seconds_max`), `400 reserved_env` (a variable the profile sets;
+/// `timeout_seconds_max`, or `limits.max_turns` above its `max_turns_max`),
+/// `400 reserved_env` (a variable the profile sets;
 /// compared case-insensitively) and `503 executor_profile_unavailable`
 /// ([status] known and not `ok`; null when the supervisor could not be
 /// asked, and the run is attempted).
@@ -477,6 +498,14 @@ void checkOperationProfile(
       'limits.timeout_seconds ${op.timeoutSeconds} exceeds the '
           'timeout_seconds_max ${terms.timeoutSecondsMax} of executor '
           'profile $name',
+    );
+  }
+  if (op.maxTurns > terms.maxTurnsMax) {
+    throw ApiError(
+      422,
+      'invalid_request',
+      'limits.max_turns ${op.maxTurns} exceeds the max_turns_max '
+          '${terms.maxTurnsMax} of executor profile $name',
     );
   }
   final upper = {for (final n in terms.envNames) n.toUpperCase()};

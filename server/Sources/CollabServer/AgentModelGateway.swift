@@ -60,6 +60,13 @@ struct AgentModelScope: Sendable {
     }
 }
 
+enum AgentModelGatewayLimits {
+    // Append-only histories for long tool runs, while keeping one request bounded.
+    static let messages = 8192
+    static let requestBytes = 32 << 20
+    static let fileBytes = 20 << 20
+}
+
 struct AgentModelGatewayRequest: Sendable {
     let caller: JSONObject
     let provider: String
@@ -77,7 +84,7 @@ struct AgentModelGatewayRequest: Sendable {
         guard let caller = value["caller"]?.object, let target = value["target"]?.object,
               let provider = target["provider"]?.string, !provider.isEmpty,
               let model = target["model"]?.string, !model.isEmpty,
-              let rawMessages = target["prompt_messages"]?.array, !rawMessages.isEmpty, rawMessages.count <= 512,
+              let rawMessages = target["prompt_messages"]?.array, !rawMessages.isEmpty, rawMessages.count <= AgentModelGatewayLimits.messages,
               case .int(let callIndex)? = caller["call_index"], callIndex >= 1,
               let runID = caller["run_id"]?.string, !runID.isEmpty, runID.utf8.count <= 128,
               let invocationID = caller["invocation_id"]?.string, invocationID == "\(runID):\(callIndex)",
@@ -334,7 +341,7 @@ extension Routes {
                 do {
                     file = try await files.resolve(mapping, config: nil)
                     fileBytes += file.size
-                    guard fileBytes <= (8 << 20) * 3 / 4 else { throw ServerError.payloadTooLarge }
+                    guard fileBytes <= AgentModelGatewayLimits.fileBytes else { throw ServerError.payloadTooLarge }
                     guard (type != "image" || file.mimeType.hasPrefix("image/")),
                           (type != "audio" || file.mimeType.hasPrefix("audio/")),
                           (type != "video" || file.mimeType.hasPrefix("video/")) else { throw AgentModelFileError() }
@@ -349,7 +356,7 @@ extension Routes {
         }
         target["prompt_messages"] = .array(messages); root["target"] = .object(target)
         let normalized = JSONValue.object(root)
-        guard normalized.compactJSON().utf8.count <= 8 << 20 else { throw ServerError.payloadTooLarge }
+        guard normalized.compactJSON().utf8.count <= AgentModelGatewayLimits.requestBytes else { throw ServerError.payloadTooLarge }
         return normalized
     }
 
@@ -358,7 +365,7 @@ extension Routes {
             throw ServerError.http(status: 503, code: "agent_not_configured", message: "The agent model gateway is not configured")
         }
         let token = try authenticateAgentService(req)
-        let bytes = try await req.body.collect(max: .specified(ByteCount(value: 8 << 20))) ?? Data()
+        let bytes = try await req.body.collect(max: .specified(ByteCount(value: AgentModelGatewayLimits.requestBytes))) ?? Data()
         let payload: JSONValue
         do { payload = try JSONValue.parse(bytes) } catch { throw AgentModelGatewayRequest.invalid() }
         let authorized = try await agentModelScopes.activeScope(token: token)

@@ -265,6 +265,14 @@ class _RunNodePanelState extends State<RunNodePanel> {
               _ => const SizedBox.shrink(),
             },
           ),
+          if (meta?['agent_partial'] is Map)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: StatusContainer(
+                status: 'paused',
+                child: DifyTextLine(DifyI18n.tr('agent-v-2', 'inline.partialResult'), maxLines: null),
+              ),
+            ),
           if (n['inputs'] != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),

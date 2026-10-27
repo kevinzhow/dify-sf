@@ -19,6 +19,9 @@ enum RetryLook { idle, running, succeeded, failed }
 /// attempt) and "On Failure" with the strategy (the fail branch has its own source handle on that row).
 abstract final class NodeExtras {
   static const failBranch = 'fail-branch';
+  static bool hasRunPreview(Node n) =>
+      (n.type == 'agent' || n.type == 'agent-v2') && n.config['version'] == const VString('2');
+  static double progressHeight(Node n, NodeRunView run) => hasRunPreview(n) ? run.agentProgress?.height ?? 0 : 0;
 
   // utils/node.ts hasRetryNode, utils/workflow.ts hasErrorHandleNode.
   static const _retryTypes = {'llm', 'tool', 'http-request', 'code'};
@@ -69,22 +72,27 @@ abstract final class NodeExtras {
   static const _errorHeight = 4 + 24 + 8.0;
 
   static double height(Node n, [NodeRunView run = NodeRunView.idle, bool selected = false]) =>
-      (retryLook(n, run, selected: selected) != null ? _retryHeight : 0) + (_strategy(n) != null ? _errorHeight : 0);
+      progressHeight(n, run) +
+      (retryLook(n, run, selected: selected) != null ? _retryHeight : 0) +
+      (_strategy(n) != null ? _errorHeight : 0);
 
   /// The fail branch row's middle, from the top of these rows; null without a fail branch.
   static double? failBranchY(Node n, [NodeRunView run = NodeRunView.idle, bool selected = false]) =>
-      _strategy(n) == failBranch ? (retryLook(n, run, selected: selected) != null ? _retryHeight : 0) + 4 + 12 : null;
+      _strategy(n) == failBranch
+      ? progressHeight(n, run) + (retryLook(n, run, selected: selected) != null ? _retryHeight : 0) + 4 + 12
+      : null;
 
   /// The retry row's loader (a 14 px square), from the top-left of these rows; null when it does not spin.
   static Rect? retrySpinner(Node n, NodeRunView run, {bool selected = false}) =>
       retryLook(n, run, selected: selected) == RetryLook.running
-      ? Rect.fromLTWH(12 + Css.hairline + 5, Css.hairline + 4 + 1, 14, 14)
+      ? Rect.fromLTWH(12 + Css.hairline + 5, progressHeight(n, run) + Css.hairline + 4 + 1, 14, 14)
       : null;
 
   static Widget build(Node n, [NodeRunView run = NodeRunView.idle, bool selected = false]) {
     final retries = _retries(n), strategy = _strategy(n);
     final look = retryLook(n, run, selected: selected);
-    if (look == null && strategy == null) return const SizedBox.shrink();
+    final previewHeight = progressHeight(n, run);
+    if (look == null && strategy == null && previewHeight == 0) return const SizedBox.shrink();
     final box = BoxDecoration(
       color: DifyColors.workflowBlockParmaBg,
       borderRadius: BorderRadius.circular(DifyRadius.md),
@@ -92,6 +100,7 @@ abstract final class NodeExtras {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (previewHeight > 0) SizedBox(height: previewHeight),
         if (look != null) _retryRow(retries!, look, run.retryIndex ?? 0, box),
         if (strategy != null)
           Padding(

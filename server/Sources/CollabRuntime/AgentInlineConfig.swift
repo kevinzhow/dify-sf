@@ -13,11 +13,13 @@ public struct AgentInlineConfig: Sendable {
     public var secretReferences: [JSONObject]
     /// The immutable Soul pins a name; the executor host owns its definition.
     public var executorProfile: String
+    /// Maximum model calls requested by this immutable node configuration.
+    public var maxTurns: Int
     public var askHuman: Bool { !contacts.isEmpty }
 
     public init(_ value: JSONObject, requireModel: Bool = false) throws {
         let allowed: Set<String> = ["schema_version", "prompt", "tools", "knowledge", "human", "env", "config_skills",
-            "config_files", "config_note", "sandbox", "memory", "model", "app_features", "app_variables", "misc_legacy", "executor_profile"]
+            "config_files", "config_note", "sandbox", "memory", "model", "app_features", "app_variables", "misc_legacy", "executor_profile", "limits"]
         guard Set(value.keys).isSubset(of: allowed) else { throw NodeDataError("Unknown agent config field") }
         if let profile = value["executor_profile"] {
             guard let name = profile.string, name.isEmpty || Self.validExecutorProfile(name) else {
@@ -25,6 +27,13 @@ public struct AgentInlineConfig: Sendable {
             }
             executorProfile = name.isEmpty ? "default" : name
         } else { executorProfile = "default" }
+        if let limits = value["limits"] {
+            guard let object = limits.object, Set(object.keys).isSubset(of: ["max_turns"]),
+                  case .int(let requested)? = object["max_turns"], (1...1000).contains(requested) else {
+                throw NodeDataError("Agent limits.max_turns must be an integer from 1 to 1000")
+            }
+            maxTurns = requested
+        } else { maxTurns = 50 }
         if let version = value["schema_version"], version != 1 { throw NodeDataError("Unsupported agent config version") }
         for name in ["prompt", "tools", "knowledge", "human", "env", "sandbox", "memory", "app_features", "misc_legacy", "model"] {
             if let section = value[name], section != .null, section.object == nil {

@@ -2,6 +2,8 @@
 /// run/agent-log and run/special-result-panel.tsx.
 library;
 
+import '../../../agents/progress_image.dart';
+
 import 'package:flutter/widgets.dart';
 
 import '../../../cards/card_chrome.dart' show BlockIcon, BlockIconSize;
@@ -601,6 +603,7 @@ class _AgentLogItemState extends State<AgentLogItem> {
     final elapsed = metadata?['elapsed_time'];
     final children = (item['children'] as List?) ?? const [];
     final data = item['data'];
+    final progressFile = data is Map ? data['file'] : null;
     return Container(
       decoration: BoxDecoration(
         color: DifyColors.backgroundDefault,
@@ -642,6 +645,18 @@ class _AgentLogItemState extends State<AgentLogItem> {
               ),
             ),
           ),
+          if (metadata?['event'] == 'progress' &&
+              progressFile is Map &&
+              progressFile['dify_model_identity'] == '__dify__file__' &&
+              const {'image/png', 'image/jpeg', 'image/webp', 'image/gif'}.contains(progressFile['mime_type']))
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: AgentProgressImage(
+                url: '${progressFile['url'] ?? ''}',
+                caption: data is Map ? '${data['caption'] ?? ''}' : '',
+                height: 180,
+              ),
+            ),
           if (_expanded)
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),

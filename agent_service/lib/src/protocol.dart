@@ -312,6 +312,7 @@ class OperationRequest {
     required this.askHuman,
     required this.shell,
     required this.viewImage,
+    required this.reportProgress,
     required this.executorProfile,
     required this.env,
     required this.files,
@@ -335,6 +336,9 @@ class OperationRequest {
 
   /// `tools.view_image` (a dify-sf extension; needs `tools.shell`).
   final bool viewImage;
+
+  /// `tools.report_progress` (a dify-sf extension; needs `tools.shell`).
+  final bool reportProgress;
 
   /// The requested executor profile; `default` when absent. Used only with
   /// the shell.
@@ -407,6 +411,10 @@ class OperationRequest {
     final viewImage = tools['view_image'] == true;
     if (viewImage && !shell) {
       throw invalidRequest('tools.view_image needs tools.shell');
+    }
+    final reportProgress = tools['report_progress'] == true;
+    if (reportProgress && !shell) {
+      throw invalidRequest('tools.report_progress needs tools.shell');
     }
     final profile = json['executor_profile'] ?? 'default';
     if (profile is! String || !profileNamePattern.hasMatch(profile)) {
@@ -487,6 +495,7 @@ class OperationRequest {
       askHuman: tools['ask_human'] == true,
       shell: shell,
       viewImage: viewImage,
+      reportProgress: reportProgress,
       executorProfile: profile,
       env: env,
       files: files,
@@ -506,20 +515,44 @@ class Usage {
   int totalTokens = 0;
   int? reasoningTokens;
 
+  /// Prompt tokens the provider read from its prompt cache; null when the
+  /// provider (or a component on the way) does not report it.
+  int? promptCacheHitTokens;
+
+  /// Prompt tokens the provider did not find in its cache; null when not
+  /// reported and not derivable (see [fromDify]).
+  int? promptCacheMissTokens;
+
+  /// Like `reasoning_tokens`: the sum of the values that were reported.
   void add(Usage other) {
     promptTokens += other.promptTokens;
     completionTokens += other.completionTokens;
     totalTokens += other.totalTokens;
-    if (other.reasoningTokens != null) {
-      reasoningTokens = (reasoningTokens ?? 0) + other.reasoningTokens!;
-    }
+    int? sum(int? a, int? b) => b == null ? a : (a ?? 0) + b;
+    reasoningTokens = sum(reasoningTokens, other.reasoningTokens);
+    promptCacheHitTokens = sum(
+      promptCacheHitTokens,
+      other.promptCacheHitTokens,
+    );
+    promptCacheMissTokens = sum(
+      promptCacheMissTokens,
+      other.promptCacheMissTokens,
+    );
   }
 
   /// From a Dify `LLMUsage` JSON object. `reasoning_tokens` is read from
   /// `reasoning_tokens` or `completion_tokens_details.reasoning_tokens` and
   /// stays null when neither is reported.
+  ///
+  /// Cache hits are read from DeepSeek's `prompt_cache_hit_tokens`, the Swift
+  /// server's `cached_tokens` or OpenAI's `prompt_tokens_details.
+  /// cached_tokens`; misses from DeepSeek's `prompt_cache_miss_tokens`, else
+  /// `prompt_tokens - hits` when hits are reported. Both stay null when no
+  /// hit count is reported (Dify's `LLMUsage` has no such field, so today's
+  /// plugins and plugin daemon drop it; see docs/agent-v2.md).
   static Usage fromDify(Map<String, Object?> json) {
     int asInt(Object? v) => v is num ? v.toInt() : 0;
+    int? orNull(Object? v) => v is num ? v.toInt() : null;
     final u = Usage()
       ..promptTokens = asInt(json['prompt_tokens'])
       ..completionTokens = asInt(json['completion_tokens'])
@@ -529,6 +562,15 @@ class Usage {
     final nested = details is Map ? details['reasoning_tokens'] : null;
     final r = direct ?? nested;
     u.reasoningTokens = r is num ? r.toInt() : null;
+    final promptDetails = json['prompt_tokens_details'];
+    final hit =
+        orNull(json['prompt_cache_hit_tokens']) ??
+        orNull(json['cached_tokens']) ??
+        (promptDetails is Map ? orNull(promptDetails['cached_tokens']) : null);
+    u.promptCacheHitTokens = hit;
+    u.promptCacheMissTokens =
+        orNull(json['prompt_cache_miss_tokens']) ??
+        (hit == null ? null : (u.promptTokens - hit).clamp(0, u.promptTokens));
     if (u.totalTokens == 0) u.totalTokens = u.promptTokens + u.completionTokens;
     return u;
   }
@@ -538,5 +580,7 @@ class Usage {
     'completion_tokens': completionTokens,
     'total_tokens': totalTokens,
     'reasoning_tokens': reasoningTokens,
+    'prompt_cache_hit_tokens': promptCacheHitTokens,
+    'prompt_cache_miss_tokens': promptCacheMissTokens,
   };
 }

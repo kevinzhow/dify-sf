@@ -29,6 +29,6 @@ extension Routes {
         guard let config = stored.config, let object = try JSONValue.parse(config).object, !object.isEmpty else {
             throw NodeError("AgentCredentialInvalid", "The agent model credential is unavailable")
         }
-        return object
+        return JSONObject(object.filter { $0.key != ModelDiscovery.metadataKey })
     }
 }

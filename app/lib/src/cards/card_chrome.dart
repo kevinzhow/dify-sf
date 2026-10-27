@@ -41,7 +41,7 @@ class DifyNodeCard extends StatelessWidget {
           node.node,
           node.hovered,
           // The run state shows in live cards; it sizes the retry row (with the selection) in every card.
-          if (live || NodeExtras.hasRetry(node.node.value)) node.cardRun,
+          if (live || NodeExtras.hasRetry(node.node.value) || NodeExtras.hasRunPreview(node.node.value)) node.cardRun,
           if (NodeExtras.hasRetry(node.node.value)) node.selected,
           if (body.chrome == CardChrome.container) graph.restingOrigin,
         ]),

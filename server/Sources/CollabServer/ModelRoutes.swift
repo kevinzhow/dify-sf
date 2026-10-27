@@ -20,6 +20,9 @@ extension Routes {
         ws.post("default-model") { req in await handle(req) { try await setDefaultModels(req) } }
         let p = ws.grouped("model-providers", ":org", ":plugin", ":name")
         p.get("models") { req in await handle(req) { try await providerModels(req) } }
+        p.post("models", "discover") { req in await handle(req) { try await discoverModels(req) } }
+        p.post("models", "probe") { req in await handle(req) { try await probeModelCapabilities(req) } }
+        p.post("models", "autofill") { req in await handle(req) { try await saveAutofilledModel(req) } }
         p.post("models") { req in await handle(req) { try await saveModel(req) } }
         p.delete("models") { req in await handle(req) { try await removeModel(req) } }
         p.patch("models", "enable") { req in await handle(req) { try await enableModel(req, true) } }
@@ -124,7 +127,7 @@ extension Routes {
 
     /// Validation and filtering of submitted credentials, then the provider check (unless switched off). Throws `400
     /// bad_request` for a form error and `400 credential_validation_failed` when the provider refuses them.
-    func checkedCredentials(_ def: ProviderDefinition, model: String?, modelType: String?, _ input: [String: JSON]) async throws -> [String: JSON] {
+    func checkedCredentials(_ def: ProviderDefinition, model: String?, modelType: String?, _ input: [String: JSON], checkProvider: Bool = true) async throws -> [String: JSON] {
         let filtered = try filtered(def, modelType: modelType, input)
         if runtimeConfigured {
             let installed = await installedProviderPlugins(force: true)
@@ -138,7 +141,7 @@ extension Routes {
                 }
             }
         }
-        if let reason = await providerCheck(def, model: model, modelType: modelType, filtered) {
+        if checkProvider, let reason = await providerCheck(def, model: model, modelType: modelType, filtered) {
             throw ServerError.http(status: 400, code: "credential_validation_failed", message: reason)
         }
         return filtered
@@ -712,7 +715,8 @@ extension Routes {
             ? (s.providerCredentials[def.id.description] ?? [])
             : (s.modelCredentials[key] ?? [])
         return try json(JSON.object([
-            "credentials": .object(Credentials.masked(credentials, secrets: secrets)),
+            "credentials": .object(Credentials.masked(credentials.filter { $0.key != ModelDiscovery.metadataKey }, secrets: secrets)),
+            "autofill": credentials[ModelDiscovery.metadataKey] ?? .null,
             "current_credential_id": currentId.map(JSON.string) ?? .null,
             "current_credential_name": currentName.map(JSON.string) ?? .null,
             "load_balancing": ["enabled": false, "configs": []],
@@ -752,7 +756,11 @@ extension Routes {
         }
         let restored = try restoreHidden(input, stored: stored, secrets: def.secretVariables(forModel: true))
         let checked = try await checkedCredentials(def, model: key.model, modelType: key.modelType, restored)
-        let config = try Self.encodeConfig(checked)
+        var updated = checked
+        if let old = Self.decodeConfig(stored.config), let metadata = old[ModelDiscovery.metadataKey] {
+            updated[ModelDiscovery.metadataKey] = ModelAutofillMetadata.edited(metadata, old: old, new: checked)
+        }
+        let config = try Self.encodeConfig(updated)
         try await modelStoreCall { try await store.updateModelCredential(key, id: id, name: name, config: config) }
         return try ok()
     }
