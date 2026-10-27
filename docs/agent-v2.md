@@ -572,6 +572,13 @@ stops the process. Without the file there is one profile, `default`: today's ima
   the file; an unknown name is `400`. The same key with a different profile is `409`. A sandbox keeps its profile for
   its lifetime. `GET /v1/sandboxes` lists each sandbox's profile.
 - `GET /v1/health` gains `"profiles": {"<name>": "ok" | "image_missing"}`.
+- Timeouts: the Swift server's own run timer stays authoritative. It uses the smaller of the node's timeout, the
+  profile's `timeout_seconds_max` and the server-wide cap, and sends that value as `limits.timeout_seconds`, so the
+  agent service never runs longer than Swift waits. `default` keeps 1800 s.
+- `limits.max_turns` stays 50 in the MVP. A node setting with a per-profile and server-wide cap is added only if real
+  modelling runs need more.
+- Rollout order: the agent service with the echo ships first; the Swift echo check goes live after it. Otherwise an
+  older service (no echo) would fail every run, including runs on `default`.
 
 `GET /v1/profiles` (new) lists what the Swift server needs for the editor and the checklist:
 
@@ -583,11 +590,19 @@ stops the process. Without the file there is one profile, `default`: today's ima
 
 It never lists images, mounts, network rules or environment values.
 
+If the Swift server cannot read the list (agent service down, timeout, bad answer), the state is **unknown**, never
+an empty list and never "only `default`". The editor shows the saved name with an "availability unknown" mark and
+keeps it; the checklist reports "executor profiles could not be checked" instead of "not available"; a run is still
+attempted and fails, if at all, with the service's own answer.
+
 ### Node configuration and DSL
 
 - A dify-sf extension of the Soul: the key `executor_profile` (a string; absent or `""` means `default`). It is
   stored in the immutable Soul snapshot and pinned when publishing, like the rest of the Soul.
-- The editor shows a profile select (from `GET /v1/profiles`, through the Swift server) when the shell is on.
+- The editor shows a profile select (from `GET /v1/profiles`, through the Swift server) only when the shell is on.
+  Turning the shell off keeps the chosen name; turning it on again uses it.
+- Workflows can only pick a name from the server's list. They never supply an image or mounts, and nodes cannot add
+  profiles. On the trial every workspace shares the server's list; existing node access rules still apply.
 - The DSL exports the name only. An import keeps the name even when this server does not know it; the import never
   fails or silently changes it to `default`. A name the server does not know, or whose status is not `ok`, is a
   checklist error ("Executor profile `colvalley-blender` is not available on this server"), and the node cannot
