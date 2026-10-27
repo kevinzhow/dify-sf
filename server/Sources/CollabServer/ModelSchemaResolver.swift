@@ -20,6 +20,14 @@ actor ModelSchemaCache {
     struct Entry { var value: ResolvedModelSchema; var at: Date }
     private var entries: [String: Entry] = [:]
     private var pending: [String: Task<ResolvedModelSchema, Never>] = [:]
+    private var generation = 0
+
+    func invalidate() {
+        generation += 1
+        entries.removeAll()
+        pending.values.forEach { $0.cancel() }
+        pending.removeAll()
+    }
 
     func resolve(_ key: String, now: Date = Date(), load: @escaping @Sendable () async -> ResolvedModelSchema) async -> ResolvedModelSchema {
         if let entry = entries[key], now.timeIntervalSince(entry.at) < (entry.value.status == "ready" ? 30 : 3) {
@@ -27,6 +35,7 @@ actor ModelSchemaCache {
         }
         if let task = pending[key] { return await task.value }
         let previous = entries[key]?.value.schema
+        let started = generation
         let task = Task {
             var value = await load()
             // A transient failure does not erase previously verified metadata.
@@ -36,6 +45,7 @@ actor ModelSchemaCache {
         }
         pending[key] = task
         let value = await task.value
+        guard generation == started else { return value }
         pending[key] = nil
         entries[key] = Entry(value: value, at: now)
         if entries.count > 256, let oldest = entries.min(by: { $0.value.at < $1.value.at })?.key { entries[oldest] = nil }
@@ -46,29 +56,37 @@ actor ModelSchemaCache {
 extension Routes {
     func customModelSchema(_ def: ProviderDefinition, _ model: CustomModelView) async -> ResolvedModelSchema {
         guard let credentials = model.config, !credentials.isEmpty else { return .unknown }
+        return await resolvedModelSchema(def, name: model.key.model, type: model.key.modelType, credentials: credentials, credentialId: model.currentId)
+    }
+
+    func resolvedModelSchema(_ def: ProviderDefinition, name: String, type: String, credentials: [String: JSON], credentialId: String?) async -> ResolvedModelSchema {
         if !runtimeConfigured {
             // The two fully ported plugins also work without a daemon. Other
             // plugins need their own schema: never substitute a generic 4K LLM.
             if ["langgenius/ollama/ollama", "langgenius/openai_api_compatible/openai_api_compatible"].contains(def.id.description),
-               let schema = CustomModels.schema(provider: def, model: model.key.model, modelType: model.key.modelType, credentials: credentials) {
+               let schema = CustomModels.schema(provider: def, model: name, modelType: type, credentials: credentials) {
                 return .ready(schema)
             }
-            let base = model.key.model.hasPrefix("ft:") ? model.key.model.split(separator: ":", maxSplits: 2).dropFirst().first.map(String.init) : model.key.model
-            if def.id.description == "langgenius/openai/openai", let base, let inherited = def.model(base, type: model.key.modelType) {
+            let base = name.hasPrefix("ft:") ? name.split(separator: ":", maxSplits: 2).dropFirst().first.map(String.init) : name
+            if def.id.description == "langgenius/openai/openai", let base, let inherited = def.model(base, type: type) {
                 var schema = inherited.schema
-                schema.model = model.key.model
-                schema.label = ["en_US": .string(model.key.model), "zh_Hans": .string(model.key.model)]
+                schema.model = name
+                schema.label = ["en_US": .string(name), "zh_Hans": .string(name)]
                 schema.fetchFrom = "customizable-model"
                 return .ready(schema)
             }
             return .unknown
         }
+        let plugins = await installedProviderPlugins()
+        if plugins.known && plugins.plugin(def.id.pluginId) == nil {
+            return .init(schema: nil, status: "unavailable", error: "plugin_not_installed")
+        }
         let encoded = (try? Self.encodeConfig(credentials)) ?? ""
         let digest = SHA256.hash(data: Data(encoded.utf8)).map { String(format: "%02x", $0) }.joined()
-        let key = [config.pluginDaemonTenant, def.id.description, model.key.model, model.key.modelType, model.currentId ?? "", digest].joined(separator: "\u{0}")
+        let key = [config.pluginDaemonTenant, def.id.description, name, type, credentialId ?? "", digest].joined(separator: "\u{0}")
         let daemon = PluginDaemonClient(baseURL: config.pluginDaemonURL, key: config.pluginDaemonKey, tenant: config.pluginDaemonTenant,
                                         timeoutSeconds: min(15, max(1, config.pluginDaemonTimeoutSeconds)))
-        let provider = def.id.description, name = model.key.model, type = model.key.modelType
+        let provider = def.id.description
         return await models.schemas.resolve(key) {
             do {
                 let runtime = PluginDaemonModelRuntime(daemon: daemon, credentialsOf: { _, _, _ in [:] }, appId: nil)
@@ -80,8 +98,11 @@ extension Routes {
                 let schema = ModelSchema(model: name,
                     label: raw["label"] ?? ["en_US": .string(name), "zh_Hans": .string(name)], modelType: type,
                     features: raw["features"]?.array?.compactMap(\.string), fetchFrom: "customizable-model",
-                    modelProperties: props, deprecated: raw["deprecated"]?.bool ?? false, parameterRules: rules)
+                    modelProperties: props, deprecated: raw["deprecated"]?.bool ?? false,
+                    parameterRules: rules.map { ParameterRules.output($0.object ?? [:]) })
                 return .ready(schema)
+            } catch let error as PluginDaemonWire.DaemonError where error.errorType == "ValueError" {
+                return .missing
             } catch {
                 // Daemon errors can quote submitted credentials. Only the stable,
                 // non-secret error code crosses the settings boundary.

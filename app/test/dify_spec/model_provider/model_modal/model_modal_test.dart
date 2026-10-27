@@ -406,7 +406,8 @@ void main() {
           'provider': 'openai',
           'model': 'bge-m3',
           'modelType': 'text-embedding',
-          'credentials': {'api_key': 'secret'},
+          // Fixed and explicit model contexts use the same credential form values.
+          'credentials': {'api_key': 'secret', '__model_name': 'bge-m3', '__model_type': 'text-embedding'},
           'name': 'Xinference Auth',
         },
       ]);

@@ -99,9 +99,14 @@ class _ModelModalState extends State<ModelModal> {
   bool _isLoading = false;
   Json _credentialData = const {};
 
-  CustomModel? get _modelContext => widget.model ?? (widget.fixedFields == null ? null : (
-    model: widget.fixedFields!.modelName, modelType: widget.fixedFields!.modelType,
-  ));
+  CustomModel? get _modelContext =>
+      widget.model ??
+      (widget.fixedFields == null
+          ? null
+          : (
+              model: widget.fixedFields!.modelName,
+              modelType: widget.fixedFields!.modelType,
+            ));
 
   bool get _predefined => widget.configurateMethod == ConfigurationMethodEnum.predefinedModel;
 

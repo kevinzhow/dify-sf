@@ -50,6 +50,23 @@
     "release.unknown": "Not reported",
     "runtime.unsupportedNodes": "This server cannot run these nodes: {{nodes}}. Configure or replace them before running.",
     "modelProvider.metadataUnknown": "Model info pending",
-    "modelProvider.metadataUnknownTip": "Could not load this model’s capabilities and parameters from its provider. Check the model name, API type and provider configuration. You can edit the saved configuration."
+    "modelProvider.metadataUnknownTip": "Could not load this model’s capabilities and parameters from its provider. Check the model name, API type and provider configuration. You can edit the saved configuration.",
+    "modelProvider.plugins.title": "Manage model plugins",
+    "modelProvider.plugins.description": "Install and manage the plugins used by model providers. Saved model credentials are kept when a plugin is removed.",
+    "modelProvider.plugins.installed": "Installed",
+    "modelProvider.plugins.missing": "Plugin not installed",
+    "modelProvider.plugins.unknown": "Plugin status could not be confirmed",
+    "modelProvider.plugins.unavailable": "The plugin service is not configured",
+    "modelProvider.plugins.failed": "Plugin installation failed",
+    "modelProvider.plugins.operationUnconfirmed": "The operation could not be confirmed. Refresh the plugin status before trying again.",
+    "modelProvider.plugins.removeTitle": "Remove {{plugin}}?",
+    "modelProvider.plugins.removeDescription": "Models using this plugin cannot run until it is installed again. Saved model credentials and workflows will be kept.",
+    "modelProvider.plugins.install": "Install",
+    "modelProvider.plugins.update": "Update",
+    "modelProvider.plugins.remove": "Remove",
+    "modelProvider.plugins.refresh": "Refresh",
+    "modelProvider.plugins.missingTip": "Open Integrations and Manage model plugins to install this provider. Your saved configuration is kept.",
+    "modelProvider.metadataMissing": "Model not recognized",
+    "modelProvider.metadataMissingTip": "This provider plugin does not recognize the model. Check the model name and plugin version."
   }
 }

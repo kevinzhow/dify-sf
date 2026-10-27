@@ -126,6 +126,18 @@ extension Routes {
     /// bad_request` for a form error and `400 credential_validation_failed` when the provider refuses them.
     func checkedCredentials(_ def: ProviderDefinition, model: String?, modelType: String?, _ input: [String: JSON]) async throws -> [String: JSON] {
         let filtered = try filtered(def, modelType: modelType, input)
+        if runtimeConfigured {
+            let installed = await installedProviderPlugins(force: true)
+            if installed.known && installed.plugin(def.id.pluginId) == nil {
+                throw ServerError.http(status: 503, code: "plugin_not_installed", message: "Install the \(def.id.pluginId) plugin in Integrations before configuring this provider.")
+            }
+            if let model, let modelType {
+                let resolved = await resolvedModelSchema(def, name: model, type: modelType, credentials: filtered, credentialId: nil)
+                guard resolved.schema != nil && resolved.status == "ready" else {
+                    throw modelSchemaError(resolved, def: def, model: model)
+                }
+            }
+        }
         if let reason = await providerCheck(def, model: model, modelType: modelType, filtered) {
             throw ServerError.http(status: 400, code: "credential_validation_failed", message: reason)
         }
@@ -213,12 +225,15 @@ extension Routes {
     /// models of the model list with a schema; `disabled` by setting; de-duplicated, sorted by (model type, position).
     func modelEntries(_ v: ProviderView, type: String? = nil) async -> [ModelEntry] {
         let types = type.map { [$0] } ?? v.def.supportedModelTypes
+        let plugins = await installedProviderPlugins()
+        let pluginMissing = runtimeConfigured && plugins.known && plugins.plugin(v.def.id.pluginId) == nil
         var out: [ModelEntry] = []
         for t in types where v.def.supportedModelTypes.contains(t) {
             for m in v.def.models where m.modelType == t {
                 var status = v.currentConfig != nil ? "active" : (v.currentUnreadable ? "credential-removed" : "no-configure")
+                if pluginMissing && status == "active" { status = "no-configure" }
                 if v.settings[ModelKey(provider: v.def.id.description, model: m.model, modelType: t)] == false { status = "disabled" }
-                out.append(ModelEntry(schema: m.schema, status: status))
+                out.append(ModelEntry(schema: m.schema, status: status, schemaStatus: pluginMissing ? "unavailable" : "ready", schemaError: pluginMissing ? "plugin_not_installed" : nil))
             }
         }
         for c in v.customModels where !c.unadded && types.contains(c.key.modelType) {
@@ -447,19 +462,36 @@ extension Routes {
         let custom = v.customModels.first { !$0.unadded && $0.key == key && !($0.config?.isEmpty ?? true) }
         let credentials = custom?.config ?? v.currentConfig
         var rules: [JSON] = []
-        if credentials != nil {
-            if let m = def.model(model, type: "llm") {
+        if let credentials {
+            if runtimeConfigured {
+                let resolved = await resolvedModelSchema(def, name: model, type: "llm", credentials: credentials,
+                    credentialId: custom?.currentId ?? v.currentId)
+                guard let schema = resolved.schema else { throw modelSchemaError(resolved, def: def, model: model) }
+                rules = schema.parameterRules
+            } else if let m = def.model(model, type: "llm") {
                 rules = m.parameterRules
             } else if let custom {
                 let resolved = await customModelSchema(def, custom)
                 guard let schema = resolved.schema else {
-                    throw ServerError.http(status: 503, code: resolved.error ?? "model_schema_unavailable",
-                        message: "Model metadata is unavailable for \(def.id)/\(model). Verify the model name and provider configuration.")
+                    throw modelSchemaError(resolved, def: def, model: model)
                 }
                 rules = schema.parameterRules
             }
         }
         return try json(JSON.object(["data": .array(rules)]))
+    }
+
+    func modelSchemaError(_ resolved: ResolvedModelSchema, def: ProviderDefinition, model: String) -> ServerError {
+        let message: String
+        if resolved.error == "plugin_not_installed" {
+            message = "Install the \(def.id.pluginId) plugin in Integrations to use this model."
+        } else if resolved.error == "model_schema_missing" && def.id.description == "langgenius/openai/openai" {
+            message = "The OpenAI plugin does not recognize model \(model). Update the plugin, or use the OpenAI-compatible provider for a custom endpoint and model name."
+        } else {
+            message = "Model metadata is unavailable for \(def.id)/\(model). Verify the model name, plugin and provider configuration."
+        }
+        return ServerError.http(status: resolved.error == "model_schema_missing" ? 400 : 503,
+            code: resolved.error ?? "model_schema_unavailable", message: message)
     }
 
     /// `GET .../{provider}/{icon_type}/{lang}` (public).

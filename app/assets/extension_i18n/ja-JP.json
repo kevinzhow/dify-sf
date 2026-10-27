@@ -16,6 +16,23 @@
     "release.unknown": "未報告",
     "runtime.unsupportedNodes": "このサーバーでは次のノードを実行できません：{{nodes}}。設定または置き換えてから再実行してください。",
     "modelProvider.metadataUnknown": "モデル情報を確認中",
-    "modelProvider.metadataUnknownTip": "プロバイダーからモデルの機能とパラメーターを取得できませんでした。モデル名、API の種類、接続設定を確認してください。保存済みの設定は編集できます。"
+    "modelProvider.metadataUnknownTip": "プロバイダーからモデルの機能とパラメーターを取得できませんでした。モデル名、API の種類、接続設定を確認してください。保存済みの設定は編集できます。",
+    "modelProvider.plugins.title": "モデルプラグインの管理",
+    "modelProvider.plugins.description": "モデルプロバイダーのプラグインを管理します。削除後も保存済みのモデル設定と認証情報は保持されます。",
+    "modelProvider.plugins.installed": "インストール済み",
+    "modelProvider.plugins.missing": "プラグイン未インストール",
+    "modelProvider.plugins.unknown": "プラグインの状態を確認できません",
+    "modelProvider.plugins.unavailable": "プラグインサービスが未設定です",
+    "modelProvider.plugins.failed": "プラグインのインストールに失敗しました",
+    "modelProvider.plugins.operationUnconfirmed": "操作の結果を確認できません。状態を更新してから再試行してください。",
+    "modelProvider.plugins.removeTitle": "{{plugin}} を削除しますか？",
+    "modelProvider.plugins.removeDescription": "再インストールするまで、このプラグインを使用するモデルは実行できません。モデル設定、認証情報、ワークフローは保持されます。",
+    "modelProvider.plugins.install": "インストール",
+    "modelProvider.plugins.update": "更新",
+    "modelProvider.plugins.remove": "削除",
+    "modelProvider.plugins.refresh": "再読み込み",
+    "modelProvider.plugins.missingTip": "連携ページの「モデルプラグインの管理」からインストールしてください。保存済みの設定は保持されます。",
+    "modelProvider.metadataMissing": "モデルを認識できません",
+    "modelProvider.metadataMissingTip": "このプラグインはモデルを認識できません。モデル名とプラグインのバージョンを確認してください。"
   }
 }

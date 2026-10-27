@@ -1,0 +1,75 @@
+{
+  "_doc": "Plugin packages the e2e stacks install (both Dify's and dify-sf's plugin daemon), pinned. Downloaded once from the Dify marketplace into e2e/.cache/plugins/ (git-ignored) and checked against sha256; installs then use the cached file. Signed by langgenius (the daemons run with FORCE_VERIFYING_SIGNATURE=true).",
+  "plugins": [
+    {
+      "id": "langgenius/anthropic",
+      "version": "0.3.34",
+      "unique_identifier": "langgenius/anthropic:0.3.34@836a29d06cf4f781953180c194a774304aa8d0dca4dbaa1fe2b8bae4ca610162",
+      "file": "langgenius-anthropic-0.3.34.difypkg",
+      "sha256": "5f27a00fc38768c8c67fb2eb716020d109b4f81c67936511e0a1ca9526a7b644"
+    },
+    {
+      "id": "langgenius/azure_openai",
+      "version": "0.0.72",
+      "unique_identifier": "langgenius/azure_openai:0.0.72@9c33793bb51cae45c17007b0a9f9831eea446d1ff95e86df1dcb0e33a9e5b0af",
+      "file": "langgenius-azure_openai-0.0.72.difypkg",
+      "sha256": "72ef7840b6d645186fba1a5976b48bea1e880858bdab5bb4288ffe16c9b4544f"
+    },
+    {
+      "id": "langgenius/deepseek",
+      "version": "0.0.24",
+      "unique_identifier": "langgenius/deepseek:0.0.24@9e12eef09973667f0eaf4f082af883167e1de88740b22e71e71488d020c3778a",
+      "file": "langgenius-deepseek-0.0.24.difypkg",
+      "sha256": "1a714cf69695054f4f40b0b0af75b16c8abdb646bafdb7a059eb9e3010581bab"
+    },
+    {
+      "id": "langgenius/gemini",
+      "version": "0.9.11",
+      "unique_identifier": "langgenius/gemini:0.9.11@404476fff29ee10e6872eb5fca0ee7527380db9fde0a9cdc69364edf5ba49daa",
+      "file": "langgenius-gemini-0.9.11.difypkg",
+      "sha256": "e17f0a7c49874dbd6e159f1430fc3bcf1e08e8aac4319b546c8c53bcf34a3b2c"
+    },
+    {
+      "id": "langgenius/moonshot",
+      "version": "0.1.13",
+      "unique_identifier": "langgenius/moonshot:0.1.13@be1663cdccb4eda31f2c0ad793256a5385c24897a1511efa28d6d8c9b9218dbc",
+      "file": "langgenius-moonshot-0.1.13.difypkg",
+      "sha256": "454e78762248cde7eb3caa54d6c423945243c58758f67ba0e74d70b6048d4e3b"
+    },
+    {
+      "id": "langgenius/ollama",
+      "version": "1.0.2",
+      "unique_identifier": "langgenius/ollama:1.0.2@ef203a332d1b2b8952dbaa012be70be3e0a2d576b001489fb3b070efc970ffbe",
+      "file": "langgenius-ollama-1.0.2.difypkg",
+      "sha256": "d5c96814544da173edaeefc6c692904a57b71d950558e8735677a081bd9e9c8f"
+    },
+    {
+      "id": "langgenius/openai",
+      "version": "1.0.7",
+      "unique_identifier": "langgenius/openai:1.0.7@f36c3761167b3af0bfb4975b728fe3cd126342d076e1ec5359e6d4f92557d3d4",
+      "file": "langgenius-openai-1.0.7.difypkg",
+      "sha256": "ac6299b0f0cffa264acab719d78360b0a2bf63088979d2490bcbba5ffc7b4b94"
+    },
+    {
+      "id": "langgenius/openai_api_compatible",
+      "version": "0.0.68",
+      "unique_identifier": "langgenius/openai_api_compatible:0.0.68@ba61c5eccb814be7364117c0bec3710a51e09b20f31e37243e747a00f9377969",
+      "file": "langgenius-openai_api_compatible-0.0.68.difypkg",
+      "sha256": "3e134cc200b86edb905fc9b43cd5525741005f3004bacfa49c63601f7b271705"
+    },
+    {
+      "id": "langgenius/tongyi",
+      "version": "0.2.23",
+      "unique_identifier": "langgenius/tongyi:0.2.23@f500332838ed670d0962a4f727618a2eb7e27a453ea56e72a28731f5f383ab72",
+      "file": "langgenius-tongyi-0.2.23.difypkg",
+      "sha256": "ee1ceafc171daf8909f7d54cae9c0e792e1476fff0d95ed0502457f83d196c23"
+    },
+    {
+      "id": "langgenius/zhipuai",
+      "version": "0.0.35",
+      "unique_identifier": "langgenius/zhipuai:0.0.35@e9b5bafe2e232354575033b0fd0b782eb7abe845b8a48e5a2503f717ef2432da",
+      "file": "langgenius-zhipuai-0.0.35.difypkg",
+      "sha256": "e936784b551ce555abda3b8700b789cfa54c852e37fcebc2ce7f71fae9673647"
+    }
+  ]
+}

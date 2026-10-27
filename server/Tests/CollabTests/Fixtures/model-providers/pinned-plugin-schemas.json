@@ -1,0 +1,2563 @@
+[
+  {
+    "provider": "langgenius/openai/openai",
+    "model": "ft:gpt-4.1:fixture",
+    "credentials": {
+      "openai_api_key": "fixture-not-a-key"
+    },
+    "schema": {
+      "model": "ft:gpt-4.1:fixture",
+      "label": {
+        "en_US": "ft:gpt-4.1:fixture",
+        "ja_JP": "ft:gpt-4.1:fixture",
+        "zh_Hans": "ft:gpt-4.1:fixture",
+        "pt_BR": "ft:gpt-4.1:fixture"
+      },
+      "model_type": "llm",
+      "features": [
+        "multi-tool-call",
+        "agent-thought",
+        "stream-tool-call",
+        "vision",
+        "structured-output"
+      ],
+      "fetch_from": "customizable-model",
+      "model_properties": {
+        "context_size": 1047576,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "en_US": "Temperature",
+            "ja_JP": "Temperature",
+            "zh_Hans": "温度",
+            "pt_BR": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "ja_JP": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "pt_BR": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "en_US": "Top P",
+            "ja_JP": "Top P",
+            "zh_Hans": "Top P",
+            "pt_BR": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "ja_JP": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "pt_BR": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "presence_penalty",
+          "use_template": "presence_penalty",
+          "label": {
+            "en_US": "Presence Penalty",
+            "ja_JP": "Presence Penalty",
+            "zh_Hans": "存在惩罚",
+            "pt_BR": "Presence Penalty"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Applies a penalty to the log-probability of tokens already in the text.",
+            "ja_JP": "Applies a penalty to the log-probability of tokens already in the text.",
+            "zh_Hans": "对文本中已有的标记的对数概率施加惩罚。",
+            "pt_BR": "Applies a penalty to the log-probability of tokens already in the text."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "frequency_penalty",
+          "use_template": "frequency_penalty",
+          "label": {
+            "en_US": "Frequency Penalty",
+            "ja_JP": "Frequency Penalty",
+            "zh_Hans": "频率惩罚",
+            "pt_BR": "Frequency Penalty"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Applies a penalty to the log-probability of tokens that appear in the text.",
+            "ja_JP": "Applies a penalty to the log-probability of tokens that appear in the text.",
+            "zh_Hans": "对文本中出现的标记的对数概率施加惩罚。",
+            "pt_BR": "Applies a penalty to the log-probability of tokens that appear in the text."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "max_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "en_US": "Max Tokens",
+            "ja_JP": "Max Tokens",
+            "zh_Hans": "最大标记",
+            "pt_BR": "Max Tokens"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": false,
+          "default": 512,
+          "min": 1,
+          "max": 32768,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "response_format",
+          "use_template": null,
+          "label": {
+            "en_US": "Response Format",
+            "ja_JP": "Response Format",
+            "zh_Hans": "回复格式",
+            "pt_BR": "Response Format"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "specifying the format that the model must output",
+            "ja_JP": "specifying the format that the model must output",
+            "zh_Hans": "指定模型必须输出的格式",
+            "pt_BR": "specifying the format that the model must output"
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        },
+        {
+          "name": "json_schema",
+          "use_template": "json_schema",
+          "label": {
+            "en_US": "JSON Schema",
+            "ja_JP": "JSON Schema",
+            "zh_Hans": "JSON Schema",
+            "pt_BR": "JSON Schema"
+          },
+          "type": "text",
+          "help": {
+            "en_US": "Set a response json schema will ensure LLM to adhere it.",
+            "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+            "zh_Hans": "设置返回的json schema，llm将按照它返回",
+            "pt_BR": "Set a response json schema will ensure LLM to adhere it."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "service_tier",
+          "use_template": null,
+          "label": {
+            "en_US": "Service tier",
+            "ja_JP": "Service tier",
+            "zh_Hans": "服务层级",
+            "pt_BR": "Service tier"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Auto follows the project setting; Default selects standard processing; Priority selects lower-latency processing.",
+            "ja_JP": "Auto follows the project setting; Default selects standard processing; Priority selects lower-latency processing.",
+            "zh_Hans": "Auto 跟随项目设置；Default 使用标准处理；Priority 使用低延迟处理。",
+            "pt_BR": "Auto follows the project setting; Default selects standard processing; Priority selects lower-latency processing."
+          },
+          "required": false,
+          "default": "auto",
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "auto",
+            "default",
+            "priority"
+          ]
+        }
+      ],
+      "pricing": {
+        "input": "2",
+        "output": "8",
+        "unit": "0.000001",
+        "currency": "USD"
+      }
+    },
+    "status": "passed"
+  },
+  {
+    "provider": "langgenius/openai/openai",
+    "model": "codex/gpt-6.1-terra",
+    "credentials": {
+      "openai_api_key": "fixture-not-a-key"
+    },
+    "errorType": "ValueError",
+    "status": "expected-unknown-model",
+    "exceptionType": "DaemonError"
+  },
+  {
+    "provider": "langgenius/anthropic/anthropic",
+    "model": "claude-custom",
+    "credentials": {
+      "context_size": "250000",
+      "max_tokens": "64000"
+    },
+    "schema": {
+      "model": "claude-custom",
+      "label": {
+        "en_US": "claude-custom",
+        "ja_JP": "claude-custom",
+        "zh_Hans": "claude-custom",
+        "pt_BR": "claude-custom"
+      },
+      "model_type": "llm",
+      "features": [
+        "agent-thought",
+        "vision",
+        "tool-call",
+        "stream-tool-call"
+      ],
+      "fetch_from": "customizable-model",
+      "model_properties": {
+        "context_size": 250000,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "max_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "en_US": "Max Tokens",
+            "ja_JP": "Max Tokens",
+            "zh_Hans": "最大标记",
+            "pt_BR": "Max Tokens"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": false,
+          "default": 4096,
+          "min": 1,
+          "max": 64000,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "thinking",
+          "use_template": null,
+          "label": {
+            "en_US": "Thinking Mode",
+            "ja_JP": "Thinking Mode",
+            "zh_Hans": "推理模式",
+            "pt_BR": "Thinking Mode"
+          },
+          "type": "boolean",
+          "help": null,
+          "required": false,
+          "default": false,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "en_US": "Temperature",
+            "ja_JP": "Temperature",
+            "zh_Hans": "温度",
+            "pt_BR": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "ja_JP": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "pt_BR": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "en_US": "Top P",
+            "ja_JP": "Top P",
+            "zh_Hans": "Top P",
+            "pt_BR": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "ja_JP": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "pt_BR": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_k",
+          "use_template": null,
+          "label": {
+            "en_US": "Top K",
+            "ja_JP": "Top K",
+            "zh_Hans": "取样数量",
+            "pt_BR": "Top K"
+          },
+          "type": "int",
+          "help": null,
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "thinking_budget",
+          "use_template": null,
+          "label": {
+            "en_US": "Thinking Budget",
+            "ja_JP": "Thinking Budget",
+            "zh_Hans": "推理预算",
+            "pt_BR": "Thinking Budget"
+          },
+          "type": "int",
+          "help": null,
+          "required": false,
+          "default": 1024,
+          "min": 1024,
+          "max": 128000,
+          "precision": null,
+          "options": []
+        }
+      ],
+      "pricing": null
+    },
+    "status": "passed"
+  },
+  {
+    "provider": "langgenius/anthropic/anthropic",
+    "model": "claude-opus-5-5",
+    "credentials": {
+      "context_size": "250000",
+      "max_tokens": "64000"
+    },
+    "schema": {
+      "model": "claude-opus-5-5",
+      "label": {
+        "en_US": "claude-opus-5-5",
+        "ja_JP": "claude-opus-5-5",
+        "zh_Hans": "claude-opus-5-5",
+        "pt_BR": "claude-opus-5-5"
+      },
+      "model_type": "llm",
+      "features": [
+        "agent-thought",
+        "vision",
+        "tool-call",
+        "stream-tool-call",
+        "document",
+        "structured-output"
+      ],
+      "fetch_from": "predefined-model",
+      "model_properties": {
+        "context_size": 1000000,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "thinking_display",
+          "use_template": null,
+          "label": {
+            "en_US": "Thinking Display",
+            "ja_JP": "Thinking Display",
+            "zh_Hans": "推理内容展示",
+            "pt_BR": "Thinking Display"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Claude Opus 5.5 always runs with adaptive thinking. This only controls how thinking content is exposed in the response: `omitted` is the official default (thinking text not returned); `summarized` returns summarized reasoning so clients can display progress.\n",
+            "ja_JP": "Claude Opus 5.5 always runs with adaptive thinking. This only controls how thinking content is exposed in the response: `omitted` is the official default (thinking text not returned); `summarized` returns summarized reasoning so clients can display progress.\n",
+            "zh_Hans": "Claude Opus 5.5 的 adaptive thinking 始终开启。此参数仅控制响应中推理内容的展示方式：omitted 为官方默认值（响应中不返回 thinking 文本）；summarized 返回摘要化的推理过程，便于在前端展示思考进度。",
+            "pt_BR": "Claude Opus 5.5 always runs with adaptive thinking. This only controls how thinking content is exposed in the response: `omitted` is the official default (thinking text not returned); `summarized` returns summarized reasoning so clients can display progress.\n"
+          },
+          "required": false,
+          "default": "summarized",
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "omitted",
+            "summarized"
+          ]
+        },
+        {
+          "name": "effort",
+          "use_template": null,
+          "label": {
+            "en_US": "Effort",
+            "ja_JP": "Effort",
+            "zh_Hans": "推理投入等级",
+            "pt_BR": "Effort"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Controls reasoning depth, latency, and cost via output_config.effort. `medium` is the official default; increase effort for demanding tasks or use `low` for lower latency. Thinking is always on; allow a large max_tokens at higher effort levels.",
+            "ja_JP": "Controls reasoning depth, latency, and cost via output_config.effort. `medium` is the official default; increase effort for demanding tasks or use `low` for lower latency. Thinking is always on; allow a large max_tokens at higher effort levels.",
+            "zh_Hans": "通过 output_config.effort 控制推理深度、延迟与成本。medium 为官方默认值；提高 effort 可增强复杂任务的推理能力，low 适合低延迟场景。推理始终开启，较高 effort 需要为 max_tokens 留足空间。",
+            "pt_BR": "Controls reasoning depth, latency, and cost via output_config.effort. `medium` is the official default; increase effort for demanding tasks or use `low` for lower latency. Thinking is always on; allow a large max_tokens at higher effort levels."
+          },
+          "required": false,
+          "default": "medium",
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        {
+          "name": "task_budget",
+          "use_template": null,
+          "label": {
+            "en_US": "Task Budget",
+            "ja_JP": "Task Budget",
+            "zh_Hans": "任务预算",
+            "pt_BR": "Task Budget"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Advisory token budget visible to the model across the full agentic loop (thinking + tool calls + tool results + final output). This is advisory — the hard per-request cap is `max_tokens`.\n· 0 (default): field is not sent → model runs without a countdown, bounded only by `max_tokens`. Recommended for open-ended agentic tasks where quality matters more than speed. \"0\" means \"no budget hint\", NOT \"unlimited\".\n· <20000: silently ignored by the plugin (API requires a minimum of 20000 and would otherwise return 400).\n· ≥20000: enabled and the `task-budgets-2026-03-13` beta header is attached automatically. Overly tight budgets can cause the model to wrap up prematurely.\n",
+            "ja_JP": "Advisory token budget visible to the model across the full agentic loop (thinking + tool calls + tool results + final output). This is advisory — the hard per-request cap is `max_tokens`.\n· 0 (default): field is not sent → model runs without a countdown, bounded only by `max_tokens`. Recommended for open-ended agentic tasks where quality matters more than speed. \"0\" means \"no budget hint\", NOT \"unlimited\".\n· <20000: silently ignored by the plugin (API requires a minimum of 20000 and would otherwise return 400).\n· ≥20000: enabled and the `task-budgets-2026-03-13` beta header is attached automatically. Overly tight budgets can cause the model to wrap up prematurely.\n",
+            "zh_Hans": "跨完整智能体循环（推理+工具调用+工具结果+最终输出）下发给模型的建议性 token 预算。这是\"建议\"（模型可见并据此自我调度），不是硬上限；真正的硬上限由 max_tokens 控制。\n· 0（默认）：不发送该字段 → 模型看不到预算倒计时，按 max_tokens 自由发挥，适合质量优先的开放式任务。这不是\"无上限\"，而是\"不启用预算建议\"。\n· <20000：插件会静默忽略（API 要求最小 20000，避免 400）。\n· ≥20000：启用并自动追加 beta 头 `task-budgets-2026-03-13`；预算过紧可能导致模型潦草收尾。\n",
+            "pt_BR": "Advisory token budget visible to the model across the full agentic loop (thinking + tool calls + tool results + final output). This is advisory — the hard per-request cap is `max_tokens`.\n· 0 (default): field is not sent → model runs without a countdown, bounded only by `max_tokens`. Recommended for open-ended agentic tasks where quality matters more than speed. \"0\" means \"no budget hint\", NOT \"unlimited\".\n· <20000: silently ignored by the plugin (API requires a minimum of 20000 and would otherwise return 400).\n· ≥20000: enabled and the `task-budgets-2026-03-13` beta header is attached automatically. Overly tight budgets can cause the model to wrap up prematurely.\n"
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1000000,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "max_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "en_US": "Max Tokens",
+            "ja_JP": "Max Tokens",
+            "zh_Hans": "最大标记",
+            "pt_BR": "Max Tokens"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": true,
+          "default": 128000,
+          "min": 1,
+          "max": 128000,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_message_flow",
+          "use_template": null,
+          "label": {
+            "en_US": "Cache Message Flow Threshold",
+            "ja_JP": "Cache Message Flow Threshold",
+            "zh_Hans": "大消息自动缓存阈值",
+            "pt_BR": "Cache Message Flow Threshold"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "If a user or assistant message exceeds this word count, add cache_control automatically. 0 disables the feature.",
+            "ja_JP": "If a user or assistant message exceeds this word count, add cache_control automatically. 0 disables the feature.",
+            "zh_Hans": "当用户或助手消息的单词数超过此阈值时，自动为该消息添加缓存控制。0 表示禁用。",
+            "pt_BR": "If a user or assistant message exceeds this word count, add cache_control automatically. 0 disables the feature."
+          },
+          "required": false,
+          "default": 0,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_ttl",
+          "use_template": null,
+          "label": {
+            "en_US": "Cache TTL",
+            "ja_JP": "Cache TTL",
+            "zh_Hans": "缓存有效期",
+            "pt_BR": "Cache TTL"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Controls prompt caching cache_control.ttl. 5m is the default duration; 1h extends cache lifetime but has a higher cache write cost.",
+            "ja_JP": "Controls prompt caching cache_control.ttl. 5m is the default duration; 1h extends cache lifetime but has a higher cache write cost.",
+            "zh_Hans": "控制 prompt caching 的 cache_control.ttl。5m 为默认有效期；1h 可延长缓存有效期，但缓存写入成本更高。",
+            "pt_BR": "Controls prompt caching cache_control.ttl. 5m is the default duration; 1h extends cache lifetime but has a higher cache write cost."
+          },
+          "required": true,
+          "default": "5m",
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "name": "prompt_caching_system_message",
+          "use_template": null,
+          "label": {
+            "en_US": "Cache System Message",
+            "ja_JP": "Cache System Message",
+            "zh_Hans": "缓存系统消息",
+            "pt_BR": "Cache System Message"
+          },
+          "type": "boolean",
+          "help": {
+            "en_US": "Enable prompt caching for system messages. Content within <cache></cache> will be cached.",
+            "ja_JP": "Enable prompt caching for system messages. Content within <cache></cache> will be cached.",
+            "zh_Hans": "启用系统消息的提示缓存。<cache></cache>中的内容将自动缓存。",
+            "pt_BR": "Enable prompt caching for system messages. Content within <cache></cache> will be cached."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_images",
+          "use_template": null,
+          "label": {
+            "en_US": "Cache Images",
+            "ja_JP": "Cache Images",
+            "zh_Hans": "缓存图片",
+            "pt_BR": "Cache Images"
+          },
+          "type": "boolean",
+          "help": {
+            "en_US": "Enable prompt caching for images.",
+            "ja_JP": "Enable prompt caching for images.",
+            "zh_Hans": "启用图片的提示缓存。",
+            "pt_BR": "Enable prompt caching for images."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_documents",
+          "use_template": null,
+          "label": {
+            "en_US": "Cache Documents",
+            "ja_JP": "Cache Documents",
+            "zh_Hans": "缓存文档",
+            "pt_BR": "Cache Documents"
+          },
+          "type": "boolean",
+          "help": {
+            "en_US": "Enable prompt caching for documents.",
+            "ja_JP": "Enable prompt caching for documents.",
+            "zh_Hans": "启用文档的提示缓存。",
+            "pt_BR": "Enable prompt caching for documents."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_tool_definitions",
+          "use_template": null,
+          "label": {
+            "en_US": "Cache Tool Definitions",
+            "ja_JP": "Cache Tool Definitions",
+            "zh_Hans": "缓存工具定义",
+            "pt_BR": "Cache Tool Definitions"
+          },
+          "type": "boolean",
+          "help": {
+            "en_US": "Enable prompt caching for tool definitions.",
+            "ja_JP": "Enable prompt caching for tool definitions.",
+            "zh_Hans": "启用工具定义的提示缓存。",
+            "pt_BR": "Enable prompt caching for tool definitions."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_tool_results",
+          "use_template": null,
+          "label": {
+            "en_US": "Cache Tool Results",
+            "ja_JP": "Cache Tool Results",
+            "zh_Hans": "缓存工具结果",
+            "pt_BR": "Cache Tool Results"
+          },
+          "type": "boolean",
+          "help": {
+            "en_US": "Enable prompt caching for tool results.",
+            "ja_JP": "Enable prompt caching for tool results.",
+            "zh_Hans": "启用工具结果的提示缓存。",
+            "pt_BR": "Enable prompt caching for tool results."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "response_format",
+          "use_template": "response_format",
+          "label": {
+            "en_US": "Response Format",
+            "ja_JP": "Response Format",
+            "zh_Hans": "回复格式",
+            "pt_BR": "Response Format"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Set a response format, ensure the output from llm is a valid code block as possible, such as JSON, XML, etc.",
+            "ja_JP": "Set a response format, ensure the output from llm is a valid code block as possible, such as JSON, XML, etc.",
+            "zh_Hans": "设置一个返回格式，确保llm的输出尽可能是有效的代码块，如JSON、XML等",
+            "pt_BR": "Set a response format, ensure the output from llm is a valid code block as possible, such as JSON, XML, etc."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "JSON",
+            "XML"
+          ]
+        },
+        {
+          "name": "json_schema",
+          "use_template": "json_schema",
+          "label": {
+            "en_US": "JSON Schema",
+            "ja_JP": "JSON Schema",
+            "zh_Hans": "JSON Schema",
+            "pt_BR": "JSON Schema"
+          },
+          "type": "text",
+          "help": {
+            "en_US": "Set a response json schema will ensure LLM to adhere it.",
+            "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+            "zh_Hans": "设置返回的json schema，llm将按照它返回",
+            "pt_BR": "Set a response json schema will ensure LLM to adhere it."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        }
+      ],
+      "pricing": {
+        "input": "4",
+        "output": "20",
+        "unit": "0.000001",
+        "currency": "USD"
+      }
+    },
+    "status": "passed"
+  },
+  {
+    "provider": "langgenius/azure_openai/azure_openai",
+    "model": "azure-deployment",
+    "credentials": {
+      "base_model_name": "gpt-4.1"
+    },
+    "schema": {
+      "model": "azure-deployment",
+      "label": {
+        "en_US": "azure-deployment",
+        "ja_JP": "fake-deployment-name-label",
+        "zh_Hans": "azure-deployment",
+        "pt_BR": "fake-deployment-name-label"
+      },
+      "model_type": "llm",
+      "features": [
+        "agent-thought",
+        "vision",
+        "multi-tool-call",
+        "stream-tool-call",
+        "structured-output"
+      ],
+      "fetch_from": "customizable-model",
+      "model_properties": {
+        "context_size": 1047576,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "temperature",
+          "use_template": null,
+          "label": {
+            "en_US": "Temperature",
+            "ja_JP": "Temperature",
+            "zh_Hans": "温度",
+            "pt_BR": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "ja_JP": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "pt_BR": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": null,
+          "label": {
+            "en_US": "Top P",
+            "ja_JP": "Top P",
+            "zh_Hans": "Top P",
+            "pt_BR": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "ja_JP": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "pt_BR": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "presence_penalty",
+          "use_template": null,
+          "label": {
+            "en_US": "Presence Penalty",
+            "ja_JP": "Presence Penalty",
+            "zh_Hans": "存在惩罚",
+            "pt_BR": "Presence Penalty"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Applies a penalty to the log-probability of tokens already in the text.",
+            "ja_JP": "Applies a penalty to the log-probability of tokens already in the text.",
+            "zh_Hans": "对文本中已有的标记的对数概率施加惩罚。",
+            "pt_BR": "Applies a penalty to the log-probability of tokens already in the text."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "frequency_penalty",
+          "use_template": null,
+          "label": {
+            "en_US": "Frequency Penalty",
+            "ja_JP": "Frequency Penalty",
+            "zh_Hans": "频率惩罚",
+            "pt_BR": "Frequency Penalty"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Applies a penalty to the log-probability of tokens that appear in the text.",
+            "ja_JP": "Applies a penalty to the log-probability of tokens that appear in the text.",
+            "zh_Hans": "对文本中出现的标记的对数概率施加惩罚。",
+            "pt_BR": "Applies a penalty to the log-probability of tokens that appear in the text."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "max_tokens",
+          "use_template": null,
+          "label": {
+            "en_US": "Max Tokens",
+            "ja_JP": "Max Tokens",
+            "zh_Hans": "最大标记",
+            "pt_BR": "Max Tokens"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": false,
+          "default": 512,
+          "min": 1,
+          "max": 32768,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "seed",
+          "use_template": null,
+          "label": {
+            "en_US": "Seed",
+            "ja_JP": "Seed",
+            "zh_Hans": "种子",
+            "pt_BR": "Seed"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
+            "ja_JP": "If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
+            "zh_Hans": "如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
+            "pt_BR": "If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend."
+          },
+          "required": false,
+          "default": null,
+          "min": 0,
+          "max": 2147483647,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "response_format",
+          "use_template": null,
+          "label": {
+            "en_US": "response_format",
+            "ja_JP": "response_format",
+            "zh_Hans": "回复格式",
+            "pt_BR": "response_format"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "specifying the format that the model must output",
+            "ja_JP": "specifying the format that the model must output",
+            "zh_Hans": "指定模型必须输出的格式",
+            "pt_BR": "specifying the format that the model must output"
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        },
+        {
+          "name": "json_schema",
+          "use_template": null,
+          "label": {
+            "en_US": "JSON Schema",
+            "ja_JP": "JSON Schema",
+            "zh_Hans": "JSON Schema",
+            "pt_BR": "JSON Schema"
+          },
+          "type": "text",
+          "help": {
+            "en_US": "Set a response json schema will ensure LLM to adhere it.",
+            "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+            "zh_Hans": "设置返回的json schema，llm将按照它返回",
+            "pt_BR": "Set a response json schema will ensure LLM to adhere it."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        }
+      ],
+      "pricing": {
+        "input": "2",
+        "output": "8",
+        "unit": "0.000001",
+        "currency": "USD"
+      }
+    },
+    "status": "passed"
+  },
+  {
+    "provider": "langgenius/tongyi/tongyi",
+    "model": "qwen-custom",
+    "credentials": {
+      "context_size": "131072",
+      "max_tokens": "8192",
+      "function_calling_type": "tool_call"
+    },
+    "schema": {
+      "model": "qwen-custom",
+      "label": {
+        "en_US": "qwen-custom",
+        "ja_JP": "qwen-custom",
+        "zh_Hans": "qwen-custom",
+        "pt_BR": "qwen-custom"
+      },
+      "model_type": "llm",
+      "features": [
+        "tool-call",
+        "multi-tool-call",
+        "stream-tool-call"
+      ],
+      "fetch_from": "customizable-model",
+      "model_properties": {
+        "context_size": 131072,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "en_US": "Temperature",
+            "ja_JP": "Temperature",
+            "zh_Hans": "温度",
+            "pt_BR": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "ja_JP": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "pt_BR": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "max_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "en_US": "Max Tokens",
+            "ja_JP": "Max Tokens",
+            "zh_Hans": "最大标记",
+            "pt_BR": "Max Tokens"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": false,
+          "default": 512,
+          "min": 1,
+          "max": 8192,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "en_US": "Top P",
+            "ja_JP": "Top P",
+            "zh_Hans": "Top P",
+            "pt_BR": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "ja_JP": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "pt_BR": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_k",
+          "use_template": "top_k",
+          "label": {
+            "en_US": "Top K",
+            "ja_JP": "Top K",
+            "zh_Hans": "Top K",
+            "pt_BR": "Top K"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Limits the number of tokens to consider for each step by keeping only the k most likely tokens.",
+            "ja_JP": "Limits the number of tokens to consider for each step by keeping only the k most likely tokens.",
+            "zh_Hans": "通过只保留每一步中最可能的 k 个标记来限制要考虑的标记数量。",
+            "pt_BR": "Limits the number of tokens to consider for each step by keeping only the k most likely tokens."
+          },
+          "required": false,
+          "default": 50,
+          "min": 1,
+          "max": 100,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "frequency_penalty",
+          "use_template": "frequency_penalty",
+          "label": {
+            "en_US": "Frequency Penalty",
+            "ja_JP": "Frequency Penalty",
+            "zh_Hans": "重复惩罚",
+            "pt_BR": "Frequency Penalty"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Applies a penalty to the log-probability of tokens that appear in the text.",
+            "ja_JP": "Applies a penalty to the log-probability of tokens that appear in the text.",
+            "zh_Hans": "对文本中出现的标记的对数概率施加惩罚。",
+            "pt_BR": "Applies a penalty to the log-probability of tokens that appear in the text."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        }
+      ],
+      "pricing": null
+    },
+    "status": "passed"
+  },
+  {
+    "provider": "langgenius/moonshot/moonshot",
+    "model": "moonshot-custom",
+    "credentials": {
+      "context_size": "128000",
+      "max_tokens": "4096",
+      "function_calling_type": "tool_call"
+    },
+    "schema": {
+      "model": "moonshot-custom",
+      "label": {
+        "en_US": "moonshot-custom",
+        "ja_JP": "moonshot-custom",
+        "zh_Hans": "moonshot-custom",
+        "pt_BR": "moonshot-custom"
+      },
+      "model_type": "llm",
+      "features": [
+        "tool-call",
+        "multi-tool-call",
+        "stream-tool-call"
+      ],
+      "fetch_from": "customizable-model",
+      "model_properties": {
+        "context_size": 128000,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "en_US": "Temperature",
+            "ja_JP": "Temperature",
+            "zh_Hans": "温度",
+            "pt_BR": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "ja_JP": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "pt_BR": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "max_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "en_US": "Max Tokens",
+            "ja_JP": "Max Tokens",
+            "zh_Hans": "最大标记",
+            "pt_BR": "Max Tokens"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": false,
+          "default": 512,
+          "min": 1,
+          "max": 4096,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "en_US": "Top P",
+            "ja_JP": "Top P",
+            "zh_Hans": "Top P",
+            "pt_BR": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "ja_JP": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "pt_BR": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        }
+      ],
+      "pricing": null
+    },
+    "status": "passed"
+  },
+  {
+    "provider": "langgenius/ollama/ollama",
+    "model": "local-vision",
+    "credentials": {
+      "context_size": "65536",
+      "max_tokens": "8192",
+      "vision_support": "true",
+      "function_call_support": "true"
+    },
+    "schema": {
+      "model": "local-vision",
+      "label": {
+        "en_US": "local-vision",
+        "ja_JP": "local-vision",
+        "zh_Hans": "local-vision",
+        "pt_BR": "local-vision"
+      },
+      "model_type": "llm",
+      "features": [
+        "vision",
+        "tool-call",
+        "multi-tool-call",
+        "stream-tool-call"
+      ],
+      "fetch_from": "customizable-model",
+      "model_properties": {
+        "context_size": 65536,
+        "mode": null
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "en_US": "Temperature",
+            "ja_JP": "Temperature",
+            "zh_Hans": "温度",
+            "pt_BR": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "ja_JP": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "pt_BR": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "en_US": "Top P",
+            "ja_JP": "Top P",
+            "zh_Hans": "Top P",
+            "pt_BR": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Works together with top-k. A higher value (e.g., 0.95) will lead to more diverse text, while a lower value (e.g., 0.5) will generate more focused and conservative text. (Default: 0.9)",
+            "ja_JP": "Works together with top-k. A higher value (e.g., 0.95) will lead to more diverse text, while a lower value (e.g., 0.5) will generate more focused and conservative text. (Default: 0.9)",
+            "zh_Hans": "与top-k一起工作。较高的值（例如，0.95）会导致生成更多样化的文本，而较低的值（例如，0.5）会生成更专注和保守的文本。（默认值：0.9）",
+            "pt_BR": "Works together with top-k. A higher value (e.g., 0.95) will lead to more diverse text, while a lower value (e.g., 0.5) will generate more focused and conservative text. (Default: 0.9)"
+          },
+          "required": false,
+          "default": 0.9,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_k",
+          "use_template": null,
+          "label": {
+            "en_US": "Top K",
+            "ja_JP": "Top K",
+            "zh_Hans": "Top K",
+            "pt_BR": "Top K"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Reduces the probability of generating nonsense. A higher value (e.g. 100) will give more diverse answers, while a lower value (e.g. 10) will be more conservative. (Default: 40)",
+            "ja_JP": "Reduces the probability of generating nonsense. A higher value (e.g. 100) will give more diverse answers, while a lower value (e.g. 10) will be more conservative. (Default: 40)",
+            "zh_Hans": "减少生成无意义内容的可能性。较高的值（例如100）将提供更多样化的答案，而较低的值（例如10）将更为保守。（默认值：40）",
+            "pt_BR": "Reduces the probability of generating nonsense. A higher value (e.g. 100) will give more diverse answers, while a lower value (e.g. 10) will be more conservative. (Default: 40)"
+          },
+          "required": false,
+          "default": null,
+          "min": 1,
+          "max": 100,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "repeat_penalty",
+          "use_template": null,
+          "label": {
+            "en_US": "Repeat Penalty",
+            "ja_JP": "Repeat Penalty",
+            "zh_Hans": "Repeat Penalty",
+            "pt_BR": "Repeat Penalty"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Sets how strongly to penalize repetitions. A higher value (e.g., 1.5) will penalize repetitions more strongly, while a lower value (e.g., 0.9) will be more lenient. (Default: 1.1)",
+            "ja_JP": "Sets how strongly to penalize repetitions. A higher value (e.g., 1.5) will penalize repetitions more strongly, while a lower value (e.g., 0.9) will be more lenient. (Default: 1.1)",
+            "zh_Hans": "设置对重复内容的惩罚强度。一个较高的值（例如，1.5）会更强地惩罚重复内容，而一个较低的值（例如，0.9）则会相对宽容。（默认值：1.1）",
+            "pt_BR": "Sets how strongly to penalize repetitions. A higher value (e.g., 1.5) will penalize repetitions more strongly, while a lower value (e.g., 0.9) will be more lenient. (Default: 1.1)"
+          },
+          "required": false,
+          "default": null,
+          "min": -2,
+          "max": 2,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "num_predict",
+          "use_template": "max_tokens",
+          "label": {
+            "en_US": "Num Predict",
+            "ja_JP": "Num Predict",
+            "zh_Hans": "最大令牌数预测",
+            "pt_BR": "Num Predict"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Maximum number of tokens to predict when generating text. (Default: 128, -1 = infinite generation, -2 = fill context)",
+            "ja_JP": "Maximum number of tokens to predict when generating text. (Default: 128, -1 = infinite generation, -2 = fill context)",
+            "zh_Hans": "生成文本时预测的最大令牌数。（默认值：128，-1 = 无限生成，-2 = 填充上下文）",
+            "pt_BR": "Maximum number of tokens to predict when generating text. (Default: 128, -1 = infinite generation, -2 = fill context)"
+          },
+          "required": false,
+          "default": 512,
+          "min": -2,
+          "max": 8192,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "mirostat",
+          "use_template": null,
+          "label": {
+            "en_US": "Mirostat sampling",
+            "ja_JP": "Mirostat sampling",
+            "zh_Hans": "Mirostat 采样",
+            "pt_BR": "Mirostat sampling"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Enable Mirostat sampling for controlling perplexity. (default: 0, 0 = disabled, 1 = Mirostat, 2 = Mirostat 2.0)",
+            "ja_JP": "Enable Mirostat sampling for controlling perplexity. (default: 0, 0 = disabled, 1 = Mirostat, 2 = Mirostat 2.0)",
+            "zh_Hans": "启用 Mirostat 采样以控制困惑度。（默认值：0，0 = 禁用，1 = Mirostat，2 = Mirostat 2.0）",
+            "pt_BR": "Enable Mirostat sampling for controlling perplexity. (default: 0, 0 = disabled, 1 = Mirostat, 2 = Mirostat 2.0)"
+          },
+          "required": false,
+          "default": null,
+          "min": 0,
+          "max": 2,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "mirostat_eta",
+          "use_template": null,
+          "label": {
+            "en_US": "Mirostat Eta",
+            "ja_JP": "Mirostat Eta",
+            "zh_Hans": "学习率",
+            "pt_BR": "Mirostat Eta"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Influences how quickly the algorithm responds to feedback from the generated text. A lower learning rate will result in slower adjustments, while a higher learning rate will make the algorithm more responsive. (Default: 0.1)",
+            "ja_JP": "Influences how quickly the algorithm responds to feedback from the generated text. A lower learning rate will result in slower adjustments, while a higher learning rate will make the algorithm more responsive. (Default: 0.1)",
+            "zh_Hans": "影响算法对生成文本反馈响应的速度。较低的学习率会导致调整速度变慢，而较高的学习率会使得算法更加灵敏。（默认值：0.1）",
+            "pt_BR": "Influences how quickly the algorithm responds to feedback from the generated text. A lower learning rate will result in slower adjustments, while a higher learning rate will make the algorithm more responsive. (Default: 0.1)"
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": 1,
+          "options": []
+        },
+        {
+          "name": "mirostat_tau",
+          "use_template": null,
+          "label": {
+            "en_US": "Mirostat Tau",
+            "ja_JP": "Mirostat Tau",
+            "zh_Hans": "文本连贯度",
+            "pt_BR": "Mirostat Tau"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls the balance between coherence and diversity of the output. A lower value will result in more focused and coherent text. (Default: 5.0)",
+            "ja_JP": "Controls the balance between coherence and diversity of the output. A lower value will result in more focused and coherent text. (Default: 5.0)",
+            "zh_Hans": "控制输出的连贯性和多样性之间的平衡。较低的值会导致更专注和连贯的文本。（默认值：5.0）",
+            "pt_BR": "Controls the balance between coherence and diversity of the output. A lower value will result in more focused and coherent text. (Default: 5.0)"
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": 1,
+          "options": []
+        },
+        {
+          "name": "num_ctx",
+          "use_template": null,
+          "label": {
+            "en_US": "Size of context window",
+            "ja_JP": "Size of context window",
+            "zh_Hans": "上下文窗口大小",
+            "pt_BR": "Size of context window"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Sets the size of the context window used to generate the next token. (Default: 2048)",
+            "ja_JP": "Sets the size of the context window used to generate the next token. (Default: 2048)",
+            "zh_Hans": "设置用于生成下一个标记的上下文窗口大小。（默认值：2048）",
+            "pt_BR": "Sets the size of the context window used to generate the next token. (Default: 2048)"
+          },
+          "required": false,
+          "default": 2048,
+          "min": 1,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "num_gpu",
+          "use_template": null,
+          "label": {
+            "en_US": "GPU Layers",
+            "ja_JP": "GPU Layers",
+            "zh_Hans": "GPU 层数",
+            "pt_BR": "GPU Layers"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "The number of layers to offload to the GPU(s). On macOS it defaults to 1 to enable metal support, 0 to disable.As long as a model fits into one gpu it stays in one. It does not set the number of GPU(s). ",
+            "ja_JP": "The number of layers to offload to the GPU(s). On macOS it defaults to 1 to enable metal support, 0 to disable.As long as a model fits into one gpu it stays in one. It does not set the number of GPU(s). ",
+            "zh_Hans": "加载到 GPU 的层数。在 macOS 上，默认为 1 以启用 Metal 支持，设置为 0 则禁用。只要模型适合一个 GPU，它就保留在其中。它不设置 GPU 的数量。",
+            "pt_BR": "The number of layers to offload to the GPU(s). On macOS it defaults to 1 to enable metal support, 0 to disable.As long as a model fits into one gpu it stays in one. It does not set the number of GPU(s). "
+          },
+          "required": false,
+          "default": 1,
+          "min": -1,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "num_thread",
+          "use_template": null,
+          "label": {
+            "en_US": "Num Thread",
+            "ja_JP": "Num Thread",
+            "zh_Hans": "线程数",
+            "pt_BR": "Num Thread"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Sets the number of threads to use during computation. By default, Ollama will detect this for optimal performance. It is recommended to set this value to the number of physical CPU cores your system has (as opposed to the logical number of cores).",
+            "ja_JP": "Sets the number of threads to use during computation. By default, Ollama will detect this for optimal performance. It is recommended to set this value to the number of physical CPU cores your system has (as opposed to the logical number of cores).",
+            "zh_Hans": "设置计算过程中使用的线程数。默认情况下，Ollama会检测以获得最佳性能。建议将此值设置为系统拥有的物理CPU核心数（而不是逻辑核心数）。",
+            "pt_BR": "Sets the number of threads to use during computation. By default, Ollama will detect this for optimal performance. It is recommended to set this value to the number of physical CPU cores your system has (as opposed to the logical number of cores)."
+          },
+          "required": false,
+          "default": null,
+          "min": 1,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "repeat_last_n",
+          "use_template": null,
+          "label": {
+            "en_US": "Repeat last N",
+            "ja_JP": "Repeat last N",
+            "zh_Hans": "回溯内容",
+            "pt_BR": "Repeat last N"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Sets how far back for the model to look back to prevent repetition. (Default: 64, 0 = disabled, -1 = num_ctx)",
+            "ja_JP": "Sets how far back for the model to look back to prevent repetition. (Default: 64, 0 = disabled, -1 = num_ctx)",
+            "zh_Hans": "设置模型回溯多远的内容以防止重复。（默认值：64，0 = 禁用，-1 = num_ctx）",
+            "pt_BR": "Sets how far back for the model to look back to prevent repetition. (Default: 64, 0 = disabled, -1 = num_ctx)"
+          },
+          "required": false,
+          "default": null,
+          "min": -1,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "tfs_z",
+          "use_template": null,
+          "label": {
+            "en_US": "TFS Z",
+            "ja_JP": "TFS Z",
+            "zh_Hans": "减少标记影响",
+            "pt_BR": "TFS Z"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Tail free sampling is used to reduce the impact of less probable tokens from the output. A higher value (e.g., 2.0) will reduce the impact more, while a value of 1.0 disables this setting. (default: 1)",
+            "ja_JP": "Tail free sampling is used to reduce the impact of less probable tokens from the output. A higher value (e.g., 2.0) will reduce the impact more, while a value of 1.0 disables this setting. (default: 1)",
+            "zh_Hans": "用于减少输出中不太可能的标记的影响。较高的值（例如，2.0）会更多地减少这种影响，而1.0的值则会禁用此设置。（默认值：1）",
+            "pt_BR": "Tail free sampling is used to reduce the impact of less probable tokens from the output. A higher value (e.g., 2.0) will reduce the impact more, while a value of 1.0 disables this setting. (default: 1)"
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": 1,
+          "options": []
+        },
+        {
+          "name": "seed",
+          "use_template": null,
+          "label": {
+            "en_US": "Seed",
+            "ja_JP": "Seed",
+            "zh_Hans": "随机数种子",
+            "pt_BR": "Seed"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Sets the random number seed to use for generation. Setting this to a specific number will make the model generate the same text for the same prompt. (Default: 0)",
+            "ja_JP": "Sets the random number seed to use for generation. Setting this to a specific number will make the model generate the same text for the same prompt. (Default: 0)",
+            "zh_Hans": "设置用于生成的随机数种子。将此设置为特定数字将使模型对相同的提示生成相同的文本。（默认值：0）",
+            "pt_BR": "Sets the random number seed to use for generation. Setting this to a specific number will make the model generate the same text for the same prompt. (Default: 0)"
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "keep_alive",
+          "use_template": null,
+          "label": {
+            "en_US": "Keep Alive",
+            "ja_JP": "Keep Alive",
+            "zh_Hans": "模型存活时间",
+            "pt_BR": "Keep Alive"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Sets how long the model is kept in memory after generating a response. This must be a duration string with a unit (e.g., '10m' for 10 minutes or '24h' for 24 hours). A negative number keeps the model loaded indefinitely, and '0' unloads the model immediately after generating a response. Valid time units are 's','m','h'. (Default: 5m)",
+            "ja_JP": "Sets how long the model is kept in memory after generating a response. This must be a duration string with a unit (e.g., '10m' for 10 minutes or '24h' for 24 hours). A negative number keeps the model loaded indefinitely, and '0' unloads the model immediately after generating a response. Valid time units are 's','m','h'. (Default: 5m)",
+            "zh_Hans": "设置模型在生成响应后在内存中保留的时间。这必须是一个带有单位的持续时间字符串（例如，'10m' 表示10分钟，'24h' 表示24小时）。负数表示无限期地保留模型，'0'表示在生成响应后立即卸载模型。有效的时间单位有 's'（秒）、'm'（分钟）、'h'（小时）。（默认值：5m）",
+            "pt_BR": "Sets how long the model is kept in memory after generating a response. This must be a duration string with a unit (e.g., '10m' for 10 minutes or '24h' for 24 hours). A negative number keeps the model loaded indefinitely, and '0' unloads the model immediately after generating a response. Valid time units are 's','m','h'. (Default: 5m)"
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "format",
+          "use_template": null,
+          "label": {
+            "en_US": "Format",
+            "ja_JP": "Format",
+            "zh_Hans": "返回格式",
+            "pt_BR": "Format"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "the format to return a response in. Currently the only accepted value is json.",
+            "ja_JP": "the format to return a response in. Currently the only accepted value is json.",
+            "zh_Hans": "返回响应的格式。目前唯一接受的值是json。",
+            "pt_BR": "the format to return a response in. Currently the only accepted value is json."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "json"
+          ]
+        },
+        {
+          "name": "json_schema",
+          "use_template": null,
+          "label": {
+            "en_US": "JSON Schema",
+            "ja_JP": "JSON Schema",
+            "zh_Hans": "JSON Schema",
+            "pt_BR": "JSON Schema"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Return output in the format defined by JSON Schema.",
+            "ja_JP": "Return output in the format defined by JSON Schema.",
+            "zh_Hans": "按照JSON Schema定义的格式返回output",
+            "pt_BR": "Return output in the format defined by JSON Schema."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "think",
+          "use_template": null,
+          "label": {
+            "en_US": "Think",
+            "ja_JP": "Think",
+            "zh_Hans": "思考模式",
+            "pt_BR": "Think"
+          },
+          "type": "boolean",
+          "help": {
+            "en_US": "Enable or disable Ollama thinking mode. For GPT-OSS reasoning levels, use Think Level.",
+            "ja_JP": "Enable or disable Ollama thinking mode. For GPT-OSS reasoning levels, use Think Level.",
+            "zh_Hans": "启用思考模式，模型在响应前会先进行思考。",
+            "pt_BR": "Enable or disable Ollama thinking mode. For GPT-OSS reasoning levels, use Think Level."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "think_level",
+          "use_template": null,
+          "label": {
+            "en_US": "Think Level",
+            "ja_JP": "Think Level",
+            "zh_Hans": "思考等级",
+            "pt_BR": "Think Level"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Optional Ollama thinking level for GPT-OSS models. Overrides Think when set.",
+            "ja_JP": "Optional Ollama thinking level for GPT-OSS models. Overrides Think when set.",
+            "zh_Hans": "GPT-OSS 模型可选的 Ollama 思考等级。设置后会覆盖 Think。",
+            "pt_BR": "Optional Ollama thinking level for GPT-OSS models. Overrides Think when set."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "low",
+            "medium",
+            "high"
+          ]
+        }
+      ],
+      "pricing": {
+        "input": "0",
+        "output": "0",
+        "unit": "0",
+        "currency": "USD"
+      }
+    },
+    "status": "passed"
+  },
+  {
+    "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+    "model": "codex/gpt-6.1-terra",
+    "credentials": {
+      "context_size": "1050000",
+      "max_tokens_to_sample": "128000",
+      "mode": "chat",
+      "api_type": "responses",
+      "vision_support": "support",
+      "function_calling_type": "tool_call",
+      "stream_function_calling": "supported",
+      "structured_output_support": "supported",
+      "agent_thought_support": "supported"
+    },
+    "schema": {
+      "model": "codex/gpt-6.1-terra",
+      "label": {
+        "en_US": "codex/gpt-6.1-terra",
+        "ja_JP": "codex/gpt-6.1-terra",
+        "zh_Hans": "codex/gpt-6.1-terra",
+        "pt_BR": "codex/gpt-6.1-terra"
+      },
+      "model_type": "llm",
+      "features": [
+        "multi-tool-call",
+        "stream-tool-call",
+        "vision",
+        "agent-thought"
+      ],
+      "fetch_from": "customizable-model",
+      "model_properties": {
+        "context_size": 1050000,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "temperature",
+          "use_template": null,
+          "label": {
+            "en_US": "Temperature",
+            "ja_JP": "Temperature",
+            "zh_Hans": "温度",
+            "pt_BR": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Kernel sampling threshold. Used to determine the randomness of the results.The higher the value, the stronger the randomness.The higher the possibility of getting different answers to the same question.",
+            "ja_JP": "Kernel sampling threshold. Used to determine the randomness of the results.The higher the value, the stronger the randomness.The higher the possibility of getting different answers to the same question.",
+            "zh_Hans": "核采样阈值。用于决定结果随机性，取值越高随机性越强即相同的问题得到的不同答案的可能性越高。",
+            "pt_BR": "Kernel sampling threshold. Used to determine the randomness of the results.The higher the value, the stronger the randomness.The higher the possibility of getting different answers to the same question."
+          },
+          "required": false,
+          "default": 0.7,
+          "min": 0,
+          "max": 2,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": null,
+          "label": {
+            "en_US": "Top P",
+            "ja_JP": "Top P",
+            "zh_Hans": "Top P",
+            "pt_BR": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "The probability threshold of the nucleus sampling method during the generation process.The larger the value is, the higher the randomness of generation will be.The smaller the value is, the higher the certainty of generation will be.",
+            "ja_JP": "The probability threshold of the nucleus sampling method during the generation process.The larger the value is, the higher the randomness of generation will be.The smaller the value is, the higher the certainty of generation will be.",
+            "zh_Hans": "生成过程中核采样方法概率阈值。取值越大，生成的随机性越高；取值越小，生成的确定性越高。",
+            "pt_BR": "The probability threshold of the nucleus sampling method during the generation process.The larger the value is, the higher the randomness of generation will be.The smaller the value is, the higher the certainty of generation will be."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "frequency_penalty",
+          "use_template": null,
+          "label": {
+            "en_US": "Frequency Penalty",
+            "ja_JP": "Frequency Penalty",
+            "zh_Hans": "频率惩罚",
+            "pt_BR": "Frequency Penalty"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "For controlling the repetition rate of words used by the model.Increasing this can reduce the repetition of the same words in the model's output.",
+            "ja_JP": "For controlling the repetition rate of words used by the model.Increasing this can reduce the repetition of the same words in the model's output.",
+            "zh_Hans": "用于控制模型已使用字词的重复率。 提高此项可以降低模型在输出中重复相同字词的重复度。",
+            "pt_BR": "For controlling the repetition rate of words used by the model.Increasing this can reduce the repetition of the same words in the model's output."
+          },
+          "required": false,
+          "default": 0,
+          "min": -2,
+          "max": 2,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "presence_penalty",
+          "use_template": null,
+          "label": {
+            "en_US": "Presence Penalty",
+            "ja_JP": "Presence Penalty",
+            "zh_Hans": "存在惩罚",
+            "pt_BR": "Presence Penalty"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Used to control the repetition rate when generating models.Increasing this can reduce the repetition rate of model generation.",
+            "ja_JP": "Used to control the repetition rate when generating models.Increasing this can reduce the repetition rate of model generation.",
+            "zh_Hans": "用于控制模型生成时的重复度。提高此项可以降低模型生成的重复度。",
+            "pt_BR": "Used to control the repetition rate when generating models.Increasing this can reduce the repetition rate of model generation."
+          },
+          "required": false,
+          "default": 0,
+          "min": -2,
+          "max": 2,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "max_tokens",
+          "use_template": null,
+          "label": {
+            "en_US": "Max Tokens",
+            "ja_JP": "Max Tokens",
+            "zh_Hans": "最大标记",
+            "pt_BR": "Max Tokens"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Maximum length of tokens for the model response.",
+            "ja_JP": "Maximum length of tokens for the model response.",
+            "zh_Hans": "模型回答的tokens的最大长度。",
+            "pt_BR": "Maximum length of tokens for the model response."
+          },
+          "required": false,
+          "default": 512,
+          "min": 1,
+          "max": 128000,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "response_format",
+          "use_template": null,
+          "label": {
+            "en_US": "Response Format",
+            "ja_JP": "Response Format",
+            "zh_Hans": "回复格式",
+            "pt_BR": "Response Format"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Specifying the format that the model must output.",
+            "ja_JP": "Specifying the format that the model must output.",
+            "zh_Hans": "指定模型必须输出的回复格式。",
+            "pt_BR": "Specifying the format that the model must output."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "text",
+            "json_object",
+            "json_schema"
+          ]
+        },
+        {
+          "name": "json_schema",
+          "use_template": "json_schema",
+          "label": {
+            "en_US": "JSON Schema",
+            "ja_JP": "JSON Schema",
+            "zh_Hans": "JSON Schema",
+            "pt_BR": "JSON Schema"
+          },
+          "type": "text",
+          "help": {
+            "en_US": "Set a response json schema will ensure LLM to adhere it.",
+            "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+            "zh_Hans": "设置返回的json schema，llm将按照它返回",
+            "pt_BR": "Set a response json schema will ensure LLM to adhere it."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "enable_thinking",
+          "use_template": null,
+          "label": {
+            "en_US": "Thinking mode",
+            "ja_JP": "Thinking mode",
+            "zh_Hans": "思考模式",
+            "pt_BR": "Thinking mode"
+          },
+          "type": "boolean",
+          "help": {
+            "en_US": "Whether to enable thinking mode, applicable to various thinking mode models deployed on reasoning frameworks such as vLLM and SGLang, for example Qwen3.",
+            "ja_JP": "Whether to enable thinking mode, applicable to various thinking mode models deployed on reasoning frameworks such as vLLM and SGLang, for example Qwen3.",
+            "zh_Hans": "是否开启思考模式，适用于vLLM和SGLang等推理框架部署的多种思考模式模型，例如Qwen3。",
+            "pt_BR": "Whether to enable thinking mode, applicable to various thinking mode models deployed on reasoning frameworks such as vLLM and SGLang, for example Qwen3."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "reasoning_format",
+          "use_template": null,
+          "label": {
+            "en_US": "Reasoning Format",
+            "ja_JP": "Reasoning Format",
+            "zh_Hans": "推理格式",
+            "pt_BR": "Reasoning Format"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Specifies the format in which the model must output reasoning.",
+            "ja_JP": "Specifies the format in which the model must output reasoning.",
+            "zh_Hans": "指定模型必须输出的推理格式。",
+            "pt_BR": "Specifies the format in which the model must output reasoning."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "none",
+            "auto",
+            "deepseek",
+            "deepseek-legacy"
+          ]
+        },
+        {
+          "name": "reasoning_effort",
+          "use_template": null,
+          "label": {
+            "en_US": "Reasoning effort",
+            "ja_JP": "Reasoning effort",
+            "zh_Hans": "推理工作",
+            "pt_BR": "Reasoning effort"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Constrains effort on reasoning for reasoning models. Not every level is accepted by every model — 'none' and 'xhigh' in particular are only supported by newer OpenAI reasoning models. The upstream endpoint validates the value.",
+            "ja_JP": "Constrains effort on reasoning for reasoning models. Not every level is accepted by every model — 'none' and 'xhigh' in particular are only supported by newer OpenAI reasoning models. The upstream endpoint validates the value.",
+            "zh_Hans": "限制推理模型的推理工作。并非所有模型都接受全部级别，其中 none 与 xhigh 仅较新的 OpenAI 推理模型支持，具体由上游端点校验。",
+            "pt_BR": "Constrains effort on reasoning for reasoning models. Not every level is accepted by every model — 'none' and 'xhigh' in particular are only supported by newer OpenAI reasoning models. The upstream endpoint validates the value."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ]
+        },
+        {
+          "name": "web_search",
+          "use_template": null,
+          "label": {
+            "en_US": "Web Search",
+            "ja_JP": "Web Search",
+            "zh_Hans": "联网搜索",
+            "pt_BR": "Web Search"
+          },
+          "type": "boolean",
+          "help": {
+            "en_US": "Whether to enable web search. When enabled, the model will search the internet for relevant information to generate responses.",
+            "ja_JP": "Whether to enable web search. When enabled, the model will search the internet for relevant information to generate responses.",
+            "zh_Hans": "是否启用联网搜索。启用后，模型将搜索互联网以获取相关信息来生成回复。",
+            "pt_BR": "Whether to enable web search. When enabled, the model will search the internet for relevant information to generate responses."
+          },
+          "required": false,
+          "default": false,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "web_search_allowed_domains",
+          "use_template": null,
+          "label": {
+            "en_US": "Allowed Domains",
+            "ja_JP": "Allowed Domains",
+            "zh_Hans": "允许的搜索域名",
+            "pt_BR": "Allowed Domains"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Comma or newline-separated list of allowed domains for web search results (e.g., openai.com, github.com). Max 100 domains. Requires Responses API.",
+            "ja_JP": "Comma or newline-separated list of allowed domains for web search results (e.g., openai.com, github.com). Max 100 domains. Requires Responses API.",
+            "zh_Hans": "允许的搜索域名列表，支持逗号或换行分隔（例如 openai.com, github.com）。最多 100 个域名。需要 Responses API。",
+            "pt_BR": "Comma or newline-separated list of allowed domains for web search results (e.g., openai.com, github.com). Max 100 domains. Requires Responses API."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "web_search_blocked_domains",
+          "use_template": null,
+          "label": {
+            "en_US": "Blocked Domains",
+            "ja_JP": "Blocked Domains",
+            "zh_Hans": "屏蔽的搜索域名",
+            "pt_BR": "Blocked Domains"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Comma or newline-separated list of blocked domains for web search results (e.g., reddit.com, quora.com). Max 100 domains. Requires Responses API.",
+            "ja_JP": "Comma or newline-separated list of blocked domains for web search results (e.g., reddit.com, quora.com). Max 100 domains. Requires Responses API.",
+            "zh_Hans": "屏蔽的搜索域名列表，支持逗号或换行分隔（例如 reddit.com, quora.com）。最多 100 个域名。需要 Responses API。",
+            "pt_BR": "Comma or newline-separated list of blocked domains for web search results (e.g., reddit.com, quora.com). Max 100 domains. Requires Responses API."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "web_search_context_size",
+          "use_template": null,
+          "label": {
+            "en_US": "Search Context Size",
+            "ja_JP": "Search Context Size",
+            "zh_Hans": "搜索上下文大小",
+            "pt_BR": "Search Context Size"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Controls amount of web search result context provided to model ('low', 'medium', 'high'). Requires Responses API.",
+            "ja_JP": "Controls amount of web search result context provided to model ('low', 'medium', 'high'). Requires Responses API.",
+            "zh_Hans": "控制提供给模型的网络搜索结果上下文量（'low', 'medium', 'high'）。需要 Responses API。",
+            "pt_BR": "Controls amount of web search result context provided to model ('low', 'medium', 'high'). Requires Responses API."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "medium",
+            "low",
+            "high"
+          ]
+        },
+        {
+          "name": "web_search_user_country",
+          "use_template": null,
+          "label": {
+            "en_US": "Search User Country",
+            "ja_JP": "Search User Country",
+            "zh_Hans": "搜索用户国家/地区",
+            "pt_BR": "Search User Country"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Optional 2-letter ISO country code (e.g., US, JP) to refine search location. Requires Responses API.",
+            "ja_JP": "Optional 2-letter ISO country code (e.g., US, JP) to refine search location. Requires Responses API.",
+            "zh_Hans": "可选的 2 位 ISO 国家/地区代码（例如 US、JP）以优化搜索地理位置。需要 Responses API。",
+            "pt_BR": "Optional 2-letter ISO country code (e.g., US, JP) to refine search location. Requires Responses API."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        }
+      ],
+      "pricing": {
+        "input": "0",
+        "output": "0",
+        "unit": "0",
+        "currency": "USD"
+      }
+    },
+    "status": "passed"
+  },
+  {
+    "provider": "langgenius/deepseek/deepseek",
+    "model": "deepseek-flash",
+    "credentials": {
+      "api_key": "fixture-not-a-key",
+      "google_api_key": "fixture-not-a-key"
+    },
+    "schema": {
+      "model": "deepseek-flash",
+      "label": {
+        "en_US": "DeepSeek V4.1 Flash",
+        "ja_JP": "DeepSeek V4.1 Flash",
+        "zh_Hans": "DeepSeek V4.1 Flash",
+        "pt_BR": "DeepSeek V4.1 Flash"
+      },
+      "model_type": "llm",
+      "features": [
+        "vision",
+        "agent-thought",
+        "tool-call",
+        "multi-tool-call",
+        "stream-tool-call"
+      ],
+      "fetch_from": "predefined-model",
+      "model_properties": {
+        "context_size": 1000000,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "en_US": "Temperature",
+            "ja_JP": "Temperature",
+            "zh_Hans": "温度",
+            "pt_BR": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls randomness in non-thinking mode. Has no effect in thinking mode.",
+            "ja_JP": "Controls randomness in non-thinking mode. Has no effect in thinking mode.",
+            "zh_Hans": "控制非思考模式下的随机性。思考模式下不生效。",
+            "pt_BR": "Controls randomness in non-thinking mode. Has no effect in thinking mode."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0,
+          "max": 2,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "max_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "en_US": "Max Tokens",
+            "ja_JP": "Max Tokens",
+            "zh_Hans": "最大标记",
+            "pt_BR": "Max Tokens"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Maximum output tokens, including reasoning, up to 393216. Input and output together must fit within the context window.",
+            "ja_JP": "Maximum output tokens, including reasoning, up to 393216. Input and output together must fit within the context window.",
+            "zh_Hans": "输出 token 上限，包含思考内容，最大 393216。输入和输出总长度不能超过上下文限制。",
+            "pt_BR": "Maximum output tokens, including reasoning, up to 393216. Input and output together must fit within the context window."
+          },
+          "required": false,
+          "default": 65536,
+          "min": 1,
+          "max": 393216,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "en_US": "Top P",
+            "ja_JP": "Top P",
+            "zh_Hans": "Top P",
+            "pt_BR": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Nucleus sampling in thinking mode, from 0.95 to 1.0. Fixed at 1.0 in non-thinking mode.",
+            "ja_JP": "Nucleus sampling in thinking mode, from 0.95 to 1.0. Fixed at 1.0 in non-thinking mode.",
+            "zh_Hans": "思考模式下的核采样概率，取值 0.95 至 1.0。非思考模式下固定为 1.0。",
+            "pt_BR": "Nucleus sampling in thinking mode, from 0.95 to 1.0. Fixed at 1.0 in non-thinking mode."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0.95,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "thinking",
+          "use_template": null,
+          "label": {
+            "en_US": "Thinking Mode",
+            "ja_JP": "Thinking Mode",
+            "zh_Hans": "思考模式",
+            "pt_BR": "Thinking Mode"
+          },
+          "type": "boolean",
+          "help": {
+            "en_US": "Controls whether DeepSeek thinking mode is enabled. Enabled by default.",
+            "ja_JP": "Controls whether DeepSeek thinking mode is enabled. Enabled by default.",
+            "zh_Hans": "控制是否启用 DeepSeek 的思考模式，默认启用。",
+            "pt_BR": "Controls whether DeepSeek thinking mode is enabled. Enabled by default."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "reasoning_effort",
+          "use_template": null,
+          "label": {
+            "en_US": "Reasoning Effort",
+            "ja_JP": "Reasoning Effort",
+            "zh_Hans": "思考强度",
+            "pt_BR": "Reasoning Effort"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "Controls reasoning effort in thinking mode. The official docs support low, high, and max.",
+            "ja_JP": "Controls reasoning effort in thinking mode. The official docs support low, high, and max.",
+            "zh_Hans": "控制思考模式下的推理强度。官方文档支持 low、high 和 max。",
+            "pt_BR": "Controls reasoning effort in thinking mode. The official docs support low, high, and max."
+          },
+          "required": false,
+          "default": "high",
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "low",
+            "high",
+            "max"
+          ]
+        },
+        {
+          "name": "response_format",
+          "use_template": null,
+          "label": {
+            "en_US": "Response Format",
+            "ja_JP": "Response Format",
+            "zh_Hans": "回复格式",
+            "pt_BR": "Response Format"
+          },
+          "type": "string",
+          "help": {
+            "en_US": "specifying the format that the model must output",
+            "ja_JP": "specifying the format that the model must output",
+            "zh_Hans": "指定模型必须输出的格式",
+            "pt_BR": "specifying the format that the model must output"
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "text",
+            "json_object"
+          ]
+        }
+      ],
+      "pricing": null
+    },
+    "status": "passed"
+  },
+  {
+    "provider": "langgenius/gemini/google",
+    "model": "gemini-1.5-flash-001",
+    "credentials": {
+      "api_key": "fixture-not-a-key",
+      "google_api_key": "fixture-not-a-key"
+    },
+    "schema": {
+      "model": "gemini-1.5-flash-001",
+      "label": {
+        "en_US": "Gemini 1.5 Flash 001",
+        "ja_JP": "Gemini 1.5 Flash 001",
+        "zh_Hans": "Gemini 1.5 Flash 001",
+        "pt_BR": "Gemini 1.5 Flash 001"
+      },
+      "model_type": "llm",
+      "features": [
+        "agent-thought",
+        "vision",
+        "tool-call",
+        "stream-tool-call",
+        "document",
+        "video",
+        "audio"
+      ],
+      "fetch_from": "predefined-model",
+      "model_properties": {
+        "context_size": 1048576,
+        "mode": "chat"
+      },
+      "deprecated": true,
+      "parameter_rules": [
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "en_US": "Temperature",
+            "ja_JP": "Temperature",
+            "zh_Hans": "温度",
+            "pt_BR": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "ja_JP": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "pt_BR": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "en_US": "Top P",
+            "ja_JP": "Top P",
+            "zh_Hans": "Top P",
+            "pt_BR": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "ja_JP": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "pt_BR": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_k",
+          "use_template": null,
+          "label": {
+            "en_US": "Top k",
+            "ja_JP": "Top k",
+            "zh_Hans": "取样数量",
+            "pt_BR": "Top k"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Only sample from the top K options for each subsequent token.",
+            "ja_JP": "Only sample from the top K options for each subsequent token.",
+            "zh_Hans": "仅从每个后续标记的前 K 个选项中采样。",
+            "pt_BR": "Only sample from the top K options for each subsequent token."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "max_output_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "en_US": "Max Tokens",
+            "ja_JP": "Max Tokens",
+            "zh_Hans": "最大标记",
+            "pt_BR": "Max Tokens"
+          },
+          "type": "int",
+          "help": {
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": false,
+          "default": 8192,
+          "min": 1,
+          "max": 8192,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "use_inline_file",
+          "use_template": null,
+          "label": {
+            "en_US": "Use inline file mode",
+            "ja_JP": "Use inline file mode",
+            "zh_Hans": "使用内嵌文件模式",
+            "pt_BR": "Use inline file mode"
+          },
+          "type": "boolean",
+          "help": {
+            "en_US": "When enabled, files are embedded directly in the request. When disabled, files are uploaded with the Gemini Files API.",
+            "ja_JP": "When enabled, files are embedded directly in the request. When disabled, files are uploaded with the Gemini Files API.",
+            "zh_Hans": "启用后直接内嵌文件；禁用后使用 Gemini Files API 上传文件。",
+            "pt_BR": "When enabled, files are embedded directly in the request. When disabled, files are uploaded with the Gemini Files API."
+          },
+          "required": true,
+          "default": false,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "json_schema",
+          "use_template": "json_schema",
+          "label": {
+            "en_US": "JSON Schema",
+            "ja_JP": "JSON Schema",
+            "zh_Hans": "JSON Schema",
+            "pt_BR": "JSON Schema"
+          },
+          "type": "text",
+          "help": {
+            "en_US": "Set a response json schema will ensure LLM to adhere it.",
+            "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+            "zh_Hans": "设置返回的json schema，llm将按照它返回",
+            "pt_BR": "Set a response json schema will ensure LLM to adhere it."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        }
+      ],
+      "pricing": {
+        "input": "0",
+        "output": "0",
+        "unit": "0.000001",
+        "currency": "USD"
+      }
+    },
+    "status": "passed"
+  },
+  {
+    "provider": "langgenius/zhipuai/zhipuai",
+    "model": "chatglm_lite",
+    "credentials": {
+      "api_key": "fixture-not-a-key",
+      "google_api_key": "fixture-not-a-key"
+    },
+    "schema": {
+      "model": "chatglm_lite",
+      "label": {
+        "en_US": "chatglm_lite",
+        "ja_JP": "chatglm_lite",
+        "zh_Hans": "chatglm_lite",
+        "pt_BR": "chatglm_lite"
+      },
+      "model_type": "llm",
+      "features": null,
+      "fetch_from": "predefined-model",
+      "model_properties": {
+        "mode": "chat"
+      },
+      "deprecated": true,
+      "parameter_rules": [
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "en_US": "Temperature",
+            "ja_JP": "Temperature",
+            "zh_Hans": "温度",
+            "pt_BR": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Sampling temperature, controls the randomness of the output, must be a positive number. The value range is (0.0,1.0], which cannot be equal to 0. The default value is 0.95. The larger the value, the more random and creative the output will be; the smaller the value, The output will be more stable or certain. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time.",
+            "ja_JP": "Sampling temperature, controls the randomness of the output, must be a positive number. The value range is (0.0,1.0], which cannot be equal to 0. The default value is 0.95. The larger the value, the more random and creative the output will be; the smaller the value, The output will be more stable or certain. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time.",
+            "zh_Hans": "采样温度，控制输出的随机性，必须为正数取值范围是：(0.0,1.0]，不能等于 0,默认值为 0.95 值越大，会使输出更随机，更具创造性；值越小，输出会更加稳定或确定建议您根据应用场景调整 top_p 或 temperature 参数，但不要同时调整两个参数。",
+            "pt_BR": "Sampling temperature, controls the randomness of the output, must be a positive number. The value range is (0.0,1.0], which cannot be equal to 0. The default value is 0.95. The larger the value, the more random and creative the output will be; the smaller the value, The output will be more stable or certain. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time."
+          },
+          "required": false,
+          "default": 0.95,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "en_US": "Top P",
+            "ja_JP": "Top P",
+            "zh_Hans": "Top P",
+            "pt_BR": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "en_US": "Another method of temperature sampling is called kernel sampling. The value range is (0.0, 1.0) open interval, which cannot be equal to 0 or 1. The default value is 0.7. The model considers the results with top_p probability mass tokens. For example 0.1 means The model decoder only considers tokens from the candidate set with the top 10% probability. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time.",
+            "ja_JP": "Another method of temperature sampling is called kernel sampling. The value range is (0.0, 1.0) open interval, which cannot be equal to 0 or 1. The default value is 0.7. The model considers the results with top_p probability mass tokens. For example 0.1 means The model decoder only considers tokens from the candidate set with the top 10% probability. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time.",
+            "zh_Hans": "用温度取样的另一种方法，称为核取样取值范围是：(0.0, 1.0) 开区间，不能等于 0 或 1，默认值为 0.7 模型考虑具有 top_p 概率质量tokens的结果例如：0.1 意味着模型解码器只考虑从前 10% 的概率的候选集中取 tokens 建议您根据应用场景调整 top_p 或 temperature 参数，但不要同时调整两个参数。",
+            "pt_BR": "Another method of temperature sampling is called kernel sampling. The value range is (0.0, 1.0) open interval, which cannot be equal to 0 or 1. The default value is 0.7. The model considers the results with top_p probability mass tokens. For example 0.1 means The model decoder only considers tokens from the candidate set with the top 10% probability. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time."
+          },
+          "required": false,
+          "default": 0.7,
+          "min": 0,
+          "max": 1,
+          "precision": 2,
+          "options": []
+        }
+      ],
+      "pricing": null
+    },
+    "status": "passed"
+  }
+]

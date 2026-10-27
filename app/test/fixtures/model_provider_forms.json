@@ -1,0 +1,3744 @@
+{
+  "source": "langgenius/dify-official-plugins@f2d7811364193f8d7069f24a299ee465c5519d3c",
+  "providers": [
+    {
+      "label": {
+        "en_US": "Anthropic"
+      },
+      "supported_model_types": [
+        "llm"
+      ],
+      "configurate_methods": [
+        "predefined-model",
+        "customizable-model"
+      ],
+      "provider": "langgenius/anthropic/anthropic",
+      "provider_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "anthropic_api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "anthropic_api_url",
+            "label": {
+              "en_US": "API URL",
+              "zh_Hans": "API URL"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API URL",
+              "zh_Hans": "在此输入您的 API URL"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "enable_request_metadata",
+            "label": {
+              "en_US": "Enable request metadata",
+              "zh_Hans": "启用请求元数据"
+            },
+            "type": "select",
+            "required": false,
+            "default": "disabled",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Disabled",
+                  "zh_Hans": "禁用"
+                },
+                "value": "disabled",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Enabled",
+                  "zh_Hans": "启用"
+                },
+                "value": "enabled",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          }
+        ]
+      },
+      "model_credential_schema": {
+        "model": {
+          "label": {
+            "en_US": "Model Name",
+            "zh_Hans": "模型名称"
+          },
+          "placeholder": {
+            "en_US": "Enter your model name",
+            "zh_Hans": "在此输入模型名称"
+          }
+        },
+        "credential_form_schemas": [
+          {
+            "variable": "anthropic_api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "anthropic_api_url",
+            "label": {
+              "en_US": "API URL",
+              "zh_Hans": "API URL"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API URL",
+              "zh_Hans": "在此输入您的 API URL"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "enable_request_metadata",
+            "label": {
+              "en_US": "Enable request metadata",
+              "zh_Hans": "启用请求元数据"
+            },
+            "type": "select",
+            "required": false,
+            "default": "disabled",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Disabled",
+                  "zh_Hans": "禁用"
+                },
+                "value": "disabled",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Enabled",
+                  "zh_Hans": "启用"
+                },
+                "value": "enabled",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          }
+        ]
+      }
+    },
+    {
+      "label": {
+        "en_US": "Azure OpenAI Service Model"
+      },
+      "supported_model_types": [
+        "llm",
+        "text-embedding",
+        "speech2text",
+        "tts"
+      ],
+      "configurate_methods": [
+        "customizable-model"
+      ],
+      "provider": "langgenius/azure_openai/azure_openai",
+      "model_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "openai_api_base",
+            "label": {
+              "en_US": "API Base URL",
+              "zh_Hans": "API Base URL"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Base URL, eg: https://example.com/xxx",
+              "zh_Hans": "在此输入您的 API Base URL，如：https://example.com/xxx"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "auth_method",
+            "label": {
+              "en_US": "Authentication Method",
+              "zh_Hans": "身份验证方式"
+            },
+            "type": "select",
+            "required": true,
+            "default": "api_key",
+            "options": [
+              {
+                "label": {
+                  "en_US": "API Key",
+                  "zh_Hans": "API 密钥"
+                },
+                "value": "api_key",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Microsoft Entra ID (Service Principal)",
+                  "zh_Hans": "Microsoft Entra ID（服务主体）"
+                },
+                "value": "entra_id_service_principal",
+                "show_on": []
+              }
+            ],
+            "placeholder": {
+              "en_US": "Select authentication method",
+              "zh_Hans": "选择身份验证方式"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "openai_api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API key here",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "auth_method",
+                "value": "api_key"
+              }
+            ]
+          },
+          {
+            "variable": "azure_client_id",
+            "label": {
+              "en_US": "Application (Client) ID",
+              "zh_Hans": "应用程序（客户端）ID"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Azure AD Application (Client) ID",
+              "zh_Hans": "在此输入您的 Azure AD 应用程序（客户端）ID"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "auth_method",
+                "value": "entra_id_service_principal"
+              }
+            ]
+          },
+          {
+            "variable": "azure_tenant_id",
+            "label": {
+              "en_US": "Directory (Tenant) ID",
+              "zh_Hans": "目录（租户）ID"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Azure AD Directory (Tenant) ID",
+              "zh_Hans": "在此输入您的 Azure AD 目录（租户）ID"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "auth_method",
+                "value": "entra_id_service_principal"
+              }
+            ]
+          },
+          {
+            "variable": "azure_client_secret",
+            "label": {
+              "en_US": "Client Secret Value",
+              "zh_Hans": "客户端密钥值"
+            },
+            "type": "secret-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Azure AD Client Secret Value",
+              "zh_Hans": "在此输入您的 Azure AD 客户端密钥值"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "auth_method",
+                "value": "entra_id_service_principal"
+              }
+            ]
+          },
+          {
+            "variable": "openai_api_version",
+            "label": {
+              "en_US": "API Version",
+              "zh_Hans": "API 版本"
+            },
+            "type": "select",
+            "required": false,
+            "default": null,
+            "options": [
+              {
+                "label": {
+                  "en_US": "2025-04-01-preview",
+                  "zh_Hans": "2025-04-01-preview"
+                },
+                "value": "2025-04-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2025-03-01-preview",
+                  "zh_Hans": "2025-03-01-preview"
+                },
+                "value": "2025-03-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2025-02-01-preview",
+                  "zh_Hans": "2025-02-01-preview"
+                },
+                "value": "2025-02-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2025-01-01-preview",
+                  "zh_Hans": "2025-01-01-preview"
+                },
+                "value": "2025-01-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-12-01-preview",
+                  "zh_Hans": "2024-12-01-preview"
+                },
+                "value": "2024-12-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-10-01-preview",
+                  "zh_Hans": "2024-10-01-preview"
+                },
+                "value": "2024-10-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-09-01-preview",
+                  "zh_Hans": "2024-09-01-preview"
+                },
+                "value": "2024-09-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-08-01-preview",
+                  "zh_Hans": "2024-08-01-preview"
+                },
+                "value": "2024-08-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-07-01-preview",
+                  "zh_Hans": "2024-07-01-preview"
+                },
+                "value": "2024-07-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-05-01-preview",
+                  "zh_Hans": "2024-05-01-preview"
+                },
+                "value": "2024-05-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-04-01-preview",
+                  "zh_Hans": "2024-04-01-preview"
+                },
+                "value": "2024-04-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-03-01-preview",
+                  "zh_Hans": "2024-03-01-preview"
+                },
+                "value": "2024-03-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-02-15-preview",
+                  "zh_Hans": "2024-02-15-preview"
+                },
+                "value": "2024-02-15-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2023-12-01-preview",
+                  "zh_Hans": "2023-12-01-preview"
+                },
+                "value": "2023-12-01-preview",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-02-01",
+                  "zh_Hans": "2024-02-01"
+                },
+                "value": "2024-02-01",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-06-01",
+                  "zh_Hans": "2024-06-01"
+                },
+                "value": "2024-06-01",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "2024-10-21",
+                  "zh_Hans": "2024-10-21"
+                },
+                "value": "2024-10-21",
+                "show_on": []
+              }
+            ],
+            "placeholder": {
+              "en_US": "Select an API Version if you are not using /openai/v1",
+              "zh_Hans": "若未使用 /openai/v1，请在此选择 API 版本"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "enable_request_metadata",
+            "label": {
+              "en_US": "Enable request metadata (optional)",
+              "zh_Hans": "启用请求元数据（可选）"
+            },
+            "type": "select",
+            "required": false,
+            "default": "disabled",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Enabled",
+                  "zh_Hans": "已启用"
+                },
+                "value": "enabled",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Disabled",
+                  "zh_Hans": "已禁用"
+                },
+                "value": "disabled",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "base_model_name",
+            "label": {
+              "en_US": "Base Model",
+              "zh_Hans": "基础模型"
+            },
+            "type": "select",
+            "required": true,
+            "default": null,
+            "options": [
+              {
+                "label": {
+                  "en_US": "gpt-5",
+                  "zh_Hans": "gpt-5"
+                },
+                "value": "gpt-5",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5-mini",
+                  "zh_Hans": "gpt-5-mini"
+                },
+                "value": "gpt-5-mini",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5-nano",
+                  "zh_Hans": "gpt-5-nano"
+                },
+                "value": "gpt-5-nano",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5-chat",
+                  "zh_Hans": "gpt-5-chat"
+                },
+                "value": "gpt-5-chat",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5-pro",
+                  "zh_Hans": "gpt-5-pro"
+                },
+                "value": "gpt-5-pro",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.1",
+                  "zh_Hans": "gpt-5.1"
+                },
+                "value": "gpt-5.1",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.1-chat",
+                  "zh_Hans": "gpt-5.1-chat"
+                },
+                "value": "gpt-5.1-chat",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.1-codex",
+                  "zh_Hans": "gpt-5.1-codex"
+                },
+                "value": "gpt-5.1-codex",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.1-codex-mini",
+                  "zh_Hans": "gpt-5.1-codex-mini"
+                },
+                "value": "gpt-5.1-codex-mini",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.1-codex-max",
+                  "zh_Hans": "gpt-5.1-codex-max"
+                },
+                "value": "gpt-5.1-codex-max",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.2",
+                  "zh_Hans": "gpt-5.2"
+                },
+                "value": "gpt-5.2",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.2-chat",
+                  "zh_Hans": "gpt-5.2-chat"
+                },
+                "value": "gpt-5.2-chat",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.2-codex",
+                  "zh_Hans": "gpt-5.2-codex"
+                },
+                "value": "gpt-5.2-codex",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.3-chat",
+                  "zh_Hans": "gpt-5.3-chat"
+                },
+                "value": "gpt-5.3-chat",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.3-codex",
+                  "zh_Hans": "gpt-5.3-codex"
+                },
+                "value": "gpt-5.3-codex",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.4",
+                  "zh_Hans": "gpt-5.4"
+                },
+                "value": "gpt-5.4",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.4-mini",
+                  "zh_Hans": "gpt-5.4-mini"
+                },
+                "value": "gpt-5.4-mini",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.4-nano",
+                  "zh_Hans": "gpt-5.4-nano"
+                },
+                "value": "gpt-5.4-nano",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.4-pro",
+                  "zh_Hans": "gpt-5.4-pro"
+                },
+                "value": "gpt-5.4-pro",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.5",
+                  "zh_Hans": "gpt-5.5"
+                },
+                "value": "gpt-5.5",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.6-sol",
+                  "zh_Hans": "gpt-5.6-sol"
+                },
+                "value": "gpt-5.6-sol",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.6-terra",
+                  "zh_Hans": "gpt-5.6-terra"
+                },
+                "value": "gpt-5.6-terra",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-5.6-luna",
+                  "zh_Hans": "gpt-5.6-luna"
+                },
+                "value": "gpt-5.6-luna",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-6.1-sol",
+                  "zh_Hans": "gpt-6.1-sol"
+                },
+                "value": "gpt-6.1-sol",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-6-astra",
+                  "zh_Hans": "gpt-6-astra"
+                },
+                "value": "gpt-6-astra",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-6-sol",
+                  "zh_Hans": "gpt-6-sol"
+                },
+                "value": "gpt-6-sol",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-6-luna",
+                  "zh_Hans": "gpt-6-luna"
+                },
+                "value": "gpt-6-luna",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-35-turbo",
+                  "zh_Hans": "gpt-35-turbo"
+                },
+                "value": "gpt-35-turbo",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-35-turbo-0125",
+                  "zh_Hans": "gpt-35-turbo-0125"
+                },
+                "value": "gpt-35-turbo-0125",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-35-turbo-16k",
+                  "zh_Hans": "gpt-35-turbo-16k"
+                },
+                "value": "gpt-35-turbo-16k",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4",
+                  "zh_Hans": "gpt-4"
+                },
+                "value": "gpt-4",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4-32k",
+                  "zh_Hans": "gpt-4-32k"
+                },
+                "value": "gpt-4-32k",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4.5-preview",
+                  "zh_Hans": "gpt-4.5-preview"
+                },
+                "value": "gpt-4.5-preview",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "o3-mini",
+                  "zh_Hans": "o3-mini"
+                },
+                "value": "o3-mini",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "o3",
+                  "zh_Hans": "o3"
+                },
+                "value": "o3",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "o4-mini",
+                  "zh_Hans": "o4-mini"
+                },
+                "value": "o4-mini",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "o1-mini",
+                  "zh_Hans": "o1-mini"
+                },
+                "value": "o1-mini",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "o1-preview",
+                  "zh_Hans": "o1-preview"
+                },
+                "value": "o1-preview",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "o1",
+                  "zh_Hans": "o1"
+                },
+                "value": "o1",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4o-mini",
+                  "zh_Hans": "gpt-4o-mini"
+                },
+                "value": "gpt-4o-mini",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4o-mini-2024-07-18",
+                  "zh_Hans": "gpt-4o-mini-2024-07-18"
+                },
+                "value": "gpt-4o-mini-2024-07-18",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4o",
+                  "zh_Hans": "gpt-4o"
+                },
+                "value": "gpt-4o",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4o-2024-05-13",
+                  "zh_Hans": "gpt-4o-2024-05-13"
+                },
+                "value": "gpt-4o-2024-05-13",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4o-2024-08-06",
+                  "zh_Hans": "gpt-4o-2024-08-06"
+                },
+                "value": "gpt-4o-2024-08-06",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4.1",
+                  "zh_Hans": "gpt-4.1"
+                },
+                "value": "gpt-4.1",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4.1-mini",
+                  "zh_Hans": "gpt-4.1-mini"
+                },
+                "value": "gpt-4.1-mini",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4.1-nano",
+                  "zh_Hans": "gpt-4.1-nano"
+                },
+                "value": "gpt-4.1-nano",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4-turbo",
+                  "zh_Hans": "gpt-4-turbo"
+                },
+                "value": "gpt-4-turbo",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4-turbo-2024-04-09",
+                  "zh_Hans": "gpt-4-turbo-2024-04-09"
+                },
+                "value": "gpt-4-turbo-2024-04-09",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4o-2024-11-20",
+                  "zh_Hans": "gpt-4o-2024-11-20"
+                },
+                "value": "gpt-4o-2024-11-20",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4-0125-preview",
+                  "zh_Hans": "gpt-4-0125-preview"
+                },
+                "value": "gpt-4-0125-preview",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4-1106-preview",
+                  "zh_Hans": "gpt-4-1106-preview"
+                },
+                "value": "gpt-4-1106-preview",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4-vision-preview",
+                  "zh_Hans": "gpt-4-vision-preview"
+                },
+                "value": "gpt-4-vision-preview",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-35-turbo-instruct",
+                  "zh_Hans": "gpt-35-turbo-instruct"
+                },
+                "value": "gpt-35-turbo-instruct",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "grok-3",
+                  "zh_Hans": "grok-3"
+                },
+                "value": "grok-3",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "grok-3-mini",
+                  "zh_Hans": "grok-3-mini"
+                },
+                "value": "grok-3-mini",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "llm"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "text-embedding-ada-002",
+                  "zh_Hans": "text-embedding-ada-002"
+                },
+                "value": "text-embedding-ada-002",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "text-embedding"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "text-embedding-3-small",
+                  "zh_Hans": "text-embedding-3-small"
+                },
+                "value": "text-embedding-3-small",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "text-embedding"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "text-embedding-3-large",
+                  "zh_Hans": "text-embedding-3-large"
+                },
+                "value": "text-embedding-3-large",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "text-embedding"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-transcribe",
+                  "zh_Hans": "gpt-transcribe"
+                },
+                "value": "gpt-transcribe",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "speech2text"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "whisper-1",
+                  "zh_Hans": "whisper-1"
+                },
+                "value": "whisper-1",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "speech2text"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4o-transcribe",
+                  "zh_Hans": "gpt-4o-transcribe"
+                },
+                "value": "gpt-4o-transcribe",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "speech2text"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4o-mini-transcribe",
+                  "zh_Hans": "gpt-4o-mini-transcribe"
+                },
+                "value": "gpt-4o-mini-transcribe",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "speech2text"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4o-transcribe-diarize",
+                  "zh_Hans": "gpt-4o-transcribe-diarize"
+                },
+                "value": "gpt-4o-transcribe-diarize",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "speech2text"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "tts-1",
+                  "zh_Hans": "tts-1"
+                },
+                "value": "tts-1",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "tts"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "tts-1-hd",
+                  "zh_Hans": "tts-1-hd"
+                },
+                "value": "tts-1-hd",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "tts"
+                  }
+                ]
+              },
+              {
+                "label": {
+                  "en_US": "gpt-4o-mini-tts",
+                  "zh_Hans": "gpt-4o-mini-tts"
+                },
+                "value": "gpt-4o-mini-tts",
+                "show_on": [
+                  {
+                    "variable": "__model_type",
+                    "value": "tts"
+                  }
+                ]
+              }
+            ],
+            "placeholder": {
+              "en_US": "Enter your model version",
+              "zh_Hans": "在此输入您的模型版本"
+            },
+            "max_length": 0,
+            "show_on": []
+          }
+        ],
+        "model": {
+          "label": {
+            "en_US": "Deployment Name",
+            "zh_Hans": "部署名称"
+          },
+          "placeholder": {
+            "en_US": "Enter your Deployment Name here, matching the Azure deployment name.",
+            "zh_Hans": "在此输入您的部署名称，与 Azure 部署名称匹配。"
+          }
+        }
+      }
+    },
+    {
+      "label": {
+        "en_US": "deepseek",
+        "zh_Hans": "深度求索"
+      },
+      "supported_model_types": [
+        "llm"
+      ],
+      "configurate_methods": [
+        "predefined-model"
+      ],
+      "provider": "langgenius/deepseek/deepseek",
+      "provider_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "endpoint_url",
+            "label": {
+              "en_US": "API Base URL",
+              "zh_Hans": "API Base URL"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Base URL, e.g. https://api.deepseek.com/v1 or https://api.deepseek.com",
+              "zh_Hans": "Base URL, e.g. https://api.deepseek.com/v1 or https://api.deepseek.com"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "enable_request_metadata",
+            "label": {
+              "en_US": "Attach Dify app_id as request headers",
+              "zh_Hans": "附加 Dify app_id 作为请求头"
+            },
+            "type": "select",
+            "required": false,
+            "default": "disabled",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Enabled",
+                  "zh_Hans": "启用"
+                },
+                "value": "enabled",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Disabled",
+                  "zh_Hans": "禁用"
+                },
+                "value": "disabled",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          }
+        ]
+      }
+    },
+    {
+      "label": {
+        "en_US": "Gemini"
+      },
+      "supported_model_types": [
+        "llm",
+        "text-embedding"
+      ],
+      "configurate_methods": [
+        "predefined-model"
+      ],
+      "provider": "langgenius/gemini/google",
+      "provider_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "google_api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "google_base_url",
+            "label": {
+              "en_US": "Base URL",
+              "zh_Hans": "Base URL"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Base URL",
+              "zh_Hans": "在此输入您的 Base URL"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "file_url",
+            "label": {
+              "en_US": "Files URL",
+              "zh_Hans": "Files URL"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter the Local FILES URL prefix to get better upload performance",
+              "zh_Hans": "在此输入本地文件地址的 URL 前缀"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "enable_request_metadata",
+            "label": {
+              "en_US": "Enable request metadata",
+              "zh_Hans": "启用请求元数据"
+            },
+            "type": "select",
+            "required": false,
+            "default": "disabled",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Disabled",
+                  "zh_Hans": "禁用"
+                },
+                "value": "disabled",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Enabled",
+                  "zh_Hans": "启用"
+                },
+                "value": "enabled",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          }
+        ]
+      }
+    },
+    {
+      "label": {
+        "en_US": "Moonshot",
+        "zh_Hans": "月之暗面"
+      },
+      "supported_model_types": [
+        "llm"
+      ],
+      "configurate_methods": [
+        "predefined-model",
+        "customizable-model"
+      ],
+      "provider": "langgenius/moonshot/moonshot",
+      "provider_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "endpoint_url",
+            "label": {
+              "en_US": "API Base URL",
+              "zh_Hans": "API Base URL"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Optional — leave blank to auto-detect, or set to override.",
+              "zh_Hans": "选填 — 留空自动检测，或填写以覆盖。"
+            },
+            "max_length": 0,
+            "show_on": []
+          }
+        ]
+      },
+      "model_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "context_size",
+            "label": {
+              "en_US": "Model context size",
+              "zh_Hans": "模型上下文长度"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": "4096",
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Model context size",
+              "zh_Hans": "在此输入您的模型上下文长度"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "max_tokens",
+            "label": {
+              "en_US": "Upper bound for max tokens",
+              "zh_Hans": "最大 token 上限"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": "4096",
+            "options": [],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "function_calling_type",
+            "label": {
+              "en_US": "Function calling",
+              "zh_Hans": "Function calling"
+            },
+            "type": "select",
+            "required": false,
+            "default": "no_call",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Not supported",
+                  "zh_Hans": "不支持"
+                },
+                "value": "no_call",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Tool Call",
+                  "zh_Hans": "Tool Call"
+                },
+                "value": "tool_call",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          }
+        ],
+        "model": {
+          "label": {
+            "en_US": "Model Name",
+            "zh_Hans": "模型名称"
+          },
+          "placeholder": {
+            "en_US": "Enter your model name",
+            "zh_Hans": "输入模型名称"
+          }
+        }
+      }
+    },
+    {
+      "label": {
+        "en_US": "Ollama"
+      },
+      "supported_model_types": [
+        "llm",
+        "text-embedding",
+        "rerank"
+      ],
+      "configurate_methods": [
+        "customizable-model"
+      ],
+      "provider": "langgenius/ollama/ollama",
+      "model_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "base_url",
+            "label": {
+              "en_US": "Base URL",
+              "zh_Hans": "基础 URL"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Base url of Ollama server, e.g. http://192.168.1.100:11434",
+              "zh_Hans": "Ollama server 的基础 URL，例如 http://192.168.1.100:11434"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "api_key",
+            "label": {
+              "en_US": "API Key (optional)",
+              "zh_Hans": "API 密钥（可选）"
+            },
+            "type": "secret-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Bearer token sent as Authorization header. Leave blank for unauthenticated Ollama deployments.",
+              "zh_Hans": "作为 Authorization 标头发送的 Bearer 令牌。如果 Ollama 没有身份验证，请留空。"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "mode",
+            "label": {
+              "en_US": "Completion mode",
+              "zh_Hans": "模型类型"
+            },
+            "type": "select",
+            "required": true,
+            "default": "chat",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Completion",
+                  "zh_Hans": "补全"
+                },
+                "value": "completion",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Chat",
+                  "zh_Hans": "对话"
+                },
+                "value": "chat",
+                "show_on": []
+              }
+            ],
+            "placeholder": {
+              "en_US": "Select completion mode",
+              "zh_Hans": "选择对话类型"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "context_size",
+            "label": {
+              "en_US": "Model context size",
+              "zh_Hans": "模型上下文长度"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": "4096",
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Model context size",
+              "zh_Hans": "在此输入您的模型上下文长度"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "max_tokens",
+            "label": {
+              "en_US": "Upper bound for max tokens",
+              "zh_Hans": "最大 token 上限"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": "4096",
+            "options": [],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "vision_support",
+            "label": {
+              "en_US": "Vision support",
+              "zh_Hans": "是否支持 Vision"
+            },
+            "type": "radio",
+            "required": false,
+            "default": "false",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Yes",
+                  "zh_Hans": "是"
+                },
+                "value": "true",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "No",
+                  "zh_Hans": "否"
+                },
+                "value": "false",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "function_call_support",
+            "label": {
+              "en_US": "Function call support",
+              "zh_Hans": "是否支持函数调用"
+            },
+            "type": "radio",
+            "required": false,
+            "default": "false",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Yes",
+                  "zh_Hans": "是"
+                },
+                "value": "true",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "No",
+                  "zh_Hans": "否"
+                },
+                "value": "false",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "enable_request_metadata",
+            "label": {
+              "en_US": "Attach Dify app_id as request headers",
+              "zh_Hans": "附加 Dify app_id 作为请求头"
+            },
+            "type": "select",
+            "required": false,
+            "default": "disabled",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Enabled",
+                  "zh_Hans": "启用"
+                },
+                "value": "enabled",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Disabled",
+                  "zh_Hans": "禁用"
+                },
+                "value": "disabled",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          }
+        ],
+        "model": {
+          "label": {
+            "en_US": "Model Name",
+            "zh_Hans": "模型名称"
+          },
+          "placeholder": {
+            "en_US": "Enter your model name",
+            "zh_Hans": "输入模型名称"
+          }
+        }
+      }
+    },
+    {
+      "label": {
+        "en_US": "OpenAI"
+      },
+      "supported_model_types": [
+        "llm",
+        "text-embedding",
+        "speech2text",
+        "moderation",
+        "tts"
+      ],
+      "configurate_methods": [
+        "predefined-model",
+        "customizable-model"
+      ],
+      "provider": "langgenius/openai/openai",
+      "provider_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "openai_api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "openai_organization",
+            "label": {
+              "en_US": "Organization",
+              "zh_Hans": "组织 ID"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Organization ID",
+              "zh_Hans": "在此输入您的组织 ID"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "openai_api_base",
+            "label": {
+              "en_US": "API Base URL",
+              "zh_Hans": "API Base URL"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Base URL, e.g. https://api.openai.com",
+              "zh_Hans": "在此输入您的 API Base URL, 如：https://api.openai.com"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "validate_model",
+            "label": {
+              "en_US": "Validate Model",
+              "zh_Hans": "验证模型"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Model name used to validate credentials, e.g. gpt-4o-mini",
+              "zh_Hans": "用于验证凭据的模型名称，如：gpt-4o-mini"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "api_protocol",
+            "label": {
+              "en_US": "API Protocol",
+              "zh_Hans": "API 协议"
+            },
+            "type": "select",
+            "required": false,
+            "default": "responses",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Responses API",
+                  "zh_Hans": "Responses API"
+                },
+                "value": "responses",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Chat Completions",
+                  "zh_Hans": "Chat Completions"
+                },
+                "value": "chat",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "enable_request_metadata",
+            "label": {
+              "en_US": "Enable request metadata (optional)",
+              "zh_Hans": "启用请求元数据（可选）"
+            },
+            "type": "select",
+            "required": false,
+            "default": "disabled",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Enabled",
+                  "zh_Hans": "已启用"
+                },
+                "value": "enabled",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Disabled",
+                  "zh_Hans": "已禁用"
+                },
+                "value": "disabled",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          }
+        ]
+      },
+      "model_credential_schema": {
+        "model": {
+          "label": {
+            "en_US": "Model Name",
+            "zh_Hans": "模型名称"
+          },
+          "placeholder": {
+            "en_US": "Enter your model name",
+            "zh_Hans": "输入模型名称"
+          }
+        },
+        "credential_form_schemas": [
+          {
+            "variable": "openai_api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "openai_organization",
+            "label": {
+              "en_US": "Organization",
+              "zh_Hans": "组织 ID"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Organization ID",
+              "zh_Hans": "在此输入您的组织 ID"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "openai_api_base",
+            "label": {
+              "en_US": "API Base URL",
+              "zh_Hans": "API Base URL"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Base URL",
+              "zh_Hans": "在此输入您的 API Base URL"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "api_protocol",
+            "label": {
+              "en_US": "API Protocol",
+              "zh_Hans": "API 协议"
+            },
+            "type": "select",
+            "required": false,
+            "default": "responses",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Responses API",
+                  "zh_Hans": "Responses API"
+                },
+                "value": "responses",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Chat Completions",
+                  "zh_Hans": "Chat Completions"
+                },
+                "value": "chat",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "enable_request_metadata",
+            "label": {
+              "en_US": "Enable request metadata (optional)",
+              "zh_Hans": "启用请求元数据（可选）"
+            },
+            "type": "select",
+            "required": false,
+            "default": "disabled",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Enabled",
+                  "zh_Hans": "已启用"
+                },
+                "value": "enabled",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Disabled",
+                  "zh_Hans": "已禁用"
+                },
+                "value": "disabled",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          }
+        ]
+      }
+    },
+    {
+      "label": {
+        "en_US": "OpenAI-API-compatible"
+      },
+      "supported_model_types": [
+        "llm",
+        "rerank",
+        "text-embedding",
+        "speech2text",
+        "tts"
+      ],
+      "configurate_methods": [
+        "customizable-model"
+      ],
+      "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+      "model_credential_schema": {
+        "model": {
+          "label": {
+            "en_US": "Model Name",
+            "zh_Hans": "模型名称"
+          },
+          "placeholder": {
+            "en_US": "Enter full model name",
+            "zh_Hans": "输入模型全称"
+          }
+        },
+        "credential_form_schemas": [
+          {
+            "variable": "display_name",
+            "label": {
+              "en_US": "Model display name",
+              "zh_Hans": "模型显示名称"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "The display name of the model in the interface.",
+              "zh_Hans": "模型在界面的显示名称"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "language",
+            "label": {
+              "en_US": "Language",
+              "zh_Hans": "语言"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "ISO-639-1 language code, e.g. zh, en, ru. Leave empty to let the model auto-detect.",
+              "zh_Hans": "ISO-639-1 语言代码，例如 zh、en、ru；留空则由模型自动检测"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "speech2text"
+              }
+            ]
+          },
+          {
+            "variable": "initial_prompt",
+            "label": {
+              "en_US": "Initial Prompt",
+              "zh_Hans": "初始提示"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "The initial prompt for the model at the start of the conversation.",
+              "zh_Hans": "模型在对话开始时的初始提示"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "speech2text"
+              }
+            ]
+          },
+          {
+            "variable": "endpoint_url",
+            "label": {
+              "en_US": "API Base URL",
+              "zh_Hans": "API Base URL"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Base URL, e.g. https://api.openai.com/v1",
+              "zh_Hans": "Base URL, e.g. https://api.openai.com/v1"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "rerank_endpoint_url",
+            "label": {
+              "en_US": "Rerank Endpoint URL",
+              "zh_Hans": "重排序端点 URL"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Optional complete URL; defaults to API Base URL + /rerank; do not include credentials or tokens",
+              "zh_Hans": "可选完整 URL；留空使用 API Base URL + /rerank；请勿包含凭据或令牌"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "rerank"
+              }
+            ]
+          },
+          {
+            "variable": "endpoint_model_name",
+            "label": {
+              "en_US": "model name for API endpoint",
+              "zh_Hans": "API endpoint中的模型名称"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "endpoint model name, e.g. chatgpt4.0",
+              "zh_Hans": "endpoint model name, e.g. chatgpt4.0"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "mode",
+            "label": {
+              "en_US": "Completion mode",
+              "zh_Hans": "对话类型"
+            },
+            "type": "select",
+            "required": false,
+            "default": "chat",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Completion",
+                  "zh_Hans": "补全"
+                },
+                "value": "completion",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Chat",
+                  "zh_Hans": "对话"
+                },
+                "value": "chat",
+                "show_on": []
+              }
+            ],
+            "placeholder": {
+              "en_US": "Select completion mode",
+              "zh_Hans": "选择对话类型"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "context_size",
+            "label": {
+              "en_US": "Model context size",
+              "zh_Hans": "模型上下文长度"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": "4096",
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Model context size",
+              "zh_Hans": "在此输入您的模型上下文长度"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "max_chunks",
+            "label": {
+              "en_US": "Model max chunks per batch",
+              "zh_Hans": "模型每批的最大分块数"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": "1",
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Model maximum chunks per batch size",
+              "zh_Hans": "在此输入您的模型每批次的最大分块数量"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "text-embedding"
+              }
+            ]
+          },
+          {
+            "variable": "context_size",
+            "label": {
+              "en_US": "Model context size",
+              "zh_Hans": "模型上下文长度"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": "4096",
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Model context size",
+              "zh_Hans": "在此输入您的模型上下文长度"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "text-embedding"
+              }
+            ]
+          },
+          {
+            "variable": "encoding_format",
+            "label": {
+              "en_US": "Embedding encoding format",
+              "zh_Hans": "Embedding encoding format"
+            },
+            "type": "select",
+            "required": false,
+            "default": "not_set",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Not set",
+                  "zh_Hans": "Not set"
+                },
+                "value": "not_set",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "float",
+                  "zh_Hans": "float"
+                },
+                "value": "float",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "text-embedding"
+              }
+            ]
+          },
+          {
+            "variable": "vision_support",
+            "label": {
+              "en_US": "Vision Support",
+              "zh_Hans": "视觉支持"
+            },
+            "type": "select",
+            "required": false,
+            "default": "no_support",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Support",
+                  "zh_Hans": "支持"
+                },
+                "value": "support",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "no_support",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "text-embedding"
+              }
+            ]
+          },
+          {
+            "variable": "context_size",
+            "label": {
+              "en_US": "Model context size",
+              "zh_Hans": "模型上下文长度"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": "4096",
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Model context size",
+              "zh_Hans": "在此输入您的模型上下文长度"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "rerank"
+              }
+            ]
+          },
+          {
+            "variable": "vision_support",
+            "label": {
+              "en_US": "Vision Support",
+              "zh_Hans": "视觉支持"
+            },
+            "type": "select",
+            "required": false,
+            "default": "no_support",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Support",
+                  "zh_Hans": "支持"
+                },
+                "value": "support",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "no_support",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "rerank"
+              }
+            ]
+          },
+          {
+            "variable": "max_tokens_to_sample",
+            "label": {
+              "en_US": "Upper bound for max tokens",
+              "zh_Hans": "最大 token 上限"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": "4096",
+            "options": [],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "agent_thought_support",
+            "label": {
+              "en_US": "Thinking Mode Support",
+              "zh_Hans": "思考模式支持"
+            },
+            "type": "select",
+            "required": false,
+            "default": "not_supported",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Only Thinking Mode",
+                  "zh_Hans": "仅支持思考模式"
+                },
+                "value": "only_thinking_supported",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Only Non-Thinking Mode",
+                  "zh_Hans": "仅支持非思考模式"
+                },
+                "value": "not_supported",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Both Modes",
+                  "zh_Hans": "两种模式都支持"
+                },
+                "value": "supported",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "web_search_support",
+            "label": {
+              "en_US": "Web Search Support",
+              "zh_Hans": "联网搜索支持"
+            },
+            "type": "select",
+            "required": false,
+            "default": "not_supported",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Not Supported",
+                  "zh_Hans": "不支持"
+                },
+                "value": "not_supported",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Standard Tools Format",
+                  "zh_Hans": "标准 Tools 格式"
+                },
+                "value": "tool_standard",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Simple Tools Format",
+                  "zh_Hans": "简单 Tools 格式"
+                },
+                "value": "tool_simple",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Parameter Format",
+                  "zh_Hans": "参数格式"
+                },
+                "value": "parameter",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "compatibility_mode",
+            "label": {
+              "en_US": "Compatibility mode",
+              "zh_Hans": "兼容模式"
+            },
+            "type": "select",
+            "required": false,
+            "default": "strict",
+            "options": [
+              {
+                "label": {
+                  "en_US": "OpenAI compatible",
+                  "zh_Hans": "严格（OpenAI 兼容）"
+                },
+                "value": "strict",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Enable extra settings",
+                  "zh_Hans": "扩展（启用额外设置）"
+                },
+                "value": "extended",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "api_type",
+            "label": {
+              "en_US": "API Type",
+              "zh_Hans": "API 类型"
+            },
+            "type": "select",
+            "required": false,
+            "default": "chat_completions",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Chat Completions API (/chat/completions)",
+                  "zh_Hans": "Chat Completions API (/chat/completions)"
+                },
+                "value": "chat_completions",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Responses API (/responses)",
+                  "zh_Hans": "Responses API (/responses)"
+                },
+                "value": "responses",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "token_param_name",
+            "label": {
+              "en_US": "Token parameter name",
+              "zh_Hans": "token 参数名"
+            },
+            "type": "select",
+            "required": false,
+            "default": "auto",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Auto (detect by model)",
+                  "zh_Hans": "自动（按模型判断）"
+                },
+                "value": "auto",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Use max_tokens",
+                  "zh_Hans": "使用 max_tokens"
+                },
+                "value": "max_tokens",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Use max_completion_tokens",
+                  "zh_Hans": "使用 max_completion_tokens"
+                },
+                "value": "max_completion_tokens",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "user_identity_support",
+            "label": {
+              "en_US": "User Identity Support",
+              "zh_Hans": "用户标识支持"
+            },
+            "type": "select",
+            "required": false,
+            "default": "support",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Support",
+                  "zh_Hans": "支持"
+                },
+                "value": "support",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "no_support",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "stream_include_usage",
+            "label": {
+              "en_US": "Include Usage in Stream",
+              "zh_Hans": "流式中包含用量"
+            },
+            "type": "select",
+            "required": false,
+            "default": "enabled",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Enabled",
+                  "zh_Hans": "启用"
+                },
+                "value": "enabled",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Disabled",
+                  "zh_Hans": "禁用"
+                },
+                "value": "disabled",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "function_calling_type",
+            "label": {
+              "en_US": "Function Call Type",
+              "zh_Hans": "函数调用类型"
+            },
+            "type": "select",
+            "required": false,
+            "default": "no_call",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Function Call",
+                  "zh_Hans": "函数调用"
+                },
+                "value": "function_call",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Tool Call",
+                  "zh_Hans": "工具调用"
+                },
+                "value": "tool_call",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "no_call",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "stream_function_calling",
+            "label": {
+              "en_US": "Stream function calling",
+              "zh_Hans": "流式函数调用"
+            },
+            "type": "select",
+            "required": false,
+            "default": "not_supported",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Support",
+                  "zh_Hans": "支持"
+                },
+                "value": "supported",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "not_supported",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "vision_support",
+            "label": {
+              "en_US": "Vision Support",
+              "zh_Hans": "视觉支持"
+            },
+            "type": "select",
+            "required": false,
+            "default": "no_support",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Support",
+                  "zh_Hans": "支持"
+                },
+                "value": "support",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "no_support",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "video_support",
+            "label": {
+              "en_US": "Video Support",
+              "zh_Hans": "视频支持"
+            },
+            "type": "select",
+            "required": false,
+            "default": "no_support",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Support",
+                  "zh_Hans": "支持"
+                },
+                "value": "support",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "no_support",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "audio_support",
+            "label": {
+              "en_US": "Audio Support",
+              "zh_Hans": "音频支持"
+            },
+            "type": "select",
+            "required": false,
+            "default": "no_support",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Support",
+                  "zh_Hans": "支持"
+                },
+                "value": "support",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "no_support",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "document_support",
+            "label": {
+              "en_US": "Document Support",
+              "zh_Hans": "文档支持"
+            },
+            "type": "select",
+            "required": false,
+            "default": "no_support",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Support",
+                  "zh_Hans": "支持"
+                },
+                "value": "support",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "no_support",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "structured_output_support",
+            "label": {
+              "en_US": "Structured Output",
+              "zh_Hans": "结构化输出"
+            },
+            "type": "select",
+            "required": false,
+            "default": "not_supported",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Support",
+                  "zh_Hans": "支持"
+                },
+                "value": "supported",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "not_supported",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "stream_mode_auth",
+            "label": {
+              "en_US": "Stream mode auth",
+              "zh_Hans": "流模式授权"
+            },
+            "type": "select",
+            "required": false,
+            "default": "not_use",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Use",
+                  "zh_Hans": "使用"
+                },
+                "value": "use",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Not Use",
+                  "zh_Hans": "不使用"
+                },
+                "value": "not_use",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "stream_mode_delimiter",
+            "label": {
+              "en_US": "Delimiter for streaming results",
+              "zh_Hans": "流模式返回结果的分隔符"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": "\\n\\n",
+            "options": [],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "voices",
+            "label": {
+              "en_US": "Available Voices (comma-separated)",
+              "zh_Hans": "可用声音（用英文逗号分隔）"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": "alloy",
+            "options": [],
+            "placeholder": {
+              "en_US": "alloy,echo,fable,onyx,nova,shimmer",
+              "zh_Hans": "alloy,echo,fable,onyx,nova,shimmer"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "tts"
+              }
+            ]
+          },
+          {
+            "variable": "tts_api_format",
+            "label": {
+              "en_US": "TTS API Format",
+              "zh_Hans": "TTS API 格式"
+            },
+            "type": "select",
+            "required": false,
+            "default": "openai",
+            "options": [
+              {
+                "label": {
+                  "en_US": "OpenAI Compatible",
+                  "zh_Hans": "OpenAI 兼容"
+                },
+                "value": "openai",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "BytePlus TTS",
+                  "zh_Hans": "BytePlus TTS"
+                },
+                "value": "byteplus",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "tts"
+              }
+            ]
+          },
+          {
+            "variable": "tts_resource_id",
+            "label": {
+              "en_US": "Resource ID (BytePlus)",
+              "zh_Hans": "Resource ID (BytePlus)"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "e.g. seed-tts-2.0 (optional, defaults to model name)",
+              "zh_Hans": "例如 seed-tts-2.0（可选，默认使用模型名称）"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "tts"
+              }
+            ]
+          },
+          {
+            "variable": "tts_sample_rate",
+            "label": {
+              "en_US": "Sample Rate (BytePlus)",
+              "zh_Hans": "采样率 (BytePlus)"
+            },
+            "type": "select",
+            "required": false,
+            "default": "24000",
+            "options": [
+              {
+                "label": {
+                  "en_US": "24000 Hz",
+                  "zh_Hans": "24000 Hz"
+                },
+                "value": "24000",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "16000 Hz",
+                  "zh_Hans": "16000 Hz"
+                },
+                "value": "16000",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "8000 Hz",
+                  "zh_Hans": "8000 Hz"
+                },
+                "value": "8000",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "tts"
+              }
+            ]
+          },
+          {
+            "variable": "document_prefix",
+            "label": {
+              "en_US": "Document prefix",
+              "zh_Hans": "文档前缀"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": "",
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Document prefix, e.g. document:",
+              "zh_Hans": "输入您的文档前缀, 例如 document:"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "text-embedding"
+              }
+            ]
+          },
+          {
+            "variable": "query_prefix",
+            "label": {
+              "en_US": "Query prefix",
+              "zh_Hans": "查询前缀"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": "",
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Query prefix, e.g. query:",
+              "zh_Hans": "请输入您的查询前缀, 例如 query:"
+            },
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "text-embedding"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "label": {
+        "en_US": "Tongyi",
+        "zh_Hans": "通义"
+      },
+      "supported_model_types": [
+        "llm",
+        "text-embedding",
+        "rerank",
+        "speech2text",
+        "tts"
+      ],
+      "configurate_methods": [
+        "predefined-model",
+        "customizable-model"
+      ],
+      "provider": "langgenius/tongyi/tongyi",
+      "provider_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "dashscope_api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "api_host",
+            "label": {
+              "en_US": "API Host",
+              "zh_Hans": "接入域名"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "e.g. llm-xxx.cn-beijing.maas.aliyuncs.com",
+              "zh_Hans": "例如 llm-xxx.cn-beijing.maas.aliyuncs.com"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "use_international_endpoint",
+            "label": {
+              "en_US": "Use International Endpoint",
+              "zh_Hans": "使用国际端点"
+            },
+            "type": "radio",
+            "required": true,
+            "default": "false",
+            "options": [
+              {
+                "label": {
+                  "en_US": "True",
+                  "zh_Hans": "是"
+                },
+                "value": "true",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "False",
+                  "zh_Hans": "否"
+                },
+                "value": "false",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "enable_request_metadata",
+            "label": {
+              "en_US": "Enable request metadata",
+              "zh_Hans": "启用请求元数据"
+            },
+            "type": "select",
+            "required": false,
+            "default": "disabled",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Disabled",
+                  "zh_Hans": "禁用"
+                },
+                "value": "disabled",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Enabled",
+                  "zh_Hans": "启用"
+                },
+                "value": "enabled",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": []
+          }
+        ]
+      },
+      "model_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "dashscope_api_key",
+            "label": {
+              "en_US": "API Key",
+              "zh_Hans": "API Key"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Key",
+              "zh_Hans": "在此输入您的 API Key"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "api_host",
+            "label": {
+              "en_US": "API Host",
+              "zh_Hans": "接入域名"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "e.g. llm-xxx.cn-beijing.maas.aliyuncs.com",
+              "zh_Hans": "例如 llm-xxx.cn-beijing.maas.aliyuncs.com"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "context_size",
+            "label": {
+              "en_US": "Model context size",
+              "zh_Hans": "模型上下文长度"
+            },
+            "type": "text-input",
+            "required": true,
+            "default": "4096",
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your Model context size",
+              "zh_Hans": "在此输入您的模型上下文长度"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "max_tokens",
+            "label": {
+              "en_US": "Upper bound for max tokens",
+              "zh_Hans": "最大 token 上限"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": "4096",
+            "options": [],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          },
+          {
+            "variable": "function_calling_type",
+            "label": {
+              "en_US": "Function calling",
+              "zh_Hans": "Function calling"
+            },
+            "type": "select",
+            "required": false,
+            "default": "no_call",
+            "options": [
+              {
+                "label": {
+                  "en_US": "Not Support",
+                  "zh_Hans": "不支持"
+                },
+                "value": "no_call",
+                "show_on": []
+              },
+              {
+                "label": {
+                  "en_US": "Support",
+                  "zh_Hans": "支持"
+                },
+                "value": "function_call",
+                "show_on": []
+              }
+            ],
+            "placeholder": null,
+            "max_length": 0,
+            "show_on": [
+              {
+                "variable": "__model_type",
+                "value": "llm"
+              }
+            ]
+          }
+        ],
+        "model": {
+          "label": {
+            "en_US": "Model Name",
+            "zh_Hans": "模型名称"
+          },
+          "placeholder": {
+            "en_US": "Enter your model name",
+            "zh_Hans": "输入模型名称"
+          }
+        }
+      }
+    },
+    {
+      "label": {
+        "en_US": "ZHIPU AI",
+        "zh_Hans": "智谱 AI"
+      },
+      "supported_model_types": [
+        "llm",
+        "text-embedding"
+      ],
+      "configurate_methods": [
+        "predefined-model"
+      ],
+      "provider": "langgenius/zhipuai/zhipuai",
+      "provider_credential_schema": {
+        "credential_form_schemas": [
+          {
+            "variable": "api_key",
+            "label": {
+              "en_US": "APIKey",
+              "zh_Hans": "APIKey"
+            },
+            "type": "secret-input",
+            "required": true,
+            "default": null,
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your APIKey",
+              "zh_Hans": "在此输入您的 APIKey"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "base_url",
+            "label": {
+              "en_US": "API Base URL",
+              "zh_Hans": "API Base URL"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": "https://open.bigmodel.cn/api/paas/v4/",
+            "options": [],
+            "placeholder": {
+              "en_US": "Enter your API Base URL",
+              "zh_Hans": "输入您的 API Base URL"
+            },
+            "max_length": 0,
+            "show_on": []
+          },
+          {
+            "variable": "validate_model",
+            "label": {
+              "en_US": "Validate Model Name",
+              "zh_Hans": "验证模型名称"
+            },
+            "type": "text-input",
+            "required": false,
+            "default": "glm-5-turbo",
+            "options": [],
+            "placeholder": {
+              "en_US": "Model name used to test credentials (default glm-5-turbo)",
+              "zh_Hans": "用于连通性测试的模型名称（默认 glm-5-turbo）"
+            },
+            "max_length": 0,
+            "show_on": []
+          }
+        ]
+      }
+    }
+  ]
+}

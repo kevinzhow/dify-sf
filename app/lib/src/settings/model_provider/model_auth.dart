@@ -288,7 +288,7 @@ modelFormSchemas(
         ? const {}
         : model != null
         ? {'__model_name': model.model, '__model_type': model.modelType}
-        : {if (defaultModelType != null) '__model_type': defaultModelType},
+        : {'__model_type': ?defaultModelType},
   );
 }
 
