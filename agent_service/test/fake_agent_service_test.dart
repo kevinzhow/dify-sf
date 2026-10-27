@@ -139,14 +139,41 @@ void main() {
               ((s['request'] as Map)['body'] as Map)['operation_id'] as String:
                   {'fixture': name, if (held.contains(name)) 'hold_after': 1},
         };
-        final c = await startFake({
+        Map<String, Object?> script({String blender = 'ok'}) => {
           'operations': operations,
           'snapshot_check': 'full',
           'default_execution': {
             if (name == 'delete_cleanup_failed') 'delete_failures': 1,
           },
-        });
+          if (fixture['sandbox'] != null) 'health': {'sandbox': 'isolated'},
+          if (name == 'executor_profiles')
+            'profiles': [
+              {'name': 'default', 'description': "Dify's shell sandbox"},
+              {
+                'name': 'colvalley-blender',
+                'description':
+                    'Blender 5.2.3, colvalley-3d (read-only) and its board '
+                    'renderer',
+                'status': blender,
+                'timeout_seconds_max': 10800,
+                'env': ['BLENDER', 'CV3D_PYTHON'],
+              },
+            ],
+        };
+        final c = await startFake(script());
         for (final step in steps) {
+          // The fixture's supervisor reported the image missing for two
+          // steps (no runs exist yet, so replacing the script loses nothing).
+          if (name == 'executor_profiles' &&
+              (step['step'] == 'image_missing' || step['step'] == 'start')) {
+            final blender = step['step'] == 'start' ? 'ok' : 'image_missing';
+            final (s, _) = await c.send(
+              'PUT',
+              '/_fake/script',
+              body: script(blender: blender),
+            );
+            expect(s, 200);
+          }
           final req = (step['request'] as Map).cast<String, Object?>();
           final want = (step['response'] as Map).cast<String, Object?>();
           final headers = (req['headers'] as Map).cast<String, String>();

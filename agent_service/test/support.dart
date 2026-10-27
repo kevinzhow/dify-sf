@@ -37,6 +37,7 @@ class Harness {
   late AgentService service;
   final http.Client client = http.Client();
   String _supervisorKey = testSupervisorKey;
+  ExecutorProfiles? _profiles;
 
   Uri get base => Uri.parse('http://127.0.0.1:${service.port}');
 
@@ -48,6 +49,7 @@ class Harness {
     Map<String, Map<String, Object?>> files = const {},
     Uri? supervisorUrl,
     String supervisorKey = testSupervisorKey,
+    ExecutorProfiles? profiles,
   }) async {
     final gateway = ScriptedGateway(
       calls: calls,
@@ -57,7 +59,8 @@ class Harness {
     await gateway.start();
     final h = Harness._(gateway, newDataDir(), TestClock())
       ..supervisorUrl = supervisorUrl
-      .._supervisorKey = supervisorKey;
+      .._supervisorKey = supervisorKey
+      .._profiles = profiles;
     await h._startService();
     return h;
   }
@@ -72,6 +75,8 @@ class Harness {
       supervisor: supervisorUrl == null
           ? null
           : SupervisorClient(supervisorUrl!, _supervisorKey),
+      profiles: _profiles,
+      profileStatusTtl: Duration.zero,
     );
     await service.start(address: '127.0.0.1', port: 0);
   }
@@ -240,6 +245,8 @@ Map<String, Object?> operation({
   Map<String, Object?>? outputSchema,
   bool askHuman = true,
   bool shell = false,
+  bool viewImage = false,
+  String? executorProfile,
   Map<String, Object?> env = const {},
   List<Map<String, Object?>> files = const [],
   int maxTurns = 10,
@@ -274,11 +281,16 @@ Map<String, Object?> operation({
         {'type': 'text', 'text': task},
       ],
   'output_schema': outputSchema,
-  'tools': {'ask_human': askHuman, 'shell': shell},
+  'tools': {
+    'ask_human': askHuman,
+    'shell': shell,
+    'view_image': ?(viewImage ? true : null),
+  },
   'env': env,
   'files': files,
   'limits': {'max_turns': maxTurns, 'timeout_seconds': timeoutSeconds},
   'continuation': continuation,
+  'executor_profile': ?executorProfile,
 };
 
 Map<String, Object?> answer(

@@ -110,6 +110,19 @@ List<Message> verifyContinuation(OperationRequest r) {
     throw _incompatible('snapshot was taken with different tool definitions');
   }
   if (s['revision'] is! int) throw _incompatible('snapshot has no revision');
+  // The sandbox keeps its profile for its lifetime (snapshots taken before
+  // profiles existed name none: `default`).
+  final ref = s['workspace_ref'];
+  final snapshotProfile = s['executor_profile'] ?? 'default';
+  if (r.shell &&
+      ref is String &&
+      ref.isNotEmpty &&
+      snapshotProfile != r.executorProfile) {
+    throw _incompatible(
+      'the sandbox of this snapshot has executor profile '
+      '${jsonEncode(snapshotProfile)}, not ${jsonEncode(r.executorProfile)}',
+    );
+  }
   final pending = s['pending'];
   final List<Message> messages;
   try {
@@ -322,6 +335,7 @@ class AgentRun {
     _emit('run_started', {
       'model': {'provider': r.model.provider, 'name': r.model.name},
       'call_index_base': 0,
+      'executor_profile': r.executorProfile,
     });
     if (r.shell && !(sandboxes?.enabled ?? false)) {
       return _fail(
@@ -670,6 +684,7 @@ class AgentRun {
         ...r.fileIds,
       }.toList(),
       'workspace_ref': _workspaceRef,
+      'executor_profile': r.executorProfile,
       'messages': [for (final m in messages) m.toJson()],
     };
   }
@@ -731,6 +746,7 @@ class AgentRun {
     final session = ShellSession(
       sandbox,
       request.env,
+      profileEnv: sandboxes?.profiles[request.executorProfile]?.env ?? const {},
       log: (m) => log?.call('run $runId: $m'),
     );
     return _session = session;

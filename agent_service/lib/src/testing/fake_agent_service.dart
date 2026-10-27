@@ -15,7 +15,13 @@
 ///  "delays_ms": {"post": 0, "status": 0, "events": 0, "ack": 0,
 ///                "cancel": 0, "lease": 0, "delete": 0},  // defaults
 ///  "snapshot_check": "envelope",            // or "full" (the real check), "none"
-///  "health": {"status": "ok", "sandbox": "disabled"}}
+///  "health": {"status": "ok", "sandbox": "disabled"},
+///  "profiles": [{"name": "default", "description": "…", "status": "ok",
+///                "timeout_seconds_max": 1800, "env": ["BLENDER"]}]}
+///                // GET /v1/profiles, health `profiles` and the checks of a
+///                // shell operation (`env`: the names the profile sets).
+///                // Default: only `default` (1800 s), status `unavailable`
+///                // with sandbox `disabled`, else `ok`.
 ///
 /// <operation> = {
 ///   "fixture": "ask_human_two_questions",   // events of this operation_id in
@@ -62,6 +68,7 @@ import 'dart:typed_data';
 
 import 'package:genkit/genkit.dart';
 
+import '../executor_profiles.dart' show checkOperationProfile;
 import '../loop.dart';
 import '../protocol.dart';
 import '../server.dart' show maxBodyBytes;
@@ -161,6 +168,28 @@ class FakeAgentService {
 
   // ---- fixtures -----------------------------------------------------------
 
+  /// The scripted executor profiles, defaults filled in.
+  List<Map<String, Object?>> get _profiles {
+    final raw = _script['profiles'];
+    final disabled =
+        (_map(_script['health'])['sandbox'] ?? 'disabled') == 'disabled';
+    final list = raw is List
+        ? [for (final p in raw) _map(p)]
+        : [
+            {'name': 'default', 'description': "Dify's shell sandbox"},
+          ];
+    return [
+      for (final p in list)
+        {
+          'name': p['name'],
+          'description': p['description'] ?? '',
+          'status': p['status'] ?? (disabled ? 'unavailable' : 'ok'),
+          'timeout_seconds_max': p['timeout_seconds_max'] ?? 1800,
+          'env': p['env'] ?? const <String>[],
+        },
+    ];
+  }
+
   Map<String, Object?> _fixture(String name) => _fixtures.putIfAbsent(name, () {
     final dir = fixturesDir;
     if (dir == null || name.contains('/') || name.contains('..')) {
@@ -248,6 +277,20 @@ class FakeAgentService {
             'status': h['status'] ?? 'ok',
             'sandbox': h['sandbox'] ?? 'disabled',
             'version': h['version'] ?? serviceVersion,
+            'profiles': {for (final p in _profiles) p['name']: p['status']},
+          });
+        case ['profiles'] when method == 'GET':
+          return _ok(entry, response, 200, {
+            'protocol': protocolName,
+            'profiles': [
+              for (final p in _profiles)
+                {
+                  'name': p['name'],
+                  'description': p['description'],
+                  'status': p['status'],
+                  'timeout_seconds_max': p['timeout_seconds_max'],
+                },
+            ],
           });
         case ['operations'] when method == 'POST':
           return await _postOperation(request, entry);
@@ -450,6 +493,21 @@ class FakeAgentService {
         _runs[existing.runId]!.statusJson(),
       );
     }
+    if (op.shell) {
+      final p = _profiles
+          .where((p) => p['name'] == op.executorProfile)
+          .firstOrNull;
+      checkOperationProfile(
+        op,
+        p == null
+            ? null
+            : (
+                timeoutSecondsMax: p['timeout_seconds_max'] as int,
+                envNames: (p['env'] as List).cast<String>(),
+              ),
+        p?['status'] as String?,
+      );
+    }
     _checkSnapshot(op);
     final token = request.headers.value('x-agent-run-token');
     if (token == null || token.isEmpty) {
@@ -621,6 +679,7 @@ class FakeAgentService {
         'data': {
           'model': {'provider': op.model.provider, 'name': op.model.name},
           'call_index_base': 0,
+          'executor_profile': op.executorProfile,
         },
       },
       {
@@ -654,6 +713,7 @@ class FakeAgentService {
               ...op.fileIds,
             }.toList(),
             'workspace_ref': previous?['workspace_ref'],
+            'executor_profile': op.executorProfile,
             'messages': messages,
           },
           'usage': usage,

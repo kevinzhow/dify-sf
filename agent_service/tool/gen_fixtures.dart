@@ -224,9 +224,14 @@ class Scenario {
     this.gatewayScript,
     this.body, {
     this.sandbox,
+    this.profiles,
   });
 
   final String name;
+
+  /// The executor profile file of the service and the supervisor (null: the
+  /// implicit `default`).
+  final Map<String, Object?>? profiles;
   final String description;
 
   /// The scripted gateway's script (format of `scripted_gateway.dart`).
@@ -1034,6 +1039,127 @@ final scenarios = <Scenario>[
     },
     sandbox: const SandboxSetup(jobOutput: 'inputs\r\n'),
   ),
+  Scenario(
+    'executor_profiles',
+    'Executor profiles: `GET /v1/profiles` and `profiles` in health; '
+        '`422 executor_profile_unknown`, `422 invalid_request` (timeout above '
+        'the profile\'s `timeout_seconds_max`), `400 reserved_env` (a variable '
+        'the profile sets), `400 invalid_request` (an unknown top-level '
+        'field), `503 executor_profile_unavailable` while the supervisor '
+        'reports the image missing; then a shell run on the profile with the '
+        '`run_started` echo, and a run without the shell, whose profile is '
+        'not checked and only echoed.',
+    {
+      'calls': [
+        toolCallScript('c1', 'shell_run', {'script': r'echo $BLENDER'}),
+        textScript('Blender is at /opt/blender/blender.'),
+        textScript('No shell needed.'),
+      ],
+    },
+    (s) async {
+      await s.request('profiles', 'GET', '/v1/profiles');
+      await s.request('health', 'GET', '/v1/health');
+      final body = operation(shell: true)
+        ..['executor_profile'] = 'colvalley-blender'
+        ..['limits'] = {'max_turns': 10, 'timeout_seconds': 7200};
+      await s.request(
+        'unknown_profile',
+        'POST',
+        '/v1/operations',
+        body: {...body, 'executor_profile': 'no-such-profile'},
+        runToken: true,
+      );
+      await s.request(
+        'timeout_above_profile_max',
+        'POST',
+        '/v1/operations',
+        body: {
+          ...body,
+          'limits': {'max_turns': 10, 'timeout_seconds': 20000},
+        },
+        runToken: true,
+      );
+      await s.request(
+        'env_set_by_profile',
+        'POST',
+        '/v1/operations',
+        body: {
+          ...body,
+          'env': {'BLENDER': '/usr/bin/blender'},
+        },
+        runToken: true,
+      );
+      await s.request(
+        'unknown_field',
+        'POST',
+        '/v1/operations',
+        body: {...body, 'executor_image': 'evil:latest'},
+        runToken: true,
+      );
+      final digest = s.supervisor!.profiles!['colvalley-blender']!['digest'];
+      s.supervisor!.profiles!['colvalley-blender'] = {
+        'status': 'image_missing',
+        'digest': digest,
+      };
+      await s.request(
+        'image_missing',
+        'POST',
+        '/v1/operations',
+        body: body,
+        runToken: true,
+      );
+      await s.request('profiles_image_missing', 'GET', '/v1/profiles');
+      s.supervisor!.profiles!['colvalley-blender'] = {
+        'status': 'ok',
+        'digest': digest,
+      };
+      final run = await s.start('start', body);
+      await s.finishRun(run);
+      final plain = operation(executionId: 'E2')
+        ..['executor_profile'] = 'colvalley-blender';
+      final run2 = await s.start('start_without_shell', plain);
+      await s.finishRun(run2, prefix: 'without_shell_');
+    },
+    sandbox: const SandboxSetup(jobOutput: '/opt/blender/blender\r\n'),
+    profiles: {
+      'version': 1,
+      'profiles': {
+        'default': {
+          'description': "Dify's shell sandbox",
+          'image':
+              'langgenius/dify-agent-local-sandbox@sha256:'
+              'f4d404c9dcdf80bd72f65e84c3f2bbd1f3404fd4b363db837176da8aaf771b1d',
+        },
+        'colvalley-blender': {
+          'description':
+              'Blender 5.2.3, colvalley-3d (read-only) and its board renderer',
+          'image':
+              'dify-sf/sandbox-colvalley-blender@sha256:'
+              '1111111111111111111111111111111111111111111111111111111111111111',
+          'mounts': [
+            {
+              'source': '/srv/dify-sf/checkouts/colvalley-3d-2d97747',
+              'target': '/opt/colvalley-3d',
+            },
+          ],
+          'network': {'egress': 'none'},
+          'devices': ['/dev/dri/renderD128'],
+          'limits': {
+            'cpus': 4,
+            'memory_mb': 6144,
+            'pids': 1024,
+            'workspace_mb': 1536,
+            'home_mb': 512,
+            'timeout_seconds_max': 10800,
+          },
+          'env': {
+            'BLENDER': '/opt/blender/blender',
+            'CV3D_PYTHON': '/opt/cv3d-venv/bin/python',
+          },
+        },
+      },
+    },
+  ),
 ];
 
 // ---------------------------------------------------------------------------
@@ -1063,6 +1189,9 @@ class Session {
       serviceKey: fixtureServiceKey,
     );
     await gateway.start();
+    final profiles = scenario.profiles == null
+        ? ExecutorProfiles.implicit()
+        : ExecutorProfiles.parse(scenario.profiles);
     FakeSupervisor? supervisor;
     final setup = scenario.sandbox;
     if (setup != null) {
@@ -1075,6 +1204,10 @@ class Session {
           });
         },
       );
+      supervisor.profiles = {
+        for (final p in profiles.profiles.values)
+          p.name: {'status': 'ok', 'digest': p.digest},
+      };
       await supervisor.start();
     }
     final root = Directory(
@@ -1094,6 +1227,8 @@ class Session {
       supervisor: supervisor == null
           ? null
           : SupervisorClient(supervisor.url, fixtureSupervisorKey),
+      profiles: profiles,
+      profileStatusTtl: Duration.zero,
     );
     await s.service.start(address: '127.0.0.1', port: 0);
     return s;

@@ -17,6 +17,9 @@ class FakeDocker {
   HttpServer? _server;
   final Map<String, Map<String, Object?>> containers = {};
   final Map<String, Map<String, Object?>> networks = {};
+
+  /// Image references present on this fake host.
+  final Set<String> images = {'langgenius/dify-agent-local-sandbox:1.17.1'};
   final List<(String, String, Object?)> requests = [];
   final List<Map<String, Object?>> creates = [];
   final List<Map<String, Object?>> networkCreates = [];
@@ -191,6 +194,14 @@ class FakeDocker {
     switch ((request.method, segments.sublist(1))) {
       case ('GET', ['_ping']):
         return reply(200, 'OK');
+      case ('GET', ['images', ...final name, 'json']):
+        final ref = name.join('/');
+        return images.contains(ref)
+            ? reply(200, {
+                'Id': 'sha256:${'0' * 64}',
+                'RepoTags': [ref],
+              })
+            : reply(404, {'message': 'No such image: $ref'});
       case ('GET', ['containers', 'json']):
         final runningOnly = request.uri.queryParameters['all'] == '0';
         return reply(200, [
@@ -353,30 +364,45 @@ void main() {
     'com.docker.compose.service': service,
   };
 
-  SupervisorConfig config({String? statePath, String pool = '10.213.0.0/16'}) =>
-      SupervisorConfig(
-        key: key,
-        agentPeers: ['agent_service'],
-        proxyPeer: 'agent_sandbox_proxy',
-        composeProject: 'proj',
-        subnetPool: pool,
-        dockerSocket: docker.socketPath,
-        labelKey: 'dify-sf.test',
-        labelValue: 'unit',
-        memoryMb: 512,
-        cpus: 0.5,
-        pidsLimit: 128,
-        homeMb: 64,
-        workspaceMb: 128,
-        statePath: statePath,
-        startTimeout: const Duration(seconds: 2),
-      );
+  SupervisorConfig config({
+    String? statePath,
+    String pool = '10.213.0.0/16',
+    ExecutorProfiles? profiles,
+    int? Function(String)? deviceGroup,
+  }) => SupervisorConfig(
+    key: key,
+    agentPeers: ['agent_service'],
+    proxyPeer: 'agent_sandbox_proxy',
+    composeProject: 'proj',
+    subnetPool: pool,
+    dockerSocket: docker.socketPath,
+    labelKey: 'dify-sf.test',
+    labelValue: 'unit',
+    memoryMb: 512,
+    cpus: 0.5,
+    pidsLimit: 128,
+    homeMb: 64,
+    workspaceMb: 128,
+    statePath: statePath,
+    startTimeout: const Duration(seconds: 2),
+    profiles: profiles,
+    deviceGroup: deviceGroup ?? (p) => p == '/dev/dri/renderD128' ? 990 : null,
+  );
 
   Future<void> startSupervisor({
     String? statePath,
     String pool = '10.213.0.0/16',
+    ExecutorProfiles? profiles,
+    int? Function(String)? deviceGroup,
   }) async {
-    supervisor = SandboxSupervisor(config(statePath: statePath, pool: pool));
+    supervisor = SandboxSupervisor(
+      config(
+        statePath: statePath,
+        pool: pool,
+        profiles: profiles,
+        deviceGroup: deviceGroup,
+      ),
+    );
     await supervisor.start(address: '127.0.0.1', port: 0);
   }
 
@@ -470,7 +496,11 @@ void main() {
         'NO_PROXY=localhost,127.0.0.1',
         'no_proxy=localhost,127.0.0.1',
       ],
-      'Labels': {'dify-sf.test': 'unit', executionLabel: hash},
+      'Labels': {
+        'dify-sf.test': 'unit',
+        executionLabel: hash,
+        profileLabel: 'default',
+      },
       'Healthcheck': {
         'Test': ['CMD', 'curl', '-fsS', 'http://127.0.0.1:5004/healthz'],
         'Interval': 30000000000,
@@ -874,6 +904,326 @@ void main() {
         reason: '$bad',
       );
     }
+  });
+
+  group('executor profiles', () {
+    const blenderImage =
+        'dify-sf/sandbox-colvalley-blender@sha256:'
+        '2222222222222222222222222222222222222222222222222222222222222222';
+    const defaultImage =
+        'langgenius/dify-agent-local-sandbox@sha256:'
+        'f4d404c9dcdf80bd72f65e84c3f2bbd1f3404fd4b363db837176da8aaf771b1d';
+    Map<String, Object?> file({String egress = 'none'}) => {
+      'version': 1,
+      'profiles': {
+        'default': {'image': defaultImage},
+        'colvalley-blender': {
+          'description': 'Blender',
+          'image': blenderImage,
+          'mounts': [
+            {'source': '/srv/cv3d-2d97747', 'target': '/opt/colvalley-3d'},
+          ],
+          'network': {'egress': egress},
+          'devices': ['/dev/dri/renderD128'],
+          'limits': {
+            'cpus': 4,
+            'memory_mb': 6144,
+            'pids': 1024,
+            'workspace_mb': 1536,
+            'home_mb': 512,
+            'timeout_seconds_max': 10800,
+          },
+          'env': {'BLENDER': '/opt/blender/blender'},
+        },
+      },
+    };
+
+    Future<Map<String, Object?>> acquireWith(String key, String profile) async {
+      final (s, j) = await call(
+        'POST',
+        '/v1/sandboxes',
+        body: {'execution_key': key, 'profile': profile},
+      );
+      if (s != 200 && s != 201) throw StateError('$s ${jsonEncode(j)}');
+      return j;
+    }
+
+    test('the profile sets image, read-only binds, render node and group, '
+        'limits and tmpfs sizes; egress none attaches no proxy and sets no '
+        'proxy variables', () async {
+      docker.images.addAll([defaultImage, blenderImage]);
+      await startSupervisor(profiles: ExecutorProfiles.parse(file()));
+      final a = await acquireWith('E1', 'colvalley-blender');
+      expect(a['profile'], 'colvalley-blender');
+      expect(a['created'], true);
+      final payload = docker.creates.single;
+      final hc = payload['HostConfig'] as Map;
+      expect(payload['Image'], blenderImage);
+      expect(
+        (payload['Env'] as List).where(
+          (e) => '$e'.toLowerCase().contains('proxy'),
+        ),
+        isEmpty,
+      );
+      expect(
+        (payload['Env'] as List).single,
+        startsWith('SHELLCTL_AUTH_TOKEN='),
+      );
+      // Profile env goes to jobs through the agent service, not the container.
+      expect(jsonEncode(payload), isNot(contains('BLENDER')));
+      expect((payload['Labels'] as Map)[profileLabel], 'colvalley-blender');
+      expect(hc['Memory'], 6144 * 1024 * 1024);
+      expect(hc['MemorySwap'], 6144 * 1024 * 1024);
+      expect(hc['NanoCpus'], 4000000000);
+      expect(hc['PidsLimit'], 1024);
+      expect(hc['Tmpfs'], {
+        '/home/dify':
+            'rw,exec,nosuid,nodev,size=512m,mode=0700,uid=1000,gid=1000',
+        '/workspace':
+            'rw,exec,nosuid,nodev,size=1536m,mode=0700,uid=1000,gid=1000',
+      });
+      expect(hc['Binds'], isEmpty);
+      expect(hc['Mounts'], [
+        {
+          'Type': 'bind',
+          'Source': '/srv/cv3d-2d97747',
+          'Target': '/opt/colvalley-3d',
+          'ReadOnly': true,
+          'BindOptions': {'Propagation': 'rprivate'},
+        },
+      ]);
+      expect(hc['Devices'], [
+        {
+          'PathOnHost': '/dev/dri/renderD128',
+          'PathInContainer': '/dev/dri/renderD128',
+          'CgroupPermissions': 'rw',
+        },
+      ]);
+      expect(hc['GroupAdd'], ['990']);
+      expect(hc['ReadonlyRootfs'], true);
+      expect(hc['CapDrop'], ['ALL']);
+      expect(hc['Privileged'], false);
+      final name = supervisor.containerName('E1');
+      // Exactly the sandbox and the agent service: no proxy endpoint.
+      expect(docker.endpoints(name).keys.toSet(), {a['sandbox_id'], agent});
+      expect(
+        docker.calls.where((c) => c.startsWith('POST /networks/')).toList(),
+        ['POST /networks/create', 'POST /networks/$name/connect'],
+      );
+      // Idempotent, and the proxy is not attached on a later acquire either.
+      final again = await acquireWith('E1', 'colvalley-blender');
+      expect(again['sandbox_id'], a['sandbox_id']);
+      expect(again['created'], false);
+      expect(docker.endpoints(name).keys, isNot(contains(proxy)));
+
+      // The default profile in the same supervisor: its image, the
+      // configuration's limits, the proxy, no binds or devices.
+      final d = await acquire('E2');
+      expect(d['profile'], 'default');
+      final dp = docker.creates.last;
+      final dhc = dp['HostConfig'] as Map;
+      expect(dp['Image'], defaultImage);
+      expect(dhc['Memory'], 512 * 1024 * 1024);
+      expect(dhc['Mounts'], isEmpty);
+      expect(dhc.containsKey('Devices'), isFalse);
+      expect(dhc.containsKey('GroupAdd'), isFalse);
+      expect(dp['Env'], contains('HTTPS_PROXY=http://10.213.0.18:3128'));
+      expect(
+        docker.endpoints(supervisor.containerName('E2')).keys,
+        contains(proxy),
+      );
+
+      final (_, list) = await call('GET', '/v1/sandboxes');
+      expect(
+        {
+          for (final x in (list['sandboxes'] as List).cast<Map>())
+            x['sandbox_id']: x['profile'],
+        },
+        {a['sandbox_id']: 'colvalley-blender', d['sandbox_id']: 'default'},
+      );
+    });
+
+    test('egress allowlist keeps the proxy', () async {
+      docker.images.addAll([defaultImage, blenderImage]);
+      await startSupervisor(
+        profiles: ExecutorProfiles.parse(file(egress: 'allowlist')),
+      );
+      await acquireWith('E1', 'colvalley-blender');
+      expect(
+        docker.creates.single['Env'],
+        contains('HTTPS_PROXY=http://10.213.0.2:3128'),
+      );
+      expect(
+        docker.endpoints(supervisor.containerName('E1')).keys,
+        contains(proxy),
+      );
+    });
+
+    test(
+      'a key keeps its profile: another profile is 409; an unknown one '
+      'and other fields 400; a container without the label is default',
+      () async {
+        docker.images.addAll([defaultImage, blenderImage]);
+        await startSupervisor(profiles: ExecutorProfiles.parse(file()));
+        await acquireWith('E1', 'colvalley-blender');
+        var (s, j) = await call(
+          'POST',
+          '/v1/sandboxes',
+          body: {'execution_key': 'E1', 'profile': 'default'},
+        );
+        expect((s, j['error']), (409, 'profile_conflict'));
+        (s, j) = await call(
+          'POST',
+          '/v1/sandboxes',
+          body: {'execution_key': 'E1'},
+        );
+        expect((s, j['error']), (409, 'profile_conflict'));
+        (s, j) = await call(
+          'POST',
+          '/v1/sandboxes',
+          body: {'execution_key': 'E9', 'profile': 'nope'},
+        );
+        expect((s, j['error']), (400, 'unknown_profile'));
+        (s, j) = await call(
+          'POST',
+          '/v1/sandboxes',
+          body: {'execution_key': 'E9', 'profile': 7},
+        );
+        expect(s, 400);
+        (s, j) = await call(
+          'POST',
+          '/v1/sandboxes',
+          body: {
+            'execution_key': 'E9',
+            'profile': 'default',
+            'image': blenderImage,
+          },
+        );
+        expect(s, 400);
+        expect(docker.creates, hasLength(1));
+        expect(
+          SandboxSupervisor.profileOf({
+            'Config': {'Labels': <String, String>{}},
+          }),
+          'default',
+        );
+      },
+    );
+
+    test('a missing image or render node is 503 before anything is created; '
+        'GET /v1/profiles reports both with the digests', () async {
+      docker.images.add(defaultImage);
+      var group = 990 as int?;
+      final profiles = ExecutorProfiles.parse(file());
+      await startSupervisor(profiles: profiles, deviceGroup: (_) => group);
+      var (s, j) = await call(
+        'POST',
+        '/v1/sandboxes',
+        body: {'execution_key': 'E1', 'profile': 'colvalley-blender'},
+      );
+      expect((s, j['error']), (503, 'image_missing'));
+      expect(docker.networkCreates, isEmpty);
+      expect(docker.creates, isEmpty);
+      (s, j) = await call('GET', '/v1/profiles');
+      expect(s, 200);
+      expect(j, {
+        'profiles': {
+          'default': {'status': 'ok', 'digest': profiles['default']!.digest},
+          'colvalley-blender': {
+            'status': 'image_missing',
+            'digest': profiles['colvalley-blender']!.digest,
+          },
+        },
+      });
+      docker.images.add(blenderImage);
+      group = null;
+      (s, j) = await call(
+        'POST',
+        '/v1/sandboxes',
+        body: {'execution_key': 'E1', 'profile': 'colvalley-blender'},
+      );
+      expect((s, j['error']), (503, 'device_missing'));
+      expect(
+        ((await call('GET', '/v1/profiles')).$2['profiles']
+            as Map)['colvalley-blender']['status'],
+        'device_missing',
+      );
+      expect(docker.networkCreates, isEmpty);
+      group = 990;
+      await acquireWith('E1', 'colvalley-blender');
+    });
+
+    test('profiles from AGENT_EXECUTOR_PROFILES; a bad file or limits that '
+        'do not fit stop the supervisor', () {
+      final dir = newDataDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final f = File('${dir.path}/profiles.json')
+        ..writeAsStringSync(jsonEncode(file()));
+      final base = {
+        'SANDBOX_SUPERVISOR_KEY': 'k',
+        'SANDBOX_AGENT_PEERS': 'agent_service',
+        'AGENT_EXECUTOR_PROFILES': f.path,
+      };
+      final c = SupervisorConfig.fromEnv(base);
+      expect(c.profiles.names, ['default', 'colvalley-blender']);
+      expect(c.imageOf(c.profiles['default']!), defaultImage);
+      expect(c.limitsOf(c.profiles['default']!).memoryMb, 1024);
+      expect(
+        SupervisorConfig.fromEnv({...base}..remove('AGENT_EXECUTOR_PROFILES'))
+            .profiles['default']!
+            .image,
+        isNull,
+      );
+      // The profile's tmpfs sizes do not fit the default memory.
+      final tight = {
+        ...file(),
+        'profiles': {
+          'default': {
+            'image': defaultImage,
+            'limits': {'workspace_mb': 900},
+          },
+        },
+      };
+      f.writeAsStringSync(jsonEncode(tight));
+      expect(
+        () => SupervisorConfig.fromEnv(base),
+        throwsA(
+          isA<SupervisorConfigError>().having(
+            (e) => e.message,
+            'message',
+            contains('must be below memory_mb'),
+          ),
+        ),
+      );
+      f.writeAsStringSync(
+        '{"version": 1, "profiles": {"default": {"image": "x:1"}}}',
+      );
+      expect(
+        () => SupervisorConfig.fromEnv(base),
+        throwsA(isA<SupervisorConfigError>()),
+      );
+      // The state file may not be mounted.
+      f.writeAsStringSync(
+        jsonEncode({
+          'version': 1,
+          'profiles': {
+            'default': {
+              'image': defaultImage,
+              'mounts': [
+                {'source': '/srv/state', 'target': '/opt/state'},
+              ],
+            },
+          },
+        }),
+      );
+      expect(
+        () => SupervisorConfig.fromEnv({
+          ...base,
+          'SANDBOX_STATE_FILE': '/srv/state/sandboxes.json',
+        }),
+        throwsA(isA<SupervisorConfigError>()),
+      );
+    });
   });
 
   test('Ipv4Net', () {

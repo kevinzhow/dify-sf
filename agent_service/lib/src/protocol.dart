@@ -8,6 +8,25 @@ import 'package:crypto/crypto.dart';
 import 'output_tool.dart';
 import 'sandbox/paths.dart';
 
+/// Top-level fields of `POST /v1/operations`; any other is `400
+/// invalid_request`.
+const operationFields = {
+  'protocol',
+  'operation_id',
+  'generation',
+  'execution',
+  'model',
+  'system_prompt',
+  'task',
+  'output_schema',
+  'tools',
+  'env',
+  'files',
+  'limits',
+  'executor_profile',
+  'continuation',
+};
+
 /// Protocol name and version sent in every request and response body.
 const protocolName = 'dify-sf-agent/1';
 
@@ -45,6 +64,9 @@ class ApiError implements Exception {
 
 ApiError invalidRequest(String message) =>
     ApiError(400, 'invalid_request', message);
+
+/// Executor profile names (as the Swift server validates the Soul key).
+final profileNamePattern = RegExp(r'^[a-z0-9][a-z0-9-]{0,63}$');
 
 /// Canonical JSON: object keys sorted, no insignificant whitespace.
 String canonicalJson(Object? value) {
@@ -289,6 +311,8 @@ class OperationRequest {
     required this.outputSchema,
     required this.askHuman,
     required this.shell,
+    required this.viewImage,
+    required this.executorProfile,
     required this.env,
     required this.files,
     required this.maxTurns,
@@ -308,6 +332,13 @@ class OperationRequest {
   final Map<String, Object?>? outputSchema;
   final bool askHuman;
   final bool shell;
+
+  /// `tools.view_image` (a dify-sf extension; needs `tools.shell`).
+  final bool viewImage;
+
+  /// The requested executor profile; `default` when absent. Used only with
+  /// the shell.
+  final String executorProfile;
   final Map<String, String> env;
   final List<FileRef> files;
   final int maxTurns;
@@ -323,6 +354,10 @@ class OperationRequest {
   /// Validates [json]; throws [ApiError] (400) on a malformed request.
   static OperationRequest parse(Map<String, Object?> json) {
     requireProtocol(json);
+    final unknown = json.keys.where((k) => !operationFields.contains(k));
+    if (unknown.isNotEmpty) {
+      throw invalidRequest('unknown request fields: ${unknown.join(', ')}');
+    }
     final operationId = _string(json, 'operation_id', 'request');
     final generation = _int(json, 'generation', 'request');
     final execution = ExecutionRef(_object(json['execution'], 'execution'));
@@ -368,6 +403,18 @@ class OperationRequest {
     final tools = json['tools'] == null
         ? const <String, Object?>{}
         : _object(json['tools'], 'tools');
+    final shell = tools['shell'] == true;
+    final viewImage = tools['view_image'] == true;
+    if (viewImage && !shell) {
+      throw invalidRequest('tools.view_image needs tools.shell');
+    }
+    final profile = json['executor_profile'] ?? 'default';
+    if (profile is! String || !profileNamePattern.hasMatch(profile)) {
+      throw invalidRequest(
+        'executor_profile must be a profile name (${profileNamePattern.pattern}); '
+        'omit it for "default"',
+      );
+    }
     final env = <String, String>{};
     if (json['env'] != null) {
       final rawEnv = _object(json['env'], 'env');
@@ -438,7 +485,9 @@ class OperationRequest {
       task: task,
       outputSchema: outputSchema,
       askHuman: tools['ask_human'] == true,
-      shell: tools['shell'] == true,
+      shell: shell,
+      viewImage: viewImage,
+      executorProfile: profile,
       env: env,
       files: files,
       maxTurns: maxTurns,

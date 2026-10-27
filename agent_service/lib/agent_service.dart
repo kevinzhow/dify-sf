@@ -2,6 +2,7 @@
 library;
 
 export 'src/ask_human.dart';
+export 'src/executor_profiles.dart';
 export 'src/gateway.dart';
 export 'src/leases.dart';
 export 'src/loop.dart';
