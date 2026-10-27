@@ -10,6 +10,7 @@ import 'package:genkit/genkit.dart';
 
 import 'gateway.dart';
 import 'protocol.dart';
+import 'view_image.dart';
 
 /// URL scheme of task files inside the Genkit history. Snapshots store the
 /// stable `file_id` only and model requests carry the same reference.
@@ -293,6 +294,12 @@ Map<String, Object?> toPromptMessageTool(ToolDefinition t) => {
 /// Genkit messages → Dify `PromptMessage` JSON. System content is merged
 /// into one leading system message (as dify-agent does); task files are
 /// sent as `dify-sf-file:<file_id>` references.
+///
+/// Images of `view_image` results (multipart tool response content) are
+/// sent only when their tool message is the last message, i.e. to the model
+/// call right after the tool ran: as a user message after the tool
+/// messages (tool messages carry text only). In every later call the tool's
+/// text stands alone, so a viewed image costs tokens once.
 Future<List<Map<String, Object?>>> toPromptMessages(
   List<Message> messages,
   InnerClient inner,
@@ -313,6 +320,8 @@ Future<List<Map<String, Object?>>> toPromptMessages(
       case Role.model:
         out.add(_assistant(m));
       case Role.tool:
+        final attach = identical(m, messages.last);
+        final images = <Map<String, Object?>>[];
         for (final p in m.content) {
           final r = p.toolResponse;
           if (r == null) continue;
@@ -323,6 +332,31 @@ Future<List<Map<String, Object?>>> toPromptMessages(
             'name': r.name,
             'tool_call_id': r.ref ?? '',
           });
+          if (!attach) continue;
+          for (final c in r.content ?? const []) {
+            if (c is! Map) continue;
+            final media = c['media'];
+            final meta = (c['metadata'] as Map?)?[viewImageMetadataKey];
+            if (media is! Map || meta is! Map) continue;
+            images.add({
+              'type': 'text',
+              'data':
+                  '${images.isEmpty ? '' : '\n'}view_image ${meta['path']}:',
+            });
+            images.add(
+              await _mediaContent(
+                Media(
+                  url: media['url'] as String,
+                  contentType: media['contentType'] as String?,
+                ),
+                inner,
+                detail: meta['detail'] == 'low' ? 'low' : 'high',
+              ),
+            );
+          }
+        }
+        if (images.isNotEmpty) {
+          out.add({'role': 'user', 'content': images, 'name': null});
         }
       default:
         throw ArgumentError('unsupported role ${m.role}');
@@ -352,8 +386,9 @@ Future<Object?> _userContent(List<Part> parts, InnerClient inner) async {
 
 Future<Map<String, Object?>> _mediaContent(
   Media media,
-  InnerClient inner,
-) async {
+  InnerClient inner, {
+  String detail = 'low',
+}) async {
   // Task files stay `dify-sf-file:<file_id>` references: the Swift gateway
   // checks the file against the run token's execution and reads it from
   // storage. No URL is sent and the gateway never fetches one.
@@ -381,7 +416,7 @@ Future<Map<String, Object?>> _mediaContent(
     'format': format,
     'mime_type': base,
     'filename': '$fileId.$format',
-    if (type == 'image') 'detail': 'low',
+    if (type == 'image') 'detail': detail,
   };
 }
 

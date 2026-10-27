@@ -405,7 +405,8 @@ class ScriptedGateway {
       }, exchange);
     }
     // Files in prompt messages must be `dify-sf-file:<id>` references to
-    // files of the execution, as the Swift gateway checks them.
+    // files of the execution, as the Swift gateway checks them: its inputs
+    // and, once received, its uploads (Swift's `grantFiles`).
     for (final m in (target['prompt_messages'] as List? ?? const [])) {
       final content = m is Map ? m['content'] : null;
       if (content is! List) continue;
@@ -415,7 +416,7 @@ class ScriptedGateway {
         final id = u is String && u.startsWith('dify-sf-file:')
             ? u.substring('dify-sf-file:'.length)
             : null;
-        if (id == null || !files.containsKey(id)) {
+        if (id == null || !(files.containsKey(id) || uploads.containsKey(id))) {
           return _jsonResponse(res, 422, {
             'error': 'file_error',
             'message': 'not a file of this execution: $u',

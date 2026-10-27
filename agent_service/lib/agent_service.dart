@@ -15,3 +15,4 @@ export 'src/file_outputs.dart';
 export 'src/sandbox/sandbox.dart';
 export 'src/sandbox/shell_tools.dart';
 export 'src/sandbox/shellctl.dart';
+export 'src/view_image.dart';
