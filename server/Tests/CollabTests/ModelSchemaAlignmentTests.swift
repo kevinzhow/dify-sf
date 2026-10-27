@@ -56,10 +56,11 @@ private func withOriginalSchemaDaemon(_ body: @Sendable @escaping (String, Daemo
             if scenario.failure.withLock({ $0 }) {
                 value = ["code": -500, "message": .string(JSONValue.object(["error_type": "PluginDaemonInnerError", "message": "fixture-not-a-key must never appear"]).compactJSON()), "data": .null]
             } else if found?["status"] == "expected-unknown-model" || found == nil {
-                value = ["code": -500, "message": .string(JSONValue.object(["error_type": "ValueError", "message": "Base model not found"]).compactJSON()), "data": .null]
+                let error = JSONValue.object(["error_type": "ValueError", "message": "Base model not found", "args": ["traceback": "fixture-not-a-key"]]).compactJSON()
+                value = ["code": -500, "message": .string(JSONValue.object(["error_type": "PluginInvokeError", "message": .string(error)]).compactJSON()), "data": .null]
             } else {
                 var schema = found?["schema"] ?? .null
-                if let size = input["data"]?["credentials"]?["context_size"]?.string.flatMap(Int.init),
+                if provider == "openai_api_compatible", let size = input["data"]?["credentials"]?["context_size"]?.string.flatMap(Int.init),
                    var object = schema.object, var properties = object["model_properties"]?.object {
                     properties["context_size"] = .int(size); object["model_properties"] = .object(properties); schema = .object(object)
                 }
@@ -113,7 +114,8 @@ struct ModelSchemaAlignmentTests {
                         _ = try await store.createProviderCredential(provider: provider, name: nil, config: config, createdBy: nil)
                     }
                     let list = try await api.get("/v1/workspace/model-providers/\(provider)/models", token: owner)
-                    let entry = try #require(list.data.first { $0["model"]?.string == model })
+                    let entry = try #require(list.data.first { $0["model"]?.string == model &&
+                        (!definition.supportsCustomModels || $0["fetch_from"] == "customizable-model") })
                     let expected = try #require(item["schema"])
                     let props = try JSONCoding.decode(Data(try #require(expected["model_properties"]).compactJSON().utf8))
                     #expect(entry["model_properties"] == props, "\(provider) \(model)")
@@ -122,9 +124,12 @@ struct ModelSchemaAlignmentTests {
                     #expect(entry["status"] == "active" && entry["schema_status"] == nil)
                     let escaped = model.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!
                     let parameters = try await api.get("/v1/workspace/model-providers/\(provider)/models/parameter-rules?model=\(escaped)", token: owner)
-                    let expectedRules = try #require(expected["parameter_rules"]?.array).map {
+                    let normalizedRules = try #require(expected["parameter_rules"]?.array).map {
                         ParameterRules.output((try? JSONCoding.decode(Data($0.compactJSON().utf8)).object) ?? [:])
                     }
+                    // Compare the wire representation: JSON serializes whole
+                    // floating values as integers on both sides.
+                    let expectedRules = try JSONCoding.decode(JSONCoding.encode(.array(normalizedRules))).array ?? []
                     #expect(parameters.status == 200 && parameters.data == expectedRules, "\(provider) \(parameters.text)")
                     // The editor runtime sees precisely the same original plugin schema.
                     let runtime = PluginDaemonModelRuntime(daemon: routes.providerPluginDaemon(), credentialsOf: { _, _, _ in [:] }, appId: nil)

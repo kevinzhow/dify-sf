@@ -104,6 +104,10 @@ extension Routes {
                     modelProperties: props, deprecated: raw["deprecated"]?.bool ?? false,
                     parameterRules: rules.map { ParameterRules.output($0.object ?? [:]) })
                 return .ready(schema)
+            } catch let error as ModelInvokeError where error.errorType == "ValueError" {
+                // The actual daemon wraps plugin schema errors in
+                // PluginInvokeError, just like invocation errors.
+                return .missing
             } catch let error as PluginDaemonWire.DaemonError where error.errorType == "ValueError" {
                 return .missing
             } catch {

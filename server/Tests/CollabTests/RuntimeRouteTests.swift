@@ -172,6 +172,7 @@ struct RuntimeRouteTests {
                 #expect(runtime?["draft_run"]?.array?.contains("start") == true)
                 let (owner, ownerId, app) = try await runtimeFixture(api)
                 let head = try await store.documentHead(app)
+                let configurationCalls = log.requests.count
 
                 let run = try await api.post("/v1/apps/\(app)/workflows/draft/nodes/llm/run", ##"{"inputs":{"#start.q#":"ping"}}"##, token: owner)
                 #expect(run.status == 200, "\(run.text)")
@@ -186,7 +187,7 @@ struct RuntimeRouteTests {
                 #expect(r.object?.keys.prefix(4) == ["id", "index", "predecessor_node_id", "node_id"])
 
                 // What the daemon got: Dify's dispatch calls for our tenant, with the decrypted credentials.
-                let calls = log.requests
+                let calls = Array(log.requests.dropFirst(configurationCalls))
                 #expect(calls.map(\.path) == ["/plugin/tenant-1/dispatch/model/schema", "/plugin/tenant-1/dispatch/llm/invoke"])
                 #expect(calls.allSatisfy { $0.apiKey == "daemon-key" && $0.pluginId == "langgenius/openai_api_compatible" })
                 let invoke = calls[1].body
