@@ -60,15 +60,16 @@ extension Routes {
     func customModelSchema(_ def: ProviderDefinition, _ model: CustomModelView) async -> ResolvedModelSchema {
         guard let credentials = model.config, !credentials.isEmpty else { return .unknown }
         var resolved = await resolvedModelSchema(def, name: model.key.model, type: model.key.modelType, credentials: credentials, credentialId: model.currentId)
-        if let metadata = credentials[ModelDiscovery.metadataKey], var schema = resolved.schema {
-            schema.modelProperties["autofill"] = metadata
+        if var schema = resolved.schema {
+            if let metadata = credentials[ModelDiscovery.metadataKey] { schema.modelProperties["autofill"] = metadata }
+            ModelReasoning.apply(&schema, provider: def.id.description, credentials: credentials)
             resolved.schema = schema
         }
         return resolved
     }
 
     func resolvedModelSchema(_ def: ProviderDefinition, name: String, type: String, credentials: [String: JSON], credentialId: String?) async -> ResolvedModelSchema {
-        let credentials = credentials.filter { $0.key != ModelDiscovery.metadataKey }
+        let credentials = ModelReasoning.runtimeCredentials(credentials, provider: def.id.description)
         if !runtimeConfigured {
             // The two fully ported plugins also work without a daemon. Other
             // plugins need their own schema: never substitute a generic 4K LLM.

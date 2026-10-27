@@ -394,6 +394,9 @@ class _ParameterItemState extends State<ParameterItem> {
           child: DifySelect<String>(
             value: value is String ? value : null,
             options: [for (final o in r.options) (value: o, label: o)],
+            allowCustomValue: r.allowCustomValue,
+            onCustomValueChanged: _input,
+            semanticLabel: label,
             onChanged: _input,
           ),
         );

@@ -491,6 +491,15 @@ class _ModelAutofillDialogState extends State<ModelAutofillDialog> {
               ),
             ),
           const SizedBox(height: 8),
+          text(
+            value('reasoning_levels') is List && (value('reasoning_levels') as List).isNotEmpty
+                ? '${t('推理档位', 'Reasoning levels')} · ${(value('reasoning_levels') as List).join(', ')} · ${source('reasoning_levels')}'
+                : t(
+                    '推理档位 · 服务未声明，运行参数中可自定义，由服务校验。',
+                    'Reasoning levels · Not declared. Enter a custom value in model parameters; the service validates it.',
+                  ),
+            muted: true,
+          ),
           if (value('context_capacity') == null || value('output_capacity') == null)
             notice(
               t(

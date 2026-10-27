@@ -310,7 +310,7 @@ String getValidationErrorMessage(List<String> errors) => errors.join();
           removed[key] = 'invalid type';
           continue;
         }
-        if (rule.options.isNotEmpty && !rule.options.contains(value)) {
+        if (!rule.allowCustomValue && rule.options.isNotEmpty && !rule.options.contains(value)) {
           removed[key] = 'unsupported option';
           continue;
         }

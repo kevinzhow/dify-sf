@@ -135,6 +135,8 @@ enum ModelDiscovery {
                 "vision_support": f?["vision"]?["value"]?.bool == true ? "support" : "no_support",
                 "function_calling_type": f?["tools"]?["value"]?.bool == true ? "tool_call" : "no_call",
                 "structured_output_support": f?["json_schema"]?["value"]?.bool == true ? "supported" : "not_supported",
+                "agent_thought_support": f?["reasoning"]?["value"]?.bool == true || f?["reasoning_levels"]?["value"]?.array?.isEmpty == false
+                    ? "only_thinking_supported" : "not_supported",
                 "mode": "chat"]
     }
 }

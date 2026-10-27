@@ -1,4 +1,5 @@
 import CollabRuntime
+import CollabModels
 import CollabStore
 import Foundation
 
@@ -26,9 +27,10 @@ extension Routes {
         case "model", "model_credential": stored = try await store.modelCredential(.init(provider: provider, model: model, modelType: "llm"), id: id)
         default: throw NodeError("AgentCredentialInvalid", "This agent credential reference type is not supported")
         }
-        guard let config = stored.config, let object = try JSONValue.parse(config).object, !object.isEmpty else {
+        guard let object = Self.decodeConfig(stored.config), !object.isEmpty else {
             throw NodeError("AgentCredentialInvalid", "The agent model credential is unavailable")
         }
-        return JSONObject(object.filter { $0.key != ModelDiscovery.metadataKey })
+        let credentials = ModelReasoning.runtimeCredentials(object, provider: provider)
+        return try JSONValue.parse(JSONCoding.encode(JSON.object(credentials))).object ?? [:]
     }
 }

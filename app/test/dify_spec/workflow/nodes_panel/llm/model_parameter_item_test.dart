@@ -69,6 +69,55 @@ void main() {
   );
 
   group('ParameterItem', () {
+    testWidgets(
+      'extensible enum preserves suggestions and accepts future values across rebuilds',
+      (t) async {
+        final changes = <Object?>[];
+        final rule = ModelParameterRule.fromJson({
+          'name': 'reasoning_effort',
+          'label': {'en_US': 'Reasoning effort'},
+          'type': 'string',
+          'options': ['low', 'xhigh'],
+          'allow_custom_value': true,
+          'options_source': 'plugin',
+        });
+        await render(t, rule, value: 'max', onChange: changes.add);
+        final input = find.descendant(
+          of: find.byType(DifySelect<String>),
+          matching: find.byType(EditableText),
+        );
+        expect(t.widget<EditableText>(input).controller.text, 'max');
+        await t.enterText(input, 'vendor-next-level');
+        expect(changes.last, 'vendor-next-level');
+        await t.tap(find.byType(DifyIconButton));
+        await t.pumpAndSettle();
+        await t.tap(find.text('xhigh').last);
+        await t.pumpAndSettle();
+        expect(changes.last, 'xhigh');
+        await render(t, rule, value: 'ultra', onChange: changes.add);
+        expect(t.widget<EditableText>(input).controller.text, 'ultra');
+      },
+    );
+
+    testWidgets('provider enum remains a fixed select', (t) async {
+      await render(
+        t,
+        ModelParameterRule.fromJson({
+          'name': 'reasoning_effort',
+          'type': 'string',
+          'options': ['max', 'vendor-next-level'],
+          'allow_custom_value': false,
+          'options_source': 'provider',
+        }),
+        value: 'max',
+      );
+      expect(find.byType(EditableText), findsNothing);
+      expect(
+        t.widget<DifySelect<String>>(find.byType(DifySelect<String>)).allowCustomValue,
+        false,
+      );
+    });
+
     testWidgets('should render float controls and clamp numeric input to max', (t) async {
       final changes = <Object?>[];
       await render(t, createRule(min: 0, max: 1), value: 0.7, onChange: changes.add);
