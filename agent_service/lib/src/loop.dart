@@ -17,6 +17,7 @@ import 'protocol.dart';
 import 'run_store.dart';
 import 'sandbox/sandbox.dart';
 import 'sandbox/shell_tools.dart';
+import 'view_image.dart';
 
 /// More than one `ask_human` call in one model turn (as in Dify).
 class AskHumanInvalid implements Exception {
@@ -74,6 +75,12 @@ List<Map<String, Object?>> toolDefinitions(OperationRequest r) => [
         'description': e.value.description,
         'parameters': e.value.parameters,
       },
+  if (r.viewImage)
+    {
+      'name': viewImageToolName,
+      'description': viewImageDescription,
+      'parameters': viewImageInputSchema,
+    },
 ];
 
 String toolDefinitionsDigest(OperationRequest r) =>
@@ -110,6 +117,19 @@ List<Message> verifyContinuation(OperationRequest r) {
     throw _incompatible('snapshot was taken with different tool definitions');
   }
   if (s['revision'] is! int) throw _incompatible('snapshot has no revision');
+  // The sandbox keeps its profile for its lifetime (snapshots taken before
+  // profiles existed name none: `default`).
+  final ref = s['workspace_ref'];
+  final snapshotProfile = s['executor_profile'] ?? 'default';
+  if (r.shell &&
+      ref is String &&
+      ref.isNotEmpty &&
+      snapshotProfile != r.executorProfile) {
+    throw _incompatible(
+      'the sandbox of this snapshot has executor profile '
+      '${jsonEncode(snapshotProfile)}, not ${jsonEncode(r.executorProfile)}',
+    );
+  }
   final pending = s['pending'];
   final List<Message> messages;
   try {
@@ -235,7 +255,12 @@ class AgentRun {
   final CancellationController _cancel = CancellationController();
   StopReason? _stopReason;
   InnerClient? _inner;
+  GatewayModelContext? _model;
   final Usage usage = Usage();
+
+  /// Bytes of `view_image` attachments per model call index (the turn whose
+  /// tool calls attach them to the next call).
+  final Map<int, int> _viewedBytes = {};
 
   /// The shell of this run, opened on the first shell tool call.
   Future<ShellSession>? _sessionFuture;
@@ -322,6 +347,7 @@ class AgentRun {
     _emit('run_started', {
       'model': {'provider': r.model.provider, 'name': r.model.name},
       'call_index_base': 0,
+      'executor_profile': r.executorProfile,
     });
     if (r.shell && !(sandboxes?.enabled ?? false)) {
       return _fail(
@@ -347,7 +373,7 @@ class AgentRun {
     try {
       final model = defineGatewayModel(
         ai,
-        GatewayModelContext(
+        _model = GatewayModelContext(
           inner: inner,
           request: r,
           runId: runId,
@@ -360,6 +386,7 @@ class AgentRun {
       );
       if (r.askHuman) _defineAskHuman(ai);
       if (r.shell) _defineShellTools(ai);
+      if (r.viewImage) _defineViewImage(ai);
       final outputSchema = r.outputSchema;
       if (outputSchema != null) _defineFinalOutput(ai, outputSchema);
       final events = ai.defineGenerateMiddleware<void>(
@@ -434,6 +461,7 @@ class AgentRun {
           if (r.askHuman) askHumanToolName,
           if (outputSchema != null) finalOutputToolName,
           if (r.shell) ...shellToolNames,
+          if (r.viewImage) viewImageToolName,
         ],
         maxTurns: r.maxTurns,
         onChunk: (_) {},
@@ -670,6 +698,7 @@ class AgentRun {
         ...r.fileIds,
       }.toList(),
       'workspace_ref': _workspaceRef,
+      'executor_profile': r.executorProfile,
       'messages': [for (final m in messages) m.toJson()],
     };
   }
@@ -731,6 +760,7 @@ class AgentRun {
     final session = ShellSession(
       sandbox,
       request.env,
+      profileEnv: sandboxes?.profiles[request.executorProfile]?.env ?? const {},
       log: (m) => log?.call('run $runId: $m'),
     );
     return _session = session;
@@ -789,6 +819,103 @@ class AgentRun {
         },
       );
     }
+  }
+
+  /// `view_image`: checks the workspace file (inside the workspace, a PNG,
+  /// JPEG or WebP by its header, within the turn's byte budget), uploads it
+  /// as a file of the execution and returns the tool text with the image as
+  /// a multipart `MediaPart`. The model bridge sends that image with the
+  /// next model call only (see `toPromptMessages`). Problems are tool
+  /// errors the model can act on; a sandbox that cannot be opened ends the
+  /// run as for the shell tools.
+  void _defineViewImage(Genkit ai) {
+    ToolResult<Object?> error(String message) => ToolResult.response(
+      shellToolError(message),
+      metadata: {'dify_sf_error': message},
+    );
+    ai.defineTool<Object?, Object?>(
+      name: viewImageToolName,
+      description: viewImageDescription,
+      inputSchema: SchemanticType.from<Object?>(
+        jsonSchema: viewImageInputSchema,
+        parse: (j) => j,
+      ),
+      fn: (input, _) async {
+        final args = input is Map
+            ? input.cast<String, Object?>()
+            : const <String, Object?>{};
+        final path = args['path'];
+        if (path is! String || path.trim().isEmpty) {
+          return error('path is required');
+        }
+        final detail = args['detail'] == 'low' ? 'low' : 'high';
+        final turn = _model?.callIndex ?? 0;
+        final sandbox = (await _shellSession()).sandbox;
+        final st = await sandbox.statFile(path.trim());
+        if (st.error != null) return error(st.error!);
+        final real = st.realPath!;
+        final rel = real.substring(sandbox.layout.workspaceDir.length + 1);
+        final used = _viewedBytes[turn] ?? 0;
+        if (used + st.size > viewImageTurnBytes) {
+          return error(
+            '$rel is ${st.size} bytes; the images of one step may have at '
+            'most $viewImageTurnBytes bytes together${used > 0 ? ' ($used already viewed in this step)' : ''}. '
+            'Make a smaller copy (scaled down, or JPEG) and view that.',
+          );
+        }
+        _viewedBytes[turn] = used + st.size;
+        final List<int> bytes;
+        try {
+          bytes = await sandbox.readFile(real, st.size);
+        } on SandboxFailure catch (e) {
+          _viewedBytes[turn] = (_viewedBytes[turn] ?? 0) - st.size;
+          return error(e.message);
+        }
+        final info = imageInfo(bytes);
+        if (info == null) {
+          _viewedBytes[turn] = (_viewedBytes[turn] ?? 0) - st.size;
+          return error(
+            '$rel is not a PNG, JPEG or WebP image (${st.mimeType})',
+          );
+        }
+        final name = rel.substring(rel.lastIndexOf('/') + 1);
+        final String uploadId;
+        try {
+          final up = await _inner!.uploadRequest(
+            filename: name,
+            mimeType: info.mimeType,
+            size: bytes.length,
+          );
+          final url = up['url'];
+          final id = up['upload_id'];
+          if (url is! String || id is! String) {
+            throw GatewayException('file_error', 'upload-request gave no url');
+          }
+          await _inner!.uploadBytes(url, bytes, info.mimeType);
+          uploadId = id;
+        } on GatewayException catch (e) {
+          _viewedBytes[turn] = (_viewedBytes[turn] ?? 0) - st.size;
+          return error('the image could not be attached: ${e.message}');
+        }
+        return ToolResult.response(
+          'The image $rel (${info.mimeType}, ${info.width}x${info.height}, '
+          '${bytes.length} bytes) is attached after this result, for your '
+          'next step only. It is not kept in the conversation; call '
+          'view_image again to look at it later.',
+          parts: [
+            MediaPart(
+              media: Media(
+                url: '$fileUrlScheme$uploadId',
+                contentType: info.mimeType,
+              ),
+              metadata: {
+                viewImageMetadataKey: {'path': rel, 'detail': detail},
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// Uploads the declared file outputs of [candidate]. A path that is not a

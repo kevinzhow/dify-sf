@@ -343,6 +343,17 @@ class FakeSupervisor {
 
   /// Answer deletes with this status instead.
   int? failDelete;
+
+  /// `GET /v1/profiles`: per profile `{"status", "digest"}`; null answers
+  /// 404 (a supervisor without profiles).
+  Map<String, Map<String, Object?>>? profiles;
+
+  /// The profile named in each acquire (null when the request named none).
+  final List<String?> acquiredProfiles = [];
+
+  /// The profile reported back; null reports the requested one, `''` none
+  /// (a supervisor that ignores profiles).
+  String? reportProfile;
   var _next = 0;
 
   Uri get url => Uri.parse('http://127.0.0.1:${_server!.port}');
@@ -371,8 +382,10 @@ class FakeSupervisor {
     final segments = request.uri.pathSegments;
     switch ((request.method, segments)) {
       case ('POST', ['v1', 'sandboxes']):
-        final k = (jsonDecode(text) as Map)['execution_key'] as String;
+        final body = jsonDecode(text) as Map;
+        final k = body['execution_key'] as String;
         acquires.add(k);
+        acquiredProfiles.add(body['profile'] as String?);
         if (failAcquire != null) {
           return FakeShellctl._json(res, failAcquire!, {
             'error': 'sandbox_start_failed',
@@ -397,6 +410,8 @@ class FakeSupervisor {
           'token': s.token,
           'gateway': gateway,
           'created': isNew,
+          if (reportProfile != '')
+            'profile': reportProfile ?? body['profile'] ?? 'default',
         });
       case ('DELETE', ['v1', 'sandboxes', final id]):
         deletes.add(id);
@@ -412,6 +427,12 @@ class FakeSupervisor {
           'sandbox_id': id,
           'deleted': s != null,
         });
+      case ('GET', ['v1', 'profiles']):
+        final p = profiles;
+        if (p == null) {
+          return FakeShellctl._json(res, 404, {'error': 'not_found'});
+        }
+        return FakeShellctl._json(res, 200, {'profiles': p});
       case ('GET', ['v1', 'sandboxes']):
         return FakeShellctl._json(res, 200, {
           'sandboxes': [

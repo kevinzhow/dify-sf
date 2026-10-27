@@ -131,6 +131,14 @@ class DockerClient {
     return [for (final c in r.body as List) (c as Map).cast<String, Object?>()];
   }
 
+  /// The image's inspect document, or null when it is not on this host.
+  Future<Map<String, Object?>?> inspectImage(String reference) async {
+    final r = await send('GET', '/images/$reference/json');
+    if (r.status == 404) return null;
+    expect(r, {200}, 'inspect image');
+    return r.json;
+  }
+
   /// Creates a container; returns its ID, or null when [name] exists (409).
   Future<String?> createContainer(
     String name,

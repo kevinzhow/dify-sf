@@ -8,6 +8,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import 'executor_profiles.dart';
 import 'leases.dart';
 import 'loop.dart';
 import 'protocol.dart';
@@ -30,13 +31,18 @@ class AgentService {
     this.sweepInterval = const Duration(minutes: 1),
     this.keepAliveInterval = const Duration(seconds: 15),
     SupervisorClient? supervisor,
+    ExecutorProfiles? profiles,
+    Duration profileStatusTtl = const Duration(seconds: 15),
     SandboxLayout sandboxLayout = const SandboxLayout(),
     http.Client Function()? shellctlHttpClient,
-  }) : store = RunStore(dataDir, clock: clock, eventRetention: eventRetention) {
+  }) : store = RunStore(dataDir, clock: clock, eventRetention: eventRetention),
+       profiles = profiles ?? ExecutorProfiles.implicit() {
     leases = LeaseManager(onExpired: _leaseExpired);
     sandboxes = SandboxManager(
       supervisor: supervisor,
       store: store,
+      profiles: this.profiles,
+      profileStatusTtl: profileStatusTtl,
       layout: sandboxLayout,
       shellctlHttpClient: shellctlHttpClient,
       log: (m) => _log(LogLevel.warning, m),
@@ -46,6 +52,9 @@ class AgentService {
   final String serviceKey;
   final Uri? innerUrl;
   final RunStore store;
+
+  /// The executor profiles (`AGENT_EXECUTOR_PROFILES`).
+  final ExecutorProfiles profiles;
   final LogLevel logLevel;
   final Duration sweepInterval;
   final Duration keepAliveInterval;
@@ -137,7 +146,9 @@ class AgentService {
       final route = segments.sublist(1);
       switch (route) {
         case ['health'] when method == 'GET':
-          return _json(response, 200, _health());
+          return _json(response, 200, await _health());
+        case ['profiles'] when method == 'GET':
+          return _json(response, 200, await _profiles());
         case ['operations'] when method == 'POST':
           return await _postOperation(request);
         case ['runs'] when method == 'GET':
@@ -155,6 +166,7 @@ class AgentService {
         case ['executions', final id] when method == 'DELETE':
           return await _deleteExecution(request, id);
         case ['health'] ||
+            ['profiles'] ||
             ['operations'] ||
             ['runs'] ||
             ['runs', _] ||
@@ -232,17 +244,45 @@ class AgentService {
     return run;
   }
 
-  Map<String, Object?> _health() => {
-    'protocol': protocolName,
-    'status': innerUrl == null ? 'degraded' : 'ok',
-    'sandbox': sandboxes.health,
-    'version': serviceVersion,
-  };
+  Future<Map<String, Object?>> _health() async {
+    final profiles = (await sandboxes.profileStatuses()).statuses;
+    return {
+      'protocol': protocolName,
+      'status': innerUrl == null ? 'degraded' : 'ok',
+      'sandbox': sandboxes.health,
+      'version': serviceVersion,
+      'profiles': profiles,
+    };
+  }
+
+  /// `GET /v1/profiles`: names, descriptions, statuses and timeout caps;
+  /// never images, mounts, devices, network rules or environment values.
+  Future<Map<String, Object?>> _profiles() async {
+    final statuses = (await sandboxes.profileStatuses()).statuses;
+    return {
+      'protocol': protocolName,
+      'profiles': [
+        for (final p in profiles.profiles.values)
+          {
+            'name': p.name,
+            'description': p.description,
+            'status': statuses[p.name] ?? 'unavailable',
+            'timeout_seconds_max': p.timeoutSecondsMax,
+          },
+      ],
+    };
+  }
 
   Future<void> _postOperation(HttpRequest request) async {
     final body = await _body(request);
     final op = OperationRequest.parse(body);
     final executionId = op.execution.executionId;
+    // Read before the synchronous section below; null = not known.
+    String? profileStatus;
+    if (op.shell && profiles[op.executorProfile] != null) {
+      final s = await sandboxes.profileStatuses();
+      if (s.reached) profileStatus = s.statuses[op.executorProfile];
+    }
     if (_stopping) {
       throw ApiError(503, 'shutting_down', 'the agent service is stopping');
     }
@@ -273,6 +313,16 @@ class AgentService {
         store.observeGeneration(executionId, op.generation);
         return _json(request.response, 200, run.statusJson());
       }
+    }
+    if (op.shell) {
+      final p = profiles[op.executorProfile];
+      checkOperationProfile(
+        op,
+        p == null
+            ? null
+            : (timeoutSecondsMax: p.timeoutSecondsMax, envNames: p.env.keys),
+        profileStatus,
+      );
     }
     verifyContinuation(op);
     final runToken = request.headers.value('x-agent-run-token');

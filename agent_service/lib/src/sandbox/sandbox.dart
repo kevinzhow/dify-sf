@@ -8,6 +8,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../executor_profiles.dart';
 import '../gateway.dart';
 import '../protocol.dart';
 import '../run_store.dart';
@@ -35,11 +36,16 @@ class SandboxGrant {
     this.token, {
     required this.created,
     this.gateway,
+    this.profile,
   });
   final String sandboxId;
   final Uri url;
   final String token;
   final bool created;
+
+  /// The executor profile the supervisor created the sandbox with (null
+  /// from a supervisor without profiles).
+  final String? profile;
 
   /// The sandbox network's reserved gateway address (no host owns it when
   /// the network is set up as required); probed for host reachability.
@@ -95,9 +101,13 @@ class SupervisorClient {
     return decoded.cast<String, Object?>();
   }
 
-  Future<SandboxGrant> acquire(String executionKey) async {
+  Future<SandboxGrant> acquire(
+    String executionKey, {
+    String profile = defaultProfileName,
+  }) async {
     final j = await _call('POST', '/v1/sandboxes', {
       'execution_key': executionKey,
+      'profile': profile,
     });
     return SandboxGrant(
       j['sandbox_id'] as String,
@@ -105,7 +115,22 @@ class SupervisorClient {
       j['token'] as String,
       created: j['created'] == true,
       gateway: j['gateway'] as String?,
+      profile: j['profile'] as String?,
     );
+  }
+
+  /// `GET /v1/profiles`: per profile `{"status", "digest"}`.
+  Future<Map<String, Map<String, Object?>>> profiles() async {
+    final j = await _call('GET', '/v1/profiles');
+    final p = j['profiles'];
+    if (p is! Map) {
+      throw SandboxFailure('sandbox_unavailable', 'malformed profile list');
+    }
+    return {
+      for (final e in p.entries)
+        if (e.key is String && e.value is Map)
+          e.key as String: (e.value as Map).cast<String, Object?>(),
+    };
   }
 
   Future<void> release(String sandboxId) =>
@@ -186,10 +211,29 @@ class ExecutionSandbox {
         client: httpClient?.call(),
       );
 
-  /// The environment of every job: the user's `env` plus `HOME`. Reserved
-  /// names are refused here too, whatever the protocol layer let through.
-  Map<String, String> jobEnv(Map<String, String> userEnv) {
-    final reserved = userEnv.keys.where(isReservedEnvName).toList();
+  /// The environment of every job: the profile's `env`, the user's `env`
+  /// (which may not override the profile's) and `HOME`. Reserved names are
+  /// refused here too, whatever the protocol layer let through.
+  Map<String, String> jobEnv(
+    Map<String, String> userEnv, {
+    Map<String, String> profileEnv = const {},
+  }) {
+    final overriding = userEnv.keys
+        .where(
+          (k) => profileEnv.keys.any((p) => p.toUpperCase() == k.toUpperCase()),
+        )
+        .toList();
+    if (overriding.isNotEmpty) {
+      throw SandboxFailure(
+        'sandbox_error',
+        'environment variables set by the executor profile: '
+            '${overriding.join(', ')}',
+      );
+    }
+    final reserved = [
+      ...userEnv.keys,
+      ...profileEnv.keys,
+    ].where(isReservedEnvName).toList();
     if (reserved.isNotEmpty) {
       throw SandboxFailure(
         'sandbox_error',
@@ -212,7 +256,7 @@ class ExecutionSandbox {
         'invalid environment variable names: ${invalid.join(', ')}',
       );
     }
-    return {...userEnv, 'HOME': layout.homeDir};
+    return {...profileEnv, ...userEnv, 'HOME': layout.homeDir};
   }
 
   /// Runs a bounded non-interactive command (`stdio`; stderr merged into the
@@ -548,16 +592,24 @@ class SandboxManager {
   SandboxManager({
     required this.supervisor,
     required this.store,
+    ExecutorProfiles? profiles,
+    this.profileStatusTtl = const Duration(seconds: 15),
     this.layout = const SandboxLayout(),
     this.maxInputFileBytes = 64 * 1024 * 1024,
     this.hostProbePorts = defaultHostProbePorts,
     this.shellctlHttpClient,
     this.log,
-  });
+  }) : profiles = profiles ?? ExecutorProfiles.implicit();
 
   /// Null when no supervisor is configured (`sandbox: disabled`).
   final SupervisorClient? supervisor;
   final RunStore store;
+
+  /// This service's copy of the executor profiles.
+  final ExecutorProfiles profiles;
+
+  /// How long a profile status read from the supervisor is reused.
+  final Duration profileStatusTtl;
   final SandboxLayout layout;
   final int maxInputFileBytes;
   final List<int> hostProbePorts;
@@ -569,6 +621,64 @@ class SandboxManager {
   final Map<String, ExecutionSandbox> _live = {};
   final Map<String, Future<void>> _locks = {};
   bool _unavailable = false;
+  ({bool reached, Map<String, String> statuses, DateTime at})? _profileStatus;
+  Future<({bool reached, Map<String, String> statuses})>? _profileRefresh;
+
+  /// The status of every profile: `ok`, `image_missing`, `device_missing`
+  /// (as the supervisor reports it) or `unavailable` (no supervisor, the
+  /// supervisor could not be asked, or its copy of the profile differs from
+  /// this service's). `reached` is false when the supervisor was not asked
+  /// successfully. Cached for [profileStatusTtl].
+  Future<({bool reached, Map<String, String> statuses})>
+  profileStatuses() async {
+    final cached = _profileStatus;
+    if (cached != null &&
+        DateTime.now().difference(cached.at) < profileStatusTtl) {
+      return (reached: cached.reached, statuses: cached.statuses);
+    }
+    return _profileRefresh ??= _fetchProfileStatuses().whenComplete(
+      () => _profileRefresh = null,
+    );
+  }
+
+  Future<({bool reached, Map<String, String> statuses})>
+  _fetchProfileStatuses() async {
+    Map<String, Map<String, Object?>>? remote;
+    final s = supervisor;
+    if (s != null) {
+      try {
+        remote = await s.profiles().timeout(const Duration(seconds: 5));
+      } catch (e) {
+        log?.call('profile status from the supervisor failed: $e');
+      }
+    }
+    final statuses = <String, String>{};
+    for (final p in profiles.profiles.values) {
+      final r = remote?[p.name];
+      if (remote == null) {
+        statuses[p.name] = 'unavailable';
+      } else if (r == null || r['digest'] != p.digest) {
+        log?.call(
+          'executor profile ${p.name}: the supervisor\'s copy '
+          '${r == null ? 'does not define it' : 'differs'}; reported unavailable',
+        );
+        statuses[p.name] = 'unavailable';
+      } else {
+        final status = r['status'];
+        statuses[p.name] = status is String ? status : 'unavailable';
+      }
+    }
+    final result = (
+      reached: remote != null,
+      statuses: Map<String, String>.unmodifiable(statuses),
+    );
+    _profileStatus = (
+      reached: result.reached,
+      statuses: result.statuses,
+      at: DateTime.now(),
+    );
+    return result;
+  }
 
   bool get enabled => supervisor != null;
 
@@ -618,10 +728,27 @@ class SandboxManager {
       }
       final SandboxGrant grant;
       try {
-        grant = await s.acquire(executionId);
+        grant = await s.acquire(executionId, profile: request.executorProfile);
       } on SandboxFailure {
         _unavailable = true;
         rethrow;
+      }
+      if (grant.profile != request.executorProfile) {
+        // A supervisor that ignores profiles would give the default image.
+        _unavailable = true;
+        if (grant.created) {
+          // Not recorded for the execution yet: release it here.
+          try {
+            await s.release(grant.sandboxId);
+          } catch (e) {
+            log?.call('could not release sandbox ${grant.sandboxId}: $e');
+          }
+        }
+        throw SandboxFailure(
+          'sandbox_unavailable',
+          'the supervisor created the sandbox with profile '
+              '${grant.profile ?? '(none)'}, not ${request.executorProfile}',
+        );
       }
       store.setSandbox(executionId, grant.sandboxId);
       if (expectedRef != null && expectedRef != grant.sandboxId) {
@@ -732,8 +859,12 @@ class SandboxManager {
 /// The shell of one run: Dify's four tools over the execution's sandbox,
 /// with the jobs started in this run tracked by ID and offset.
 class ShellSession {
-  ShellSession(this.sandbox, Map<String, String> userEnv, {this.log})
-    : env = sandbox.jobEnv(userEnv) {
+  ShellSession(
+    this.sandbox,
+    Map<String, String> userEnv, {
+    Map<String, String> profileEnv = const {},
+    this.log,
+  }) : env = sandbox.jobEnv(userEnv, profileEnv: profileEnv) {
     _client = sandbox.client();
   }
 

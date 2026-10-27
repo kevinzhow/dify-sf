@@ -2,5 +2,6 @@
 /// access).
 library;
 
+export 'src/executor_profiles.dart';
 export 'src/supervisor/docker.dart';
 export 'src/supervisor/supervisor.dart';

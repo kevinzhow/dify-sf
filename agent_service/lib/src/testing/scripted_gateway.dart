@@ -18,6 +18,7 @@
 ///    "error": {"code": -429, "message": "…"},   // after the chunks
 ///    "hang": false}],               // keep the stream open after the chunks
 ///  "files": {"<file_id>": {"mime_type": "image/png", "size": 3, "content": "…"}}}
+///                // or "content_base64": "…" for binary content
 /// ```
 library;
 
@@ -266,8 +267,17 @@ class ScriptedGateway {
 
   void enqueue(ScriptedCall call) => _calls.add(call);
 
+  /// Base of the file URLs handed out: this gateway's own address when it
+  /// listens on loopback, else none (relative URLs, which the agent service
+  /// resolves against its inner base URL, as in a compose network).
+  String _fileBase = '';
+
   Future<Uri> start({Object address = '127.0.0.1', int port = 0}) async {
     final server = _server = await HttpServer.bind(address, port);
+    final loopback = address is InternetAddress
+        ? address.isLoopback
+        : address == '127.0.0.1' || address == 'localhost';
+    _fileBase = loopback ? '$url' : '';
     server.listen((r) => unawaited(_handle(r)));
     return url;
   }
@@ -281,8 +291,15 @@ class ScriptedGateway {
     try {
       final path = request.uri.path;
       if (request.method == 'GET' && path.startsWith('/files/')) {
-        final content = files[path.substring('/files/'.length)]?['content'];
-        final text = content is String ? content : 'fake-bytes';
+        final file = files[path.substring('/files/'.length)];
+        final content = file?['content'];
+        final b64 = file?['content_base64'];
+        final bytes = b64 is String
+            ? base64.decode(b64)
+            : utf8.encode(content is String ? content : 'fake-bytes');
+        final text = b64 is String
+            ? '<${bytes.length} bytes>'
+            : utf8.decode(bytes);
         exchanges.add(
           RecordedExchange(
               'GET',
@@ -295,7 +312,7 @@ class ScriptedGateway {
             ..responseBody = text,
         );
         res.headers.contentType = ContentType.binary;
-        res.add(utf8.encode(text));
+        res.add(bytes);
         return await res.close();
       }
       if (request.method == 'PUT' && path.startsWith('/uploads/')) {
@@ -347,7 +364,7 @@ class ScriptedGateway {
             }, exchange);
           }
           return await _jsonResponse(res, 200, {
-            'url': '$url/files/$id?sig=${requests.length}',
+            'url': '$_fileBase/files/$id?sig=${requests.length}',
             'expires_at': DateTime.now()
                 .toUtc()
                 .add(const Duration(minutes: 5))
@@ -358,7 +375,7 @@ class ScriptedGateway {
         case '/inner/agent/files/upload-request':
           final id = 'up${requests.length}';
           return await _jsonResponse(res, 200, {
-            'url': '$url/uploads/$id',
+            'url': '$_fileBase/uploads/$id',
             'upload_id': id,
           }, exchange);
         default:
@@ -405,7 +422,8 @@ class ScriptedGateway {
       }, exchange);
     }
     // Files in prompt messages must be `dify-sf-file:<id>` references to
-    // files of the execution, as the Swift gateway checks them.
+    // files of the execution, as the Swift gateway checks them: its inputs
+    // and, once received, its uploads (Swift's `grantFiles`).
     for (final m in (target['prompt_messages'] as List? ?? const [])) {
       final content = m is Map ? m['content'] : null;
       if (content is! List) continue;
@@ -415,7 +433,7 @@ class ScriptedGateway {
         final id = u is String && u.startsWith('dify-sf-file:')
             ? u.substring('dify-sf-file:'.length)
             : null;
-        if (id == null || !files.containsKey(id)) {
+        if (id == null || !(files.containsKey(id) || uploads.containsKey(id))) {
           return _jsonResponse(res, 422, {
             'error': 'file_error',
             'message': 'not a file of this execution: $u',

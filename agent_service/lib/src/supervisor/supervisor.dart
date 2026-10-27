@@ -11,17 +11,26 @@
 /// the host has no address on any of them. The network is removed with the
 /// sandbox.
 ///
+/// Image, read-only binds, render nodes, egress and limits come from the
+/// executor profile the request names, resolved from the supervisor's own
+/// copy of the profile file (`AGENT_EXECUTOR_PROFILES`).
+///
 /// API (bearer `SANDBOX_SUPERVISOR_KEY`):
 ///
-/// - `POST /v1/sandboxes {"execution_key"}` → `{"sandbox_id", "url", "token",
-///   "gateway", "created"}`; idempotent per execution key (a stopped
-///   container is replaced, with a new `sandbox_id`). `gateway` is the
-///   sandbox network's reserved (never assigned) gateway address, for the
-///   host-reachability probe.
+/// - `POST /v1/sandboxes {"execution_key", "profile"?}` → `{"sandbox_id",
+///   "url", "token", "gateway", "created", "profile"}`; idempotent per
+///   execution key (a stopped container is replaced, with a new
+///   `sandbox_id`). `profile` defaults to `default`; an unknown one is 400,
+///   an existing sandbox of the key with another profile 409. `gateway` is
+///   the sandbox network's reserved (never assigned) gateway address, for
+///   the host-reachability probe.
 /// - `DELETE /v1/sandboxes/{sandbox_id}` → `{"sandbox_id", "deleted"}`
 ///   (force remove with volumes, then its network; containers without the
 ///   labels are refused).
-/// - `GET /v1/sandboxes` → `{"sandboxes": [...]}` (labelled containers only).
+/// - `GET /v1/sandboxes` → `{"sandboxes": [...]}` (labelled containers only,
+///   each with its `profile`).
+/// - `GET /v1/profiles` → `{"profiles": {"<name>": {"status", "digest"}}}`,
+///   `status` `ok`, `image_missing` or `device_missing`.
 /// - `GET /v1/health` → `{"status", "docker"}`.
 library;
 
@@ -33,6 +42,7 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 
+import '../executor_profiles.dart';
 import 'docker.dart';
 
 /// The shellctl port of the sandbox image.
@@ -40,6 +50,48 @@ const shellctlPort = 5004;
 
 /// Label holding the SHA-256 of the execution key (containers and networks).
 const executionLabel = 'dify-sf.sandbox.execution';
+
+/// Label holding the sandbox's executor profile (containers). A container
+/// without it predates profiles and counts as `default`.
+const profileLabel = 'dify-sf.sandbox.profile';
+
+/// shellctl's Landlock defaults (dify-agent-runtime 1.17.1,
+/// `internal/landlock/config.go`): read-only (with execute) directories and
+/// read-write device files of every job. Setting the variables replaces
+/// them, so a sandbox's list starts from these.
+const shellctlLandlockRoDefaults = [
+  '/usr', '/bin', '/sbin', '/lib', '/lib64', '/etc', '/proc', //
+  '/opt/dify-agent-tools', '/opt/homebrew', '/snap',
+];
+const shellctlLandlockRwDevDefaults = [
+  '/dev/null', '/dev/zero', '/dev/urandom', '/dev/random', '/dev/tty', //
+];
+
+/// A render node on this host: its group and its device's sysfs directory
+/// (what Mesa reads to identify the GPU).
+typedef DeviceInfo = ({int group, String sysfs});
+
+/// Reads a host character device with `stat` and `/sys/dev/char`; null
+/// when it does not exist or is not a character device.
+DeviceInfo? statDevice(String path) {
+  try {
+    final r = Process.runSync('stat', ['-L', '-c', '%F|%g|%t|%T', '--', path]);
+    if (r.exitCode != 0) return null;
+    final f = (r.stdout as String).trim().split('|');
+    if (f.length != 4 || f[0] != 'character special file') return null;
+    final group = int.tryParse(f[1]);
+    final major = int.tryParse(f[2], radix: 16);
+    final minor = int.tryParse(f[3], radix: 16);
+    if (group == null || major == null || minor == null) return null;
+    final sysfs = Link('/sys/dev/char/$major:$minor/device')
+        .resolveSymbolicLinksSync();
+    return (group: group, sysfs: sysfs);
+  } on ProcessException {
+    return null;
+  } on FileSystemException {
+    return null;
+  }
+}
 
 /// Prefix length of every sandbox network.
 const sandboxSubnetPrefix = 28;
@@ -151,9 +203,22 @@ class SupervisorConfig {
     this.addressByIp = false,
     this.statePath,
     this.startTimeout = const Duration(seconds: 60),
-  }) : subnetPool = _pool(subnetPool) {
+    ExecutorProfiles? profiles,
+    this.device = statDevice,
+  }) : subnetPool = _pool(subnetPool),
+       profiles = profiles ?? ExecutorProfiles.implicit() {
     if (agentPeers.isEmpty) {
       throw SupervisorConfigError('at least one agent peer is required');
+    }
+    for (final p in this.profiles.profiles.values) {
+      final l = limitsOf(p);
+      if (l.homeMb + l.workspaceMb >= l.memoryMb) {
+        // tmpfs pages are charged to the container's memory limit.
+        throw SupervisorConfigError(
+          'profile ${p.name}: home_mb + workspace_mb (${l.homeMb} + '
+          '${l.workspaceMb}) must be below memory_mb (${l.memoryMb})',
+        );
+      }
     }
   }
 
@@ -216,6 +281,31 @@ class SupervisorConfig {
   final String? statePath;
   final Duration startTimeout;
 
+  /// The executor profiles (`AGENT_EXECUTOR_PROFILES`); without a file, the
+  /// implicit `default` with [image] and the limits above.
+  final ExecutorProfiles profiles;
+
+  /// Resolves a profile device on this host (default: [statDevice]).
+  final DeviceInfo? Function(String path) device;
+
+  /// The image of [profile]: its pinned image, or [image] for the implicit
+  /// `default`.
+  String imageOf(ExecutorProfile profile) => profile.image ?? image;
+
+  /// The limits of [profile], missing values from this configuration.
+  ({double cpus, int memoryMb, int pids, int homeMb, int workspaceMb}) limitsOf(
+    ExecutorProfile profile,
+  ) {
+    final l = profile.limits;
+    return (
+      cpus: l.cpus ?? cpus,
+      memoryMb: l.memoryMb ?? memoryMb,
+      pids: l.pids ?? pidsLimit,
+      homeMb: l.homeMb ?? homeMb,
+      workspaceMb: l.workspaceMb ?? workspaceMb,
+    );
+  }
+
   String get label => '$labelKey=$labelValue';
 
   /// The filters selecting this supervisor's sandboxes and their networks:
@@ -268,6 +358,18 @@ class SupervisorConfig {
       for (final p in req('SANDBOX_AGENT_PEERS').split(','))
         if (p.trim().isNotEmpty) p.trim(),
     ];
+    final ExecutorProfiles profiles;
+    try {
+      profiles = ExecutorProfiles.load(
+        opt('AGENT_EXECUTOR_PROFILES'),
+        forbiddenSources: [
+          opt('DOCKER_SOCKET') ?? '/var/run/docker.sock',
+          ?opt('SANDBOX_STATE_FILE'),
+        ],
+      );
+    } on ProfileLoadError catch (e) {
+      throw SupervisorConfigError(e.toString());
+    }
     final config = SupervisorConfig(
       key: req('SANDBOX_SUPERVISOR_KEY'),
       agentPeers: agents,
@@ -293,6 +395,7 @@ class SupervisorConfig {
       addressByIp: address == 'ip',
       statePath: opt('SANDBOX_STATE_FILE'),
       startTimeout: Duration(seconds: intOf('SANDBOX_START_TIMEOUT', 60)),
+      profiles: profiles,
     );
     if (config.homeMb + config.workspaceMb >= config.memoryMb) {
       // tmpfs pages are charged to the container's memory limit.
@@ -339,10 +442,28 @@ class SandboxSupervisor {
   String containerName(String executionKey) =>
       '${config.namePrefix}${hashKey(executionKey).substring(0, 24)}';
 
-  Map<String, String> _labels(String hash) => {
+  Map<String, String> _labels(String hash, {String? profile}) => {
     config.labelKey: config.labelValue,
     executionLabel: hash,
+    profileLabel: ?profile,
   };
+
+  /// The profile recorded on a container (`default` when it has none).
+  static String profileOf(Map<String, Object?> inspectOrSummary) {
+    final labels =
+        (inspectOrSummary['Config'] as Map?)?['Labels'] ??
+        inspectOrSummary['Labels'];
+    final p = labels is Map ? labels[profileLabel] : null;
+    return p is String && p.isNotEmpty ? p : defaultProfileName;
+  }
+
+  ExecutorProfile _profile(String name) =>
+      config.profiles[name] ??
+      (throw SupervisorError(
+        400,
+        'unknown_profile',
+        'no executor profile $name in this supervisor\'s profile file',
+      ));
 
   /// The network create payload: internal, no IPv4 address on the bridge,
   /// one /28, labelled like the sandbox.
@@ -370,24 +491,61 @@ class SandboxSupervisor {
     'Labels': _labels(hash),
   };
 
+  /// The Landlock variables of a sandbox (see [createPayload]).
+  static Map<String, String> landlockEnv(
+    List<String> renderNodes,
+    Iterable<String> sysfsDirs,
+  ) => {
+    'SHELLCTL_LANDLOCK_RO_PATHS': [
+      ...shellctlLandlockRoDefaults,
+      '/opt',
+      if (renderNodes.isNotEmpty) ...['/dev/dri', '/sys/dev/char'],
+      ...{...sysfsDirs},
+    ].join(','),
+    'SHELLCTL_LANDLOCK_RW_DEV_PATHS': [
+      ...shellctlLandlockRwDevDefaults,
+      ...renderNodes,
+    ].join(','),
+  };
+
   /// The container create payload: everything but the token and the
-  /// network is fixed by the configuration.
+  /// network is fixed by the configuration and the [profile]: its image,
+  /// limits, read-only binds under /opt, render nodes (with their host
+  /// groups as supplementary groups, from [devices]) and whether the proxy
+  /// is used.
+  ///
+  /// shellctl confines every job with Landlock. Its variables are set in the
+  /// daemon's environment, which jobs inherit (a node cannot set
+  /// `SHELLCTL_*`): the defaults plus `/opt` (profile images and binds put
+  /// their tools there; the base image's `/opt` is empty), and for render
+  /// nodes `/dev/dri`, `/sys/dev/char` and each GPU's sysfs directory
+  /// read-only and the nodes read-write (see [landlockEnv]).
   Map<String, Object?> createPayload(
     String executionKey,
     String token, {
     required String network,
     required Ipv4Net subnet,
+    ExecutorProfile? profile,
+    Map<String, DeviceInfo> devices = const {},
   }) {
     final c = config;
+    final p = profile ?? c.profiles[defaultProfileName]!;
+    final limits = c.limitsOf(p);
     String tmpfs(int mb) =>
         'rw,exec,nosuid,nodev,size=${mb}m,mode=0700,uid=${c.uid},gid=${c.gid}';
-    final proxy = c.proxyPeer == null
+    final proxy = c.proxyPeer == null || p.egress == Egress.none
         ? null
         : 'http://${subnet.host(proxyHost)}:${c.proxyPort}';
+    final groups = <String>{for (final d in p.devices) '${devices[d]?.group}'}
+        .toList();
+    final landlock = landlockEnv(p.devices, [
+      for (final d in p.devices) ?devices[d]?.sysfs,
+    ]);
     return {
-      'Image': c.image,
+      'Image': c.imageOf(p),
       'Env': [
         'SHELLCTL_AUTH_TOKEN=$token',
+        for (final e in landlock.entries) '${e.key}=${e.value}',
         if (proxy != null) ...[
           'HTTP_PROXY=$proxy',
           'HTTPS_PROXY=$proxy',
@@ -397,7 +555,7 @@ class SandboxSupervisor {
           'no_proxy=${c.noProxy}',
         ],
       ],
-      'Labels': _labels(hashKey(executionKey)),
+      'Labels': _labels(hashKey(executionKey), profile: p.name),
       'Healthcheck': {
         'Test': [
           'CMD',
@@ -413,20 +571,40 @@ class SandboxSupervisor {
       },
       'HostConfig': {
         'NetworkMode': network,
-        'Memory': c.memoryMb * 1024 * 1024,
-        'MemorySwap': c.memoryMb * 1024 * 1024,
-        'NanoCpus': (c.cpus * 1e9).round(),
-        'PidsLimit': c.pidsLimit,
+        'Memory': limits.memoryMb * 1024 * 1024,
+        'MemorySwap': limits.memoryMb * 1024 * 1024,
+        'NanoCpus': (limits.cpus * 1e9).round(),
+        'PidsLimit': limits.pids,
         'ReadonlyRootfs': true,
         'Tmpfs': {
-          '/home/dify': tmpfs(c.homeMb),
-          '/workspace': tmpfs(c.workspaceMb),
+          '/home/dify': tmpfs(limits.homeMb),
+          '/workspace': tmpfs(limits.workspaceMb),
         },
         'CapDrop': ['ALL'],
         'SecurityOpt': ['no-new-privileges:true'],
         'Privileged': false,
         'Binds': <String>[],
-        'Mounts': <Object?>[],
+        'Mounts': [
+          for (final m in p.mounts)
+            {
+              'Type': 'bind',
+              'Source': m.source,
+              'Target': m.target,
+              'ReadOnly': true,
+              'BindOptions': {'Propagation': 'rprivate'},
+            },
+        ],
+        if (p.devices.isNotEmpty) ...{
+          'Devices': [
+            for (final d in p.devices)
+              {
+                'PathOnHost': d,
+                'PathInContainer': d,
+                'CgroupPermissions': 'rw',
+              },
+          ],
+          'GroupAdd': groups,
+        },
         'IpcMode': 'private',
         'Sysctls': {
           'net.ipv6.conf.all.disable_ipv6': '1',
@@ -572,10 +750,13 @@ class SandboxSupervisor {
     return [inspect['Id'] as String];
   }
 
-  /// The proxy (null when none is configured) and the agent containers.
-  Future<({String? proxy, List<String> agents})> _peers() async {
+  /// The proxy (null when none is configured or [withProxy] is false: a
+  /// profile with `egress: none`) and the agent containers.
+  Future<({String? proxy, List<String> agents})> _peers({
+    bool withProxy = true,
+  }) async {
     String? proxy;
-    final ref = config.proxyPeer;
+    final ref = withProxy ? config.proxyPeer : null;
     if (ref != null) {
       final ids = await _resolvePeer(ref);
       if (ids.length != 1) {
@@ -699,85 +880,129 @@ class SandboxSupervisor {
 
   // ---- sandboxes ----------------------------------------------------------
 
-  /// Creates (or returns) the sandbox of [executionKey].
-  Future<Map<String, Object?>> acquire(String executionKey) => _locked(
-    executionKey,
-    () async {
-      final name = containerName(executionKey);
-      final hash = hashKey(executionKey);
-      for (var attempt = 0; attempt < 3; attempt++) {
-        final existing = await docker.inspectContainer(name);
-        if (existing != null) {
-          if (!_labelled(existing)) {
-            throw SupervisorError(
-              409,
-              'name_conflict',
-              'a container named $name exists and is not a sandbox',
-            );
-          }
-          final id = existing['Id'] as String;
-          final state = existing['State'] as Map?;
-          final network = await docker.inspectNetwork(name);
-          final subnet = network == null ? null : _subnetOf(network);
-          if (state?['Running'] == true &&
-              (state?['Health'] as Map?)?['Status'] != 'unhealthy' &&
-              network != null &&
-              subnet != null &&
-              _labelled(network)) {
-            _known[id] = hash;
-            _saveState();
-            await _attachPeers(name, subnet, await _peers());
-            final ready = await _waitHealthy(id);
-            return _describe(ready, subnet, created: false);
-          }
-          // Stopped (its tmpfs workspace is gone), unhealthy or without its
-          // network: replace it.
-          log?.call('replacing stopped sandbox $id');
-          await _removeSandbox(id, name);
-        }
-        final peers = await _peers();
-        final subnet = await _createNetwork(name, hash);
-        String? id;
-        try {
-          if (peers.proxy case final proxy?) {
-            await docker.connectNetwork(
-              name,
-              proxy,
-              ipv4: subnet.host(proxyHost),
-            );
-          }
-          final token = _newToken();
-          id = await docker.createContainer(
-            name,
-            createPayload(executionKey, token, network: name, subnet: subnet),
+  /// The status of [profile] on this host: `ok`, `image_missing` (its
+  /// image is not present; nothing is pulled) or `device_missing` (a render
+  /// node does not exist).
+  Future<String> profileStatus(ExecutorProfile profile) async {
+    if (await docker.inspectImage(config.imageOf(profile)) == null) {
+      return 'image_missing';
+    }
+    for (final d in profile.devices) {
+      if (config.device(d) == null) return 'device_missing';
+    }
+    return 'ok';
+  }
+
+  /// Creates (or returns) the sandbox of [executionKey] with [profileName].
+  Future<Map<String, Object?>> acquire(
+    String executionKey, {
+    String profileName = defaultProfileName,
+  }) => _locked(executionKey, () async {
+    final profile = _profile(profileName);
+    final withProxy = profile.egress == Egress.allowlist;
+    final name = containerName(executionKey);
+    final hash = hashKey(executionKey);
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final existing = await docker.inspectContainer(name);
+      if (existing != null) {
+        if (!_labelled(existing)) {
+          throw SupervisorError(
+            409,
+            'name_conflict',
+            'a container named $name exists and is not a sandbox',
           );
-          if (id == null) {
-            // Created concurrently: inspect again.
-            await _removeNetwork(name);
-            continue;
-          }
+        }
+        final had = profileOf(existing);
+        if (had != profile.name) {
+          throw SupervisorError(
+            409,
+            'profile_conflict',
+            'the sandbox of this execution has profile $had, not '
+                '${profile.name}',
+          );
+        }
+        final id = existing['Id'] as String;
+        final state = existing['State'] as Map?;
+        final network = await docker.inspectNetwork(name);
+        final subnet = network == null ? null : _subnetOf(network);
+        if (state?['Running'] == true &&
+            (state?['Health'] as Map?)?['Status'] != 'unhealthy' &&
+            network != null &&
+            subnet != null &&
+            _labelled(network)) {
           _known[id] = hash;
           _saveState();
-          for (final a in peers.agents) {
-            await docker.connectNetwork(name, a);
-          }
-          await docker.startContainer(id);
+          await _attachPeers(name, subnet, await _peers(withProxy: withProxy));
           final ready = await _waitHealthy(id);
-          log?.call('created sandbox $id on $subnet');
-          return _describe(ready, subnet, created: true);
-        } catch (e) {
-          if (id != null) {
-            await docker.removeContainer(id).catchError((_) => false);
-            _known.remove(id);
-            _saveState();
-          }
-          await _removeNetwork(name).catchError((_) => false);
-          rethrow;
+          return _describe(ready, subnet, created: false);
         }
+        // Stopped (its tmpfs workspace is gone), unhealthy or without its
+        // network: replace it.
+        log?.call('replacing stopped sandbox $id');
+        await _removeSandbox(id, name);
       }
-      throw SupervisorError(503, 'sandbox_conflict', 'could not create $name');
-    },
-  );
+      final peers = await _peers(withProxy: withProxy);
+      switch (await profileStatus(profile)) {
+        case 'ok':
+          break;
+        case final status:
+          throw SupervisorError(
+            503,
+            status,
+            status == 'image_missing'
+                ? 'the image of profile ${profile.name} is not on this host'
+                : 'a device of profile ${profile.name} is not on this host',
+          );
+      }
+      final devices = {for (final d in profile.devices) d: config.device(d)!};
+      final subnet = await _createNetwork(name, hash);
+      String? id;
+      try {
+        if (peers.proxy case final proxy?) {
+          await docker.connectNetwork(
+            name,
+            proxy,
+            ipv4: subnet.host(proxyHost),
+          );
+        }
+        final token = _newToken();
+        id = await docker.createContainer(
+          name,
+          createPayload(
+            executionKey,
+            token,
+            network: name,
+            subnet: subnet,
+            profile: profile,
+            devices: devices,
+          ),
+        );
+        if (id == null) {
+          // Created concurrently: inspect again.
+          await _removeNetwork(name);
+          continue;
+        }
+        _known[id] = hash;
+        _saveState();
+        for (final a in peers.agents) {
+          await docker.connectNetwork(name, a);
+        }
+        await docker.startContainer(id);
+        final ready = await _waitHealthy(id);
+        log?.call('created sandbox $id on $subnet');
+        return _describe(ready, subnet, created: true);
+      } catch (e) {
+        if (id != null) {
+          await docker.removeContainer(id).catchError((_) => false);
+          _known.remove(id);
+          _saveState();
+        }
+        await _removeNetwork(name).catchError((_) => false);
+        rethrow;
+      }
+    }
+    throw SupervisorError(503, 'sandbox_conflict', 'could not create $name');
+  });
 
   Future<Map<String, Object?>> _waitHealthy(String id) async {
     final deadline = DateTime.now().add(config.startTimeout);
@@ -839,6 +1064,7 @@ class SandboxSupervisor {
       'token': token,
       'gateway': subnet.host(gatewayHost),
       'created': created,
+      'profile': profileOf(inspect),
     };
   }
 
@@ -884,6 +1110,7 @@ class SandboxSupervisor {
         ),
         'state': c['State'],
         'execution_sha256': (c['Labels'] as Map?)?[executionLabel],
+        'profile': profileOf(c),
         'known': _known.containsKey(c['Id']),
       },
   ];
@@ -910,14 +1137,32 @@ class SandboxSupervisor {
             'status': dockerOk ? 'ok' : 'degraded',
             'docker': dockerOk ? 'ok' : 'unreachable',
           });
+        case ('GET', ['v1', 'profiles']):
+          return _json(response, 200, {
+            'profiles': {
+              for (final p in config.profiles.profiles.values)
+                p.name: {'status': await profileStatus(p), 'digest': p.digest},
+            },
+          });
         case ('POST', ['v1', 'sandboxes']):
           final body = await _body(request);
-          final extra = body.keys.where((k) => k != 'execution_key').toList();
+          final extra = body.keys
+              .where((k) => k != 'execution_key' && k != 'profile')
+              .toList();
           if (extra.isNotEmpty) {
             throw SupervisorError(
               400,
               'invalid_request',
-              'only execution_key may be given; got ${extra.join(', ')}',
+              'only execution_key and profile may be given; got '
+                  '${extra.join(', ')}',
+            );
+          }
+          final profile = body['profile'] ?? defaultProfileName;
+          if (profile is! String || profile.isEmpty) {
+            throw SupervisorError(
+              400,
+              'invalid_request',
+              'profile must be a profile name',
             );
           }
           final key = body['execution_key'];
@@ -928,7 +1173,7 @@ class SandboxSupervisor {
               'execution_key must be a string of 1..512 characters',
             );
           }
-          final sandbox = await acquire(key);
+          final sandbox = await acquire(key, profileName: profile);
           return _json(
             response,
             sandbox['created'] == true ? 201 : 200,

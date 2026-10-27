@@ -182,6 +182,7 @@
           {
             "data": {
               "call_index_base": 0,
+              "executor_profile": "default",
               "model": {
                 "name": "test-model",
                 "provider": "langgenius/openai_api_compatible/openai_api_compatible"

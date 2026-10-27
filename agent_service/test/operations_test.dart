@@ -295,6 +295,8 @@ void main() {
         'status': 'ok',
         'sandbox': 'disabled',
         'version': serviceVersion,
+        // Without a supervisor no profile can run.
+        'profiles': {'default': 'unavailable'},
       });
     });
 

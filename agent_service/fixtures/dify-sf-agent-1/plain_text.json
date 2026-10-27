@@ -164,6 +164,9 @@
       },
       "response": {
         "body": {
+          "profiles": {
+            "default": "unavailable"
+          },
           "protocol": "dify-sf-agent/1",
           "sandbox": "disabled",
           "status": "ok",
@@ -251,6 +254,7 @@
           {
             "data": {
               "call_index_base": 0,
+              "executor_profile": "default",
               "model": {
                 "name": "test-model",
                 "provider": "langgenius/openai_api_compatible/openai_api_compatible"
@@ -281,6 +285,7 @@
               "snapshot": {
                 "agent_config_snapshot_id": "cfg-1",
                 "envelope": "dify-sf-agent-session/1",
+                "executor_profile": "default",
                 "file_ids": [],
                 "genkit": "1.0.1",
                 "messages": [
@@ -361,6 +366,7 @@
               "snapshot": {
                 "agent_config_snapshot_id": "cfg-1",
                 "envelope": "dify-sf-agent-session/1",
+                "executor_profile": "default",
                 "file_ids": [],
                 "genkit": "1.0.1",
                 "messages": [
@@ -456,6 +462,7 @@
             "snapshot": {
               "agent_config_snapshot_id": "cfg-1",
               "envelope": "dify-sf-agent-session/1",
+              "executor_profile": "default",
               "file_ids": [],
               "genkit": "1.0.1",
               "messages": [
@@ -541,6 +548,7 @@
             "snapshot": {
               "agent_config_snapshot_id": "cfg-1",
               "envelope": "dify-sf-agent-session/1",
+              "executor_profile": "default",
               "file_ids": [],
               "genkit": "1.0.1",
               "messages": [
@@ -640,6 +648,7 @@
             "snapshot": {
               "agent_config_snapshot_id": "cfg-1",
               "envelope": "dify-sf-agent-session/1",
+              "executor_profile": "default",
               "file_ids": [],
               "genkit": "1.0.1",
               "messages": [

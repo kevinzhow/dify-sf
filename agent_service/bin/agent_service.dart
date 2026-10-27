@@ -12,6 +12,11 @@ import 'package:agent_service/agent_service.dart';
 ///   AGENT_LOG_LEVEL    debug | info | warning | error (default info)
 ///   AGENT_SANDBOX_SUPERVISOR_URL / AGENT_SANDBOX_SUPERVISOR_KEY
 ///                      the sandbox supervisor; unset = no shell
+///   AGENT_EXECUTOR_PROFILES
+///                      the executor profile file (default
+///                      /etc/dify-sf/executor-profiles.json; without it only
+///                      the implicit `default`). A file that does not
+///                      validate stops the process.
 Future<void> main(List<String> args) async {
   if (args.contains('--healthcheck')) {
     await healthcheck('AGENT_SERVICE_KEY', 'AGENT_SERVICE_PORT', 5050);
@@ -60,12 +65,28 @@ Future<void> main(List<String> args) async {
     );
   }
 
+  final ExecutorProfiles profiles;
+  try {
+    profiles = ExecutorProfiles.load(
+      env['AGENT_EXECUTOR_PROFILES'],
+      forbiddenSources: [dataDir],
+    );
+  } on ProfileLoadError catch (e) {
+    stderr.writeln('$e');
+    exit(64);
+  }
+  stderr.writeln(
+    'executor profiles: ${profiles.names.join(', ')}'
+    '${profiles.path == null ? ' (implicit; no profile file)' : ' from ${profiles.path}'}',
+  );
+
   final service = AgentService(
     serviceKey: key,
     dataDir: dataDir,
     innerUrl: inner,
     logLevel: level,
     supervisor: supervisor,
+    profiles: profiles,
   );
   await service.start(address: InternetAddress.anyIPv4, port: port);
 

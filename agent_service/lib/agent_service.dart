@@ -2,6 +2,7 @@
 library;
 
 export 'src/ask_human.dart';
+export 'src/executor_profiles.dart';
 export 'src/gateway.dart';
 export 'src/leases.dart';
 export 'src/loop.dart';
@@ -14,3 +15,4 @@ export 'src/file_outputs.dart';
 export 'src/sandbox/sandbox.dart';
 export 'src/sandbox/shell_tools.dart';
 export 'src/sandbox/shellctl.dart';
+export 'src/view_image.dart';
