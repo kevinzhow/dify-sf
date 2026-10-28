@@ -490,4 +490,28 @@ void main() {
       ],
     );
   });
+
+  test('an unexpected failure still closes Codex and removes its '
+      'CODEX_HOME', () async {
+    final fake = FakeCodexAppServer(
+      // no `thread`: the runtime cannot go on
+      threadStartReply: {'model': 'test-model'},
+      turn: (s) async {},
+    );
+    final (h, run, shellctl) = await fake.startRun(officialCodexOp());
+    final status = await h.waitEnded(run);
+    final result = status['result'] as Map;
+    expect(result['error_type'], 'internal');
+    expect(result['message'], startsWith('internal error: '));
+    final scripts = [for (final r in shellctl.runRequests) '${r['script']}'];
+    expect(
+      scripts.where(
+        (s) => s.contains('rm -rf -- ') && s.contains('/.codex-runs/$run'),
+      ),
+      hasLength(1),
+    );
+    // The app-server job was terminated with the shell session.
+    expect(shellctl.terminated, isNotEmpty);
+    expect(shellctl.runningJobs, isEmpty);
+  });
 }

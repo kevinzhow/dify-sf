@@ -150,23 +150,46 @@ class _OfficialCodexRun {
   Future<void> execute() async {
     run._onStop = _interrupt;
     Future<void> Function() finish;
+    StopReason? stopped;
     try {
-      finish = await _run();
-    } on _Finish catch (f) {
-      finish = f.run;
-    } on SandboxFailure catch (e) {
-      finish = () async => run._fail(e.errorType, e.message);
-    } on ShellctlException catch (e) {
-      finish = () async => run._fail('sandbox_error', e.toolText);
-    } on CodexRpcError catch (e) {
-      finish = () async => run._fail('internal', '$e');
+      try {
+        finish = await _run();
+      } on _Finish catch (f) {
+        finish = f.run;
+      } on SandboxFailure catch (e) {
+        finish = () async => run._fail(e.errorType, e.message);
+      } on ShellctlException catch (e) {
+        finish = () async => run._fail('sandbox_error', e.toolText);
+      } on CodexRpcError catch (e) {
+        finish = () async => run._fail('internal', '$e');
+      }
+    } finally {
+      // Also when something else was thrown (the run then fails internal).
+      stopped = run._stopReason;
+      await _cleanup();
     }
-    final stopped = run._stopReason;
-    await _server?.close();
+    if (stopped != null || run._stopReason != null) {
+      return run._finishStopped(stopped ?? run._stopReason!);
+    }
+    await finish();
+  }
+
+  /// Closes the connection, ends the shell session (terminating the
+  /// app-server job; the reap kills Codex and its children) and removes the
+  /// run's CODEX_HOME. Never throws.
+  Future<void> _cleanup() async {
+    try {
+      await _server?.close();
+    } catch (e) {
+      run.log?.call('run ${run.runId}: closing the codex connection: $e');
+    }
     final home = _home;
     final session = run._session;
-    // Terminates the app-server job; the reap kills Codex and its children.
-    await run._endShell();
+    try {
+      await run._endShell();
+    } catch (e) {
+      run.log?.call('run ${run.runId}: ending the shell session: $e');
+    }
     if (home != null && session != null) {
       try {
         await session.sandbox.control('rm -rf -- ${shellQuote(home)}');
@@ -174,10 +197,6 @@ class _OfficialCodexRun {
         run.log?.call('run ${run.runId}: could not remove $home: $e');
       }
     }
-    if (stopped != null || run._stopReason != null) {
-      return run._finishStopped(stopped ?? run._stopReason!);
-    }
-    await finish();
   }
 
   Never _failWith(String type, String message) =>

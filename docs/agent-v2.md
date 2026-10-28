@@ -534,7 +534,8 @@ binary ends the run `sandbox_error`.
 | `model.context_window`, `model.reasoning_efforts`, `model.input_modalities` | Optional; written into Codex's catalog entry (context window; supported levels; `["text", "image"]` or `["text"]`) |
 | `tools.shell`, `tools.view_image`, `tools.update_plan`, `tools.report_progress` | Codex's shell and `apply_patch`, `view_image`, `update_plan`; `report_progress` as a Codex dynamic tool. `tools.ask_human` is ignored: no question tool in this step |
 
-**Per-run setup** in the sandbox (`CODEX_HOME=/home/dify/agent/.codex-runs/<run_id>`, removed after the run):
+**Per-run setup** in the sandbox (`CODEX_HOME=/home/dify/agent/.codex-runs/<run_id>`, removed after the run however
+it ended, as the connection is closed and the app-server job ended, also after an unexpected error):
 `config.toml` (provider `difysf`: `base_url` = the Codex entry, `wire_api = "responses"`, `env_key =
 "DIFYSF_RUN_TOKEN"`, `supports_websockets = false`; `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`
 (the container is the sandbox), `web_search = "disabled"`; `shell_environment_policy` without Codex's KEY/SECRET/TOKEN
