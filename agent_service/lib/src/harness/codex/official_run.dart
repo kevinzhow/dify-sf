@@ -1059,8 +1059,12 @@ class _OfficialCodexRun {
               _finalText = text;
             case 'commentary':
               run._emit('commentary', {'text': text, 'call_index': _callIndex});
-            default:
+            case null || 'partial_answer':
               _unphased = item.cast<String, Object?>();
+            default:
+              run.log?.call(
+                'run ${run.runId}: ignored an unknown agent message phase',
+              );
           }
         } else if (type == 'reasoning') {
           final buffer = ThoughtBuffer(

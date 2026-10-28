@@ -82,6 +82,20 @@ void main() {
   });
 
   group('completed turn item phases', () {
+    test(
+      'unknown message notifications cannot become a fallback answer',
+      () async {
+        final fake = FakeCodexAppServer(
+          turn: (s) async {
+            s
+              ..message('Not an answer.', phase: 'unknown_phase')
+              ..complete({'status': 'completed'});
+          },
+        );
+        final (result, _, _) = await ran(fake);
+        expect(result['candidate'], {'text': ''});
+      },
+    );
     for (final phase in ['commentary', 'unknown_phase']) {
       test('$phase items are not final answers', () async {
         final fake = FakeCodexAppServer(
