@@ -74,6 +74,8 @@ void main() {
       'base_url = "http://gw/inner/agent/codex/v1"',
       'env_key = "DIFYSF_RUN_TOKEN"',
       'supports_websockets = false',
+      'supports_websockets = false\nrequest_max_retries = 2\n'
+          'stream_max_retries = 2\n',
       'exclude = ["DIFYSF_RUN_TOKEN", "SHELLCTL_*"]',
       'NO_PROXY = "localhost"',
       'multi_agent = false',

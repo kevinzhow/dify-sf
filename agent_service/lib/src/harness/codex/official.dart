@@ -75,6 +75,12 @@ const codexOptOutNotifications = [
   'account/rateLimits/updated',
 ];
 
+/// Codex's retries of a failed model request (5xx, transport errors) and
+/// of a dropped response stream (defaults 4 and 5): each attempt is a POST
+/// the gateway counts against `max_turns`.
+const codexRequestMaxRetries = 2;
+const codexStreamMaxRetries = 2;
+
 /// A TOML basic string (JSON's escapes are a subset of TOML's).
 String tomlString(String s) => jsonEncode(s);
 
@@ -110,6 +116,8 @@ String codexConfigToml({
     ..writeln('wire_api = "responses"')
     ..writeln('env_key = "$codexTokenEnv"')
     ..writeln('supports_websockets = false')
+    ..writeln('request_max_retries = $codexRequestMaxRetries')
+    ..writeln('stream_max_retries = $codexStreamMaxRetries')
     ..writeln()
     // The commands get the node's environment as the other styles do
     // (Codex's default KEY/SECRET/TOKEN filter off), never the run token or

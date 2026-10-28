@@ -537,7 +537,10 @@ binary ends the run `sandbox_error`.
 **Per-run setup** in the sandbox (`CODEX_HOME=/home/dify/agent/.codex-runs/<run_id>`, removed after the run however
 it ended, as the connection is closed and the app-server job ended, also after an unexpected error):
 `config.toml` (provider `difysf`: `base_url` = the Codex entry, `wire_api = "responses"`, `env_key =
-"DIFYSF_RUN_TOKEN"`, `supports_websockets = false`; `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`
+"DIFYSF_RUN_TOKEN"`, `supports_websockets = false`, `request_max_retries = 2` and `stream_max_retries = 2` (Codex's
+defaults 4 and 5): every retried request or stream is another POST the gateway counts against `max_turns`, so a run
+loses at most a few calls to a failing provider; request retries (5xx, transport) are silent, stream retries are
+`error` notifications with `willRetry` (`model_retry`); `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`
 (the container is the sandbox), `web_search = "disabled"`; `shell_environment_policy` without Codex's KEY/SECRET/TOKEN
 filter but excluding `DIFYSF_RUN_TOKEN` and `SHELLCTL_*`; request_user_input, skills (unless the profile declares
 them, below), bundled skills, the skill MCP-dependency install prompt, goals, apps, plugins, memories, image generation
