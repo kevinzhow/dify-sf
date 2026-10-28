@@ -21,7 +21,7 @@
 #   4. an output retry of run 1 in its workspace, where run 1's command planted /workspace/.codex/config.toml
 #      (another base_url, developer instructions, effort low, no env excludes) and /workspace/AGENTS.md: Codex must
 #      ignore both (the workspace is an untrusted project): the requests reach this gateway with effort max and
-#      without the planted text, and the command does not see the run token;
+#      without the planted text, and the command does not see the run token; its final answer has no phase;
 #   5. a provider quota (429 insufficient_quota, as the gateway passes it through): the run must fail model_quota;
 #   6. a provider's usage_limit_reached passed through without the gateway's call-limit mark, before max_turns calls:
 #      model_quota, not max_turns;
@@ -183,9 +183,11 @@ def call(*items, summary=None):
     return {"responses_events": ev}
 def fn(cid, name, args):
     return {"type": "function_call", "id": "fc_" + cid, "call_id": cid, "name": name, "arguments": json.dumps(args)}
-def msg(text, phase):
-    return {"type": "message", "role": "assistant", "id": "msg_" + phase, "phase": phase,
-            "content": [{"type": "output_text", "text": text}]}
+def msg(text, phase):  # phase None: a provider that sends none
+    m = {"type": "message", "role": "assistant", "id": "msg_" + (phase or "nophase"),
+         "content": [{"type": "output_text", "text": text}]}
+    if phase: m["phase"] = phase
+    return m
 png = ("import struct,zlib,os\n"
        "def c(t,d): return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d))\n"
        "raw=b''.join(b'\\x00'+bytes([200,60,40])*16 for _ in range(16))\n"
@@ -215,7 +217,7 @@ calls = [
   {"hang": True, "responses_events": [{"type": "response.created", "response": {}}]},
   # run 4: the output retry in run 1's workspace
   call(fn("call_check", "exec_command", {"cmd": "echo TOKEN=${DIFYSF_RUN_TOKEN:-unset}; head -c 40 .codex/config.toml; echo; cat AGENTS.md"})),
-  call(msg(json.dumps({"text": "done again", "file": "out/hello.txt", "preview": "out/preview.png"}), "final_answer")),
+  call(msg(json.dumps({"text": "done again", "file": "out/hello.txt", "preview": "out/preview.png"}), None)),
   # run 5: a provider quota; run 6: a provider's usage_limit_reached (both as the gateway passes them through)
   {"http_status": 429, "http_body": {"error": {"type": "insufficient_quota", "code": "insufficient_quota",
                                                 "message": "The model provider rejected this request"}}},
@@ -463,6 +465,7 @@ for b in open(sys.argv[1]).read().strip().split("\n\n"):
     e = dict(l.split(": ", 1) for l in b.split("\n") if ": " in l)
     if "id" in e: events.append((e["event"], json.loads(e["data"])))
 assert events[-1][0] == "succeeded", events[-1]
+assert events[-1][1]["candidate"]["text"] == "done again", events[-1][1]  # the final message had no phase
 out = [d for n, d in events if n == "tool_call" and d["phase"] == "finished"][0]["output"]["output"]
 assert "TOKEN=unset" in out and "PLANTED-DEV" in out and "PLANTED-AGENTS-MD" in out, out
 reqs = json.load(open(sys.argv[2]))["requests"][6:]
