@@ -59,11 +59,14 @@ class FakeCodexAppServer {
   Map<String, Object?> paramsOf(String method) =>
       received.firstWhere((r) => r.method == method).params;
 
-  /// The job script handler: starts the server for the app-server job.
+  /// The job script handler: the app-server job runs on the port the fake
+  /// holds ([startRun] gives it to the runtime).
   FakeJobSpec? onJob(String script) {
     final m = _listen.firstMatch(script);
     if (m == null) return null;
-    unawaited(_start(int.parse(m.group(1)!)));
+    if (int.parse(m.group(1)!) != _http?.port) {
+      throw StateError('app-server started on another port: $script');
+    }
     return FakeJobSpec(running: true);
   }
 
@@ -84,8 +87,8 @@ class FakeCodexAppServer {
     ).firstMatch(toml)?.group(1);
   }
 
-  Future<void> _start(int port) async {
-    final http = _http = await HttpServer.bind('127.0.0.1', port);
+  Future<void> _start() async {
+    final http = _http = await HttpServer.bind('127.0.0.1', 0);
     http.listen((req) async {
       if (!WebSocketTransformer.isUpgradeRequest(req)) {
         req.response.statusCode = 400;
@@ -246,6 +249,8 @@ class FakeCodexAppServer {
         },
       },
     });
+    await _start();
+    codexAppServerPortForTests = () => _http!.port;
     final shellctl = Completer<FakeShellctl>();
     final sup =
         FakeSupervisor(
@@ -286,6 +291,7 @@ class FakeCodexAppServer {
       codexGatewayUrl: 'http://gw/inner/agent/codex/v1',
     );
     addTearDown(() async {
+      codexAppServerPortForTests = null;
       await close();
       await h.close();
       await sup.close();

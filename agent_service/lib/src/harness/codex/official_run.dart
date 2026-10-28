@@ -578,7 +578,8 @@ class _OfficialCodexRun {
     final wsToken = [for (var i = 0; i < 32; i++) _random.nextInt(256)]
         .map((b) => b.toRadixString(16).padLeft(2, '0'))
         .join();
-    final port = 20000 + _random.nextInt(20000);
+    final port =
+        codexAppServerPortForTests?.call() ?? 20000 + _random.nextInt(20000);
     final client = sandbox.client();
     final JobResult job;
     try {

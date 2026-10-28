@@ -397,6 +397,10 @@ String? codexRequestEffort(String? effort, Map<String, Object?> entry) {
   return levels.reversed.where((l) => l != 'ultra').firstOrNull ?? 'medium';
 }
 
+/// Picks the sandbox port of a run's app-server (null: a random one in
+/// 20000-39999). Only tests set it, to a port their fake app-server holds.
+int Function()? codexAppServerPortForTests;
+
 /// A JSON-RPC error answered by the app-server.
 class CodexRpcError implements Exception {
   CodexRpcError(this.method, this.error);
