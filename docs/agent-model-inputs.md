@@ -27,3 +27,8 @@ The server resolves the inputs when the node begins and validates the selected m
 that selection to the durable execution, so human-input resumes and output retries use the original values. The
 resolved provider, model and parameters appear in the Agent's `run_started` event and node execution inputs.
 Credential references remain internal. Existing workflows without `agent_model` continue to use their fixed settings.
+
+Reasoning-effort validation follows the model settings policy. For OpenAI-compatible endpoints, a verified list
+published by the model service is authoritative. Without that declaration, the plugin's built-in menu is a set of
+suggestions and the service validates custom values. Other providers keep their schema restrictions. Suggested
+values are not forwarded as an authoritative list of capabilities to the Agent harness.
