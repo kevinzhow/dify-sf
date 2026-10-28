@@ -130,6 +130,8 @@ class WorkflowStore {
 
   final _fields = <ChangeNotifier>[];
   final bool _ownsControlMode;
+  bool _disposed = false;
+  bool get isDisposed => _disposed;
 
   ValueNotifier<T> _v<T>(T initial) {
     final n = ValueNotifier<T>(initial);
@@ -518,6 +520,7 @@ class WorkflowStore {
   final triggerStatus = TriggerStatusStore();
 
   void dispose() {
+    _disposed = true;
     debouncedSyncWorkflowDraft.cancel();
     for (final f in _fields) {
       f.dispose();

@@ -70,11 +70,25 @@ class _RunPanelState extends State<RunPanel> {
   DifyJson? _beforeRunning, _lastRunning;
 
   void _releaseProjection() {
-    if (!_projected || _store == null) return;
-    if (identical(_store!.nodeRunData.value, _lastNodes)) _store!.nodeRunData.value = _beforeNodes!;
-    if (identical(_store!.edgeRunData.value, _lastEdges)) _store!.edgeRunData.value = _beforeEdges!;
-    if (identical(_store!.workflowRunningData.value, _lastRunning)) _store!.workflowRunningData.value = _beforeRunning;
+    final store = _store;
+    if (!_projected || store == null) return;
+    final beforeNodes = _beforeNodes!,
+        beforeEdges = _beforeEdges!,
+        beforeRunning = _beforeRunning;
+    final lastNodes = _lastNodes,
+        lastEdges = _lastEdges,
+        lastRunning = _lastRunning;
     _projected = false;
+    // Unmount and run-ID changes happen while the widget tree is locked. Other editor listeners remain alive.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (store.isDisposed) return;
+      if (identical(store.nodeRunData.value, lastNodes))
+        store.nodeRunData.value = beforeNodes;
+      if (identical(store.edgeRunData.value, lastEdges))
+        store.edgeRunData.value = beforeEdges;
+      if (identical(store.workflowRunningData.value, lastRunning))
+        store.workflowRunningData.value = beforeRunning;
+    });
   }
 
   void _observed() {
