@@ -10,6 +10,7 @@
 library;
 
 import '../../../agents/inline_checks.dart';
+import '../../../agents/model_inputs.dart';
 import '../../node_panel/bodies/llm/agent_v2_logic.dart' show hasValidInlineAgentBinding, hasValidRosterAgentBinding;
 
 import 'package:collab_client/collab_client.dart';
@@ -538,6 +539,18 @@ class _Check {
 
   /// Whether one of [usedVars] is neither special nor an output of an available node.
   bool hasInvalidVar(DifyFlowNode n, List<List<String>> usedVars) {
+    if (_isAgentV2(n.data) && !validAgentModelInputs(n.data['agent_model'])) return true;
+    final modelVars = _isAgentV2(n.data) ? agentModelInputSelectors(n.data['agent_model']) : const <List<String>>[];
+    if (modelVars.isNotEmpty) {
+      final types = VarTypes(
+        lookup: (id) => byId[id]?.node,
+        start: nodes.where((node) => node.blockType == 'start').firstOrNull?.node,
+        chatMode: env.chatMode,
+        environmentVariables: DeclaredVar.listOf(env.environmentVariables),
+        conversationVariables: DeclaredVar.listOf(env.conversationVariables),
+      );
+      if (modelVars.any((selector) => types.typeOf(selector) != VarType.string)) return true;
+    }
     if (usedVars.every((v) => env.isSpecialVar(v[0]))) return false;
     final available = availableVars(n);
     for (final v in usedVars) {

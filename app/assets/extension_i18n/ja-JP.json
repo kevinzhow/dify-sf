@@ -60,6 +60,9 @@
     "inline.updatePlan": "計画の更新を許可",
     "inline.event.commentary": "Agent の報告",
     "inline.event.plan": "計画",
-    "inline.event.model_retry": "モデル呼び出しを再試行"
+    "inline.event.model_retry": "モデル呼び出しを再試行",
+    "inline.runtimeModel": "モデル入力",
+    "inline.runtimeReasoning": "推論強度の入力",
+    "inline.fromConfiguration": "エージェント設定の値を使用"
   }
 }

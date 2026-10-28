@@ -8,6 +8,7 @@ public struct AgentNodeData: Sendable {
     public var snapshotID: String
     public var task: String
     public var declarations: [AgentDeclaredOutput]
+    public var modelInputs: AgentModelInputs
     public var raw: JSONObject
 
     public init(_ data: JSONObject) throws {
@@ -28,6 +29,7 @@ public struct AgentNodeData: Sendable {
         task = data["agent_task"]?.string ?? ""
         guard task.utf8.count <= 256 << 10 else { throw NodeDataError("agent_task is too large") }
         declarations = try AgentDeclaredOutput.parse(data["agent_declared_outputs"]?.array ?? [])
+        modelInputs = try AgentModelInputs(data["agent_model"])
         raw = data
     }
 
@@ -111,6 +113,8 @@ public struct AgentV2Node: RuntimeNode {
     }
 
     public func variableMapping(graph: GraphConfig) -> [(key: String, selector: [String])] {
-        AgentNodeData.selectors(data.task).map { ("\(id)." + $0.joined(separator: "."), $0) }
+        var seen = Set<[String]>()
+        return (AgentNodeData.selectors(data.task) + data.modelInputs.selectors)
+            .filter { seen.insert($0).inserted }.map { ("\(id)." + $0.joined(separator: "."), $0) }
     }
 }

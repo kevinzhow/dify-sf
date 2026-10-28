@@ -27,6 +27,14 @@ struct ServerAgentRuntime: AgentRuntime {
         let (_, soul) = try await configuration(nodeID, data)
         let profile = try await executorProfile(soul)
         _ = try AgentExecutionPolicy.turns(node: soul.maxTurns, profile: profile?.maxTurnsMax)
+        try await validateModel(soul)
+        for item in soul.files {
+            guard let id = item["file_id"]?.string, let files else { throw NodeError("AgentFileUnavailable", "An agent configuration file is missing") }
+            _ = try await files.resolve(["transfer_method": "local_file", "upload_file_id": .string(id)], config: nil)
+        }
+    }
+
+    private func validateModel(_ soul: AgentInlineConfig) async throws {
         guard let provider = soul.provider, let model = soul.model,
               let models = routes.runtimeServices(appId: appID, userId: userID).models else { throw ServiceNotConfigured(service: .models) }
         let credentials = try await routes.agentCredentials(provider: provider, model: model, reference: soul.json["model"]?["credential_ref"])
@@ -35,16 +43,23 @@ struct ServerAgentRuntime: AgentRuntime {
               (schema.features ?? []).contains(where: { ["tool-call", "multi-tool-call"].contains($0) }) else {
             throw NodeError("AgentModelUnsupported", "The agent model must support tool calls")
         }
-        for item in soul.files {
-            guard let id = item["file_id"]?.string, let files else { throw NodeError("AgentFileUnavailable", "An agent configuration file is missing") }
-            _ = try await files.resolve(["transfer_method": "local_file", "upload_file_id": .string(id)], config: nil)
+        if let effort = soul.modelParameters["reasoning_effort"],
+           let rule = schema.json["parameter_rules"]?.array?.first(where: { $0["name"] == "reasoning_effort" }),
+           rule["allow_custom_value"] != true, let options = rule["options"]?.array, !options.isEmpty,
+           !options.contains(effort) {
+            throw NodeError("AgentModelInputInvalid", "The selected model does not support this reasoning effort")
         }
     }
 
     func run(nodeID: String, data: AgentNodeData, context: NodeRunContext) async throws -> AgentNodeDecision {
         let activeStarted = ContinuousClock.now
         let activeWallStarted = Date()
-        let (stored, soul) = try await configuration(nodeID, data)
+        let (stored, configured) = try await configuration(nodeID, data)
+        guard let execution = context.executionId else { throw NodeError("AgentExecutionMissing", "Agent nodes require a workflow execution") }
+        let existing = try await routes.store.agentSession(execution: execution)
+        let pinned = try existing.flatMap { try JSONValue.parse($0.usage)["model_selection"]?.object }
+        let soul = try data.modelInputs.resolve(configured, pool: context.pool, pinned: pinned)
+        try await validateModel(soul)
         let profile = try await executorProfile(soul)
         let maxTurns = try AgentExecutionPolicy.turns(node: soul.maxTurns, profile: profile?.maxTurnsMax)
         let timeout = AgentExecutionPolicy.timeout(node: routes.config.agentService.timeoutSeconds,
@@ -60,12 +75,11 @@ struct ServerAgentRuntime: AgentRuntime {
                 catch StoreError.agentCapacityFull { try await Task.sleep(for: .milliseconds(250)) }
             }
         }
-        guard let execution = context.executionId else { throw NodeError("AgentExecutionMissing", "Agent nodes require a workflow execution") }
         let prompt = try await AgentPromptBuilder.build(node: data, config: soul, pool: context.pool, files: files,
             nodeJob: try JSONValue.parse(stored.nodeJob).object ?? [:])
         var session: StoredAgentSession
         var continuation: JSONValue = .null
-        if let existing = try await routes.store.agentSession(execution: execution) {
+        if let existing {
             guard existing.workflowRunID == runID, existing.configSnapshotID == data.snapshotID, existing.nodeID == nodeID else {
                 throw NodeError("AgentConfigChanged", "The agent execution does not belong to this pinned workflow node")
             }
@@ -93,6 +107,11 @@ struct ServerAgentRuntime: AgentRuntime {
                 maxConcurrent: routes.config.agentService.maxConcurrent) }
         }
         let service = AgentServiceClient(config: routes.config.agentService)
+        let selectedModel = soul.json["model"]!.object!
+        let pinnedModel = try await routes.store.pinAgentModel(session: session, selection: JSONValue.object(selectedModel).compactJSON())
+        guard try JSONValue.parse(pinnedModel) == .object(selectedModel) else {
+            throw NodeError("AgentConfigChanged", "The agent execution already has a different model selection")
+        }
         let startedData = try await pending.agentCommits.startedData(execution)
         let shellAvailable: Bool
         if let pinned = try JSONValue.parse(session.usage)["shell_enabled"]?.bool { shellAvailable = pinned }
@@ -128,11 +147,16 @@ struct ServerAgentRuntime: AgentRuntime {
             json["shell_enabled"] = .bool(shellAvailable)
             json["view_image"] = .bool(viewImage)
             json["report_progress"] = .bool(reportProgress)
+            json["model_selection"] = .object(selectedModel)
             return JSONValue.object(json).compactJSON()
         }
         let modelEnvelope = try await modelEnvelope(soul)
         let wire = modelEnvelope["wire"]?.string ?? "plugin"
         var inputs = JSONObject(); inputs["task"] = .string(data.task)
+        // Public values only: keep private credential references in the session, not in workflow trace inputs.
+        let resolvedModel: JSONObject = ["provider": .string(soul.provider!), "model": .string(soul.model!),
+            "parameters": .object(soul.modelParameters)]
+        inputs["model"] = .object(resolvedModel)
         while true {
             try Task.checkCancellation()
             if context.isAborted() { throw CancellationError() }
@@ -188,7 +212,10 @@ struct ServerAgentRuntime: AgentRuntime {
                     expectedProfile: soul.executorProfile, expectedHarness: soul.harnessStyle == "codex" ? "codex" : nil,
                     expectedWire: soul.harnessStyle == "codex" ? wire : nil, generation: session.generation, isAborted: context.isAborted) { event, name, data in
                     var display = data
-                    if name == "run_started" { display["max_turns"] = .int(maxTurns) }
+                    if name == "run_started" {
+                        display["max_turns"] = .int(maxTurns)
+                        display["resolved_model"] = .object(resolvedModel)
+                    }
                     if name == "progress" { display = try await routes.normalizeAgentProgress(data, session: activeSession, files: files) }
                     try await trace.record(routes: routes, session: activeSession, run: remote, event: event, name: name, data: display)
                 }

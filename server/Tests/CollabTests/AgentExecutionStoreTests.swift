@@ -8,6 +8,21 @@ import Testing
 
 @Suite("Agent durable execution transactions", .enabled(if: testDbHost != nil))
 struct AgentExecutionStoreTests {
+    @Test func resolvedModelIsImmutableAndUsesTheExistingOwnershipLease() async throws {
+        try await withServer { api, store, _ in
+            let session = try await Self.seed(api, store)
+            let first = #"{"model":"model-a","model_settings":{"reasoning_effort":"high"}}"#
+            let second = #"{"model":"model-b","model_settings":{"reasoning_effort":"max"}}"#
+            #expect(try JSONValue.parse(try await store.pinAgentModel(session: session, selection: first)) == JSONValue.parse(first))
+            #expect(try JSONValue.parse(try await store.pinAgentModel(session: session, selection: second)) == JSONValue.parse(first))
+            let stored = try #require(try await store.agentSession(execution: session.executionID))
+            #expect(try JSONValue.parse(stored.usage)["model_selection"] == JSONValue.parse(first))
+            _ = try await store.client.query("UPDATE agent_node_sessions SET lease_until = now() - interval '1 second' WHERE execution_id = \(session.executionID)", logger: store.logger)
+            do { _ = try await store.pinAgentModel(session: session, selection: second); Issue.record("Expired ownership changed model") }
+            catch { }
+        }
+    }
+
     static func seed(_ api: API, _ store: PostgresStore) async throws -> StoredAgentSession {
         let (token, user, app) = try await AgentComposerTests.seed(api, store)
         let saved = try await api.send(.put, AgentComposerTests.path(app), AgentComposerTests.payload().compactJSON(), token: token)
