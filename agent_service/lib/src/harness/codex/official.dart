@@ -354,6 +354,18 @@ Map<String, Object?> codexCatalogEntry({
 /// `Retry-After`, so a provider cannot send it.
 const codexCallLimitMarker = 'dify-sf-agent-call-limit';
 
+/// Process diagnostics may quote startup credentials. Mask them before taking
+/// the bounded tail, including a credential crossing the truncation boundary.
+String codexDiagnosticTail(String output, Iterable<String?> secrets) {
+  var safe = output.trim();
+  final values = secrets.whereType<String>().where((s) => s.isNotEmpty).toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
+  for (final secret in values) {
+    safe = safe.replaceAll(secret, '[redacted]');
+  }
+  return safe.length > 4000 ? '…${safe.substring(safe.length - 4000)}' : safe;
+}
+
 /// Codex's message for a 429 with `error.type: usage_limit_reached`
 /// (`UsageLimitReachedError`); its quota and billing errors (also
 /// `usageLimitExceeded`) read "Quota exceeded…" or name the plan.

@@ -13,6 +13,15 @@ import 'package:test/test.dart';
 import 'support.dart';
 
 void main() {
+  test('diagnostic tail redacts before cutting across a credential', () {
+    final secret = 'fixture-secret-capability';
+    final raw = '${'x' * 100}$secret${'y' * 3990}';
+    final safe = codexDiagnosticTail(raw, [null, '', secret]);
+    expect(safe.length, lessThanOrEqualTo(4001));
+    expect(safe, isNot(contains('capability')));
+    expect(codexDiagnosticTail('safe tail', [secret]), 'safe tail');
+  });
+
   Map<String, Object?> codexOp({Object? effort, bool token = true}) {
     final o = operation();
     final model = Map.of(o['model'] as Map<String, Object?>);

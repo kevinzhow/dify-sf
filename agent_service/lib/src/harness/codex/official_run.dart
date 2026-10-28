@@ -607,12 +607,14 @@ class _OfficialCodexRun {
       try {
         final s = await c.status(job.jobId);
         if (!s.done) return null;
-        final tail = (await c.tail(job.jobId)).output.trim();
-        // Its stderr is merged into the output (`2>&1`): the last 4000
-        // characters.
-        final shown = tail.length > 4000
-            ? '…${tail.substring(tail.length - 4000)}'
-            : tail;
+        // Its stderr is merged into the output (`2>&1`). Mask capabilities
+        // before truncation, so a boundary cannot expose half a token.
+        final shown = codexDiagnosticTail((await c.tail(job.jobId)).output, [
+          token,
+          wsToken,
+          run.runToken,
+          run.serviceKey,
+        ]);
         return 'codex app-server exited (${s.status} ${s.exitCode})'
             '${shown.isEmpty ? ' without output' : ': $shown'}';
       } catch (_) {
@@ -797,14 +799,29 @@ class _OfficialCodexRun {
     // without a phase or with `partial_answer` that no tool call followed
     // (providers do not always send a phase).
     final items = (turn['items'] as List?) ?? const [];
-    final last = items.reversed
-        .whereType<Map>()
-        .where((i) => i['type'] == 'agentMessage')
-        .firstOrNull;
+    String? itemFinal;
+    String? itemCandidate;
+    var hasMessageOrTool = false;
+    for (final item in items.whereType<Map>()) {
+      if (_toolItems.contains(item['type'])) {
+        hasMessageOrTool = true;
+        itemCandidate = null;
+      } else if (item['type'] == 'agentMessage') {
+        hasMessageOrTool = true;
+        if (item['phase'] == 'final_answer') {
+          itemFinal = item['text'] as String?;
+        } else if (item['phase'] == null || item['phase'] == 'partial_answer') {
+          itemCandidate = item['text'] as String?;
+        } else {
+          itemCandidate = null;
+        }
+      }
+    }
     final text =
-        (last?['text'] as String?) ??
+        itemFinal ??
         _finalText ??
-        (_unphased?['text'] as String?) ??
+        itemCandidate ??
+        (hasMessageOrTool ? null : _unphased?['text'] as String?) ??
         '';
     final schema = r.outputSchema;
     return () async {

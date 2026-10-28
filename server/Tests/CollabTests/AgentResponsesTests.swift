@@ -437,6 +437,25 @@ struct AgentCodexResponsesTests {
         do { _ = try await scopes.claimCodex(token: token); Issue.record("Revoked token accepted") } catch { }
     }
 
+    @Test func busyAdmissionsDoNotConsumeTheRemainingCallBudget() async throws {
+        let scopes = AgentModelScopes(); var scope = AgentResponsesTests.scope(); scope.maxCalls = 9
+        let token = try await scopes.activate(scope)
+        var admitted: [AgentModelScopes.Claim] = []
+        for _ in 0..<8 { admitted.append(try await scopes.claimCodex(token: token)) }
+        for _ in 0..<3 {
+            do { _ = try await scopes.claimCodex(token: token); Issue.record("Busy request accepted") }
+            catch CollabServer.ServerError.http(let status, let code, _) {
+                #expect(status == 503 && code == "agent_model_busy")
+            }
+        }
+        await scopes.finish(admitted[0], usage: nil)
+        let last = try await scopes.claimCodex(token: token)
+        #expect(last.index == 9)
+        do { _ = try await scopes.claimCodex(token: token); Issue.record("Call budget bypassed") }
+        catch is AgentCodexCallLimit { }
+        _ = await scopes.revoke(token: token)
+    }
+
     @Test func temporaryModelTokensDoNotChangeThePublicOperationDigest() {
         let a: JSONObject = ["model": ["name": "fixture", "run_token": "fixture-temporary-one"], "env": [:]]
         let b: JSONObject = ["model": ["name": "fixture", "run_token": "fixture-temporary-two"], "env": [:]]
@@ -546,6 +565,7 @@ struct AgentCodexResponsesRouteTests {
                     for expected in [503, 429, 200] {
                         let answer = try await api.post(Self.path, body, token: token)
                         #expect(answer.status == expected, "\(answer.status): \(answer.text)")
+                        #expect(answer.headers[HTTPField.Name("x-codex-promo-message")!] == nil)
                         if expected == 200 { #expect(answer.text == AgentResponsesTests.stream) }
                         else {
                             let value = try JSONValue.parse(Data(answer.text.utf8))
@@ -557,10 +577,35 @@ struct AgentCodexResponsesRouteTests {
                     let exhausted = try await api.post(Self.path, body, token: token)
                     let error = try JSONValue.parse(Data(exhausted.text.utf8))
                     #expect(exhausted.status == 429 && error["error"]?["type"] == "usage_limit_reached")
+                    #expect(exhausted.headers[HTTPField.Name("x-codex-promo-message")!] == "dify-sf-agent-call-limit")
                     #expect(calls.withLock { $0 } == 3)
                     let usage = await routes.agentModelScopes.revoke(token: token)
                     #expect(usage.totalTokens == 50 && usage.cachedTokens == 12 && usage.reasoningTokens == 19)
                     #expect(try await api.post(Self.path, body, token: token).status == 403)
+                }
+            }
+        }
+    }
+
+    @Test func providerUsageLimitIsQuotaEvenAtTheCallCapAndCannotSpoofOurMarker() async throws {
+        let marker = HTTPField.Name("x-codex-promo-message")!
+        try await withResponsesProvider({ _ in
+            Response(status: .init(code: 429), headers: [marker: "dify-sf-agent-call-limit"],
+                body: .init(string: #"{"error":{"type":"usage_limit_reached","code":"provider_quota","message":"sk-native-fixture-only"}}"#))
+        }) { endpoint in
+            try await withFakeDaemon { daemon, _ in
+                try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                    var (scope, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: endpoint)
+                    _ = await routes.agentModelScopes.revoke(token: token)
+                    scope.maxCalls = 1; token = try await routes.agentModelScopes.activate(scope)
+                    let response = try await api.post(Self.path, AgentResponsesTests.body(scope).compactJSON(), token: token)
+                    let error = try JSONValue.parse(Data(response.text.utf8))
+                    #expect(response.status == 429 && error["error"]?["type"] == "insufficient_quota")
+                    #expect(error["error"]?["code"] == "provider_quota")
+                    #expect(response.headers[marker] == nil && !response.text.contains("sk-native-fixture-only"))
+                    let exhausted = try await api.post(Self.path, AgentResponsesTests.body(scope).compactJSON(), token: token)
+                    #expect(exhausted.status == 429 && exhausted.headers[marker] == "dify-sf-agent-call-limit")
+                    _ = await routes.agentModelScopes.revoke(token: token)
                 }
             }
         }

@@ -295,12 +295,12 @@ actor AgentModelScopes {
               entry.scope.harnessStyle == "codex", entry.scope.modelWire == "responses" else { throw Self.denied() }
         let index = (entry.calls.max() ?? 0) + 1
         guard index <= entry.scope.maxCalls else { throw AgentCodexCallLimit() }
-        entry.calls.insert(index)
-        entries[digest] = entry
         // Keep the server's bounded stream buffers bounded across child agents.
         guard entry.codexActive.count < 8, entry.activeCall == nil else {
             throw ServerError.http(status: 503, code: "agent_model_busy", message: "Too many model requests are active")
         }
+        // Admission failures never reach the provider and must not spend a slot.
+        entry.calls.insert(index)
         entry.codexActive.insert(index)
         entries[digest] = entry
         return Claim(digest: digest, scope: entry.scope, index: index, codex: true)
@@ -355,7 +355,11 @@ extension Routes {
             await handle(req, cancellable: true) {
                 do { return try await invokeAgentResponses(req, codex: true) }
                 catch is AgentCodexCallLimit {
-                    return rawJSON(["error": ["type": "usage_limit_reached", "code": "agent_call_limit", "message": "Agent model call limit reached"]], status: .init(code: 429))
+                    var response = rawJSON(["error": ["type": "usage_limit_reached", "code": "agent_call_limit", "message": "Agent model call limit reached"]], status: .init(code: 429))
+                    // Codex drops the body's code for this error type but retains
+                    // the promo header in the turn error. Never forward it upstream.
+                    response.headers[HTTPField.Name("x-codex-promo-message")!] = "dify-sf-agent-call-limit"
+                    return response
                 } catch is AgentModelFileError {
                     return rawJSON(["error": ["type": "invalid_request_error", "code": "file_error", "message": "The model file is not available to this execution"]], status: .init(code: 422))
                 }

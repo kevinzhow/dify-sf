@@ -81,6 +81,67 @@ void main() {
     });
   });
 
+  group('completed turn item phases', () {
+    for (final phase in ['commentary', 'unknown_phase']) {
+      test('$phase items are not final answers', () async {
+        final fake = FakeCodexAppServer(
+          turn: (s) async {
+            s.complete({
+              'status': 'completed',
+              'items': [
+                {
+                  'type': 'agentMessage',
+                  'text': 'Not an answer.',
+                  'phase': phase,
+                },
+              ],
+            });
+          },
+        );
+        final (result, _, _) = await ran(fake);
+        expect(result['candidate'], {'text': ''});
+      });
+    }
+    test('a tool after an unphased item invalidates that candidate', () async {
+      final fake = FakeCodexAppServer(
+        turn: (s) async {
+          s.complete({
+            'status': 'completed',
+            'items': [
+              {'type': 'agentMessage', 'text': 'Before the command.'},
+              {'type': 'commandExecution', 'id': 'c1'},
+            ],
+          });
+        },
+      );
+      final (result, _, _) = await ran(fake);
+      expect(result['candidate'], {'text': ''});
+    });
+    test('an explicit final answer wins over trailing commentary', () async {
+      final fake = FakeCodexAppServer(
+        turn: (s) async {
+          s.complete({
+            'status': 'completed',
+            'items': [
+              {
+                'type': 'agentMessage',
+                'text': 'Done.',
+                'phase': 'final_answer',
+              },
+              {
+                'type': 'agentMessage',
+                'text': 'Remark.',
+                'phase': 'commentary',
+              },
+            ],
+          });
+        },
+      );
+      final (result, _, _) = await ran(fake);
+      expect(result['candidate'], {'text': 'Done.'});
+    });
+  });
+
   group('usageLimitExceeded', () {
     Future<Map<String, Object?>> failing(
       String message, {
@@ -155,6 +216,18 @@ void main() {
       expect(r['error_type'], 'model_quota');
       expect(r['message'], contains('Quota exceeded'));
     });
+  });
+
+  test('app-server diagnostics mask the temporary capability', () async {
+    final fake = FakeCodexAppServer(
+      turn: (s) async {
+        await s.exit(exitCode: 101, output: 'startup secret-run-token failed');
+      },
+    );
+    final (result, _, _) = await ran(fake);
+    expect(result['error_type'], 'sandbox_error');
+    expect(result['message'], contains('startup [redacted] failed'));
+    expect(jsonEncode(result), isNot(contains('secret-run-token')));
   });
 
   group('app-server gone mid-turn', () {
