@@ -43,6 +43,17 @@ struct AgentTraceStreamTests {
         #expect(redactor.redact("b done.") == "[redacted] done.")
     }
 
+    @Test func compactionLifecycleIsVisibleInTraceLogsAndKeepsEventIdentity() throws {
+        for phase: JSONValue in ["started", "finished"] {
+            let projected = AgentTrace.project(run: "remote", node: "node", event: 17,
+                name: "compaction", data: ["phase": phase, "call_index": 3], secrets: [])
+            let log = try #require(projected.log)
+            #expect(log["label"] == "compaction" && log["metadata"]?["event"] == "compaction")
+            #expect(log["message_id"] == "remote:17" && projected.record["event_key"] == "remote:17")
+            #expect(log["status"] == (phase == "started" ? "start" : "success"))
+        }
+    }
+
     @Test func toolLabelsAreRedactedAsWellAsNestedArgumentsAndObjectKeys() {
         let result = AgentTrace.project(run: "remote", node: "node", event: 1, name: "tool_call",
             data: ["name": "contains-secret", "arguments": ["contains-secret": "contains-secret"]], secrets: ["secret"])

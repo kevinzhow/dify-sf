@@ -33,7 +33,10 @@
 /// entry: `Authorization: Bearer <codex_run_token>`, every POST numbered from
 /// 1 and answered with the next call's `responses_events` (a
 /// `response.completed` without `id` gets one), and beyond
-/// `codex_call_limit` a 429 with `error.type: usage_limit_reached`.
+/// `codex_call_limit` a 429 with `error.type: usage_limit_reached` and the
+/// header `x-codex-promo-message: dify-sf-agent-call-limit` (the gateway's
+/// mark of its own call limit, docs/agent-v2.md "Codex runtime"). A scripted
+/// `http_status` call answers its `http_body` without that header.
 /// `GET /debug/codex-requests` lists what Codex sent (headers and bodies).
 ///
 /// ```jsonc
@@ -687,6 +690,9 @@ class ScriptedGateway {
     final index = ++codexCalls;
     final limit = codexCallLimit;
     if (limit != null && index > limit) {
+      // The marker the official runtime reads as the gateway's own limit
+      // (`codexCallLimitMarker`).
+      res.headers.set('x-codex-promo-message', 'dify-sf-agent-call-limit');
       return _jsonResponse(res, 429, {
         'error': {
           'type': 'usage_limit_reached',

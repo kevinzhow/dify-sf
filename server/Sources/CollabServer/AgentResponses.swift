@@ -257,8 +257,13 @@ extension Routes {
                                   !(connection.secrets + [token]).contains(where: { !$0.isEmpty && value.contains($0) }) else { return "upstream_error" }
                             return value
                         }
+                        // Reserve usage_limit_reached for our own call budget.
+                        // A provider's identically named quota must remain a quota
+                        // even when it arrives after the last allowed model call.
+                        let providerType = value?["error"]?["type"]?.string ?? code
+                        let codexType = providerType == "usage_limit_reached" ? "insufficient_quota" : providerType
                         let safe: JSONValue = codex
-                            ? ["error": ["type": .string(safeIdentifier(value?["error"]?["type"]?.string ?? code)),
+                            ? ["error": ["type": .string(safeIdentifier(codexType)),
                                 "code": .string(safeIdentifier(code)), "message": "The model provider rejected this request"]]
                             : ["error": ["code": .string(safeCodes.contains(code) ? code : "upstream_error"),
                                 "message": "The model provider rejected this request"]]

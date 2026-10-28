@@ -57,6 +57,30 @@ const officialCodexReasoningEfforts = [
   'ultra',
 ];
 
+/// Notifications the runtime does not read, suppressed at `initialize`
+/// (`capabilities.optOutNotificationMethods`, exact method names of the
+/// 0.163.0 schema, checked by tool/codex_e2e.sh): the streaming deltas
+/// (the runtime reads completed items), the turn's diff and the account's
+/// rate limits.
+const codexOptOutNotifications = [
+  'item/agentMessage/delta',
+  'item/plan/delta',
+  'item/reasoning/summaryTextDelta',
+  'item/reasoning/summaryPartAdded',
+  'item/reasoning/textDelta',
+  'item/commandExecution/outputDelta',
+  'item/fileChange/outputDelta',
+  'item/fileChange/patchUpdated',
+  'turn/diff/updated',
+  'account/rateLimits/updated',
+];
+
+/// Codex's retries of a failed model request (5xx, transport errors) and
+/// of a dropped response stream (defaults 4 and 5): each attempt is a POST
+/// the gateway counts against `max_turns`.
+const codexRequestMaxRetries = 2;
+const codexStreamMaxRetries = 2;
+
 /// A TOML basic string (JSON's escapes are a subset of TOML's).
 String tomlString(String s) => jsonEncode(s);
 
@@ -92,6 +116,8 @@ String codexConfigToml({
     ..writeln('wire_api = "responses"')
     ..writeln('env_key = "$codexTokenEnv"')
     ..writeln('supports_websockets = false')
+    ..writeln('request_max_retries = $codexRequestMaxRetries')
+    ..writeln('stream_max_retries = $codexStreamMaxRetries')
     ..writeln()
     // The commands get the node's environment as the other styles do
     // (Codex's default KEY/SECRET/TOKEN filter off), never the run token or
@@ -248,6 +274,20 @@ Map<String, Object?>? bundledEntryFor(
   return null;
 }
 
+/// Where the context window of [model]'s catalog entry comes from:
+/// `operation` (`model.context_window`), `bundled` (Codex's bundled entry
+/// for the model, see [bundledEntryFor]) or `fallback` (Codex's fallback
+/// metadata: 272000 tokens, whatever the model really has).
+String codexContextWindowSource(
+  String model,
+  List<Map<String, Object?>> bundled,
+  int? contextWindow,
+) => contextWindow != null
+    ? 'operation'
+    : bundledEntryFor(model, bundled) != null
+    ? 'bundled'
+    : 'fallback';
+
 /// The one catalog entry of a run (`model_catalog_json`): the bundled entry
 /// for [model] (see [bundledEntryFor]) or Codex's fallback metadata, named
 /// [model], with the operation's model facts and dify-sf's settings:
@@ -305,6 +345,73 @@ Map<String, Object?> codexCatalogEntry({
   if (inputModalities != null) e['input_modalities'] = inputModalities;
   return e;
 }
+
+/// The value of `x-codex-promo-message` on the gateway's own call-limit 429
+/// (`usage_limit_reached`, code `agent_call_limit`). Codex drops the body's
+/// code and message of a `usage_limit_reached` 429 but puts this header into
+/// the turn error's message ("You’ve hit your usage limit. PROMO, or try
+/// again later."). The gateway forwards no provider header but
+/// `Retry-After`, so a provider cannot send it.
+const codexCallLimitMarker = 'dify-sf-agent-call-limit';
+
+/// Process diagnostics may quote startup credentials. Mask them before taking
+/// the bounded tail, including a credential crossing the truncation boundary.
+String codexDiagnosticTail(String output, Iterable<String?> secrets) {
+  var safe = output.trim();
+  final values = secrets.whereType<String>().where((s) => s.isNotEmpty).toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
+  for (final secret in values) {
+    safe = safe.replaceAll(secret, '[redacted]');
+  }
+  return safe.length > 4000 ? '…${safe.substring(safe.length - 4000)}' : safe;
+}
+
+/// Codex's message for a 429 with `error.type: usage_limit_reached`
+/// (`UsageLimitReachedError`); its quota and billing errors (also
+/// `usageLimitExceeded`) read "Quota exceeded…" or name the plan.
+final _usageLimitReachedText = RegExp('^You[’\']ve hit your usage limit');
+
+/// The `error_type` of a turn that failed `usageLimitExceeded`:
+/// `max_turns` when it is the gateway's own call limit, either marked
+/// ([codexCallLimitMarker]) or a `usage_limit_reached` refusal after at
+/// least [maxTurns] model calls seen here ([attempts]: finished calls and
+/// retried ones; Codex's silent request retries are not seen); otherwise
+/// `model_quota` (the provider's quota, billing or usage limit, or a
+/// `usage_limit_reached` the gateway passed through).
+String codexUsageLimitErrorType({
+  required String message,
+  required int attempts,
+  required int maxTurns,
+}) {
+  if (message.contains(codexCallLimitMarker)) return 'max_turns';
+  if (_usageLimitReachedText.hasMatch(message) && attempts >= maxTurns) {
+    return 'max_turns';
+  }
+  return 'model_quota';
+}
+
+/// The reasoning effort Codex 0.163.0 sends for the thread's [effort] with
+/// catalog [entry] (`ModelInfo::resolve_reasoning_effort`): `ultra` becomes
+/// the entry's `multi_agent_reasoning_effort` when supported, else `max`,
+/// else the last supported level, else `medium`; other levels are sent as
+/// they are.
+String? codexRequestEffort(String? effort, Map<String, Object?> entry) {
+  if (effort != 'ultra') return effort;
+  final levels = [
+    for (final l in (entry['supported_reasoning_levels'] as List?) ?? const [])
+      if (l is Map && l['effort'] is String) l['effort'] as String,
+  ];
+  final multi = entry['multi_agent_reasoning_effort'];
+  if (multi is String && multi != 'ultra' && levels.contains(multi)) {
+    return multi;
+  }
+  if (levels.contains('max')) return 'max';
+  return levels.reversed.where((l) => l != 'ultra').firstOrNull ?? 'medium';
+}
+
+/// Picks the sandbox port of a run's app-server (null: a random one in
+/// 20000-39999). Only tests set it, to a port their fake app-server holds.
+int Function()? codexAppServerPortForTests;
 
 /// A JSON-RPC error answered by the app-server.
 class CodexRpcError implements Exception {

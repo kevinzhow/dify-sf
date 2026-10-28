@@ -64,6 +64,7 @@ struct API {
     struct Answer {
         var status: Int
         var text: String
+        var headers: HTTPFields
         var json: [String: Value] {
             guard case .map(let m)? = try? WireJSON.decode(Value.self, from: Data(text.utf8)) else { return [:] }
             return m
@@ -86,7 +87,7 @@ struct API {
             if let body { req.body = .init(string: body) }
         }
         let text = res.status.code == 204 ? "" : (try? await res.body.requireString()) ?? ""
-        return Answer(status: Int(res.status.code), text: text)
+        return Answer(status: Int(res.status.code), text: text, headers: res.headers)
     }
 
     func get(_ path: String, token: String? = nil) async throws -> Answer { try await send(.get, path, token: token) }

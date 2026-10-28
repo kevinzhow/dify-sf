@@ -13,6 +13,15 @@ import 'package:test/test.dart';
 import 'support.dart';
 
 void main() {
+  test('diagnostic tail redacts before cutting across a credential', () {
+    final secret = 'fixture-secret-capability';
+    final raw = '${'x' * 100}$secret${'y' * 3990}';
+    final safe = codexDiagnosticTail(raw, [null, '', secret]);
+    expect(safe.length, lessThanOrEqualTo(4001));
+    expect(safe, isNot(contains('capability')));
+    expect(codexDiagnosticTail('safe tail', [secret]), 'safe tail');
+  });
+
   Map<String, Object?> codexOp({Object? effort, bool token = true}) {
     final o = operation();
     final model = Map.of(o['model'] as Map<String, Object?>);
@@ -74,6 +83,8 @@ void main() {
       'base_url = "http://gw/inner/agent/codex/v1"',
       'env_key = "DIFYSF_RUN_TOKEN"',
       'supports_websockets = false',
+      'supports_websockets = false\nrequest_max_retries = 2\n'
+          'stream_max_retries = 2\n',
       'exclude = ["DIFYSF_RUN_TOKEN", "SHELLCTL_*"]',
       'NO_PROXY = "localhost"',
       'multi_agent = false',
@@ -262,6 +273,26 @@ void main() {
       },
     ];
 
+    test('where the context window comes from', () {
+      expect(codexContextWindowSource('m', bundled, 1000), 'operation');
+      expect(
+        codexContextWindowSource('gpt-6.1-terra', bundled, null),
+        'bundled',
+      );
+      expect(
+        codexContextWindowSource('deepseek-v4.1', bundled, null),
+        'fallback',
+      );
+      expect(
+        codexCatalogEntry(
+          model: 'deepseek-v4.1',
+          bundled: bundled,
+          shell: true,
+        )['context_window'],
+        272000,
+      );
+    });
+
     test('gpt-6 models start from gpt-6-astra, in Direct-tools mode', () {
       final e = codexCatalogEntry(
         model: 'gpt-6.1-terra',
@@ -334,6 +365,48 @@ void main() {
     });
   });
 
+  test('usageLimitExceeded: the gateway\'s call limit is max_turns, other '
+      'limits model_quota', () {
+    String type(String message, int attempts) => codexUsageLimitErrorType(
+      message: message,
+      attempts: attempts,
+      maxTurns: 5,
+    );
+    // Codex 0.163.0's texts: a 429 usage_limit_reached with the gateway's
+    // marker, without it, and its quota error.
+    const marked =
+        'You\u2019ve hit your usage limit. $codexCallLimitMarker, or try '
+        'again later.';
+    const unmarked = 'You\u2019ve hit your usage limit. Try again later.';
+    const quota = 'Quota exceeded. Check your plan and billing details.';
+    expect(type(marked, 0), 'max_turns');
+    expect(type(unmarked, 5), 'max_turns');
+    expect(type(unmarked, 4), 'model_quota');
+    expect(type(quota, 5), 'model_quota');
+    expect(type(quota, 0), 'model_quota');
+  });
+
+  test('the effort Codex sends: ultra resolved from the catalog entry', () {
+    Map<String, Object?> entry(List<String> levels, [String? multi]) => {
+      'supported_reasoning_levels': [
+        for (final l in levels) {'effort': l, 'description': l},
+      ],
+      'multi_agent_reasoning_effort': multi,
+    };
+    expect(codexRequestEffort('high', entry([])), 'high');
+    expect(codexRequestEffort(null, entry([])), isNull);
+    expect(codexRequestEffort('ultra', entry(['low', 'max', 'ultra'])), 'max');
+    expect(
+      codexRequestEffort('ultra', entry(['low', 'xhigh', 'max'], 'xhigh')),
+      'xhigh',
+    );
+    expect(
+      codexRequestEffort('ultra', entry(['low', 'xhigh', 'ultra'])),
+      'xhigh',
+    );
+    expect(codexRequestEffort('ultra', entry([])), 'medium');
+  });
+
   test('scripted gateway: Codex entry token and call limit', () async {
     final gw = ScriptedGateway(
       calls: [ScriptedCall.responses([])],
@@ -351,6 +424,7 @@ void main() {
       expect(ok.body, contains('"id":"resp_1"'));
       final limited = await post('tok');
       expect(limited.statusCode, 429);
+      expect(limited.headers['x-codex-promo-message'], codexCallLimitMarker);
       expect(
         ((jsonDecode(limited.body) as Map)['error'] as Map)['type'],
         'usage_limit_reached',

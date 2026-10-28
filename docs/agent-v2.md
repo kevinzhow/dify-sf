@@ -220,7 +220,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 
 | `event` | `data` |
 |---|---|
-| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style", "model_wire"?, "runtime"?}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex`; with the official Codex runtime `model_wire.wire` is `responses` and `runtime` is `{"name": "codex-cli", "version": "0.163.0", "sha256", "skills"?}`; `skills` (names, sorted) when the profile declares `codex.skills_dirs`, and then `run_started` is written once Codex has listed them, still before any other event (see [Codex runtime](#codex-runtime)) |
+| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style", "model_wire"?, "runtime"?}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex`; with the official Codex runtime `model_wire.wire` is `responses` and `runtime` is `{"name": "codex-cli", "version": "0.163.0", "sha256", "skills"?, "context_window", "context_window_source", "model", "reasoning_effort", "request_reasoning_effort"?}`; `context_window` is the catalog entry's and `context_window_source` `operation`, `bundled` or `fallback` (see [Codex runtime](#codex-runtime)); `skills` (names, sorted) when the profile declares `codex.skills_dirs`; `model` and `reasoning_effort` as Codex's `thread/start` answered them, `request_reasoning_effort` the level Codex sends when it differs (`ultra`). With the official runtime `run_started` is written once Codex has started the thread, still before any other event; a run that fails earlier writes it without these fields (see [Codex runtime](#codex-runtime)) |
 | `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB of UTF-8 is split into several, cut only between code points |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
 | `model_call` | `{"invocation_id", "usage", "prompt"}` after each model call; `prompt` is `{"messages", "prefix_stable", "first_changed_message"}` (see [Prompt cache](#prompt-cache)). Not emitted by the official Codex runtime: the Swift server records those calls from its gateway |
@@ -228,6 +228,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 | `progress` | `{"file": {"upload_id", "filename", "mime_type", "size"}, "caption", "call_index"}`: a preview from `report_progress` (see [Progress previews](#progress-previews)), between the tool's `started` and `finished` `tool_call` events |
 | `commentary` | `codex` style: `{"text", "call_index"}`, the assistant text of a response that also calls tools (Codex's `phase: commentary`); it stays in the history |
 | `plan` | `codex` style with `tools.update_plan`: `{"explanation", "plan": [{"step", "status"}], "call_index"}` |
+| `compaction` | Official Codex runtime: `{"phase": "started" \| "finished", "call_index"}` around Codex's compaction of the conversation (a `contextCompaction` item of the root thread) |
 | `model_retry` | `codex` style: `{"call_index", "attempt", "layer": "request" \| "stream", "kind", "message", "delay_ms"}` before a retried model call (see [Harness styles](#harness-styles)); the official Codex runtime sends `"layer": "codex"`, `kind` = Codex's error code, `attempt` and `delay_ms` null |
 | `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage", "partial"}`; `partial` is `null`, or `{"reason", "notice_call_index"}` when the result came after a budget notice |
 | `paused` | `{"question_id", "tool_call_id", "question": <ask_human args>, "snapshot": <envelope>, "usage"}` |
@@ -533,9 +534,13 @@ binary ends the run `sandbox_error`.
 | `model.context_window`, `model.reasoning_efforts`, `model.input_modalities` | Optional; written into Codex's catalog entry (context window; supported levels; `["text", "image"]` or `["text"]`) |
 | `tools.shell`, `tools.view_image`, `tools.update_plan`, `tools.report_progress` | Codex's shell and `apply_patch`, `view_image`, `update_plan`; `report_progress` as a Codex dynamic tool. `tools.ask_human` is ignored: no question tool in this step |
 
-**Per-run setup** in the sandbox (`CODEX_HOME=/home/dify/agent/.codex-runs/<run_id>`, removed after the run):
+**Per-run setup** in the sandbox (`CODEX_HOME=/home/dify/agent/.codex-runs/<run_id>`, removed after the run however
+it ended, as the connection is closed and the app-server job ended, also after an unexpected error):
 `config.toml` (provider `difysf`: `base_url` = the Codex entry, `wire_api = "responses"`, `env_key =
-"DIFYSF_RUN_TOKEN"`, `supports_websockets = false`; `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`
+"DIFYSF_RUN_TOKEN"`, `supports_websockets = false`, `request_max_retries = 2` and `stream_max_retries = 2` (Codex's
+defaults 4 and 5): every retried request or stream is another POST the gateway counts against `max_turns`, so a run
+loses at most a few calls to a failing provider; request retries (5xx, transport) are silent, stream retries are
+`error` notifications with `willRetry` (`model_retry`); `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`
 (the container is the sandbox), `web_search = "disabled"`; `shell_environment_policy` without Codex's KEY/SECRET/TOKEN
 filter but excluding `DIFYSF_RUN_TOKEN` and `SHELLCTL_*`; request_user_input, skills (unless the profile declares
 them, below), bundled skills, the skill MCP-dependency install prompt, goals, apps, plugins, memories, image generation
@@ -568,31 +573,50 @@ one Codex itself would pick (longest slug prefix, then after one `namespace/` se
 `gpt-6*` names (as the port did), else Codex's fallback metadata (`prompt.md`, `unified_exec`); renamed to `model.name`,
 with the operation's facts above, Direct tools (`tool_mode` unset: the code-mode host is not installed), no
 Responses-lite request shape, no WebSocket preference, no service tiers, and `apply_patch` as Codex's freeform tool
-(with the shell; DeepSeek accepts no other custom tool).
+(with the shell; DeepSeek accepts no other custom tool). The context window Codex compacts by and stops at is
+`model.context_window`, else the bundled entry's, else Codex's fallback of 272000 tokens whatever the model has: that
+fallback is kept (configs without the field keep working) but logged, and `run_started.runtime` names the window and
+its source (`operation`, `bundled`, `fallback`); the Swift server should send `model.context_window` for models outside
+Codex's bundled catalog.
 
 **Transport.** `codex app-server --listen ws://0.0.0.0:<random port> --ws-auth capability-token --ws-token-sha256
 <sha256>` runs as a shellctl `stdio` job of the run (Landlock applies to Codex and its commands as to every job), and
 agent_service connects over the sandbox network with the matching bearer token (32 random bytes, per run). Not
 `stdio://`: shellctl is Dify's daemon, and its stdio jobs refuse input (`409 input_unsupported`) while a PTY rewrites
-JSON. The connection then sends `initialize` (`experimentalApi: true` for dynamic tools), `thread/start` (`cwd:
+JSON. The connection then sends `initialize` (`experimentalApi: true` for dynamic tools; `optOutNotificationMethods`:
+the streaming deltas `item/agentMessage/delta`, `item/plan/delta`, `item/reasoning/summaryTextDelta`,
+`item/reasoning/summaryPartAdded`, `item/reasoning/textDelta`, `item/commandExecution/outputDelta`,
+`item/fileChange/outputDelta`, `item/fileChange/patchUpdated`, and `turn/diff/updated`, `account/rateLimits/updated`,
+which the runtime does not read; `tool/codex_e2e.sh` checks the names against the binary's schema), `thread/start` (`cwd:
 /workspace`, approval never, danger-full-access, `ephemeral`, `dynamicTools: [report_progress]`) and `turn/start` (the
 task; task files are written to `/workspace/.dify-sf/task-files/` and given as `localImage` (images, which Codex sends
 as data URLs) or by path; with declared outputs `outputSchema` = the model-facing schema, made strict-compatible
 because Codex always sends `strict: true`: every property required, optional ones nullable, the `null`s removed from
 the answer).
 
+**Thread settings.** The `thread/start` answer's `model` and `reasoningEffort` must be the operation's `model.name`
+and `reasoning_effort` (any effort when the operation gives none; `ultra` is Codex's to resolve: it answers `ultra`
+and sends the catalog entry's `multi_agent_reasoning_effort`, else `max`, else the last supported level). Another
+model or effort ends the run `internal` ("Codex started the thread with model …, not the requested …") before the
+turn starts: the gateway would refuse each such request, so failing early gives the clear message. A
+`thread/settings/updated` of the root thread is checked the same way (the turn is interrupted, the run ends `internal`
+"Codex changed the thread to …"); `model/rerouted` is only logged. The run log has Codex's model and effort; so has
+`run_started.runtime` (`model`, `reasoning_effort`, `request_reasoning_effort` when it differs).
+
 **Events.**
 
 | Codex | dify-sf |
 |---|---|
 | `item/started`, `item/completed` of `commandExecution`, `fileChange`, `imageView`, `dynamicToolCall` | `tool_call` `started` / `finished`, names `exec_command`, `apply_patch`, `view_image`, `report_progress`; `input` `{command, cwd}`, `{changes: [{path, kind}]}`, `{path}` or the arguments; `output` `{exit_code, duration_ms, output}` (64 KiB, head and tail), `{changes: [{path, kind, diff}]}`, text; `error` for failed patches, declined commands and failed dynamic calls |
-| `agentMessage` with `phase: commentary` (or without a phase, followed by a tool call) | `commentary` |
+| `agentMessage` with `phase: commentary` (or without a phase or with `partial_answer`, followed by a tool call) | `commentary` |
 | `reasoning` (summary and content) | `thought` |
 | `turn/plan/updated` | `plan` (`inProgress` written `in_progress`) |
-| `error` with `willRetry` | `model_retry` |
+| `error` with `willRetry` of the root thread | `model_retry` (a sub-agent's retries are logged, not the run's events; every thread's count toward the call limit check, see [Call limit or quota](#codex-runtime)) |
+| `item/started`, `item/completed` of `contextCompaction` (and the deprecated `thread/compacted`, which 0.163.0 does not send) | `compaction` `started` / `finished`, retained in the run trace log |
 | `item/tool/call` `report_progress` | `progress`, as for the other styles; Codex gets the tool text |
+| `currentTime/read` (Codex's clock, also polled while the model waits) | answered `{"currentTimeAt"}`, the Unix time in whole seconds; other server requests (approvals, user input) are refused |
 | `thread/tokenUsage/updated` | no event: summed into the terminal `usage` and logged; the Swift server records `model_call`s from its gateway |
-| `turn/completed` | `completed`: the last agent message is the final answer (as in the port: `{"text"}`, or the JSON object of the declared outputs, checked and its file outputs uploaded); `failed` with `usageLimitExceeded`: `failed` `max_turns`; other failures `model_error` with Codex's message and error code |
+| `turn/completed` | `completed`: the final answer is the last `final_answer` message, else the last message without a phase or with `partial_answer` that no tool call followed; commentary and unknown phases are never answers, including in the completed turn's item list (providers do not always send a phase) (as in the port: `{"text"}`, or the JSON object of the declared outputs, checked and its file outputs uploaded); `failed` with `usageLimitExceeded`: `max_turns` only for the gateway's own call limit (below), else `model_quota` with Codex's message; `contextWindowExceeded`: `model_error` "the conversation no longer fits the model's context window (<window> tokens, <source>) and Codex could not compact it enough: Codex: …"; other failures `model_error` with Codex's message and error code |
 
 The snapshot of `succeeded` is `{"envelope", "revision", "harness_style": "codex", "codex": {"runtime": "official",
 "version", "final_answer"}, …}`. An output retry starts a new Codex thread in the same workspace with the task, the
@@ -609,6 +633,13 @@ gateway's limit is the hard stop.
 kill every process the run left (the shell session's reap): Codex and its commands end, and Codex's open model stream
 is closed (checked by `tool/codex_e2e.sh`).
 
+**Codex gone mid-turn.** When the app-server process exits or its connection closes before `turn/completed`, the tool
+calls Codex started and did not finish get `tool_call` `finished` with `error` "the Codex app-server ended before the
+tool finished", and the run fails: `sandbox_error` "Codex ended mid-turn: codex app-server exited (<status> <exit
+code>): <the last 4000 characters of its output and stderr>" once the job is seen ended (polled for 3 s), else
+`internal` "Codex ended mid-turn: the connection to the Codex app-server closed and the process still runs" (checked by
+`tool/codex_e2e.sh` with a killed Codex). Temporary run capabilities, the WebSocket capability and the service credential are redacted before the output tail is truncated.
+
 **Gateway entry** (Swift server; contract agreed with Winnie, 2026-10-28): `POST <codex_gateway_url>/responses` with
 `Authorization: Bearer <model.run_token>`; the body is Codex's Responses request as it is (`model`, `instructions`,
 `input`, `tools` with the freeform `apply_patch`, `tool_choice`, `parallel_tool_calls`, `reasoning: {effort,
@@ -618,7 +649,20 @@ summary}`, `store: false`, `stream: true`, `include: ["reasoning.encrypted_conte
 model, effort, `include` and usage per call, enforces the node's output-token budget, passes `include` through
 unchanged (also to DeepSeek, for now), refuses images that are not inline data URLs, never retries (Codex does), and
 beyond `max_turns` answers `429 {"error": {"type": "usage_limit_reached", "code": "agent_call_limit", ...}}` (Codex
-stops only on that type). The token is bound to the execution, generation and deadline and revoked at the run's end.
+stops only on that type) with the header `x-codex-promo-message: dify-sf-agent-call-limit`. The token is bound to the
+execution, generation and deadline and revoked at the run's end. Only admitted requests spend a call slot; a local `503 agent_model_busy` leaves the remaining budget intact.
+
+**Call limit or quota.** Codex reports every usage, quota and billing refusal as `usageLimitExceeded` and drops the
+body's `code` and `message` of a `usage_limit_reached` 429, so the gateway marks its own call limit with
+`x-codex-promo-message: dify-sf-agent-call-limit`, which Codex 0.163.0 puts into the turn error's message ("You’ve hit
+your usage limit. dify-sf-agent-call-limit, or try again later."); the gateway forwards no provider header but
+`Retry-After`, so a provider cannot send the mark. The Swift gateway maps a provider's `usage_limit_reached` type to `insufficient_quota`, preserving its bounded code and status; provider quotas remain distinct even at the call cap. agent_service ends the run `max_turns` when the mark is in the
+message, or when an unmarked `usage_limit_reached` ("You’ve hit your usage limit…") comes after at least `max_turns`
+model calls it saw (finished calls, `thread/tokenUsage/updated`, plus the attempts Codex announced it retries, `error`
+with `willRetry`, every thread); every other `usageLimitExceeded` ends it `model_quota` with Codex's message (a
+provider quota, "Quota exceeded…", a billing or plan limit, or an unmarked refusal before `max_turns` calls). Codex's
+silent request retries count at the gateway but are not seen here: until the gateway sends the mark, a call limit
+reached through such retries is reported `model_quota`.
 
 ### What agent_service expects in the operation
 

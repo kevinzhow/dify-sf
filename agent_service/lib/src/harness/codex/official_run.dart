@@ -125,10 +125,22 @@ class _OfficialCodexRun {
   /// Model calls seen as finished (one `thread/tokenUsage/updated` each).
   int _calls = 0;
 
-  /// The last assistant message without a phase, not yet known to be
-  /// commentary or the final answer.
+  /// Failed model calls Codex announced it retries (`error` with
+  /// `willRetry`, every thread): each was a POST the gateway counted.
+  int _retries = 0;
+
+  /// The last assistant message without a phase (or `partial_answer`), not
+  /// yet known to be commentary (a tool call follows) or the final answer.
   Map<String, Object?>? _unphased;
   String? _finalText;
+
+  /// The catalog entry's context window and where it came from
+  /// ([codexContextWindowSource]).
+  Object? _contextWindow;
+  String? _contextWindowSource;
+
+  /// Whether a context compaction of the root thread is under way.
+  bool _compacting = false;
 
   /// The CODEX_HOME of this run in the sandbox.
   String? _home;
@@ -138,29 +150,23 @@ class _OfficialCodexRun {
   Future<void> execute() async {
     run._onStop = _interrupt;
     Future<void> Function() finish;
+    StopReason? stopped;
     try {
-      finish = await _run();
-    } on _Finish catch (f) {
-      finish = f.run;
-    } on SandboxFailure catch (e) {
-      finish = () async => run._fail(e.errorType, e.message);
-    } on ShellctlException catch (e) {
-      finish = () async => run._fail('sandbox_error', e.toolText);
-    } on CodexRpcError catch (e) {
-      finish = () async => run._fail('internal', '$e');
-    }
-    final stopped = run._stopReason;
-    await _server?.close();
-    final home = _home;
-    final session = run._session;
-    // Terminates the app-server job; the reap kills Codex and its children.
-    await run._endShell();
-    if (home != null && session != null) {
       try {
-        await session.sandbox.control('rm -rf -- ${shellQuote(home)}');
-      } catch (e) {
-        run.log?.call('run ${run.runId}: could not remove $home: $e');
+        finish = await _run();
+      } on _Finish catch (f) {
+        finish = f.run;
+      } on SandboxFailure catch (e) {
+        finish = () async => run._fail(e.errorType, e.message);
+      } on ShellctlException catch (e) {
+        finish = () async => run._fail('sandbox_error', e.toolText);
+      } on CodexRpcError catch (e) {
+        finish = () async => run._fail('internal', '$e');
       }
+    } finally {
+      // Also when something else was thrown (the run then fails internal).
+      stopped = run._stopReason;
+      await _cleanup();
     }
     if (stopped != null || run._stopReason != null) {
       return run._finishStopped(stopped ?? run._stopReason!);
@@ -168,8 +174,75 @@ class _OfficialCodexRun {
     await finish();
   }
 
+  /// Closes the connection, ends the shell session (terminating the
+  /// app-server job; the reap kills Codex and its children) and removes the
+  /// run's CODEX_HOME. Never throws.
+  Future<void> _cleanup() async {
+    try {
+      await _server?.close();
+    } catch (e) {
+      run.log?.call('run ${run.runId}: closing the codex connection: $e');
+    }
+    final home = _home;
+    final session = run._session;
+    try {
+      await run._endShell();
+    } catch (e) {
+      run.log?.call('run ${run.runId}: ending the shell session: $e');
+    }
+    if (home != null && session != null) {
+      try {
+        await session.sandbox.control('rm -rf -- ${shellQuote(home)}');
+      } catch (e) {
+        run.log?.call('run ${run.runId}: could not remove $home: $e');
+      }
+    }
+  }
+
   Never _failWith(String type, String message) =>
       throw _Finish(() async => run._fail(type, message));
+
+  /// Adds [info] to the held `run_started`'s `runtime`.
+  void _addRuntime(Map<String, Object?> info) {
+    final held = run._heldRunStarted;
+    if (held == null) return;
+    held['runtime'] = {...?held['runtime'] as Map?, ...info};
+  }
+
+  /// A failure found while the turn runs (Codex's settings changed): the
+  /// turn is interrupted and the run ends with it.
+  ({String type, String message})? _aborted;
+  final Completer<void> _abortSignal = Completer();
+
+  void _abort(String type, String message) {
+    if (_aborted != null) return;
+    _aborted = (type: type, message: message);
+    _abortSignal.complete();
+    _interrupt();
+  }
+
+  void _checkAborted() {
+    final a = _aborted;
+    if (a == null) return;
+    _closeOpenTools('the run ended: ${a.message}');
+    _failWith(a.type, a.message);
+  }
+
+  /// Why Codex's [model] and [effort] (from `thread/start` or
+  /// `thread/settings/updated`) are not the run's, else null. `ultra` is
+  /// Codex's to resolve; with no requested effort any is accepted.
+  String? _settingsMismatch(String where, Object? model, Object? effort) {
+    final want = r.reasoningEffort;
+    if (model != r.model.name) {
+      return 'Codex $where model ${jsonEncode(model)}, not the requested '
+          '${jsonEncode(r.model.name)}';
+    }
+    if (want != null && want != 'ultra' && effort != want) {
+      return 'Codex $where reasoning effort ${jsonEncode(effort)}, not the '
+          'requested ${jsonEncode(want)}';
+    }
+    return null;
+  }
 
   void _checkStopped() {
     final s = run._stopReason;
@@ -343,7 +416,7 @@ class _OfficialCodexRun {
         '${s.others.join(', ')}',
       );
     }
-    run._runStarted({'skills': s.names});
+    _addRuntime({'skills': s.names});
     return s.others;
   }
 
@@ -459,20 +532,38 @@ class _OfficialCodexRun {
         },
       ),
     );
+    final entry = codexCatalogEntry(
+      model: r.model.name,
+      bundled: bundled,
+      contextWindow: r.model.contextWindow,
+      reasoningEfforts: r.model.reasoningEfforts,
+      inputModalities: r.model.inputModalities,
+      shell: r.shell,
+    );
+    final windowSource = codexContextWindowSource(
+      r.model.name,
+      bundled,
+      r.model.contextWindow,
+    );
+    _contextWindow = entry['context_window'];
+    _contextWindowSource = windowSource;
+    if (windowSource == 'fallback') {
+      run.log?.call(
+        'run ${run.runId}: no model.context_window and ${r.model.name} is '
+        'not in Codex\'s bundled catalog: Codex\'s fallback context window '
+        '(${entry['context_window']} tokens) applies to compaction and the '
+        'context limit',
+      );
+    }
+    _addRuntime({
+      'context_window': entry['context_window'],
+      'context_window_source': windowSource,
+    });
     await _writeHome(
       sandbox,
       '$home/models.json',
       jsonEncode({
-        'models': [
-          codexCatalogEntry(
-            model: r.model.name,
-            bundled: bundled,
-            contextWindow: r.model.contextWindow,
-            reasoningEfforts: r.model.reasoningEfforts,
-            inputModalities: r.model.inputModalities,
-            shell: r.shell,
-          ),
-        ],
+        'models': [entry],
       }),
     );
     // The node's instructions are Codex's global AGENTS.md.
@@ -487,7 +578,8 @@ class _OfficialCodexRun {
     final wsToken = [for (var i = 0; i < 32; i++) _random.nextInt(256)]
         .map((b) => b.toRadixString(16).padLeft(2, '0'))
         .join();
-    final port = 20000 + _random.nextInt(20000);
+    final port =
+        codexAppServerPortForTests?.call() ?? 20000 + _random.nextInt(20000);
     final client = sandbox.client();
     final JobResult job;
     try {
@@ -515,9 +607,16 @@ class _OfficialCodexRun {
       try {
         final s = await c.status(job.jobId);
         if (!s.done) return null;
-        final tail = await c.tail(job.jobId);
-        return 'codex app-server exited (${s.status} ${s.exitCode}): '
-            '${tail.output.trim()}';
+        // Its stderr is merged into the output (`2>&1`). Mask capabilities
+        // before truncation, so a boundary cannot expose half a token.
+        final shown = codexDiagnosticTail((await c.tail(job.jobId)).output, [
+          token,
+          wsToken,
+          run.runToken,
+          run.serviceKey,
+        ]);
+        return 'codex app-server exited (${s.status} ${s.exitCode})'
+            '${shown.isEmpty ? ' without output' : ': $shown'}';
       } catch (_) {
         return null;
       } finally {
@@ -543,7 +642,10 @@ class _OfficialCodexRun {
         'title': 'dify-sf agent service',
         'version': serviceVersion,
       },
-      'capabilities': {'experimentalApi': true},
+      'capabilities': {
+        'experimentalApi': true,
+        'optOutNotificationMethods': codexOptOutNotifications,
+      },
     });
     server.notify('initialized');
     final disabledSkills = await _loadSkills(server, sandbox, skillsDirs);
@@ -569,6 +671,29 @@ class _OfficialCodexRun {
       ],
     });
     _threadId = (thread['thread'] as Map)['id'] as String;
+    // Codex's settings for the thread, as it will send them.
+    final model = thread['model'];
+    final effort = thread['reasoningEffort'];
+    final sent = codexRequestEffort(effort is String ? effort : null, entry);
+    run.log?.call(
+      'run ${run.runId}: codex thread $_threadId: model ${jsonEncode(model)}, '
+      'reasoning effort ${jsonEncode(effort)}'
+      '${sent == effort ? '' : ' (requests carry ${jsonEncode(sent)})'}; '
+      'requested ${jsonEncode(r.model.name)}, ${jsonEncode(r.reasoningEffort)}',
+    );
+    _addRuntime({
+      'model': model,
+      'reasoning_effort': effort,
+      if (sent != effort) 'request_reasoning_effort': sent,
+    });
+    final mismatch = _settingsMismatch(
+      'started the thread with',
+      model,
+      effort,
+    );
+    if (mismatch != null) _failWith('internal', mismatch);
+    run._runStarted();
+    _checkAborted();
     final turn = await server.request('turn/start', {
       'threadId': _threadId,
       'input': input,
@@ -583,17 +708,37 @@ class _OfficialCodexRun {
       _turnDone.future,
       server.closed.then((_) => null),
       run._cancel.token.whenCancelled.then((_) => null),
+      _abortSignal.future.then((_) => null),
     ]);
-    if (done == null) {
-      // Stopped (interrupt sent) or Codex went away: give the turn a moment
-      // to end, so its last items are mapped.
+    if (done == null && !server.isClosed) {
+      // Stopped (interrupt sent): give the turn a moment to end, so its last
+      // items are mapped.
       await _turnDone.future
           .timeout(const Duration(seconds: 3))
           .then((_) {}, onError: (_) {});
-      _checkStopped();
-      if (!_turnDone.isCompleted) {
-        _failWith('internal', 'the Codex app-server closed the connection');
+    }
+    _checkStopped();
+    _checkAborted();
+    if (!_turnDone.isCompleted) {
+      // Codex went away mid-turn: the process's exit status and output once
+      // the job is seen ended (a moment after the connection).
+      String? exited;
+      for (var i = 0; i < 12 && exited == null; i++) {
+        if (i > 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+        }
+        exited = await whyNot();
       }
+      _checkStopped();
+      final why =
+          exited ??
+          'the connection to the Codex app-server closed and the process '
+              'still runs';
+      _closeOpenTools('the Codex app-server ended before the tool finished');
+      _failWith(
+        exited == null ? 'internal' : 'sandbox_error',
+        'Codex ended mid-turn: $why',
+      );
     }
     return _complete(await _turnDone.future);
   }
@@ -613,22 +758,71 @@ class _OfficialCodexRun {
           ?error['additionalDetails'],
         ].join(': ');
         if (info == 'usageLimitExceeded') {
-          final n = run._notice;
+          final attempts = _calls + _retries;
+          final type = codexUsageLimitErrorType(
+            message: message,
+            attempts: attempts,
+            maxTurns: r.maxTurns,
+          );
+          final seen =
+              '$_calls model calls finished here'
+              '${_retries == 0 ? '' : ', $_retries retried'}';
+          if (type == 'max_turns') {
+            final n = run._notice;
+            _failWith(
+              'max_turns',
+              'the run reached max_turns (${r.maxTurns}): the gateway refused '
+                  'the next model call (usage_limit_reached, its call limit) '
+                  'without a final answer ($seen)'
+                  '${n == null ? '' : '; the model was told to finish at call ${n.callIndex}'}',
+            );
+          }
           _failWith(
-            'max_turns',
-            'the run reached max_turns (${r.maxTurns}): the gateway refused '
-                'the next model call (usage_limit_reached) without a final '
-                'answer${n == null ? '' : '; the model was told to finish at call ${n.callIndex}'}',
+            'model_quota',
+            'the model call was refused for a usage, quota or billing limit '
+                'that is not the gateway\'s call limit (max_turns '
+                '${r.maxTurns}, $seen): Codex: $message',
+          );
+        }
+        if (info == 'contextWindowExceeded') {
+          _failWith(
+            'model_error',
+            'the conversation no longer fits the model\'s context window '
+                '($_contextWindow tokens, $_contextWindowSource) and Codex '
+                'could not compact it enough: Codex: $message',
           );
         }
         _failWith('model_error', 'Codex: $message (${jsonEncode(info)})');
     }
+    // The final answer: the turn's last agent message when Codex lists the
+    // items, else the last `final_answer` message, else the last message
+    // without a phase or with `partial_answer` that no tool call followed
+    // (providers do not always send a phase).
     final items = (turn['items'] as List?) ?? const [];
-    final last = items.reversed
-        .whereType<Map>()
-        .where((i) => i['type'] == 'agentMessage')
-        .firstOrNull;
-    final text = (last?['text'] as String?) ?? _finalText ?? '';
+    String? itemFinal;
+    String? itemCandidate;
+    var hasMessageOrTool = false;
+    for (final item in items.whereType<Map>()) {
+      if (_toolItems.contains(item['type'])) {
+        hasMessageOrTool = true;
+        itemCandidate = null;
+      } else if (item['type'] == 'agentMessage') {
+        hasMessageOrTool = true;
+        if (item['phase'] == 'final_answer') {
+          itemFinal = item['text'] as String?;
+        } else if (item['phase'] == null || item['phase'] == 'partial_answer') {
+          itemCandidate = item['text'] as String?;
+        } else {
+          itemCandidate = null;
+        }
+      }
+    }
+    final text =
+        itemFinal ??
+        _finalText ??
+        itemCandidate ??
+        (hasMessageOrTool ? null : _unphased?['text'] as String?) ??
+        '';
     final schema = r.outputSchema;
     return () async {
       Object? candidate;
@@ -790,6 +984,27 @@ class _OfficialCodexRun {
     }
   }
 
+  /// Tool calls of the root thread started and not finished, by item ID.
+  final Map<Object?, String> _openTools = {};
+
+  /// Finishes the open tool calls with [error] (Codex will not).
+  void _closeOpenTools(String error) {
+    for (final e in _openTools.entries) {
+      run._emit('tool_call', {
+        'id': e.key,
+        'name': e.value,
+        'phase': 'finished',
+        'error': error,
+      });
+    }
+    _openTools.clear();
+  }
+
+  void _compactionDone() {
+    _compacting = false;
+    run._emit('compaction', {'phase': 'finished', 'call_index': _callIndex});
+  }
+
   void _flushUnphased() {
     final m = _unphased;
     if (m == null) return;
@@ -806,8 +1021,15 @@ class _OfficialCodexRun {
       case 'item/started' when mine:
         final item = p['item'];
         if (item is! Map) return;
-        if (_toolItems.contains(item['type'])) {
+        if (item['type'] == 'contextCompaction') {
+          _compacting = true;
+          run._emit('compaction', {
+            'phase': 'started',
+            'call_index': _callIndex,
+          });
+        } else if (_toolItems.contains(item['type'])) {
           _flushUnphased();
+          _openTools[item['id']] = _toolName(item);
           run._emit('tool_call', {
             'id': item['id'],
             'name': _toolName(item),
@@ -819,7 +1041,10 @@ class _OfficialCodexRun {
         final item = p['item'];
         if (item is! Map) return;
         final type = item['type'];
-        if (_toolItems.contains(type)) {
+        if (type == 'contextCompaction') {
+          _compactionDone();
+        } else if (_toolItems.contains(type)) {
+          _openTools.remove(item['id']);
           run._emit('tool_call', {
             'id': item['id'],
             'name': _toolName(item),
@@ -834,8 +1059,12 @@ class _OfficialCodexRun {
               _finalText = text;
             case 'commentary':
               run._emit('commentary', {'text': text, 'call_index': _callIndex});
-            default:
+            case null || 'partial_answer':
               _unphased = item.cast<String, Object?>();
+            default:
+              run.log?.call(
+                'run ${run.runId}: ignored an unknown agent message phase',
+              );
           }
         } else if (type == 'reasoning') {
           final buffer = ThoughtBuffer(
@@ -868,7 +1097,16 @@ class _OfficialCodexRun {
         _onUsage(p);
       case 'error':
         final error = (p['error'] as Map?) ?? const {};
-        if (p['willRetry'] == true) {
+        if (p['willRetry'] != true) return;
+        // Every thread's retried call counts at the gateway; only the root
+        // thread's are the run's model_retry (a sub-agent's are logged).
+        _retries++;
+        if (!mine) {
+          run.log?.call(
+            'run ${run.runId}: codex sub-agent ${p['threadId']} retries a '
+            'model call: ${jsonEncode(error)}',
+          );
+        } else {
           run._emit('model_retry', {
             'call_index': _callIndex,
             'attempt': null,
@@ -885,6 +1123,28 @@ class _OfficialCodexRun {
             !_turnDone.isCompleted) {
           _turnDone.complete(turn.cast<String, Object?>());
         }
+      case 'thread/settings/updated' when p['threadId'] == _threadId:
+        final s = (p['threadSettings'] as Map?) ?? const {};
+        run.log?.call(
+          'run ${run.runId}: codex thread settings updated: model '
+          '${jsonEncode(s['model'])}, reasoning effort ${jsonEncode(s['effort'])}',
+        );
+        final mismatch = _settingsMismatch(
+          'changed the thread to',
+          s['model'],
+          s['effort'],
+        );
+        if (mismatch != null) _abort('internal', mismatch);
+      // Deprecated (Codex 0.163.0 sends the item instead): ends a
+      // compaction the item did not.
+      case 'thread/compacted' when mine:
+        if (_compacting) _compactionDone();
+      case 'model/rerouted':
+        run.log?.call(
+          'run ${run.runId}: codex rerouted thread ${p['threadId']} from '
+          '${jsonEncode(p['fromModel'])} to ${jsonEncode(p['toModel'])} '
+          '(${p['reason']})',
+        );
       case 'warning' || 'configWarning' || 'deprecationNotice':
         run.log?.call('run ${run.runId}: codex ${n.method}: ${jsonEncode(p)}');
     }
@@ -970,12 +1230,16 @@ class _OfficialCodexRun {
     });
   }
 
-  /// Requests of the app-server: the dynamic tools; everything else (no
+  /// Requests of the app-server: the dynamic tools and the clock
+  /// (`currentTime/read`: whole Unix seconds); everything else (no
   /// approvals with `approval_policy = never`) is refused.
   Future<Object?> _serverRequest(
     String method,
     Map<String, Object?> params,
   ) async {
+    if (method == 'currentTime/read') {
+      return {'currentTimeAt': DateTime.now().millisecondsSinceEpoch ~/ 1000};
+    }
     if (method != 'item/tool/call') throw CodexRpcError(method, 'unsupported');
     final tool = params['tool'];
     final args = params['arguments'];

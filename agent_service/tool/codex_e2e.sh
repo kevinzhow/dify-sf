@@ -13,7 +13,7 @@
 #
 # Starts agent_service, sandbox_supervisor and agent_sandbox_proxy from the repository's docker-compose.yml under its
 # own project, with the scripted fake gateway as the inner gateway AND as the gateway's Codex Responses entry (it is
-# attached to every sandbox network as a second agent peer; AGENT_CODEX_GATEWAY_URL points Codex at it). Four runs:
+# attached to every sandbox network as a second agent peer; AGENT_CODEX_GATEWAY_URL points Codex at it). Seven runs:
 #   1. exec_command (writes a PNG, prints the environment), apply_patch, update_plan + report_progress, view_image,
 #      final answer with declared outputs (a text file and the PNG); max_turns 5 gives the near-budget notice; the
 #      profile's skill (codex.skills_dirs, a kit mounted at /opt/e2e-kit) is listed to the model and in run_started;
@@ -21,9 +21,15 @@
 #   4. an output retry of run 1 in its workspace, where run 1's command planted /workspace/.codex/config.toml
 #      (another base_url, developer instructions, effort low, no env excludes) and /workspace/AGENTS.md: Codex must
 #      ignore both (the workspace is an untrusted project): the requests reach this gateway with effort max and
-#      without the planted text, and the command does not see the run token;
-#   3. the gateway's call limit (429 usage_limit_reached): the run must fail max_turns; its profile has no skills,
-#      so Codex lists none.
+#      without the planted text, and the command does not see the run token; its final answer has no phase;
+#   5. a provider quota (429 insufficient_quota, as the gateway passes it through): the run must fail model_quota;
+#   6. a provider's usage_limit_reached passed through without the gateway's call-limit mark, before max_turns calls:
+#      model_quota, not max_turns;
+#   7. a model call that hangs while the Codex process is killed: the run must fail sandbox_error with the exit status;
+#   3. the gateway's call limit (429 usage_limit_reached with x-codex-promo-message: dify-sf-agent-call-limit): the run
+#      must fail max_turns; its profile has no skills, so Codex lists none.
+# Before the runs, the binary's app-server schema (generate-json-schema --experimental, a scratch CODEX_HOME) must list
+# every notification method the runtime opts out of and the currentTime/read request.
 # Everything created carries dify-sf.test=<random> and is removed at the end, also on failure.
 set -euo pipefail
 
@@ -57,6 +63,29 @@ DEFAULT_REF=langgenius/dify-agent-local-sandbox@$DEFAULT_REF
 for image in ubuntu/squid:latest; do
   docker image inspect "$image" >/dev/null 2>&1 || fail "image $image is not present locally (nothing is pulled)"
 done
+
+# ---- the pinned binary's protocol: the names the runtime relies on -------------------------------------------------
+mkdir -p "$WORK/codex-home" "$WORK/schema"
+CODEX_HOME="$WORK/codex-home" "$CODEX_DIR/codex" app-server generate-json-schema --experimental --out "$WORK/schema" \
+  >/dev/null 2>&1 || fail "codex app-server generate-json-schema failed"
+python3 -I - "$WORK/schema" "$HERE/lib/src/harness/codex/official.dart" <<'EOF' || fail "the runtime names methods the binary does not have"
+import json, re, sys
+schema, source = sys.argv[1:]
+def methods(name):
+    out = set()
+    for v in json.load(open(f"{schema}/{name}.json"))["oneOf"]:
+        m = v["properties"]["method"]
+        out.update(m.get("enum") or [m["const"]])
+    return out
+listed = re.search(r"const codexOptOutNotifications = \[(.*?)\];", open(source).read(), re.S).group(1)
+opt_out = re.findall(r"'([^']+)'", listed)
+assert len(opt_out) >= 5, opt_out
+missing = [m for m in opt_out if m not in methods("ServerNotification")]
+assert not missing, missing
+assert "currentTime/read" in methods("ServerRequest")
+print(f"schema: {len(opt_out)} opted-out notifications and currentTime/read exist in the binary's protocol", file=sys.stderr)
+EOF
+rm -rf "$WORK/codex-home" "$WORK/schema"
 
 compose() {
   docker compose -p "$PROJECT" -f "$REPO/docker-compose.yml" -f "$WORK/override.yml" --profile agent "$@"
@@ -154,9 +183,11 @@ def call(*items, summary=None):
     return {"responses_events": ev}
 def fn(cid, name, args):
     return {"type": "function_call", "id": "fc_" + cid, "call_id": cid, "name": name, "arguments": json.dumps(args)}
-def msg(text, phase):
-    return {"type": "message", "role": "assistant", "id": "msg_" + phase, "phase": phase,
-            "content": [{"type": "output_text", "text": text}]}
+def msg(text, phase):  # phase None: a provider that sends none
+    m = {"type": "message", "role": "assistant", "id": "msg_" + (phase or "nophase"),
+         "content": [{"type": "output_text", "text": text}]}
+    if phase: m["phase"] = phase
+    return m
 png = ("import struct,zlib,os\n"
        "def c(t,d): return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d))\n"
        "raw=b''.join(b'\\x00'+bytes([200,60,40])*16 for _ in range(16))\n"
@@ -186,9 +217,16 @@ calls = [
   {"hang": True, "responses_events": [{"type": "response.created", "response": {}}]},
   # run 4: the output retry in run 1's workspace
   call(fn("call_check", "exec_command", {"cmd": "echo TOKEN=${DIFYSF_RUN_TOKEN:-unset}; head -c 40 .codex/config.toml; echo; cat AGENTS.md"})),
-  call(msg(json.dumps({"text": "done again", "file": "out/hello.txt", "preview": "out/preview.png"}), "final_answer")),
+  call(msg(json.dumps({"text": "done again", "file": "out/hello.txt", "preview": "out/preview.png"}), None)),
+  # run 5: a provider quota; run 6: a provider's usage_limit_reached (both as the gateway passes them through)
+  {"http_status": 429, "http_body": {"error": {"type": "insufficient_quota", "code": "insufficient_quota",
+                                                "message": "The model provider rejected this request"}}},
+  {"http_status": 429, "http_body": {"error": {"type": "usage_limit_reached", "code": "usage_limit_reached",
+                                                "message": "The model provider rejected this request"}}},
+  # run 7: a model call that never ends while Codex is killed
+  {"hang": True, "responses_events": [{"type": "response.created", "response": {}}]},
 ]
-json.dump({"calls": calls, "codex_run_token": token, "codex_call_limit": 8}, open(path, "w"))
+json.dump({"calls": calls, "codex_run_token": token, "codex_call_limit": 11}, open(path, "w"))
 EOF
 
 operation() { # FILE EXECUTION MAX_TURNS PROFILE
@@ -220,6 +258,9 @@ EOF
 operation "$WORK/op1.json" "CX1-$ID" 5 default
 operation "$WORK/op2.json" "CX2-$ID" 5 default
 operation "$WORK/op3.json" "CX3-$ID" 5 plain
+operation "$WORK/op5.json" "CX5-$ID" 5 plain
+operation "$WORK/op6.json" "CX6-$ID" 5 plain
+operation "$WORK/op7.json" "CX7-$ID" 5 plain
 
 DOCKER_SOCKET=${DOCKER_SOCKET:-/var/run/docker.sock}
 DOCKER_GID=$(stat -c %g "$DOCKER_SOCKET")
@@ -331,6 +372,7 @@ first, last = events[0], events[-1]
 assert first[0] == "run_started" and first[1]["harness_style"] == "codex", first
 assert first[1]["runtime"]["version"] == "0.163.0" and first[1]["model_wire"]["wire"] == "responses", first
 assert first[1]["runtime"]["skills"] == ["e2e-render"], first
+assert first[1]["runtime"]["model"] == "deepseek-v4.1-flash" and first[1]["runtime"]["reasoning_effort"] == "max", first
 assert last[0] == "succeeded", last
 assert "model_call" not in names, "the official runtime must not emit model_call"
 done = {d["name"]: d for n, d in events if n == "tool_call" and d["phase"] == "finished"}
@@ -423,6 +465,7 @@ for b in open(sys.argv[1]).read().strip().split("\n\n"):
     e = dict(l.split(": ", 1) for l in b.split("\n") if ": " in l)
     if "id" in e: events.append((e["event"], json.loads(e["data"])))
 assert events[-1][0] == "succeeded", events[-1]
+assert events[-1][1]["candidate"]["text"] == "done again", events[-1][1]  # the final message had no phase
 out = [d for n, d in events if n == "tool_call" and d["phase"] == "finished"][0]["output"]["output"]
 assert "TOKEN=unset" in out and "PLANTED-DEV" in out and "PLANTED-AGENTS-MD" in out, out
 reqs = json.load(open(sys.argv[2]))["requests"][6:]
@@ -437,11 +480,49 @@ print("run 4: planted config and AGENTS.md ignored: requests 7-8 at this gateway
       "command: " + " | ".join(out.strip().split("\n")), file=sys.stderr)
 EOF
 
+# ---- runs 5 and 6: provider limits are not max_turns -----------------------------------------------------------
+failed_with() { # EVENTS_FILE ERROR_TYPE NEEDLE...: the run failed ERROR_TYPE with each NEEDLE in its message
+  python3 -I - "$@" <<'EOF'
+import json, sys
+path, want, needles = sys.argv[1], sys.argv[2], sys.argv[3:]
+blocks = [b for b in open(path).read().strip().split("\n\n") if "event: failed" in b]
+assert blocks, "no failed event"
+d = json.loads(blocks[0].split("data: ", 1)[1].split("\n", 1)[0])
+assert d["error_type"] == want, d
+for n in needles:
+    assert n in d["message"], (n, d["message"])
+print(f"{path.rsplit('/', 1)[-1]}: {want}: {d['message']}", file=sys.stderr)
+EOF
+}
+for n in 5 6; do
+  R=$(start_run "$WORK/op$n.json"); log "run $n $R started"
+  curl -sS -N -m 120 -H "Authorization: Bearer $SERVICE_KEY" "$BASE/v1/runs/$R/events" >"$WORK/events-$n.txt"
+  summary "$WORK/events-$n.txt"
+done
+failed_with "$WORK/events-5.txt" model_quota "Quota exceeded" || fail "run 5 did not fail model_quota"
+failed_with "$WORK/events-6.txt" model_quota "not the gateway's call limit" "hit your usage limit" ||
+  fail "run 6 did not fail model_quota"
+
+# ---- run 7: Codex killed mid-turn ------------------------------------------------------------------------------
+RUN7=$(start_run "$WORK/op7.json"); log "run 7 $RUN7 started"
+curl -sS -N -m 120 -H "Authorization: Bearer $SERVICE_KEY" "$BASE/v1/runs/$RUN7/events" >"$WORK/events-7.txt" &
+EV7=$!
+for _ in $(seq 120); do
+  [[ $(curl -sS "$GW/debug/codex-requests" | json 'len(d["requests"])') -ge 11 ]] && break; sleep 0.5
+done
+SANDBOX7=$(sandbox_of "CX7-$ID")
+docker exec "$SANDBOX7" sh -c 'for p in /proc/[0-9]*; do tr "\0" " " < $p/cmdline 2>/dev/null | grep -q "[c]odex app-server" && kill -9 ${p#/proc/}; done; true'
+log "killed codex in sandbox 7"
+wait $EV7 || true
+summary "$WORK/events-7.txt"
+failed_with "$WORK/events-7.txt" sandbox_error "Codex ended mid-turn: codex app-server exited" ||
+  fail "run 7 did not fail sandbox_error with the exit status"
+
 # ---- run 3: the gateway's call limit -----------------------------------------------------------------------------
 RUN3=$(start_run "$WORK/op3.json"); log "run 3 $RUN3 started"
 curl -sS -N -m 120 -H "Authorization: Bearer $SERVICE_KEY" "$BASE/v1/runs/$RUN3/events" >"$WORK/events-3.txt"
 summary "$WORK/events-3.txt"
-grep -A1 '^event: failed' "$WORK/events-3.txt" | grep -q '"error_type":"max_turns"' || fail "run 3 did not fail max_turns"
+failed_with "$WORK/events-3.txt" max_turns "its call limit" "0 model calls finished here" || fail "run 3 did not fail max_turns"
 curl -sS "$GW/debug/codex-requests" >"$WORK/codex-requests-3.json"
 python3 -I - "$WORK/events-3.txt" "$WORK/codex-requests-3.json" <<'EOF' || fail "run 3: skills without codex.skills_dirs"
 import json, sys
@@ -451,4 +532,4 @@ body = json.load(open(sys.argv[2]))["requests"][-1]["body"]
 assert "<skills_instructions>" not in json.dumps(body), "a skills catalog without codex.skills_dirs"
 print("run 3 (profile plain): no skills in run_started or the request", file=sys.stderr)
 EOF
-log "all four runs as expected"
+log "all seven runs as expected"
