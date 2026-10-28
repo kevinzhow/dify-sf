@@ -97,9 +97,11 @@ struct AgentOfficialIntegrationTests {
                             #expect(resolved["credential_ref"] == nil)
                             let completed = try #require(frames.first { $0["event"] == "node_finished" && $0["data"]?["node_id"] == "inline-agent" }?["data"])
                             #expect(completed["inputs"]?["model"] == resolved)
-                            let session = try #require(try await store.agentSession(execution: completed["id"]!.string!))
+                            let executionID = try #require(completed["id"]?.string)
+                            let session = try #require(try await store.agentSession(execution: executionID))
                             #expect(try JSONValue.parse(session.usage)["model_selection"]?["model"] == resolved["model"])
-                            #expect(try await routes.registry.sequencer(app).currentSnapshot().seq == saved.json["document_seq"]?.int)
+                            let savedSequence = try #require(try JSONValue.parse(saved.text)["document_seq"]?.int)
+                            #expect(try await routes.registry.sequencer(app).currentSnapshot().seq == savedSequence)
 
                             // The production worker first commits the ACK; only
                             // its next pass can admit sandbox cleanup.
