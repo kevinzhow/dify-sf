@@ -51,14 +51,28 @@ struct AgentOfficialIntegrationTests {
                         try await server.testing(.running, options: .live(hostname: "0.0.0.0", port: 21307)) { client in
                             let api = API(client: client)
                             let (owner, _, _) = try await runtimeFixture(api, endpoint: provider)
-                            let credentials: JSONValue = ["model": "stub-chat", "model_type": "llm", "credentials": [
+                            var modelCredentials: JSONObject = [
                                 "endpoint_url": .string(provider), "endpoint_model_name": "vendor-stub", "api_key": "sk-native-fixture-only", "mode": "chat",
-                                "api_type": "responses", "context_size": "500000", "max_tokens_to_sample": "4096", "function_calling_type": "tool_call"]]
+                                "api_type": "responses", "context_size": "500000", "max_tokens_to_sample": "4096", "function_calling_type": "tool_call"]
+                            if effort == "max" {
+                                modelCredentials[ModelDiscovery.metadataKey] = ["model": ["fields": ["reasoning_levels":
+                                    ["source": "provider", "value": ["high", "xhigh", "max"]]]]]
+                            }
+                            let credentials: JSONValue = ["model": "stub-chat", "model_type": "llm", "credentials": .object(modelCredentials)]
                             #expect(try await api.post("/v1/workspace/model-providers/\(AgentModelWire.compatible)/models/credentials", credentials.compactJSON(), token: owner).status == 201)
                             let key = ModelKey(provider: AgentModelWire.compatible, model: "stub-chat", modelType: "llm")
-                            let state = try await store.modelProviderState()
-                            let selected = try #require(state.modelCredentials[key]?.first { $0.config?.contains("sk-native-fixture-only") == true })
-                            try await store.switchCustomModelCredential(key, id: selected.id)
+                            func selectFixtureCredential(_ key: ModelKey) async throws {
+                                let state = try await store.modelProviderState()
+                                let selected = try #require(state.modelCredentials[key]?.first { $0.config?.contains("sk-native-fixture-only") == true })
+                                if let metadata = modelCredentials[ModelDiscovery.metadataKey] {
+                                    let savedConfig = try #require(selected.config)
+                                    var saved = try #require(try JSONValue.parse(savedConfig).object)
+                                    saved[ModelDiscovery.metadataKey] = metadata
+                                    try await store.updateModelCredential(key, id: selected.id, name: nil, config: JSONValue.object(saved).compactJSON())
+                                }
+                                try await store.switchCustomModelCredential(key, id: selected.id)
+                            }
+                            try await selectFixtureCredential(key)
                             var yaml = AgentRuntimeIntegrationTests.yaml.split(separator: "\n", omittingEmptySubsequences: false)
                                 .filter { !$0.contains("value_selector: [inline-agent, score]") }.joined(separator: "\n")
                             if effort != nil {
@@ -66,8 +80,9 @@ struct AgentOfficialIntegrationTests {
                                 alternate["model"] = "stub-chat-alternate"
                                 #expect(try await api.post("/v1/workspace/model-providers/\(AgentModelWire.compatible)/models/credentials",
                                     JSONValue.object(alternate).compactJSON(), token: owner).status == 201)
+                                try await selectFixtureCredential(ModelKey(provider: AgentModelWire.compatible, model: "stub-chat-alternate", modelType: "llm"))
                                 yaml = yaml.replacingOccurrences(of: "variables: []}", with:
-                                    "variables: [{variable: model, type: select, required: true, options: [stub-chat, stub-chat-alternate]}, {variable: effort, type: select, required: true, options: [high, xhigh, max]}]}")
+                                    "variables: [{variable: model, type: select, required: true, options: [stub-chat, stub-chat-alternate]}, {variable: effort, type: select, required: true, options: [low, high, xhigh, max]}]}")
                                     .replacingOccurrences(of: "agent_node_kind: dify_agent,", with:
                                         "agent_node_kind: dify_agent, agent_model: {model: '{{#start.model#}}', reasoning_effort: '{{#start.effort#}}'},")
                             }
@@ -108,6 +123,12 @@ struct AgentOfficialIntegrationTests {
                             await routes.deliverAgentOutbox()
                             await routes.deliverAgentOutbox()
                             #expect(try await store.pendingAgentJobs().isEmpty)
+                            if effort == "max" {
+                                let invalid: JSONValue = ["inputs": ["model": "stub-chat-alternate", "effort": "low"]]
+                                let rejected = try await api.post("/v1/apps/\(app)/workflows/draft/run", invalid.compactJSON(), token: owner)
+                                #expect(rejected.text.contains("The selected model does not support this reasoning effort"))
+                                #expect(requests.withLock { $0.count } == 1)
+                            }
                         }
                     }
                 }
@@ -124,7 +145,7 @@ private func withOfficialFixtureProvider(_ handler: @Sendable @escaping (Request
             let schema: JSONValue = ["code": 0, "message": "", "data": ["model_schema": [
                 "model": "stub-chat", "label": ["en_US": "stub-chat"], "model_type": "llm", "features": ["tool-call", "vision"],
                 "fetch_from": "customizable-model", "model_properties": ["mode": "chat", "context_size": 500000],
-                "parameter_rules": [["name": "max_tokens", "max": 4096], ["name": "reasoning_effort", "options": ["high", "xhigh", "max"]]]]]]
+                "parameter_rules": [["name": "max_tokens", "max": 4096], ["name": "reasoning_effort", "options": ["none", "minimal", "low", "medium", "high", "xhigh"]]]]]]
             return Response(status: .ok, headers: [.contentType: "text/event-stream"], body: .init(string: "data: " + schema.compactJSON() + "\n\n"))
         }
     }) { app in

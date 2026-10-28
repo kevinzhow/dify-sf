@@ -44,8 +44,8 @@ struct ServerAgentRuntime: AgentRuntime {
             throw NodeError("AgentModelUnsupported", "The agent model must support tool calls")
         }
         if let effort = soul.modelParameters["reasoning_effort"],
-           let rule = schema.json["parameter_rules"]?.array?.first(where: { $0["name"] == "reasoning_effort" }),
-           rule["allow_custom_value"] != true, let options = rule["options"]?.array, !options.isEmpty,
+           let options = ModelReasoning.runtimeOptions(provider: provider, credentials: credentials,
+               rule: schema.json["parameter_rules"]?.array?.first(where: { $0["name"] == "reasoning_effort" })),
            !options.contains(effort) {
             throw NodeError("AgentModelInputInvalid", "The selected model does not support this reasoning effort")
         }
@@ -321,7 +321,8 @@ struct ServerAgentRuntime: AgentRuntime {
         if let models = routes.runtimeServices(appId: appID, userId: userID).models,
            let schema = try await models.modelSchema(provider: soul.provider!, model: soul.model!, modelType: "llm", credentials: credentials) {
             if let context = schema.json["model_properties"]?["context_size"]?.int, context > 0 { result["context_window"] = .int(context) }
-            if let efforts = schema.json["parameter_rules"]?.array?.first(where: { $0["name"] == "reasoning_effort" })?["options"]?.array,
+            if let efforts = ModelReasoning.runtimeOptions(provider: soul.provider!, credentials: credentials,
+                rule: schema.json["parameter_rules"]?.array?.first(where: { $0["name"] == "reasoning_effort" })),
                !efforts.isEmpty, efforts.allSatisfy({ $0.string?.isEmpty == false }) {
                 result["reasoning_efforts"] = .array(efforts)
             }
