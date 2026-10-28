@@ -612,11 +612,11 @@ turn starts: the gateway would refuse each such request, so failing early gives 
 | `reasoning` (summary and content) | `thought` |
 | `turn/plan/updated` | `plan` (`inProgress` written `in_progress`) |
 | `error` with `willRetry` of the root thread | `model_retry` (a sub-agent's retries are logged, not the run's events; every thread's count toward the call limit check, see [Call limit or quota](#codex-runtime)) |
-| `item/started`, `item/completed` of `contextCompaction` (and the deprecated `thread/compacted`, which 0.163.0 does not send) | `compaction` `started` / `finished` |
+| `item/started`, `item/completed` of `contextCompaction` (and the deprecated `thread/compacted`, which 0.163.0 does not send) | `compaction` `started` / `finished`, retained in the run trace log |
 | `item/tool/call` `report_progress` | `progress`, as for the other styles; Codex gets the tool text |
 | `currentTime/read` (Codex's clock, also polled while the model waits) | answered `{"currentTimeAt"}`, the Unix time in whole seconds; other server requests (approvals, user input) are refused |
 | `thread/tokenUsage/updated` | no event: summed into the terminal `usage` and logged; the Swift server records `model_call`s from its gateway |
-| `turn/completed` | `completed`: the final answer is the turn's last agent message when Codex lists the turn's items, else the last `final_answer` message, else the last message without a phase or with `partial_answer` that no tool call followed (providers do not always send a phase) (as in the port: `{"text"}`, or the JSON object of the declared outputs, checked and its file outputs uploaded); `failed` with `usageLimitExceeded`: `max_turns` only for the gateway's own call limit (below), else `model_quota` with Codex's message; `contextWindowExceeded`: `model_error` "the conversation no longer fits the model's context window (<window> tokens, <source>) and Codex could not compact it enough: Codex: …"; other failures `model_error` with Codex's message and error code |
+| `turn/completed` | `completed`: the final answer is the last `final_answer` message, else the last message without a phase or with `partial_answer` that no tool call followed; commentary and unknown phases are never answers, including in the completed turn's item list (providers do not always send a phase) (as in the port: `{"text"}`, or the JSON object of the declared outputs, checked and its file outputs uploaded); `failed` with `usageLimitExceeded`: `max_turns` only for the gateway's own call limit (below), else `model_quota` with Codex's message; `contextWindowExceeded`: `model_error` "the conversation no longer fits the model's context window (<window> tokens, <source>) and Codex could not compact it enough: Codex: …"; other failures `model_error` with Codex's message and error code |
 
 The snapshot of `succeeded` is `{"envelope", "revision", "harness_style": "codex", "codex": {"runtime": "official",
 "version", "final_answer"}, …}`. An output retry starts a new Codex thread in the same workspace with the task, the
@@ -638,7 +638,7 @@ calls Codex started and did not finish get `tool_call` `finished` with `error` "
 tool finished", and the run fails: `sandbox_error` "Codex ended mid-turn: codex app-server exited (<status> <exit
 code>): <the last 4000 characters of its output and stderr>" once the job is seen ended (polled for 3 s), else
 `internal` "Codex ended mid-turn: the connection to the Codex app-server closed and the process still runs" (checked by
-`tool/codex_e2e.sh` with a killed Codex).
+`tool/codex_e2e.sh` with a killed Codex). Temporary run capabilities, the WebSocket capability and the service credential are redacted before the output tail is truncated.
 
 **Gateway entry** (Swift server; contract agreed with Winnie, 2026-10-28): `POST <codex_gateway_url>/responses` with
 `Authorization: Bearer <model.run_token>`; the body is Codex's Responses request as it is (`model`, `instructions`,
@@ -650,14 +650,13 @@ model, effort, `include` and usage per call, enforces the node's output-token bu
 unchanged (also to DeepSeek, for now), refuses images that are not inline data URLs, never retries (Codex does), and
 beyond `max_turns` answers `429 {"error": {"type": "usage_limit_reached", "code": "agent_call_limit", ...}}` (Codex
 stops only on that type) with the header `x-codex-promo-message: dify-sf-agent-call-limit`. The token is bound to the
-execution, generation and deadline and revoked at the run's end.
+execution, generation and deadline and revoked at the run's end. Only admitted requests spend a call slot; a local `503 agent_model_busy` leaves the remaining budget intact.
 
 **Call limit or quota.** Codex reports every usage, quota and billing refusal as `usageLimitExceeded` and drops the
 body's `code` and `message` of a `usage_limit_reached` 429, so the gateway marks its own call limit with
 `x-codex-promo-message: dify-sf-agent-call-limit`, which Codex 0.163.0 puts into the turn error's message ("You’ve hit
 your usage limit. dify-sf-agent-call-limit, or try again later."); the gateway forwards no provider header but
-`Retry-After`, so a provider cannot send the mark, and it must not pass a provider's own `usage_limit_reached` type
-through as is (both still to be done in the Swift gateway as of 2026-10-28). agent_service ends the run `max_turns` when the mark is in the
+`Retry-After`, so a provider cannot send the mark. The Swift gateway maps a provider's `usage_limit_reached` type to `insufficient_quota`, preserving its bounded code and status; provider quotas remain distinct even at the call cap. agent_service ends the run `max_turns` when the mark is in the
 message, or when an unmarked `usage_limit_reached` ("You’ve hit your usage limit…") comes after at least `max_turns`
 model calls it saw (finished calls, `thread/tokenUsage/updated`, plus the attempts Codex announced it retries, `error`
 with `willRetry`, every thread); every other `usageLimitExceeded` ends it `model_quota` with Codex's message (a
