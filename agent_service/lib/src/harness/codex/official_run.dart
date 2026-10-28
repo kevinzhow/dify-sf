@@ -1056,8 +1056,16 @@ class _OfficialCodexRun {
         _onUsage(p);
       case 'error':
         final error = (p['error'] as Map?) ?? const {};
-        if (p['willRetry'] == true) {
-          _retries++;
+        if (p['willRetry'] != true) return;
+        // Every thread's retried call counts at the gateway; only the root
+        // thread's are the run's model_retry (a sub-agent's are logged).
+        _retries++;
+        if (!mine) {
+          run.log?.call(
+            'run ${run.runId}: codex sub-agent ${p['threadId']} retries a '
+            'model call: ${jsonEncode(error)}',
+          );
+        } else {
           run._emit('model_retry', {
             'call_index': _callIndex,
             'attempt': null,

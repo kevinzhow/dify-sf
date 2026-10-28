@@ -450,4 +450,44 @@ void main() {
     expect(at, inInclusiveRange(now - 10, now));
     expect((other['error'] as Map)['message'], 'unsupported');
   });
+
+  test('only the root thread\'s retries are model_retry events', () async {
+    Map<String, Object?> retry(String thread) => {
+      'threadId': thread,
+      'turnId': 'turn_x',
+      'willRetry': true,
+      'error': {
+        'message': 'Reconnecting... 1/2',
+        'codexErrorInfo': 'internalServerError',
+      },
+    };
+    final fake = FakeCodexAppServer(
+      turn: (s) async {
+        s
+          ..notify('error', retry('thr_child'))
+          ..notify('error', retry('thr_root'))
+          ..notify('error', {...retry('thr_root'), 'willRetry': false})
+          ..message('ok', phase: 'final_answer')
+          ..complete({'status': 'completed'});
+      },
+    );
+    final (result, names, data) = await ran(fake);
+    expect(result['candidate'], {'text': 'ok'});
+    expect(
+      [
+        for (var i = 0; i < names.length; i++)
+          if (names[i] == 'model_retry') data[i],
+      ],
+      [
+        {
+          'call_index': 1,
+          'attempt': null,
+          'layer': 'codex',
+          'kind': 'internalServerError',
+          'message': 'Reconnecting... 1/2',
+          'delay_ms': null,
+        },
+      ],
+    );
+  });
 }

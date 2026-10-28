@@ -607,7 +607,7 @@ turn starts: the gateway would refuse each such request, so failing early gives 
 | `agentMessage` with `phase: commentary` (or without a phase or with `partial_answer`, followed by a tool call) | `commentary` |
 | `reasoning` (summary and content) | `thought` |
 | `turn/plan/updated` | `plan` (`inProgress` written `in_progress`) |
-| `error` with `willRetry` | `model_retry` |
+| `error` with `willRetry` of the root thread | `model_retry` (a sub-agent's retries are logged, not the run's events; every thread's count toward the call limit check, see [Call limit or quota](#codex-runtime)) |
 | `item/started`, `item/completed` of `contextCompaction` (and the deprecated `thread/compacted`, which 0.163.0 does not send) | `compaction` `started` / `finished` |
 | `item/tool/call` `report_progress` | `progress`, as for the other styles; Codex gets the tool text |
 | `currentTime/read` (Codex's clock, also polled while the model waits) | answered `{"currentTimeAt"}`, the Unix time in whole seconds; other server requests (approvals, user input) are refused |
