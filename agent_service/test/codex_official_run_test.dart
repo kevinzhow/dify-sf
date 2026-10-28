@@ -327,4 +327,78 @@ void main() {
       expect(fake.methods, contains('turn/interrupt'));
     });
   });
+
+  group('context', () {
+    test('a contextCompaction item is a compaction event pair', () async {
+      final fake = FakeCodexAppServer(
+        turn: (s) async {
+          s
+            ..usage()
+            ..item('started', {'type': 'contextCompaction', 'id': 'cc1'})
+            ..item('completed', {'type': 'contextCompaction', 'id': 'cc1'})
+            ..notify('thread/compacted', {
+              'threadId': 'thr_root',
+              'turnId': 'turn_1',
+            })
+            // a sub-agent's compaction is not the run's
+            ..item('started', {
+              'type': 'contextCompaction',
+              'id': 'cc2',
+            }, thread: 'thr_child')
+            ..message('ok', phase: 'final_answer')
+            ..complete({'status': 'completed'});
+        },
+      );
+      final (result, names, data) = await ran(fake);
+      expect(names.last, 'succeeded', reason: jsonEncode(result));
+      expect(
+        [
+          for (var i = 0; i < names.length; i++)
+            if (names[i] == 'compaction') data[i],
+        ],
+        [
+          {'phase': 'started', 'call_index': 2},
+          {'phase': 'finished', 'call_index': 2},
+        ],
+      );
+    });
+
+    test(
+      'contextWindowExceeded names the window and where it came from',
+      () async {
+        final fake = FakeCodexAppServer(
+          turn: (s) async => s.fail(
+            'contextWindowExceeded',
+            'Codex ran out of room in the model\'s context window.',
+          ),
+        );
+        final (result, names, data) = await ran(fake);
+        expect(result['error_type'], 'model_error');
+        expect(
+          result['message'],
+          'the conversation no longer fits the model\'s context window (272000 '
+          'tokens, fallback) and Codex could not compact it enough: Codex: '
+          'Codex ran out of room in the model\'s context window.',
+        );
+        final runtime = data.first['runtime'] as Map;
+        expect(runtime['context_window'], 272000);
+        expect(runtime['context_window_source'], 'fallback');
+      },
+    );
+
+    test('the operation\'s context window is recorded', () async {
+      final fake = FakeCodexAppServer(
+        turn: (s) async => s
+          ..message('ok', phase: 'final_answer')
+          ..complete({'status': 'completed'}),
+      );
+      final (_, _, data) = await ran(
+        fake,
+        op: officialCodexOp(contextWindow: 64000),
+      );
+      final runtime = data.first['runtime'] as Map;
+      expect(runtime['context_window'], 64000);
+      expect(runtime['context_window_source'], 'operation');
+    });
+  });
 }

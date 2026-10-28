@@ -248,6 +248,20 @@ Map<String, Object?>? bundledEntryFor(
   return null;
 }
 
+/// Where the context window of [model]'s catalog entry comes from:
+/// `operation` (`model.context_window`), `bundled` (Codex's bundled entry
+/// for the model, see [bundledEntryFor]) or `fallback` (Codex's fallback
+/// metadata: 272000 tokens, whatever the model really has).
+String codexContextWindowSource(
+  String model,
+  List<Map<String, Object?>> bundled,
+  int? contextWindow,
+) => contextWindow != null
+    ? 'operation'
+    : bundledEntryFor(model, bundled) != null
+    ? 'bundled'
+    : 'fallback';
+
 /// The one catalog entry of a run (`model_catalog_json`): the bundled entry
 /// for [model] (see [bundledEntryFor]) or Codex's fallback metadata, named
 /// [model], with the operation's model facts and dify-sf's settings:

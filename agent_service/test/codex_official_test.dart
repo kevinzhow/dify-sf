@@ -262,6 +262,26 @@ void main() {
       },
     ];
 
+    test('where the context window comes from', () {
+      expect(codexContextWindowSource('m', bundled, 1000), 'operation');
+      expect(
+        codexContextWindowSource('gpt-6.1-terra', bundled, null),
+        'bundled',
+      );
+      expect(
+        codexContextWindowSource('deepseek-v4.1', bundled, null),
+        'fallback',
+      );
+      expect(
+        codexCatalogEntry(
+          model: 'deepseek-v4.1',
+          bundled: bundled,
+          shell: true,
+        )['context_window'],
+        272000,
+      );
+    });
+
     test('gpt-6 models start from gpt-6-astra, in Direct-tools mode', () {
       final e = codexCatalogEntry(
         model: 'gpt-6.1-terra',

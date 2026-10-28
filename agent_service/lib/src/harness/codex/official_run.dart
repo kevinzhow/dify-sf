@@ -134,6 +134,14 @@ class _OfficialCodexRun {
   Map<String, Object?>? _unphased;
   String? _finalText;
 
+  /// The catalog entry's context window and where it came from
+  /// ([codexContextWindowSource]).
+  Object? _contextWindow;
+  String? _contextWindowSource;
+
+  /// Whether a context compaction of the root thread is under way.
+  bool _compacting = false;
+
   /// The CODEX_HOME of this run in the sandbox.
   String? _home;
 
@@ -513,6 +521,25 @@ class _OfficialCodexRun {
       inputModalities: r.model.inputModalities,
       shell: r.shell,
     );
+    final windowSource = codexContextWindowSource(
+      r.model.name,
+      bundled,
+      r.model.contextWindow,
+    );
+    _contextWindow = entry['context_window'];
+    _contextWindowSource = windowSource;
+    if (windowSource == 'fallback') {
+      run.log?.call(
+        'run ${run.runId}: no model.context_window and ${r.model.name} is '
+        'not in Codex\'s bundled catalog: Codex\'s fallback context window '
+        '(${entry['context_window']} tokens) applies to compaction and the '
+        'context limit',
+      );
+    }
+    _addRuntime({
+      'context_window': entry['context_window'],
+      'context_window_source': windowSource,
+    });
     await _writeHome(
       sandbox,
       '$home/models.json',
@@ -732,6 +759,14 @@ class _OfficialCodexRun {
                 '${r.maxTurns}, $seen): Codex: $message',
           );
         }
+        if (info == 'contextWindowExceeded') {
+          _failWith(
+            'model_error',
+            'the conversation no longer fits the model\'s context window '
+                '($_contextWindow tokens, $_contextWindowSource) and Codex '
+                'could not compact it enough: Codex: $message',
+          );
+        }
         _failWith('model_error', 'Codex: $message (${jsonEncode(info)})');
     }
     // The final answer: the turn's last agent message when Codex lists the
@@ -925,6 +960,11 @@ class _OfficialCodexRun {
     _openTools.clear();
   }
 
+  void _compactionDone() {
+    _compacting = false;
+    run._emit('compaction', {'phase': 'finished', 'call_index': _callIndex});
+  }
+
   void _flushUnphased() {
     final m = _unphased;
     if (m == null) return;
@@ -941,7 +981,13 @@ class _OfficialCodexRun {
       case 'item/started' when mine:
         final item = p['item'];
         if (item is! Map) return;
-        if (_toolItems.contains(item['type'])) {
+        if (item['type'] == 'contextCompaction') {
+          _compacting = true;
+          run._emit('compaction', {
+            'phase': 'started',
+            'call_index': _callIndex,
+          });
+        } else if (_toolItems.contains(item['type'])) {
           _flushUnphased();
           _openTools[item['id']] = _toolName(item);
           run._emit('tool_call', {
@@ -955,7 +1001,9 @@ class _OfficialCodexRun {
         final item = p['item'];
         if (item is! Map) return;
         final type = item['type'];
-        if (_toolItems.contains(type)) {
+        if (type == 'contextCompaction') {
+          _compactionDone();
+        } else if (_toolItems.contains(type)) {
           _openTools.remove(item['id']);
           run._emit('tool_call', {
             'id': item['id'],
@@ -1035,6 +1083,10 @@ class _OfficialCodexRun {
           s['effort'],
         );
         if (mismatch != null) _abort('internal', mismatch);
+      // Deprecated (Codex 0.163.0 sends the item instead): ends a
+      // compaction the item did not.
+      case 'thread/compacted' when mine:
+        if (_compacting) _compactionDone();
       case 'model/rerouted':
         run.log?.call(
           'run ${run.runId}: codex rerouted thread ${p['threadId']} from '

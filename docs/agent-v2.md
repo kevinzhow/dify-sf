@@ -220,7 +220,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 
 | `event` | `data` |
 |---|---|
-| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style", "model_wire"?, "runtime"?}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex`; with the official Codex runtime `model_wire.wire` is `responses` and `runtime` is `{"name": "codex-cli", "version": "0.163.0", "sha256", "skills"?, "model", "reasoning_effort", "request_reasoning_effort"?}`; `skills` (names, sorted) when the profile declares `codex.skills_dirs`; `model` and `reasoning_effort` as Codex's `thread/start` answered them, `request_reasoning_effort` the level Codex sends when it differs (`ultra`). With the official runtime `run_started` is written once Codex has started the thread, still before any other event; a run that fails earlier writes it without these fields (see [Codex runtime](#codex-runtime)) |
+| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style", "model_wire"?, "runtime"?}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex`; with the official Codex runtime `model_wire.wire` is `responses` and `runtime` is `{"name": "codex-cli", "version": "0.163.0", "sha256", "skills"?, "context_window", "context_window_source", "model", "reasoning_effort", "request_reasoning_effort"?}`; `context_window` is the catalog entry's and `context_window_source` `operation`, `bundled` or `fallback` (see [Codex runtime](#codex-runtime)); `skills` (names, sorted) when the profile declares `codex.skills_dirs`; `model` and `reasoning_effort` as Codex's `thread/start` answered them, `request_reasoning_effort` the level Codex sends when it differs (`ultra`). With the official runtime `run_started` is written once Codex has started the thread, still before any other event; a run that fails earlier writes it without these fields (see [Codex runtime](#codex-runtime)) |
 | `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB of UTF-8 is split into several, cut only between code points |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
 | `model_call` | `{"invocation_id", "usage", "prompt"}` after each model call; `prompt` is `{"messages", "prefix_stable", "first_changed_message"}` (see [Prompt cache](#prompt-cache)). Not emitted by the official Codex runtime: the Swift server records those calls from its gateway |
@@ -228,6 +228,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 | `progress` | `{"file": {"upload_id", "filename", "mime_type", "size"}, "caption", "call_index"}`: a preview from `report_progress` (see [Progress previews](#progress-previews)), between the tool's `started` and `finished` `tool_call` events |
 | `commentary` | `codex` style: `{"text", "call_index"}`, the assistant text of a response that also calls tools (Codex's `phase: commentary`); it stays in the history |
 | `plan` | `codex` style with `tools.update_plan`: `{"explanation", "plan": [{"step", "status"}], "call_index"}` |
+| `compaction` | Official Codex runtime: `{"phase": "started" \| "finished", "call_index"}` around Codex's compaction of the conversation (a `contextCompaction` item of the root thread) |
 | `model_retry` | `codex` style: `{"call_index", "attempt", "layer": "request" \| "stream", "kind", "message", "delay_ms"}` before a retried model call (see [Harness styles](#harness-styles)); the official Codex runtime sends `"layer": "codex"`, `kind` = Codex's error code, `attempt` and `delay_ms` null |
 | `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage", "partial"}`; `partial` is `null`, or `{"reason", "notice_call_index"}` when the result came after a budget notice |
 | `paused` | `{"question_id", "tool_call_id", "question": <ask_human args>, "snapshot": <envelope>, "usage"}` |
@@ -568,7 +569,11 @@ one Codex itself would pick (longest slug prefix, then after one `namespace/` se
 `gpt-6*` names (as the port did), else Codex's fallback metadata (`prompt.md`, `unified_exec`); renamed to `model.name`,
 with the operation's facts above, Direct tools (`tool_mode` unset: the code-mode host is not installed), no
 Responses-lite request shape, no WebSocket preference, no service tiers, and `apply_patch` as Codex's freeform tool
-(with the shell; DeepSeek accepts no other custom tool).
+(with the shell; DeepSeek accepts no other custom tool). The context window Codex compacts by and stops at is
+`model.context_window`, else the bundled entry's, else Codex's fallback of 272000 tokens whatever the model has: that
+fallback is kept (configs without the field keep working) but logged, and `run_started.runtime` names the window and
+its source (`operation`, `bundled`, `fallback`); the Swift server should send `model.context_window` for models outside
+Codex's bundled catalog.
 
 **Transport.** `codex app-server --listen ws://0.0.0.0:<random port> --ws-auth capability-token --ws-token-sha256
 <sha256>` runs as a shellctl `stdio` job of the run (Landlock applies to Codex and its commands as to every job), and
@@ -599,9 +604,10 @@ turn starts: the gateway would refuse each such request, so failing early gives 
 | `reasoning` (summary and content) | `thought` |
 | `turn/plan/updated` | `plan` (`inProgress` written `in_progress`) |
 | `error` with `willRetry` | `model_retry` |
+| `item/started`, `item/completed` of `contextCompaction` (and the deprecated `thread/compacted`, which 0.163.0 does not send) | `compaction` `started` / `finished` |
 | `item/tool/call` `report_progress` | `progress`, as for the other styles; Codex gets the tool text |
 | `thread/tokenUsage/updated` | no event: summed into the terminal `usage` and logged; the Swift server records `model_call`s from its gateway |
-| `turn/completed` | `completed`: the final answer is the turn's last agent message when Codex lists the turn's items, else the last `final_answer` message, else the last message without a phase or with `partial_answer` that no tool call followed (providers do not always send a phase) (as in the port: `{"text"}`, or the JSON object of the declared outputs, checked and its file outputs uploaded); `failed` with `usageLimitExceeded`: `max_turns` only for the gateway's own call limit (below), else `model_quota` with Codex's message; other failures `model_error` with Codex's message and error code |
+| `turn/completed` | `completed`: the final answer is the turn's last agent message when Codex lists the turn's items, else the last `final_answer` message, else the last message without a phase or with `partial_answer` that no tool call followed (providers do not always send a phase) (as in the port: `{"text"}`, or the JSON object of the declared outputs, checked and its file outputs uploaded); `failed` with `usageLimitExceeded`: `max_turns` only for the gateway's own call limit (below), else `model_quota` with Codex's message; `contextWindowExceeded`: `model_error` "the conversation no longer fits the model's context window (<window> tokens, <source>) and Codex could not compact it enough: Codex: …"; other failures `model_error` with Codex's message and error code |
 
 The snapshot of `succeeded` is `{"envelope", "revision", "harness_style": "codex", "codex": {"runtime": "official",
 "version", "final_answer"}, …}`. An output retry starts a new Codex thread in the same workspace with the task, the
