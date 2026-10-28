@@ -579,7 +579,11 @@ Codex's bundled catalog.
 <sha256>` runs as a shellctl `stdio` job of the run (Landlock applies to Codex and its commands as to every job), and
 agent_service connects over the sandbox network with the matching bearer token (32 random bytes, per run). Not
 `stdio://`: shellctl is Dify's daemon, and its stdio jobs refuse input (`409 input_unsupported`) while a PTY rewrites
-JSON. The connection then sends `initialize` (`experimentalApi: true` for dynamic tools), `thread/start` (`cwd:
+JSON. The connection then sends `initialize` (`experimentalApi: true` for dynamic tools; `optOutNotificationMethods`:
+the streaming deltas `item/agentMessage/delta`, `item/plan/delta`, `item/reasoning/summaryTextDelta`,
+`item/reasoning/summaryPartAdded`, `item/reasoning/textDelta`, `item/commandExecution/outputDelta`,
+`item/fileChange/outputDelta`, `item/fileChange/patchUpdated`, and `turn/diff/updated`, `account/rateLimits/updated`,
+which the runtime does not read; `tool/codex_e2e.sh` checks the names against the binary's schema), `thread/start` (`cwd:
 /workspace`, approval never, danger-full-access, `ephemeral`, `dynamicTools: [report_progress]`) and `turn/start` (the
 task; task files are written to `/workspace/.dify-sf/task-files/` and given as `localImage` (images, which Codex sends
 as data URLs) or by path; with declared outputs `outputSchema` = the model-facing schema, made strict-compatible

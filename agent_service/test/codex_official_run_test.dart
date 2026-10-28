@@ -401,4 +401,31 @@ void main() {
       expect(runtime['context_window_source'], 'operation');
     });
   });
+
+  test(
+    'initialize opts out of the notifications the runtime ignores',
+    () async {
+      final fake = FakeCodexAppServer(
+        turn: (s) async => s
+          ..message('ok', phase: 'final_answer')
+          ..complete({'status': 'completed'}),
+      );
+      final (result, _, _) = await ran(fake);
+      expect(result['candidate'], {'text': 'ok'});
+      final caps = fake.paramsOf('initialize')['capabilities'] as Map;
+      expect(caps['experimentalApi'], isTrue);
+      expect(caps['optOutNotificationMethods'], [
+        'item/agentMessage/delta',
+        'item/plan/delta',
+        'item/reasoning/summaryTextDelta',
+        'item/reasoning/summaryPartAdded',
+        'item/reasoning/textDelta',
+        'item/commandExecution/outputDelta',
+        'item/fileChange/outputDelta',
+        'item/fileChange/patchUpdated',
+        'turn/diff/updated',
+        'account/rateLimits/updated',
+      ]);
+    },
+  );
 }

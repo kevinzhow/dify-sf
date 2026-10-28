@@ -28,6 +28,8 @@
 #   7. a model call that hangs while the Codex process is killed: the run must fail sandbox_error with the exit status;
 #   3. the gateway's call limit (429 usage_limit_reached with x-codex-promo-message: dify-sf-agent-call-limit): the run
 #      must fail max_turns; its profile has no skills, so Codex lists none.
+# Before the runs, the binary's app-server schema (generate-json-schema --experimental, a scratch CODEX_HOME) must list
+# every notification method the runtime opts out of and the currentTime/read request.
 # Everything created carries dify-sf.test=<random> and is removed at the end, also on failure.
 set -euo pipefail
 
@@ -61,6 +63,29 @@ DEFAULT_REF=langgenius/dify-agent-local-sandbox@$DEFAULT_REF
 for image in ubuntu/squid:latest; do
   docker image inspect "$image" >/dev/null 2>&1 || fail "image $image is not present locally (nothing is pulled)"
 done
+
+# ---- the pinned binary's protocol: the names the runtime relies on -------------------------------------------------
+mkdir -p "$WORK/codex-home" "$WORK/schema"
+CODEX_HOME="$WORK/codex-home" "$CODEX_DIR/codex" app-server generate-json-schema --experimental --out "$WORK/schema" \
+  >/dev/null 2>&1 || fail "codex app-server generate-json-schema failed"
+python3 -I - "$WORK/schema" "$HERE/lib/src/harness/codex/official.dart" <<'EOF' || fail "the runtime names methods the binary does not have"
+import json, re, sys
+schema, source = sys.argv[1:]
+def methods(name):
+    out = set()
+    for v in json.load(open(f"{schema}/{name}.json"))["oneOf"]:
+        m = v["properties"]["method"]
+        out.update(m.get("enum") or [m["const"]])
+    return out
+listed = re.search(r"const codexOptOutNotifications = \[(.*?)\];", open(source).read(), re.S).group(1)
+opt_out = re.findall(r"'([^']+)'", listed)
+assert len(opt_out) >= 5, opt_out
+missing = [m for m in opt_out if m not in methods("ServerNotification")]
+assert not missing, missing
+assert "currentTime/read" in methods("ServerRequest")
+print(f"schema: {len(opt_out)} opted-out notifications and currentTime/read exist in the binary's protocol", file=sys.stderr)
+EOF
+rm -rf "$WORK/codex-home" "$WORK/schema"
 
 compose() {
   docker compose -p "$PROJECT" -f "$REPO/docker-compose.yml" -f "$WORK/override.yml" --profile agent "$@"

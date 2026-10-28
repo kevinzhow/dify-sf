@@ -620,7 +620,10 @@ class _OfficialCodexRun {
         'title': 'dify-sf agent service',
         'version': serviceVersion,
       },
-      'capabilities': {'experimentalApi': true},
+      'capabilities': {
+        'experimentalApi': true,
+        'optOutNotificationMethods': codexOptOutNotifications,
+      },
     });
     server.notify('initialized');
     final disabledSkills = await _loadSkills(server, sandbox, skillsDirs);

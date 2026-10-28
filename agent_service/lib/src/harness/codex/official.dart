@@ -57,6 +57,24 @@ const officialCodexReasoningEfforts = [
   'ultra',
 ];
 
+/// Notifications the runtime does not read, suppressed at `initialize`
+/// (`capabilities.optOutNotificationMethods`, exact method names of the
+/// 0.163.0 schema, checked by tool/codex_e2e.sh): the streaming deltas
+/// (the runtime reads completed items), the turn's diff and the account's
+/// rate limits.
+const codexOptOutNotifications = [
+  'item/agentMessage/delta',
+  'item/plan/delta',
+  'item/reasoning/summaryTextDelta',
+  'item/reasoning/summaryPartAdded',
+  'item/reasoning/textDelta',
+  'item/commandExecution/outputDelta',
+  'item/fileChange/outputDelta',
+  'item/fileChange/patchUpdated',
+  'turn/diff/updated',
+  'account/rateLimits/updated',
+];
+
 /// A TOML basic string (JSON's escapes are a subset of TOML's).
 String tomlString(String s) => jsonEncode(s);
 
