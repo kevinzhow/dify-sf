@@ -58,6 +58,46 @@ const fileSchema = {
 };
 
 void main() {
+  for (final stop in ['cancel', 'timeout']) {
+    test(
+      '$stop ends a run waiting for a disk slot without creating a sandbox',
+      () async {
+        final (h, sup) = await startWithSandbox([
+          ScriptedCall.toolCall('c1', 'shell_run', {'script': 'echo hi'}),
+          ScriptedCall.text('done'),
+        ]);
+        sup.failAcquire = 503;
+        sup.failAcquireCode = 'disk_pool_busy';
+        final body = operation(shell: true);
+        if (stop == 'timeout') (body['limits'] as Map)['timeout_seconds'] = 1;
+        final runId = await h.startOperation(body);
+        await until(() => sup.acquires.isNotEmpty);
+        final clock = Stopwatch()..start();
+        if (stop == 'cancel') {
+          final (status, _) = await h.post('/v1/runs/$runId/cancel', {
+            'protocol': protocolName,
+            'generation': 1,
+          });
+          expect(status, 202);
+        }
+        final result = await h.waitEnded(
+          runId,
+          timeout: const Duration(seconds: 3),
+        );
+        expect(clock.elapsedMilliseconds, lessThan(2500));
+        expect(result['status'], stop == 'cancel' ? 'cancelled' : 'failed');
+        if (stop == 'timeout') {
+          expect((result['result'] as Map)['error_type'], 'timeout');
+        }
+        final count = sup.acquires.length;
+        sup.failAcquire = null;
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+        expect(sup.acquires.length, count);
+        expect(sup.created, isEmpty);
+      },
+    );
+  }
+
   test('first shell use acquires one sandbox, probes it, materializes files '
       'and runs shell_run in pty mode with env and HOME', () async {
     final (h, sup) = await startWithSandbox(

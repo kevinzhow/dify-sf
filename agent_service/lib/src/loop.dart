@@ -1062,6 +1062,7 @@ class AgentRun {
       request,
       inner,
       expectedRef: _continuationRef,
+      cancel: _cancel.token,
     );
     _sandboxId = sandbox.sandboxId;
     return sandbox;

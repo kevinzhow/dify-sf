@@ -6,6 +6,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:genkit/genkit.dart' show CancellationToken;
 import 'package:http/http.dart' as http;
 
 import '../executor_profiles.dart';
@@ -21,9 +22,16 @@ import 'shellctl.dart';
 /// Ends a run with [errorType] (`sandbox_unavailable`, `sandbox_error` or
 /// `file_error`).
 class SandboxFailure implements Exception {
-  SandboxFailure(this.errorType, this.message);
+  SandboxFailure(
+    this.errorType,
+    this.message, {
+    this.supervisorCode,
+    this.httpStatus,
+  });
   final String errorType;
   final String message;
+  final String? supervisorCode;
+  final int? httpStatus;
   @override
   String toString() => 'SandboxFailure($errorType: $message)';
 }
@@ -64,12 +72,24 @@ class SandboxGrant {
 
 /// Client of the sandbox supervisor.
 class SupervisorClient {
-  SupervisorClient(this.baseUrl, this.key, {http.Client? client})
-    : _client = client ?? http.Client();
+  SupervisorClient(
+    this.baseUrl,
+    this.key, {
+    http.Client? client,
+    this.diskSlotWaitTimeout = const Duration(seconds: 60),
+    this.diskSlotRetryInterval = const Duration(milliseconds: 500),
+  }) : _client = client ?? http.Client();
 
   final Uri baseUrl;
   final String key;
   final http.Client _client;
+
+  /// A finished execution may still be releasing its disk workspace when
+  /// the next node starts. Only a structured 503 `disk_pool_busy` is retried.
+  /// Waiting takes place here, outside the supervisor's disk-manager lock,
+  /// so the earlier execution's release can make progress.
+  final Duration diskSlotWaitTimeout;
+  final Duration diskSlotRetryInterval;
 
   Uri _url(String path) =>
       Uri.parse('${baseUrl.toString().replaceFirst(RegExp(r'/+$'), '')}$path');
@@ -106,6 +126,10 @@ class SupervisorClient {
       throw SandboxFailure(
         'sandbox_unavailable',
         'the supervisor answered HTTP ${r.statusCode}: $message',
+        supervisorCode: decoded is Map && decoded['error'] is String
+            ? decoded['error'] as String
+            : null,
+        httpStatus: r.statusCode,
       );
     }
     return decoded.cast<String, Object?>();
@@ -114,11 +138,59 @@ class SupervisorClient {
   Future<SandboxGrant> acquire(
     String executionKey, {
     String profile = defaultProfileName,
+    CancellationToken? cancel,
   }) async {
-    final j = await _call('POST', '/v1/sandboxes', {
-      'execution_key': executionKey,
-      'profile': profile,
-    });
+    final clock = Stopwatch()..start();
+    late Map<String, Object?> j;
+    while (true) {
+      cancel?.throwIfCancelled();
+      try {
+        j = await _call('POST', '/v1/sandboxes', {
+          'execution_key': executionKey,
+          'profile': profile,
+        });
+        break;
+      } on SandboxFailure catch (e) {
+        cancel?.throwIfCancelled();
+        if (e.httpStatus != 503 || e.supervisorCode != 'disk_pool_busy') {
+          rethrow;
+        }
+        final remaining = diskSlotWaitTimeout - clock.elapsed;
+        if (remaining <= Duration.zero) {
+          throw SandboxFailure(
+            'sandbox_unavailable',
+            'no sandbox disk slot became available within '
+                '${diskSlotWaitTimeout.inMilliseconds} ms',
+            supervisorCode: e.supervisorCode,
+            httpStatus: e.httpStatus,
+          );
+        }
+        final ready = Completer<void>();
+        final timer = Timer(
+          remaining < diskSlotRetryInterval ? remaining : diskSlotRetryInterval,
+          () => ready.complete(),
+        );
+        try {
+          await Future.any<void>([
+            ready.future,
+            if (cancel != null) cancel.whenCancelled.then((_) {}),
+          ]);
+          cancel?.throwIfCancelled();
+        } finally {
+          timer.cancel();
+        }
+        // Do not send a last request after the waiting budget has expired.
+        if (clock.elapsed >= diskSlotWaitTimeout) {
+          throw SandboxFailure(
+            'sandbox_unavailable',
+            'no sandbox disk slot became available within '
+                '${diskSlotWaitTimeout.inMilliseconds} ms',
+            supervisorCode: e.supervisorCode,
+            httpStatus: e.httpStatus,
+          );
+        }
+      }
+    }
     return SandboxGrant(
       j['sandbox_id'] as String,
       Uri.parse(j['url'] as String),
@@ -734,6 +806,7 @@ class SandboxManager {
     OperationRequest request,
     InnerClient inner, {
     String? expectedRef,
+    CancellationToken? cancel,
   }) {
     final executionId = request.execution.executionId;
     return _locked(executionId, () async {
@@ -746,7 +819,11 @@ class SandboxManager {
       }
       final SandboxGrant grant;
       try {
-        grant = await s.acquire(executionId, profile: request.executorProfile);
+        grant = await s.acquire(
+          executionId,
+          profile: request.executorProfile,
+          cancel: cancel,
+        );
       } on SandboxFailure {
         _unavailable = true;
         rethrow;

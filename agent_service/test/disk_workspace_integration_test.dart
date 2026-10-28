@@ -15,10 +15,13 @@
 @Timeout(Duration(minutes: 6))
 library;
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
 import 'package:agent_service/supervisor.dart';
+import 'package:agent_service/agent_service.dart';
+import 'package:genkit/genkit.dart';
 import 'package:test/test.dart';
 
 final env = Platform.environment;
@@ -63,6 +66,26 @@ void main() {
           // As tmpfs this would be refused: 256 + 64 >= 192.
           'limits': {'memory_mb': 192, 'home_mb': 64, 'workspace_mb': 256},
         },
+        if (env['AGENT_DISK_IT_CODEX_DIR'] != null)
+          'reviewer': {
+            'image': env['AGENT_DISK_IT_REVIEW_IMAGE']!,
+            'mounts': [
+              {
+                'source': env['AGENT_DISK_IT_CODEX_DIR'],
+                'target': '/opt/codex',
+              },
+            ],
+            'network': {'egress': 'none'},
+            'limits': {
+              'cpus': 1,
+              'memory_mb': 768,
+              'pids': 256,
+              'home_mb': 256,
+              'workspace_mb': 128,
+              'max_turns_max': 30,
+              'timeout_seconds_max': 600,
+            },
+          },
       },
     }),
     disk: DiskWorkspaceConfig(
@@ -205,6 +228,141 @@ void main() {
       // Idempotent: a repeated removal of either sandbox finds nothing.
       expect(await supervisor!.remove(second), isFalse);
       expect(await supervisor!.remove(first), isFalse);
+    },
+  );
+
+  test(
+    'single disk slot: next execution waits, cancellation and timeout leave '
+    'no resources, and an image reviewer needs no disk slot',
+    skip: enabled && env['AGENT_DISK_IT_CODEX_DIR'] != null
+        ? false
+        : 'set AGENT_DISK_IT=1 and AGENT_DISK_IT_CODEX_DIR/REVIEW_IMAGE',
+    () async {
+      final s = supervisor!;
+      final url = Uri.parse('http://127.0.0.1:${s.port}');
+      final client = SupervisorClient(url, 'k');
+      addTearDown(client.close);
+      final builder = await client.acquire('builder', profile: 'modelling');
+      final lease = s.disks!.leases().single;
+      expect(lease.device, device);
+      log('single-slot builder acquired; reviewer starts while it is held');
+
+      // Exact old behaviour: one acquire, immediately rejected while the
+      // previous execution's asynchronous cleanup still holds the only slot.
+      final immediate = SupervisorClient(
+        url,
+        'k',
+        diskSlotWaitTimeout: Duration.zero,
+      );
+      addTearDown(immediate.close);
+      await expectLater(
+        immediate.acquire('old-critic', profile: 'modelling'),
+        throwsA(
+          isA<SandboxFailure>().having(
+            (e) => e.supervisorCode,
+            'code',
+            'disk_pool_busy',
+          ),
+        ),
+      );
+      expect(s.disks!.leases().single.hash, lease.hash);
+
+      // No kit, GPU, skill or disk workspace. The existing image is reused;
+      // image size does not reserve process memory.
+      final review = await client.acquire('light-critic', profile: 'reviewer');
+      expect(s.disks!.leases().single.hash, lease.hash);
+      final inspect = (await docker.inspectContainer(review.sandboxId))!;
+      final host = inspect['HostConfig'] as Map;
+      expect(host['Memory'], 768 * 1024 * 1024);
+      expect((host['Tmpfs'] as Map).keys, contains('/workspace'));
+      expect(host['Devices'], anyOf(isNull, isEmpty));
+      final mounts = (inspect['Mounts'] as List).cast<Map>();
+      expect(
+        mounts.any((m) => m['Destination'] == '/opt/colvalley-3d'),
+        isFalse,
+      );
+      expect(
+        mounts.singleWhere((m) => m['Destination'] == '/opt/codex')['RW'],
+        isFalse,
+      );
+      final (code, out) = await sh(review.sandboxId, '''
+set -eu
+/opt/codex/codex --version
+test ! -e /opt/colvalley-3d
+/opt/cv3d-venv/bin/python - <<'PY'
+from PIL import Image
+p='/workspace/image.png'
+Image.new('RGB',(96,72),(20,50,80)).save(p)
+im=Image.open(p).crop((10,10,40,30))
+assert im.size==(30,20) and im.getpixel((0,0))==(20,50,80)
+im.save('/workspace/crop.png')
+print('image-crop-ok')
+PY
+''');
+      expect(code, 0, reason: out);
+      expect(out, contains('codex-cli 0.163.0'));
+      expect(out, contains('image-crop-ok'));
+      expect(await s.remove(review.sandboxId), isTrue);
+
+      final short = SupervisorClient(
+        url,
+        'k',
+        diskSlotWaitTimeout: const Duration(milliseconds: 600),
+        diskSlotRetryInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(short.close);
+      await expectLater(
+        short.acquire('expired', profile: 'modelling'),
+        throwsA(
+          isA<SandboxFailure>().having(
+            (e) => e.supervisorCode,
+            'code',
+            'disk_pool_busy',
+          ),
+        ),
+      );
+
+      final cancel = CancellationController();
+      final waiting = client.acquire(
+        'cancelled',
+        profile: 'modelling',
+        cancel: cancel.token,
+      );
+      final cancelled = expectLater(
+        waiting,
+        throwsA(isA<CancelledException>()),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      cancel.cancel('cancel');
+      await cancelled.timeout(const Duration(seconds: 1));
+      expect((await s.list()).map((b) => b['sandbox_id']), [builder.sandboxId]);
+      expect(s.disks!.leases().single.hash, lease.hash);
+      for (final key in ['old-critic', 'expired', 'cancelled']) {
+        expect(await docker.inspectNetwork(s.containerName(key)), isNull);
+      }
+
+      var finished = false;
+      final next = client.acquire('next-builder', profile: 'modelling').then((
+        g,
+      ) {
+        finished = true;
+        return g;
+      });
+      await Future<void>.delayed(const Duration(seconds: 3));
+      expect(finished, isFalse);
+      log('next execution still waiting; now release the earlier disk slot');
+      expect(await s.remove(builder.sandboxId), isTrue);
+      final granted = await next.timeout(const Duration(seconds: 30));
+      expect(granted.created, isTrue);
+      expect(s.disks!.leases().single.device, device);
+      expect(s.disks!.leases().single.hash, isNot(lease.hash));
+      expect(await s.remove(granted.sandboxId), isTrue);
+      expect(await s.list(), isEmpty);
+      expect(s.disks!.leases(), isEmpty);
+      expect(deviceBound(), isFalse);
+      log(
+        'single-slot handoff and concurrent lightweight image reviewer passed',
+      );
     },
   );
 }

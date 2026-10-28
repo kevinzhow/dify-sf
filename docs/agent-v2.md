@@ -1033,6 +1033,10 @@ the supervisor:
 1. checks the budget (sum of all images plus the new one ≤ `SANDBOX_DISK_BUDGET_MB`), the free space on the root (size
    plus `SANDBOX_DISK_MIN_FREE_MB`) and picks a pool device no lease holds; otherwise `503 disk_budget_exceeded`,
    `disk_space_low` or `disk_pool_busy`, before any network or container exists;
+   the Agent service retries only HTTP 503 `disk_pool_busy` for up to 60 seconds,
+   outside the disk-manager lock, so a preceding execution can finish releasing
+   its workspace. Run cancellation or timeout ends this wait. Other errors
+   (including insufficient disk space, budget and identity conflicts) fail immediately;
 2. creates `<SANDBOX_DISK_ROOT>/<sha256(execution key)>/` (0700) with `lease.json` (written atomically, state
    `preparing`) and an empty `workspace.img` (0666, reachable only through the directory), and records the image's
    device and inode;
