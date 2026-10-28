@@ -125,8 +125,8 @@ class _OfficialCodexRun {
   /// Model calls seen as finished (one `thread/tokenUsage/updated` each).
   int _calls = 0;
 
-  /// The last assistant message without a phase, not yet known to be
-  /// commentary or the final answer.
+  /// The last assistant message without a phase (or `partial_answer`), not
+  /// yet known to be commentary (a tool call follows) or the final answer.
   Map<String, Object?>? _unphased;
   String? _finalText;
 
@@ -623,12 +623,20 @@ class _OfficialCodexRun {
         }
         _failWith('model_error', 'Codex: $message (${jsonEncode(info)})');
     }
+    // The final answer: the turn's last agent message when Codex lists the
+    // items, else the last `final_answer` message, else the last message
+    // without a phase or with `partial_answer` that no tool call followed
+    // (providers do not always send a phase).
     final items = (turn['items'] as List?) ?? const [];
     final last = items.reversed
         .whereType<Map>()
         .where((i) => i['type'] == 'agentMessage')
         .firstOrNull;
-    final text = (last?['text'] as String?) ?? _finalText ?? '';
+    final text =
+        (last?['text'] as String?) ??
+        _finalText ??
+        (_unphased?['text'] as String?) ??
+        '';
     final schema = r.outputSchema;
     return () async {
       Object? candidate;

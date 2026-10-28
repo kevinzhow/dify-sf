@@ -586,13 +586,13 @@ the answer).
 | Codex | dify-sf |
 |---|---|
 | `item/started`, `item/completed` of `commandExecution`, `fileChange`, `imageView`, `dynamicToolCall` | `tool_call` `started` / `finished`, names `exec_command`, `apply_patch`, `view_image`, `report_progress`; `input` `{command, cwd}`, `{changes: [{path, kind}]}`, `{path}` or the arguments; `output` `{exit_code, duration_ms, output}` (64 KiB, head and tail), `{changes: [{path, kind, diff}]}`, text; `error` for failed patches, declined commands and failed dynamic calls |
-| `agentMessage` with `phase: commentary` (or without a phase, followed by a tool call) | `commentary` |
+| `agentMessage` with `phase: commentary` (or without a phase or with `partial_answer`, followed by a tool call) | `commentary` |
 | `reasoning` (summary and content) | `thought` |
 | `turn/plan/updated` | `plan` (`inProgress` written `in_progress`) |
 | `error` with `willRetry` | `model_retry` |
 | `item/tool/call` `report_progress` | `progress`, as for the other styles; Codex gets the tool text |
 | `thread/tokenUsage/updated` | no event: summed into the terminal `usage` and logged; the Swift server records `model_call`s from its gateway |
-| `turn/completed` | `completed`: the last agent message is the final answer (as in the port: `{"text"}`, or the JSON object of the declared outputs, checked and its file outputs uploaded); `failed` with `usageLimitExceeded`: `failed` `max_turns`; other failures `model_error` with Codex's message and error code |
+| `turn/completed` | `completed`: the final answer is the turn's last agent message when Codex lists the turn's items, else the last `final_answer` message, else the last message without a phase or with `partial_answer` that no tool call followed (providers do not always send a phase) (as in the port: `{"text"}`, or the JSON object of the declared outputs, checked and its file outputs uploaded); `failed` with `usageLimitExceeded`: `failed` `max_turns`; other failures `model_error` with Codex's message and error code |
 
 The snapshot of `succeeded` is `{"envelope", "revision", "harness_style": "codex", "codex": {"runtime": "official",
 "version", "final_answer"}, …}`. An output retry starts a new Codex thread in the same workspace with the task, the
