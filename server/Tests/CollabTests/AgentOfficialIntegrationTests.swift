@@ -82,7 +82,7 @@ struct AgentOfficialIntegrationTests {
                                     JSONValue.object(alternate).compactJSON(), token: owner).status == 201)
                                 try await selectFixtureCredential(ModelKey(provider: AgentModelWire.compatible, model: "stub-chat-alternate", modelType: "llm"))
                                 yaml = yaml.replacingOccurrences(of: "variables: []}", with:
-                                    "variables: [{variable: model, type: select, required: true, options: [stub-chat, stub-chat-alternate]}, {variable: effort, type: select, required: true, options: [high, xhigh, max, ultra]}]}")
+                                    "variables: [{variable: model, type: select, required: true, options: [stub-chat, stub-chat-alternate]}, {variable: effort, type: select, required: true, options: [low, high, xhigh, max]}]}")
                                     .replacingOccurrences(of: "agent_node_kind: dify_agent,", with:
                                         "agent_node_kind: dify_agent, agent_model: {model: '{{#start.model#}}', reasoning_effort: '{{#start.effort#}}'},")
                             }
@@ -124,7 +124,7 @@ struct AgentOfficialIntegrationTests {
                             await routes.deliverAgentOutbox()
                             #expect(try await store.pendingAgentJobs().isEmpty)
                             if effort == "max" {
-                                let invalid: JSONValue = ["inputs": ["model": "stub-chat-alternate", "effort": "ultra"]]
+                                let invalid: JSONValue = ["inputs": ["model": "stub-chat-alternate", "effort": "low"]]
                                 let rejected = try await api.post("/v1/apps/\(app)/workflows/draft/run", invalid.compactJSON(), token: owner)
                                 #expect(rejected.text.contains("The selected model does not support this reasoning effort"))
                                 #expect(requests.withLock { $0.count } == 1)
