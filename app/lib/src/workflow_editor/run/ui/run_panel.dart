@@ -82,12 +82,15 @@ class _RunPanelState extends State<RunPanel> {
     // Unmount and run-ID changes happen while the widget tree is locked. Other editor listeners remain alive.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (store.isDisposed) return;
-      if (identical(store.nodeRunData.value, lastNodes))
+      if (identical(store.nodeRunData.value, lastNodes)) {
         store.nodeRunData.value = beforeNodes;
-      if (identical(store.edgeRunData.value, lastEdges))
+      }
+      if (identical(store.edgeRunData.value, lastEdges)) {
         store.edgeRunData.value = beforeEdges;
-      if (identical(store.workflowRunningData.value, lastRunning))
+      }
+      if (identical(store.workflowRunningData.value, lastRunning)) {
         store.workflowRunningData.value = beforeRunning;
+      }
     });
   }
 
