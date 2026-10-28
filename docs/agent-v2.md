@@ -610,6 +610,7 @@ turn starts: the gateway would refuse each such request, so failing early gives 
 | `error` with `willRetry` | `model_retry` |
 | `item/started`, `item/completed` of `contextCompaction` (and the deprecated `thread/compacted`, which 0.163.0 does not send) | `compaction` `started` / `finished` |
 | `item/tool/call` `report_progress` | `progress`, as for the other styles; Codex gets the tool text |
+| `currentTime/read` (Codex's clock, also polled while the model waits) | answered `{"currentTimeAt"}`, the Unix time in whole seconds; other server requests (approvals, user input) are refused |
 | `thread/tokenUsage/updated` | no event: summed into the terminal `usage` and logged; the Swift server records `model_call`s from its gateway |
 | `turn/completed` | `completed`: the final answer is the turn's last agent message when Codex lists the turn's items, else the last `final_answer` message, else the last message without a phase or with `partial_answer` that no tool call followed (providers do not always send a phase) (as in the port: `{"text"}`, or the JSON object of the declared outputs, checked and its file outputs uploaded); `failed` with `usageLimitExceeded`: `max_turns` only for the gateway's own call limit (below), else `model_quota` with Codex's message; `contextWindowExceeded`: `model_error` "the conversation no longer fits the model's context window (<window> tokens, <source>) and Codex could not compact it enough: Codex: …"; other failures `model_error` with Codex's message and error code |
 

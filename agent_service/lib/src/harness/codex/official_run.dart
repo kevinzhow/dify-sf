@@ -1181,12 +1181,16 @@ class _OfficialCodexRun {
     });
   }
 
-  /// Requests of the app-server: the dynamic tools; everything else (no
+  /// Requests of the app-server: the dynamic tools and the clock
+  /// (`currentTime/read`: whole Unix seconds); everything else (no
   /// approvals with `approval_policy = never`) is refused.
   Future<Object?> _serverRequest(
     String method,
     Map<String, Object?> params,
   ) async {
+    if (method == 'currentTime/read') {
+      return {'currentTimeAt': DateTime.now().millisecondsSinceEpoch ~/ 1000};
+    }
     if (method != 'item/tool/call') throw CodexRpcError(method, 'unsupported');
     final tool = params['tool'];
     final args = params['arguments'];

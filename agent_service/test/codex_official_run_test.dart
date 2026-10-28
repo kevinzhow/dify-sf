@@ -428,4 +428,26 @@ void main() {
       ]);
     },
   );
+
+  test('currentTime/read is answered with the Unix time in seconds; other '
+      'requests are refused', () async {
+    late Map<String, Object?> time, other;
+    final fake = FakeCodexAppServer(
+      turn: (s) async {
+        time = await s.request('currentTime/read', {'threadId': 'thr_root'});
+        other = await s.request('item/tool/requestUserInput', {
+          'threadId': 'thr_root',
+        });
+        s
+          ..message('ok', phase: 'final_answer')
+          ..complete({'status': 'completed'});
+      },
+    );
+    final (result, _, _) = await ran(fake);
+    expect(result['candidate'], {'text': 'ok'});
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final at = (time['result'] as Map)['currentTimeAt'] as int;
+    expect(at, inInclusiveRange(now - 10, now));
+    expect((other['error'] as Map)['message'], 'unsupported');
+  });
 }
