@@ -65,9 +65,10 @@ struct AgentOfficialIntegrationTests {
                                 let state = try await store.modelProviderState()
                                 let selected = try #require(state.modelCredentials[key]?.first { $0.config?.contains("sk-native-fixture-only") == true })
                                 if let metadata = modelCredentials[ModelDiscovery.metadataKey] {
-                                    var saved = try #require(try JSONValue.parse(try #require(selected.config)).object)
+                                    let savedConfig = try #require(selected.config)
+                                    var saved = try #require(try JSONValue.parse(savedConfig).object)
                                     saved[ModelDiscovery.metadataKey] = metadata
-                                    try await store.updateModelCredential(key, id: selected.id, config: JSONValue.object(saved).compactJSON())
+                                    try await store.updateModelCredential(key, id: selected.id, name: nil, config: JSONValue.object(saved).compactJSON())
                                 }
                                 try await store.switchCustomModelCredential(key, id: selected.id)
                             }
