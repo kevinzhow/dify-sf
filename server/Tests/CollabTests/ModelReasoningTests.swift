@@ -1,4 +1,5 @@
 import CollabModels
+import CollabRuntime
 import Foundation
 import Testing
 @testable import CollabServer
@@ -53,4 +54,19 @@ import Testing
         let model = ModelDiscovery.normalize(["reasoning_levels": ["vendor-next-level"]], id: "arbitrary-service-alias")
         #expect(ModelDiscovery.defaults(model)["agent_thought_support"] == "only_thinking_supported")
     }
+    @Test func runtimeMatchesSettingsForCompatiblePluginSuggestionsAndProviderEnums() throws {
+        let plugin: JSONValue = ["name": "reasoning_effort", "options": ["low", "high", "xhigh"]]
+        #expect(ModelReasoning.runtimeOptions(provider: ModelDiscovery.provider, credentials: [:], rule: plugin) == nil)
+        let saved = credentials(["source": "provider", "value": ["high", "max", "vendor-next-level"]])
+        let projected = ModelReasoning.runtimeCredentials(saved, provider: ModelDiscovery.provider)
+        let runtime = try #require(try JSONValue.parse(JSONCoding.encode(.object(projected))).object)
+        let values = ModelReasoning.runtimeOptions(provider: ModelDiscovery.provider, credentials: runtime, rule: plugin)
+        #expect(values == ["high", "max", "vendor-next-level"])
+        #expect(values?.contains("ultra") == false)
+        #expect(runtime[ModelDiscovery.metadataKey] == nil)
+        #expect(ModelReasoning.runtimeOptions(provider: "langgenius/openai/openai", credentials: runtime, rule: plugin) == ["low", "high", "xhigh"])
+        #expect(ModelReasoning.runtimeOptions(provider: "other/provider", credentials: [:],
+            rule: ["options": ["high"], "allow_custom_value": true]) == nil)
+    }
+
 }

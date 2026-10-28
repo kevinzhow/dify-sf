@@ -1,4 +1,5 @@
 import CollabModels
+import CollabRuntime
 import Foundation
 
 /// The compatible provider describes an arbitrary upstream service. Its plugin's
@@ -8,10 +9,30 @@ enum ModelReasoning {
 
     static func declared(_ credentials: [String: JSON]) -> [String]? {
         let field = credentials[ModelDiscovery.metadataKey]?["model"]?["fields"]?["reasoning_levels"]
-        guard field?["source"] == "provider", let values = ModelDiscovery.strings(field?["value"]),
+        guard field?["source"] == "provider" else { return nil }
+        return validLevels(field?["value"])
+    }
+
+    private static func validLevels(_ value: JSON?) -> [String]? {
+        guard let values = ModelDiscovery.strings(value),
               !values.isEmpty, values.allSatisfy({ !$0.isEmpty && !$0.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) }) else { return nil }
         var seen = Set<String>()
         return values.filter { seen.insert($0).inserted }
+    }
+
+    /// Runtime credentials already contain only the verified provider enum. The
+    /// compatible plugin's built-in options are suggestions, just as in settings.
+    /// Nil means the service validates custom values; do not advertise suggestions
+    /// as an authoritative capability list to the Agent harness either.
+    static func runtimeOptions(provider: String, credentials: JSONObject, rule: JSONValue?) -> [JSONValue]? {
+        if provider == ModelDiscovery.provider {
+            guard let raw = credentials[levelsKey],
+                  let value = try? JSONCoding.decode(Data(raw.compactJSON().utf8)),
+                  let values = validLevels(value) else { return nil }
+            return values.map(JSONValue.string)
+        }
+        guard rule?["allow_custom_value"] != true, let values = rule?["options"]?.array, !values.isEmpty else { return nil }
+        return values
     }
 
     /// Pass only bounded, non-secret discovery data to the host compatibility
