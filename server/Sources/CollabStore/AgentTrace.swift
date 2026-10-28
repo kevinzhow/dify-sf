@@ -2,6 +2,20 @@ import Foundation
 import PostgresNIO
 
 extension PostgresStore {
+    /// First resolved model wins for this execution, including subsequent human answers and output retries.
+    public func pinAgentModel(session: StoredAgentSession, selection: String) async throws -> String {
+        try await bounded {
+            for try await value in try await self.client.query("""
+                UPDATE agent_node_sessions SET usage = jsonb_set(usage, '{model_selection}',
+                    coalesce(usage->'model_selection', \(selection)::jsonb))
+                WHERE execution_id = \(session.executionID) AND generation = \(session.generation)
+                  AND owner_id = \(session.ownerID) AND lease_until > now()
+                  AND status IN ('prepared', 'paused', 'retry') RETURNING (usage->'model_selection')::text
+                """, logger: self.logger).decode(String.self) { return value }
+            throw StoreError.notCommitted("Agent model ownership changed")
+        }
+    }
+
     /// Recover the accepted-run identity only for the exact expired operation. This never adopts/replays active work.
     public func reconcileExpiredAgentRun(execution: String, operation: String, generation: Int, run: String) async throws {
         try await bounded {

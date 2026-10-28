@@ -56,7 +56,10 @@
     "inline.updatePlan": "Allow plan updates",
     "inline.event.commentary": "Agent update",
     "inline.event.plan": "Plan",
-    "inline.event.model_retry": "Retrying model call"
+    "inline.event.model_retry": "Retrying model call",
+    "inline.runtimeModel": "Model input",
+    "inline.runtimeReasoning": "Reasoning effort input",
+    "inline.fromConfiguration": "Use the agent configuration"
   },
   "common": {
     "web.fontLoadFailed": "Some text could not be loaded. Reconnect and retry.",

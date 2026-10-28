@@ -9,6 +9,7 @@ library;
 import 'package:collab_client/collab_client.dart';
 
 import 'dify_json.dart';
+import '../agents/model_inputs.dart';
 
 /// `VAR_REGEX` (web/config/index.ts).
 final _varRegex = RegExp(r'\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}', caseSensitive: false);
@@ -199,7 +200,8 @@ List<Object?> _usedVars(Map<String, Object?> data) {
       return paramVars('tool_parameters');
 
     case 'agent' when _isAgentV2(data):
-      return _matchNotSystemVars([jsTruthy(data['agent_task']) ? data['agent_task'] : '']);
+      return [..._matchNotSystemVars([jsTruthy(data['agent_task']) ? data['agent_task'] : '']),
+        ...agentModelInputSelectors(data['agent_model'])];
 
     case 'agent':
       final params = data['agent_parameters'];
@@ -211,7 +213,8 @@ List<Object?> _usedVars(Map<String, Object?> data) {
       ];
 
     case 'agent-v2':
-      return _matchNotSystemVars([jsTruthy(data['agent_task']) ? data['agent_task'] : '']);
+      return [..._matchNotSystemVars([jsTruthy(data['agent_task']) ? data['agent_task'] : '']),
+        ...agentModelInputSelectors(data['agent_model'])];
 
     case 'datasource':
       return paramVars('datasource_parameters');
@@ -387,6 +390,9 @@ void _updateVars(Map<String, Object?> data, List<String> oldVar, List<String> ne
 
     case 'agent' when _isAgentV2(data):
       replaceAgentTask();
+      if (data['agent_model'] case final Map settings) {
+        data['agent_model'] = {for (final e in settings.entries) e.key: rep(e.value)};
+      }
 
     case 'agent':
       final params = data['agent_parameters'];
@@ -405,6 +411,9 @@ void _updateVars(Map<String, Object?> data, List<String> oldVar, List<String> ne
 
     case 'agent-v2':
       replaceAgentTask();
+      if (data['agent_model'] case final Map settings) {
+        data['agent_model'] = {for (final e in settings.entries) e.key: rep(e.value)};
+      }
 
     case 'datasource':
       renameParams('datasource_parameters');

@@ -176,4 +176,61 @@ void main() {
     unawaited(streams['second']!.close());
     parent.dispose();
   });
+  testWidgets(
+    'closing history restores the canvas while other editor listeners stay mounted',
+    (t) async {
+      final parent = WorkflowStore()..historyWorkflowData.value = {'id': 'run'};
+      final visible = ValueNotifier(true);
+      final stream = StreamController<RunEvent>();
+      await t.pumpWidget(
+        MaterialApp(
+          home: WorkflowStoreScope(
+            store: parent,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: visible,
+              builder: (_, show, _) => Column(
+                children: [
+                  if (show)
+                    Expanded(
+                      child: RunPanel(
+                        runId: 'run',
+                        fetchRunDetail: (_) async => {
+                          'id': 'run',
+                          'status': 'running',
+                        },
+                        fetchTracingList: (_) async => [],
+                        observeService: ReadOnlyRunService(
+                          (_) => stream.stream,
+                        ),
+                      ),
+                    ),
+                  ValueListenableBuilder(
+                    valueListenable: parent.workflowRunningData,
+                    builder: (_, data, _) => Text(
+                      data == null ? 'Original canvas' : 'History canvas',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pump();
+      snapshot(stream);
+      await t.pump();
+      expect(find.text('History canvas'), findsOneWidget);
+      visible.value = false;
+      await t.pump();
+      await t.pump();
+      expect(t.takeException(), isNull);
+      expect(find.text('Original canvas'), findsOneWidget);
+      expect(parent.nodeRunData.value, isEmpty);
+      expect(stream.hasListener, isFalse);
+      await t.pumpWidget(const SizedBox());
+      unawaited(stream.close());
+      visible.dispose();
+      parent.dispose();
+    },
+  );
 }
