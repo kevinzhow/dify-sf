@@ -357,6 +357,7 @@ class FakeSupervisor {
 
   /// Answer acquires with this status instead (e.g. 503).
   int? failAcquire;
+  String failAcquireCode = 'sandbox_start_failed';
 
   /// Workspaces live on disk: a sandbox replacing a gone one of the same
   /// key keeps its files and reports `workspace_kept_from`.
@@ -410,7 +411,7 @@ class FakeSupervisor {
         acquiredProfiles.add(body['profile'] as String?);
         if (failAcquire != null) {
           return FakeShellctl._json(res, failAcquire!, {
-            'error': 'sandbox_start_failed',
+            'error': failAcquireCode,
             'message': 'scripted failure',
           });
         }
