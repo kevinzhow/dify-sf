@@ -402,9 +402,12 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (ready)
-          AgentModelInputFields(
-            value: jsMap(data['agent_model']), scope: vars.scope, readOnly: readOnly,
-            onChange: (value) => _write({..._inputs, 'agent_model': value.isEmpty ? null : value}),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: AgentModelInputFields(
+              value: jsMap(data['agent_model']), scope: vars.scope, readOnly: readOnly,
+              onChange: (value) => _write({..._inputs, 'agent_model': value.isEmpty ? null : value}),
+            ),
           ),
         Container(
           decoration: BoxDecoration(

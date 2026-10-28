@@ -24,6 +24,7 @@ class AgentModelInputFields extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
+    spacing: 16,
     children: [
       for (final key in const ['model', 'reasoning_effort'])
         Field(
