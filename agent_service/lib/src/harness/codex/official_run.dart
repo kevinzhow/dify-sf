@@ -175,6 +175,48 @@ class _OfficialCodexRun {
   Never _failWith(String type, String message) =>
       throw _Finish(() async => run._fail(type, message));
 
+  /// Adds [info] to the held `run_started`'s `runtime`.
+  void _addRuntime(Map<String, Object?> info) {
+    final held = run._heldRunStarted;
+    if (held == null) return;
+    held['runtime'] = {...?held['runtime'] as Map?, ...info};
+  }
+
+  /// A failure found while the turn runs (Codex's settings changed): the
+  /// turn is interrupted and the run ends with it.
+  ({String type, String message})? _aborted;
+  final Completer<void> _abortSignal = Completer();
+
+  void _abort(String type, String message) {
+    if (_aborted != null) return;
+    _aborted = (type: type, message: message);
+    _abortSignal.complete();
+    _interrupt();
+  }
+
+  void _checkAborted() {
+    final a = _aborted;
+    if (a == null) return;
+    _closeOpenTools('the run ended: ${a.message}');
+    _failWith(a.type, a.message);
+  }
+
+  /// Why Codex's [model] and [effort] (from `thread/start` or
+  /// `thread/settings/updated`) are not the run's, else null. `ultra` is
+  /// Codex's to resolve; with no requested effort any is accepted.
+  String? _settingsMismatch(String where, Object? model, Object? effort) {
+    final want = r.reasoningEffort;
+    if (model != r.model.name) {
+      return 'Codex $where model ${jsonEncode(model)}, not the requested '
+          '${jsonEncode(r.model.name)}';
+    }
+    if (want != null && want != 'ultra' && effort != want) {
+      return 'Codex $where reasoning effort ${jsonEncode(effort)}, not the '
+          'requested ${jsonEncode(want)}';
+    }
+    return null;
+  }
+
   void _checkStopped() {
     final s = run._stopReason;
     if (s != null) throw _Finish(() async => run._finishStopped(s));
@@ -347,7 +389,7 @@ class _OfficialCodexRun {
         '${s.others.join(', ')}',
       );
     }
-    run._runStarted({'skills': s.names});
+    _addRuntime({'skills': s.names});
     return s.others;
   }
 
@@ -463,20 +505,19 @@ class _OfficialCodexRun {
         },
       ),
     );
+    final entry = codexCatalogEntry(
+      model: r.model.name,
+      bundled: bundled,
+      contextWindow: r.model.contextWindow,
+      reasoningEfforts: r.model.reasoningEfforts,
+      inputModalities: r.model.inputModalities,
+      shell: r.shell,
+    );
     await _writeHome(
       sandbox,
       '$home/models.json',
       jsonEncode({
-        'models': [
-          codexCatalogEntry(
-            model: r.model.name,
-            bundled: bundled,
-            contextWindow: r.model.contextWindow,
-            reasoningEfforts: r.model.reasoningEfforts,
-            inputModalities: r.model.inputModalities,
-            shell: r.shell,
-          ),
-        ],
+        'models': [entry],
       }),
     );
     // The node's instructions are Codex's global AGENTS.md.
@@ -578,6 +619,29 @@ class _OfficialCodexRun {
       ],
     });
     _threadId = (thread['thread'] as Map)['id'] as String;
+    // Codex's settings for the thread, as it will send them.
+    final model = thread['model'];
+    final effort = thread['reasoningEffort'];
+    final sent = codexRequestEffort(effort is String ? effort : null, entry);
+    run.log?.call(
+      'run ${run.runId}: codex thread $_threadId: model ${jsonEncode(model)}, '
+      'reasoning effort ${jsonEncode(effort)}'
+      '${sent == effort ? '' : ' (requests carry ${jsonEncode(sent)})'}; '
+      'requested ${jsonEncode(r.model.name)}, ${jsonEncode(r.reasoningEffort)}',
+    );
+    _addRuntime({
+      'model': model,
+      'reasoning_effort': effort,
+      if (sent != effort) 'request_reasoning_effort': sent,
+    });
+    final mismatch = _settingsMismatch(
+      'started the thread with',
+      model,
+      effort,
+    );
+    if (mismatch != null) _failWith('internal', mismatch);
+    run._runStarted();
+    _checkAborted();
     final turn = await server.request('turn/start', {
       'threadId': _threadId,
       'input': input,
@@ -592,6 +656,7 @@ class _OfficialCodexRun {
       _turnDone.future,
       server.closed.then((_) => null),
       run._cancel.token.whenCancelled.then((_) => null),
+      _abortSignal.future.then((_) => null),
     ]);
     if (done == null && !server.isClosed) {
       // Stopped (interrupt sent): give the turn a moment to end, so its last
@@ -601,6 +666,7 @@ class _OfficialCodexRun {
           .then((_) {}, onError: (_) {});
     }
     _checkStopped();
+    _checkAborted();
     if (!_turnDone.isCompleted) {
       // Codex went away mid-turn: the process's exit status and output once
       // the job is seen ended (a moment after the connection).
@@ -957,6 +1023,24 @@ class _OfficialCodexRun {
             !_turnDone.isCompleted) {
           _turnDone.complete(turn.cast<String, Object?>());
         }
+      case 'thread/settings/updated' when p['threadId'] == _threadId:
+        final s = (p['threadSettings'] as Map?) ?? const {};
+        run.log?.call(
+          'run ${run.runId}: codex thread settings updated: model '
+          '${jsonEncode(s['model'])}, reasoning effort ${jsonEncode(s['effort'])}',
+        );
+        final mismatch = _settingsMismatch(
+          'changed the thread to',
+          s['model'],
+          s['effort'],
+        );
+        if (mismatch != null) _abort('internal', mismatch);
+      case 'model/rerouted':
+        run.log?.call(
+          'run ${run.runId}: codex rerouted thread ${p['threadId']} from '
+          '${jsonEncode(p['fromModel'])} to ${jsonEncode(p['toModel'])} '
+          '(${p['reason']})',
+        );
       case 'warning' || 'configWarning' || 'deprecationNotice':
         run.log?.call('run ${run.runId}: codex ${n.method}: ${jsonEncode(p)}');
     }

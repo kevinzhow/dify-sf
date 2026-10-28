@@ -345,6 +345,7 @@ first, last = events[0], events[-1]
 assert first[0] == "run_started" and first[1]["harness_style"] == "codex", first
 assert first[1]["runtime"]["version"] == "0.163.0" and first[1]["model_wire"]["wire"] == "responses", first
 assert first[1]["runtime"]["skills"] == ["e2e-render"], first
+assert first[1]["runtime"]["model"] == "deepseek-v4.1-flash" and first[1]["runtime"]["reasoning_effort"] == "max", first
 assert last[0] == "succeeded", last
 assert "model_call" not in names, "the official runtime must not emit model_call"
 done = {d["name"]: d for n, d in events if n == "tool_call" and d["phase"] == "finished"}

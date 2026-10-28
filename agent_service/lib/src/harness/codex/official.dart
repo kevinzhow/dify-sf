@@ -338,6 +338,25 @@ String codexUsageLimitErrorType({
   return 'model_quota';
 }
 
+/// The reasoning effort Codex 0.163.0 sends for the thread's [effort] with
+/// catalog [entry] (`ModelInfo::resolve_reasoning_effort`): `ultra` becomes
+/// the entry's `multi_agent_reasoning_effort` when supported, else `max`,
+/// else the last supported level, else `medium`; other levels are sent as
+/// they are.
+String? codexRequestEffort(String? effort, Map<String, Object?> entry) {
+  if (effort != 'ultra') return effort;
+  final levels = [
+    for (final l in (entry['supported_reasoning_levels'] as List?) ?? const [])
+      if (l is Map && l['effort'] is String) l['effort'] as String,
+  ];
+  final multi = entry['multi_agent_reasoning_effort'];
+  if (multi is String && multi != 'ultra' && levels.contains(multi)) {
+    return multi;
+  }
+  if (levels.contains('max')) return 'max';
+  return levels.reversed.where((l) => l != 'ultra').firstOrNull ?? 'medium';
+}
+
 /// A JSON-RPC error answered by the app-server.
 class CodexRpcError implements Exception {
   CodexRpcError(this.method, this.error);

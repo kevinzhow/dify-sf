@@ -355,6 +355,27 @@ void main() {
     expect(type(quota, 0), 'model_quota');
   });
 
+  test('the effort Codex sends: ultra resolved from the catalog entry', () {
+    Map<String, Object?> entry(List<String> levels, [String? multi]) => {
+      'supported_reasoning_levels': [
+        for (final l in levels) {'effort': l, 'description': l},
+      ],
+      'multi_agent_reasoning_effort': multi,
+    };
+    expect(codexRequestEffort('high', entry([])), 'high');
+    expect(codexRequestEffort(null, entry([])), isNull);
+    expect(codexRequestEffort('ultra', entry(['low', 'max', 'ultra'])), 'max');
+    expect(
+      codexRequestEffort('ultra', entry(['low', 'xhigh', 'max'], 'xhigh')),
+      'xhigh',
+    );
+    expect(
+      codexRequestEffort('ultra', entry(['low', 'xhigh', 'ultra'])),
+      'xhigh',
+    );
+    expect(codexRequestEffort('ultra', entry([])), 'medium');
+  });
+
   test('scripted gateway: Codex entry token and call limit', () async {
     final gw = ScriptedGateway(
       calls: [ScriptedCall.responses([])],

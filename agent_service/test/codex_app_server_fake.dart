@@ -302,11 +302,13 @@ Map<String, Object?> officialCodexOp({
   int maxTurns = 10,
   Map<String, Object?>? outputSchema,
   int? contextWindow,
+  List<String>? reasoningEfforts,
 }) {
   final o = operation(maxTurns: maxTurns, outputSchema: outputSchema);
   final model = Map.of(o['model'] as Map<String, Object?>)
     ..['run_token'] = 'secret-run-token';
   if (effort != null) model['parameters'] = {'reasoning_effort': effort};
   if (contextWindow != null) model['context_window'] = contextWindow;
+  if (reasoningEfforts != null) model['reasoning_efforts'] = reasoningEfforts;
   return {...o, 'harness_style': 'codex', 'model': model};
 }

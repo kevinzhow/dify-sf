@@ -394,7 +394,8 @@ class AgentRun {
   void Function()? _onStop;
 
   /// `run_started` held back until the official Codex runtime knows the
-  /// run's skills ([_runStarted]); written before any other event.
+  /// run's skills and Codex's thread settings ([_runStarted]); written
+  /// before any other event.
   Map<String, Object?>? _heldRunStarted;
 
   /// The clock of prompt dates (`codex` style's environment context).
@@ -520,9 +521,9 @@ class AgentRun {
           },
         },
     };
-    // With profile skills the official runtime adds their names (Codex
-    // lists them once it runs).
-    if (r.officialCodex && _codexSkillsDirs.isNotEmpty) {
+    // The official runtime adds what Codex reports once it runs (the
+    // profile's skills, the thread's model and reasoning effort).
+    if (r.officialCodex) {
       _heldRunStarted = started;
     } else {
       _emit('run_started', started);

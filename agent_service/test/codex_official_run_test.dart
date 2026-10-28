@@ -219,4 +219,112 @@ void main() {
       );
     });
   });
+
+  group('thread settings readback', () {
+    FakeCodexAppServer answering({String? model, String? effort}) =>
+        FakeCodexAppServer(
+          threadModel: model,
+          threadEffort: effort,
+          turn: (s) async => s
+            ..message('ok', phase: 'final_answer')
+            ..complete({'status': 'completed'}),
+        );
+
+    test('run_started records Codex\'s model and effort', () async {
+      final fake = answering();
+      final (result, names, data) = await ran(
+        fake,
+        op: officialCodexOp(effort: 'high'),
+      );
+      expect(names.first, 'run_started');
+      expect(names.last, 'succeeded', reason: jsonEncode(result));
+      final runtime = data.first['runtime'] as Map;
+      expect(runtime['model'], 'test-model');
+      expect(runtime['reasoning_effort'], 'high');
+      expect(runtime.containsKey('request_reasoning_effort'), isFalse);
+    });
+
+    test(
+      'ultra is Codex\'s: recorded with the effort its requests carry',
+      () async {
+        final fake = answering();
+        final (result, names, data) = await ran(
+          fake,
+          op: officialCodexOp(
+            effort: 'ultra',
+            reasoningEfforts: ['high', 'max', 'ultra'],
+          ),
+        );
+        expect(names.last, 'succeeded', reason: jsonEncode(result));
+        final runtime = data.first['runtime'] as Map;
+        expect(runtime['reasoning_effort'], 'ultra');
+        expect(runtime['request_reasoning_effort'], 'max');
+      },
+    );
+
+    for (final (what, model, effort, message) in [
+      (
+        'model',
+        'other-model',
+        null,
+        'model "other-model", not the requested '
+            '"test-model"',
+      ),
+      (
+        'effort',
+        null,
+        'low',
+        'reasoning effort "low", not the requested '
+            '"high"',
+      ),
+    ]) {
+      test('another $what in the thread/start reply ends the run before the '
+          'turn', () async {
+        final fake = answering(model: model, effort: effort);
+        final (result, names, data) = await ran(
+          fake,
+          op: officialCodexOp(effort: 'high'),
+        );
+        expect(result['error_type'], 'internal');
+        expect(result['message'], 'Codex started the thread with $message');
+        expect(fake.methods, isNot(contains('turn/start')));
+        expect(names, ['run_started', 'failed']);
+      });
+    }
+
+    test('thread/settings/updated to another effort interrupts the turn and '
+        'ends the run', () async {
+      final fake = FakeCodexAppServer(
+        turn: (s) async {
+          s
+            ..notify('model/rerouted', {
+              'threadId': 'thr_root',
+              'turnId': 'turn_1',
+              'fromModel': 'test-model',
+              'toModel': 'test-model',
+              'reason': 'highRiskCyberActivity',
+            })
+            ..notify('thread/settings/updated', {
+              'threadId': 'thr_child',
+              'threadSettings': {'model': 'x', 'effort': 'low'},
+            })
+            ..notify('thread/settings/updated', {
+              'threadId': 'thr_root',
+              'threadSettings': {'model': 'test-model', 'effort': 'low'},
+            });
+        },
+      );
+      final (result, _, _) = await ran(
+        fake,
+        op: officialCodexOp(effort: 'high'),
+      );
+      expect(result['error_type'], 'internal', reason: jsonEncode(result));
+      expect(
+        result['message'],
+        'Codex changed the thread to reasoning effort "low", not the '
+        'requested "high"',
+      );
+      expect(fake.methods, contains('turn/interrupt'));
+    });
+  });
 }
