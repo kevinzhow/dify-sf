@@ -59,7 +59,7 @@ import Testing
         #expect(ModelReasoning.runtimeOptions(provider: ModelDiscovery.provider, credentials: [:], rule: plugin) == nil)
         let saved = credentials(["source": "provider", "value": ["high", "max", "vendor-next-level"]])
         let projected = ModelReasoning.runtimeCredentials(saved, provider: ModelDiscovery.provider)
-        let runtime = try #require(try JSONValue.parse(JSONCoding.encode(.object(projected))).object)
+        let runtime = try #require(try JSONValue.parse(JSONCoding.encode(JSON.object(projected))).object)
         let values = ModelReasoning.runtimeOptions(provider: ModelDiscovery.provider, credentials: runtime, rule: plugin)
         #expect(values == ["high", "max", "vendor-next-level"])
         #expect(values?.contains("ultra") == false)
