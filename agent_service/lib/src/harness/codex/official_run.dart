@@ -519,9 +519,14 @@ class _OfficialCodexRun {
       try {
         final s = await c.status(job.jobId);
         if (!s.done) return null;
-        final tail = await c.tail(job.jobId);
-        return 'codex app-server exited (${s.status} ${s.exitCode}): '
-            '${tail.output.trim()}';
+        final tail = (await c.tail(job.jobId)).output.trim();
+        // Its stderr is merged into the output (`2>&1`): the last 4000
+        // characters.
+        final shown = tail.length > 4000
+            ? '…${tail.substring(tail.length - 4000)}'
+            : tail;
+        return 'codex app-server exited (${s.status} ${s.exitCode})'
+            '${shown.isEmpty ? ' without output' : ': $shown'}';
       } catch (_) {
         return null;
       } finally {
@@ -588,16 +593,34 @@ class _OfficialCodexRun {
       server.closed.then((_) => null),
       run._cancel.token.whenCancelled.then((_) => null),
     ]);
-    if (done == null) {
-      // Stopped (interrupt sent) or Codex went away: give the turn a moment
-      // to end, so its last items are mapped.
+    if (done == null && !server.isClosed) {
+      // Stopped (interrupt sent): give the turn a moment to end, so its last
+      // items are mapped.
       await _turnDone.future
           .timeout(const Duration(seconds: 3))
           .then((_) {}, onError: (_) {});
-      _checkStopped();
-      if (!_turnDone.isCompleted) {
-        _failWith('internal', 'the Codex app-server closed the connection');
+    }
+    _checkStopped();
+    if (!_turnDone.isCompleted) {
+      // Codex went away mid-turn: the process's exit status and output once
+      // the job is seen ended (a moment after the connection).
+      String? exited;
+      for (var i = 0; i < 12 && exited == null; i++) {
+        if (i > 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+        }
+        exited = await whyNot();
       }
+      _checkStopped();
+      final why =
+          exited ??
+          'the connection to the Codex app-server closed and the process '
+              'still runs';
+      _closeOpenTools('the Codex app-server ended before the tool finished');
+      _failWith(
+        exited == null ? 'internal' : 'sandbox_error',
+        'Codex ended mid-turn: $why',
+      );
     }
     return _complete(await _turnDone.future);
   }
@@ -820,6 +843,22 @@ class _OfficialCodexRun {
     }
   }
 
+  /// Tool calls of the root thread started and not finished, by item ID.
+  final Map<Object?, String> _openTools = {};
+
+  /// Finishes the open tool calls with [error] (Codex will not).
+  void _closeOpenTools(String error) {
+    for (final e in _openTools.entries) {
+      run._emit('tool_call', {
+        'id': e.key,
+        'name': e.value,
+        'phase': 'finished',
+        'error': error,
+      });
+    }
+    _openTools.clear();
+  }
+
   void _flushUnphased() {
     final m = _unphased;
     if (m == null) return;
@@ -838,6 +877,7 @@ class _OfficialCodexRun {
         if (item is! Map) return;
         if (_toolItems.contains(item['type'])) {
           _flushUnphased();
+          _openTools[item['id']] = _toolName(item);
           run._emit('tool_call', {
             'id': item['id'],
             'name': _toolName(item),
@@ -850,6 +890,7 @@ class _OfficialCodexRun {
         if (item is! Map) return;
         final type = item['type'];
         if (_toolItems.contains(type)) {
+          _openTools.remove(item['id']);
           run._emit('tool_call', {
             'id': item['id'],
             'name': _toolName(item),

@@ -156,4 +156,67 @@ void main() {
       expect(r['message'], contains('Quota exceeded'));
     });
   });
+
+  group('app-server gone mid-turn', () {
+    void startCommand(FakeCodexAppServer s) => s.item('started', {
+      'type': 'commandExecution',
+      'id': 'c1',
+      'command': 'sleep 100',
+      'cwd': '/workspace',
+    });
+
+    test('an exit fails the run sandbox_error with the exit status and the '
+        'output tail; the open tool call is finished with an error', () async {
+      final fake = FakeCodexAppServer(
+        turn: (s) async {
+          startCommand(s);
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await s.exit(
+            exitCode: 101,
+            output:
+                'starting\nthread \'main\' panicked at core/src/x.rs: boom\n',
+          );
+        },
+      );
+      final (result, names, data) = await ran(fake);
+      expect(result['error_type'], 'sandbox_error', reason: jsonEncode(result));
+      expect(result['message'], startsWith('Codex ended mid-turn: '));
+      expect(
+        result['message'],
+        contains('codex app-server exited (exited 101)'),
+      );
+      expect(result['message'], contains("panicked at core/src/x.rs: boom"));
+      final finished = [
+        for (var i = 0; i < names.length; i++)
+          if (names[i] == 'tool_call' && data[i]['phase'] == 'finished')
+            data[i],
+      ];
+      expect(finished, [
+        {
+          'id': 'c1',
+          'name': 'exec_command',
+          'phase': 'finished',
+          'error': 'the Codex app-server ended before the tool finished',
+        },
+      ]);
+    });
+
+    test('a closed connection with the process still running fails '
+        'internal', () async {
+      final fake = FakeCodexAppServer(
+        turn: (s) async {
+          startCommand(s);
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await s.close();
+        },
+      );
+      final (result, _, _) = await ran(fake);
+      expect(result['error_type'], 'internal');
+      expect(
+        result['message'],
+        'Codex ended mid-turn: the connection to the Codex app-server closed '
+        'and the process still runs',
+      );
+    });
+  });
 }

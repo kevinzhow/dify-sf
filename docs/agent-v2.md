@@ -609,6 +609,13 @@ gateway's limit is the hard stop.
 kill every process the run left (the shell session's reap): Codex and its commands end, and Codex's open model stream
 is closed (checked by `tool/codex_e2e.sh`).
 
+**Codex gone mid-turn.** When the app-server process exits or its connection closes before `turn/completed`, the tool
+calls Codex started and did not finish get `tool_call` `finished` with `error` "the Codex app-server ended before the
+tool finished", and the run fails: `sandbox_error` "Codex ended mid-turn: codex app-server exited (<status> <exit
+code>): <the last 4000 characters of its output and stderr>" once the job is seen ended (polled for 3 s), else
+`internal` "Codex ended mid-turn: the connection to the Codex app-server closed and the process still runs" (checked by
+`tool/codex_e2e.sh` with a killed Codex).
+
 **Gateway entry** (Swift server; contract agreed with Winnie, 2026-10-28): `POST <codex_gateway_url>/responses` with
 `Authorization: Bearer <model.run_token>`; the body is Codex's Responses request as it is (`model`, `instructions`,
 `input`, `tools` with the freeform `apply_patch`, `tool_choice`, `parallel_tool_calls`, `reasoning: {effort,

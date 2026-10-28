@@ -13,7 +13,7 @@
 #
 # Starts agent_service, sandbox_supervisor and agent_sandbox_proxy from the repository's docker-compose.yml under its
 # own project, with the scripted fake gateway as the inner gateway AND as the gateway's Codex Responses entry (it is
-# attached to every sandbox network as a second agent peer; AGENT_CODEX_GATEWAY_URL points Codex at it). Six runs:
+# attached to every sandbox network as a second agent peer; AGENT_CODEX_GATEWAY_URL points Codex at it). Seven runs:
 #   1. exec_command (writes a PNG, prints the environment), apply_patch, update_plan + report_progress, view_image,
 #      final answer with declared outputs (a text file and the PNG); max_turns 5 gives the near-budget notice; the
 #      profile's skill (codex.skills_dirs, a kit mounted at /opt/e2e-kit) is listed to the model and in run_started;
@@ -25,6 +25,7 @@
 #   5. a provider quota (429 insufficient_quota, as the gateway passes it through): the run must fail model_quota;
 #   6. a provider's usage_limit_reached passed through without the gateway's call-limit mark, before max_turns calls:
 #      model_quota, not max_turns;
+#   7. a model call that hangs while the Codex process is killed: the run must fail sandbox_error with the exit status;
 #   3. the gateway's call limit (429 usage_limit_reached with x-codex-promo-message: dify-sf-agent-call-limit): the run
 #      must fail max_turns; its profile has no skills, so Codex lists none.
 # Everything created carries dify-sf.test=<random> and is removed at the end, also on failure.
@@ -195,8 +196,10 @@ calls = [
                                                 "message": "The model provider rejected this request"}}},
   {"http_status": 429, "http_body": {"error": {"type": "usage_limit_reached", "code": "usage_limit_reached",
                                                 "message": "The model provider rejected this request"}}},
+  # run 7: a model call that never ends while Codex is killed
+  {"hang": True, "responses_events": [{"type": "response.created", "response": {}}]},
 ]
-json.dump({"calls": calls, "codex_run_token": token, "codex_call_limit": 10}, open(path, "w"))
+json.dump({"calls": calls, "codex_run_token": token, "codex_call_limit": 11}, open(path, "w"))
 EOF
 
 operation() { # FILE EXECUTION MAX_TURNS PROFILE
@@ -230,6 +233,7 @@ operation "$WORK/op2.json" "CX2-$ID" 5 default
 operation "$WORK/op3.json" "CX3-$ID" 5 plain
 operation "$WORK/op5.json" "CX5-$ID" 5 plain
 operation "$WORK/op6.json" "CX6-$ID" 5 plain
+operation "$WORK/op7.json" "CX7-$ID" 5 plain
 
 DOCKER_SOCKET=${DOCKER_SOCKET:-/var/run/docker.sock}
 DOCKER_GID=$(stat -c %g "$DOCKER_SOCKET")
@@ -470,6 +474,21 @@ failed_with "$WORK/events-5.txt" model_quota "Quota exceeded" || fail "run 5 did
 failed_with "$WORK/events-6.txt" model_quota "not the gateway's call limit" "hit your usage limit" ||
   fail "run 6 did not fail model_quota"
 
+# ---- run 7: Codex killed mid-turn ------------------------------------------------------------------------------
+RUN7=$(start_run "$WORK/op7.json"); log "run 7 $RUN7 started"
+curl -sS -N -m 120 -H "Authorization: Bearer $SERVICE_KEY" "$BASE/v1/runs/$RUN7/events" >"$WORK/events-7.txt" &
+EV7=$!
+for _ in $(seq 120); do
+  [[ $(curl -sS "$GW/debug/codex-requests" | json 'len(d["requests"])') -ge 11 ]] && break; sleep 0.5
+done
+SANDBOX7=$(sandbox_of "CX7-$ID")
+docker exec "$SANDBOX7" sh -c 'for p in /proc/[0-9]*; do tr "\0" " " < $p/cmdline 2>/dev/null | grep -q "[c]odex app-server" && kill -9 ${p#/proc/}; done; true'
+log "killed codex in sandbox 7"
+wait $EV7 || true
+summary "$WORK/events-7.txt"
+failed_with "$WORK/events-7.txt" sandbox_error "Codex ended mid-turn: codex app-server exited" ||
+  fail "run 7 did not fail sandbox_error with the exit status"
+
 # ---- run 3: the gateway's call limit -----------------------------------------------------------------------------
 RUN3=$(start_run "$WORK/op3.json"); log "run 3 $RUN3 started"
 curl -sS -N -m 120 -H "Authorization: Bearer $SERVICE_KEY" "$BASE/v1/runs/$RUN3/events" >"$WORK/events-3.txt"
@@ -484,4 +503,4 @@ body = json.load(open(sys.argv[2]))["requests"][-1]["body"]
 assert "<skills_instructions>" not in json.dumps(body), "a skills catalog without codex.skills_dirs"
 print("run 3 (profile plain): no skills in run_started or the request", file=sys.stderr)
 EOF
-log "all six runs as expected"
+log "all seven runs as expected"
