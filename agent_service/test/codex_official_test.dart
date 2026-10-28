@@ -334,6 +334,27 @@ void main() {
     });
   });
 
+  test('usageLimitExceeded: the gateway\'s call limit is max_turns, other '
+      'limits model_quota', () {
+    String type(String message, int attempts) => codexUsageLimitErrorType(
+      message: message,
+      attempts: attempts,
+      maxTurns: 5,
+    );
+    // Codex 0.163.0's texts: a 429 usage_limit_reached with the gateway's
+    // marker, without it, and its quota error.
+    const marked =
+        'You\u2019ve hit your usage limit. $codexCallLimitMarker, or try '
+        'again later.';
+    const unmarked = 'You\u2019ve hit your usage limit. Try again later.';
+    const quota = 'Quota exceeded. Check your plan and billing details.';
+    expect(type(marked, 0), 'max_turns');
+    expect(type(unmarked, 5), 'max_turns');
+    expect(type(unmarked, 4), 'model_quota');
+    expect(type(quota, 5), 'model_quota');
+    expect(type(quota, 0), 'model_quota');
+  });
+
   test('scripted gateway: Codex entry token and call limit', () async {
     final gw = ScriptedGateway(
       calls: [ScriptedCall.responses([])],
@@ -351,6 +372,7 @@ void main() {
       expect(ok.body, contains('"id":"resp_1"'));
       final limited = await post('tok');
       expect(limited.statusCode, 429);
+      expect(limited.headers['x-codex-promo-message'], codexCallLimitMarker);
       expect(
         ((jsonDecode(limited.body) as Map)['error'] as Map)['type'],
         'usage_limit_reached',

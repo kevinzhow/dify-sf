@@ -125,6 +125,10 @@ class _OfficialCodexRun {
   /// Model calls seen as finished (one `thread/tokenUsage/updated` each).
   int _calls = 0;
 
+  /// Failed model calls Codex announced it retries (`error` with
+  /// `willRetry`, every thread): each was a POST the gateway counted.
+  int _retries = 0;
+
   /// The last assistant message without a phase (or `partial_answer`), not
   /// yet known to be commentary (a tool call follows) or the final answer.
   Map<String, Object?>? _unphased;
@@ -613,12 +617,30 @@ class _OfficialCodexRun {
           ?error['additionalDetails'],
         ].join(': ');
         if (info == 'usageLimitExceeded') {
-          final n = run._notice;
+          final attempts = _calls + _retries;
+          final type = codexUsageLimitErrorType(
+            message: message,
+            attempts: attempts,
+            maxTurns: r.maxTurns,
+          );
+          final seen =
+              '$_calls model calls finished here'
+              '${_retries == 0 ? '' : ', $_retries retried'}';
+          if (type == 'max_turns') {
+            final n = run._notice;
+            _failWith(
+              'max_turns',
+              'the run reached max_turns (${r.maxTurns}): the gateway refused '
+                  'the next model call (usage_limit_reached, its call limit) '
+                  'without a final answer ($seen)'
+                  '${n == null ? '' : '; the model was told to finish at call ${n.callIndex}'}',
+            );
+          }
           _failWith(
-            'max_turns',
-            'the run reached max_turns (${r.maxTurns}): the gateway refused '
-                'the next model call (usage_limit_reached) without a final '
-                'answer${n == null ? '' : '; the model was told to finish at call ${n.callIndex}'}',
+            'model_quota',
+            'the model call was refused for a usage, quota or billing limit '
+                'that is not the gateway\'s call limit (max_turns '
+                '${r.maxTurns}, $seen): Codex: $message',
           );
         }
         _failWith('model_error', 'Codex: $message (${jsonEncode(info)})');
@@ -877,6 +899,7 @@ class _OfficialCodexRun {
       case 'error':
         final error = (p['error'] as Map?) ?? const {};
         if (p['willRetry'] == true) {
+          _retries++;
           run._emit('model_retry', {
             'call_index': _callIndex,
             'attempt': null,

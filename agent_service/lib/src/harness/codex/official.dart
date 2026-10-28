@@ -306,6 +306,38 @@ Map<String, Object?> codexCatalogEntry({
   return e;
 }
 
+/// The value of `x-codex-promo-message` on the gateway's own call-limit 429
+/// (`usage_limit_reached`, code `agent_call_limit`). Codex drops the body's
+/// code and message of a `usage_limit_reached` 429 but puts this header into
+/// the turn error's message ("You’ve hit your usage limit. PROMO, or try
+/// again later."). The gateway forwards no provider header but
+/// `Retry-After`, so a provider cannot send it.
+const codexCallLimitMarker = 'dify-sf-agent-call-limit';
+
+/// Codex's message for a 429 with `error.type: usage_limit_reached`
+/// (`UsageLimitReachedError`); its quota and billing errors (also
+/// `usageLimitExceeded`) read "Quota exceeded…" or name the plan.
+final _usageLimitReachedText = RegExp('^You[’\']ve hit your usage limit');
+
+/// The `error_type` of a turn that failed `usageLimitExceeded`:
+/// `max_turns` when it is the gateway's own call limit, either marked
+/// ([codexCallLimitMarker]) or a `usage_limit_reached` refusal after at
+/// least [maxTurns] model calls seen here ([attempts]: finished calls and
+/// retried ones; Codex's silent request retries are not seen); otherwise
+/// `model_quota` (the provider's quota, billing or usage limit, or a
+/// `usage_limit_reached` the gateway passed through).
+String codexUsageLimitErrorType({
+  required String message,
+  required int attempts,
+  required int maxTurns,
+}) {
+  if (message.contains(codexCallLimitMarker)) return 'max_turns';
+  if (_usageLimitReachedText.hasMatch(message) && attempts >= maxTurns) {
+    return 'max_turns';
+  }
+  return 'model_quota';
+}
+
 /// A JSON-RPC error answered by the app-server.
 class CodexRpcError implements Exception {
   CodexRpcError(this.method, this.error);
