@@ -51,7 +51,7 @@ let package = Package(
         // templates, custom-model schemas, credential form rules and the credential checks' requests. No I/O beyond reading
         // its resources.
         .target(name: "CollabModels", dependencies: [.product(name: "Yams", package: "Yams")],
-                resources: [.copy("Resources/dify-official-plugins"), .copy("Resources/provider-plugins.lock.json")]),
+                resources: [.copy("Resources/dify-official-plugins"), .copy("Resources/provider-plugins.lock.json"), .copy("Resources/model-discovery-references.json")]),
         // The workflow runtime (a Swift port of graphon 0.7.0, Dify's engine; see Sources/CollabRuntime/NOTICE.md): values,
         // variable pool, nodes, single-step runs, the plugin daemon's wire format. Pure: no I/O (models come through a
         // protocol the server implements).

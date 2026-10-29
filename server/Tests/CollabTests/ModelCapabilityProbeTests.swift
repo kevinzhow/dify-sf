@@ -56,9 +56,9 @@ import Testing
                 #expect(prompt.contains("not JSON"))
                 return try output(String(decoding: try JSONCoding.encode(JSON.object(["proof": .string(nonce)])), as: UTF8.self))
             }
-            if payload[responses ? "max_output_tokens" : "max_completion_tokens"] == 1 {
+            if payload[responses ? "max_output_tokens" : "max_completion_tokens"] == .int(responses ? 16 : 1) {
                 // One token was observed, which still does not establish the true ceiling.
-                return try output("one", tokens: 1)
+                return try output("one", tokens: responses ? 16 : 1)
             }
             let nonce = try #require(prompt.components(separatedBy: "exactly ").last?.dropLast().description)
             #expect(nonce.hasPrefix("probe-"))

@@ -65,7 +65,7 @@ enum ModelDiscovery {
         return Data(response.body)
     }
 
-    static func discover(_ connection: Connection, send: Send = transport) async throws -> JSON {
+    static func discover(_ connection: Connection, catalog: ModelCatalog? = nil, send: Send = transport) async throws -> JSON {
         let response: RuntimeHTTPResponse
         do { response = try await send(connection.request("/models")) }
         catch { throw ServerError.http(status: 502, code: "model_discovery_unreachable", message: "Cannot reach the model service. Check the address and retry.") }
@@ -79,7 +79,7 @@ enum ModelDiscovery {
         var seen = Set<String>()
         let models = rows.compactMap { row -> JSON? in
             guard let id = row["id"]?.string, validModel(id), seen.insert(id).inserted else { return nil }
-            return normalize(row, id: id)
+            return ModelDiscoveryReference.enrich(normalize(row, id: id), connection: connection, catalog: catalog)
         }
         return ["models": .array(models), "incomplete": .bool(root["has_more"]?.bool == true || root["next"]?.isTruthy == true),
                 "fetched_at": .string(ISO8601DateFormatter().string(from: Date()))]
