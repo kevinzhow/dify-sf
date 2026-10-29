@@ -8,6 +8,10 @@
 /// runs/<run_id>/result.json    terminal event, written before it is streamed
 /// executions/<sha256(execution_id)>.json
 ///                              max generation, operation_id -> (run_id, digest)
+/// workspaces/<sha256(workspace_key)>.json
+///                              a retained workspace (written when it is
+///                              acquired) and its Codex session (after a
+///                              succeeded round)
 /// ```
 ///
 /// All writes are synchronous so that no other request interleaves between a
@@ -175,6 +179,173 @@ class ExecutionIndex {
   }
 }
 
+/// The Codex session of a retained workspace, recorded after a `succeeded`
+/// round (docs/agent-v2.md, "Codex session retained across rounds").
+class CodexSessionRecord {
+  CodexSessionRecord({
+    required this.threadId,
+    required this.sha256,
+    required this.size,
+    required this.turns,
+    required this.model,
+    required this.systemPromptSha256,
+    required this.codexSha256,
+    required this.rolloutPath,
+    required this.runId,
+    required this.recordedAt,
+  });
+
+  final String threadId;
+
+  /// SHA-256 and size of `/workspace/.dify-sf/codex/<thread_id>.jsonl`.
+  final String sha256;
+  final int size;
+
+  /// Turns of the thread so far (rounds that succeeded).
+  final int turns;
+  final String model;
+  final String systemPromptSha256;
+
+  /// SHA-256 of the Codex binary that wrote the rollout.
+  final String codexSha256;
+
+  /// Where Codex kept the rollout, relative to its CODEX_HOME
+  /// (`sessions/YYYY/MM/DD/rollout-…-<thread_id>.jsonl`): the resume puts
+  /// the copy back there.
+  final String rolloutPath;
+
+  /// The run that recorded it.
+  final String runId;
+  final DateTime recordedAt;
+
+  Map<String, Object?> toJson() => {
+    'thread_id': threadId,
+    'sha256': sha256,
+    'size': size,
+    'turns': turns,
+    'model': model,
+    'system_prompt_sha256': systemPromptSha256,
+    'codex_sha256': codexSha256,
+    'rollout_path': rolloutPath,
+    'run_id': runId,
+    'recorded_at': recordedAt.toIso8601String(),
+  };
+
+  static CodexSessionRecord fromJson(Map<String, Object?> j) =>
+      CodexSessionRecord(
+        threadId: j['thread_id'] as String,
+        sha256: j['sha256'] as String,
+        size: j['size'] as int,
+        turns: j['turns'] as int,
+        model: j['model'] as String,
+        systemPromptSha256: j['system_prompt_sha256'] as String,
+        codexSha256: j['codex_sha256'] as String,
+        rolloutPath: j['rollout_path'] as String,
+        runId: j['run_id'] as String,
+        recordedAt: DateTime.parse(j['recorded_at'] as String),
+      );
+}
+
+/// What a retained workspace holds for the next round.
+enum SessionState {
+  /// No round of the workspace has succeeded yet: the next round starts a
+  /// new thread (in the kept workspace when it is re-used).
+  none('none'),
+
+  /// The last succeeded round saved its rollout: the next round resumes it.
+  saved('saved'),
+
+  /// The last round succeeded but its rollout could not be saved: the next
+  /// round fails `session_restore_failed`.
+  saveFailed('save_failed');
+
+  const SessionState(this.wire);
+  final String wire;
+
+  static SessionState parse(Object? wire) =>
+      values.firstWhere((s) => s.wire == wire, orElse: () => none);
+}
+
+/// A node's workspace kept across the rounds of one workflow run, recorded
+/// when the supervisor first grants it, so `POST /v1/workspaces/release`
+/// finds every workspace of the run, also one whose rounds all failed.
+class RetainedWorkspace {
+  RetainedWorkspace({
+    required this.workspaceKey,
+    required this.workspaceId,
+    required this.tenantId,
+    required this.appId,
+    required this.workflowRunId,
+    required this.nodeId,
+    required this.acquiredAt,
+    this.executionId,
+    this.sessionState = SessionState.none,
+    this.session,
+    this.saveError,
+  });
+
+  /// `retainedWorkspaceKey` of the node's execution.
+  final String workspaceKey;
+
+  /// The supervisor's ID (`DELETE /v1/workspaces/{id}`), derived from the
+  /// key ([retainedWorkspaceId]), never taken from an answer.
+  final String workspaceId;
+  final String tenantId;
+  final String appId;
+  final String workflowRunId;
+  final String nodeId;
+  DateTime acquiredAt;
+
+  /// The execution whose acquire granted it last (the holder until its
+  /// sandbox is deleted).
+  String? executionId;
+
+  /// What the next round finds; a failed round changes nothing.
+  SessionState sessionState;
+
+  /// The Codex session to resume ([SessionState.saved]).
+  CodexSessionRecord? session;
+
+  /// Why the last succeeded round's rollout was not saved
+  /// ([SessionState.saveFailed]).
+  String? saveError;
+
+  Map<String, Object?> toJson() => {
+    'workspace_key': workspaceKey,
+    'workspace_id': workspaceId,
+    'tenant_id': tenantId,
+    'app_id': appId,
+    'workflow_run_id': workflowRunId,
+    'node_id': nodeId,
+    'acquired_at': acquiredAt.toIso8601String(),
+    'execution_id': executionId,
+    'session_state': sessionState.wire,
+    'session': session?.toJson(),
+    'save_error': saveError,
+  };
+
+  static RetainedWorkspace fromJson(Map<String, Object?> j) =>
+      RetainedWorkspace(
+        workspaceKey: j['workspace_key'] as String,
+        workspaceId: j['workspace_id'] as String,
+        tenantId: j['tenant_id'] as String,
+        appId: j['app_id'] as String,
+        workflowRunId: j['workflow_run_id'] as String,
+        nodeId: j['node_id'] as String,
+        acquiredAt: DateTime.parse(j['acquired_at'] as String),
+        executionId: j['execution_id'] as String?,
+        sessionState: j['session_state'] == null && j['session'] != null
+            ? SessionState.saved
+            : SessionState.parse(j['session_state']),
+        session: j['session'] == null
+            ? null
+            : CodexSessionRecord.fromJson(
+                (j['session'] as Map).cast<String, Object?>(),
+              ),
+        saveError: j['save_error'] as String?,
+      );
+}
+
 class RunStore {
   RunStore(
     this.root, {
@@ -195,10 +366,14 @@ class RunStore {
 
   final Map<String, RunRecord> _runs = {};
   final Map<String, ExecutionIndex> _executions = {};
+  final Map<String, RetainedWorkspace> _workspaces = {};
   final Random _random = Random.secure();
 
   Directory get _runsDir => Directory('$root/runs');
   Directory get _executionsDir => Directory('$root/executions');
+  Directory get _workspacesDir => Directory('$root/workspaces');
+  String _workspacePath(String workspaceKey) =>
+      '${_workspacesDir.path}/${sha256Hex(workspaceKey)}.json';
 
   String _runDir(String runId) => '${_runsDir.path}/$runId';
   String _executionPath(String executionId) =>
@@ -210,10 +385,16 @@ class RunStore {
   void load() {
     _runsDir.createSync(recursive: true);
     _executionsDir.createSync(recursive: true);
+    _workspacesDir.createSync(recursive: true);
     for (final f in _executionsDir.listSync().whereType<File>()) {
       if (!f.path.endsWith('.json')) continue;
       final x = ExecutionIndex.fromJson(_readJson(f.path));
       _executions[x.executionId] = x;
+    }
+    for (final f in _workspacesDir.listSync().whereType<File>()) {
+      if (!f.path.endsWith('.json')) continue;
+      final w = RetainedWorkspace.fromJson(_readJson(f.path));
+      _workspaces[w.workspaceKey] = w;
     }
     for (final d in _runsDir.listSync().whereType<Directory>()) {
       final meta = File('${d.path}/meta.json');
@@ -287,6 +468,113 @@ class RunStore {
     x.sandboxId = sandboxId;
     _writeExecution(x);
   }
+
+  // ---- retained workspaces ------------------------------------------------
+
+  RetainedWorkspace? retainedWorkspace(String workspaceKey) =>
+      _workspaces[workspaceKey];
+
+  /// Indexes the retained workspace of [execution] before its acquire: the
+  /// supervisor may create the disk and still fail (parking it), so the
+  /// workflow run's release must know it already. The ID is the one the
+  /// supervisor derives ([retainedWorkspaceId]). A new record names
+  /// [execution] as the holder; an existing one keeps its holder (the 409
+  /// `workspace_in_use` check) and session.
+  RetainedWorkspace prepareRetainedWorkspace(
+    String workspaceKey,
+    ExecutionRef execution,
+  ) {
+    final known = _workspaces[workspaceKey];
+    if (known != null) return known;
+    final w = _workspaces[workspaceKey] = RetainedWorkspace(
+      workspaceKey: workspaceKey,
+      workspaceId: retainedWorkspaceId(workspaceKey),
+      tenantId: execution.tenantId,
+      appId: execution.appId,
+      workflowRunId: execution.workflowRunId,
+      nodeId: execution.nodeId,
+      acquiredAt: clock(),
+      executionId: execution.executionId,
+    );
+    _writeWorkspace(w);
+    return w;
+  }
+
+  /// The supervisor granted the workspace to [executionId]: the new holder.
+  void retainedWorkspaceGranted(String workspaceKey, String executionId) {
+    final w = _workspaces[workspaceKey];
+    if (w == null) return;
+    w
+      ..executionId = executionId
+      ..acquiredAt = clock();
+    _writeWorkspace(w);
+  }
+
+  /// Whether the retained workspace [workspaceKey] is held by an earlier
+  /// execution than [executionId] whose runs here have all ended (or that
+  /// was deleted): its sandbox is only still being released.
+  bool retainedWorkspaceHolderEnded(String workspaceKey, String executionId) {
+    final holder = _workspaces[workspaceKey]?.executionId;
+    if (holder == null || holder == executionId) return false;
+    if (_executions[holder]?.deletedAt != null) return true;
+    final runs = runsOf(holder).toList();
+    return runs.isNotEmpty && runs.every((r) => r.isEnded);
+  }
+
+  /// Records the session a succeeded round saved ([SessionState.saved]).
+  /// False when the workspace is no longer recorded (released).
+  bool setCodexSession(String workspaceKey, CodexSessionRecord session) {
+    final w = _workspaces[workspaceKey];
+    if (w == null) return false;
+    w
+      ..sessionState = SessionState.saved
+      ..session = session
+      ..saveError = null;
+    _writeWorkspace(w);
+    return true;
+  }
+
+  /// Records that a succeeded round could not save its session
+  /// ([SessionState.saveFailed]); the earlier session is no longer the
+  /// conversation's end and is dropped. False when the workspace is no
+  /// longer recorded.
+  bool setSessionSaveFailed(String workspaceKey, String error) {
+    final w = _workspaces[workspaceKey];
+    if (w == null) return false;
+    w
+      ..sessionState = SessionState.saveFailed
+      ..session = null
+      ..saveError = error;
+    _writeWorkspace(w);
+    return true;
+  }
+
+  /// The retained workspaces of a workflow run.
+  List<RetainedWorkspace> retainedWorkspacesOf({
+    required String tenantId,
+    required String appId,
+    required String workflowRunId,
+  }) => [
+    for (final w in _workspaces.values)
+      if (w.tenantId == tenantId &&
+          w.appId == appId &&
+          w.workflowRunId == workflowRunId)
+        w,
+  ];
+
+  /// Forgets a retained workspace and its session (after the supervisor
+  /// deleted it).
+  void removeRetainedWorkspace(String workspaceKey) {
+    _workspaces.remove(workspaceKey);
+    final f = File(_workspacePath(workspaceKey));
+    if (f.existsSync()) f.deleteSync();
+  }
+
+  void _writeWorkspace(RetainedWorkspace w) => _atomicWrite(
+    _workspacePath(w.workspaceKey),
+    jsonEncode(w.toJson()),
+    flush: true,
+  );
 
   // ---- runs ---------------------------------------------------------------
 

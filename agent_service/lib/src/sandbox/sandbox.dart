@@ -47,6 +47,7 @@ class SandboxGrant {
     this.profile,
     this.codexGatewayUrl,
     this.workspaceKeptFrom = const [],
+    this.retained,
   });
   final String sandboxId;
   final Uri url;
@@ -68,6 +69,33 @@ class SandboxGrant {
   /// Earlier sandboxes of the execution whose disk workspace this one keeps
   /// (the supervisor replaced a stopped container; the files are there).
   final List<String> workspaceKeptFrom;
+
+  /// The retained workspace (`workspace: {"retained", "reused", "id"}`),
+  /// when the acquire named a `workspace_key`.
+  final RetainedWorkspaceGrant? retained;
+}
+
+/// A node's disk workspace kept across the rounds of a workflow run, as the
+/// supervisor answered it.
+class RetainedWorkspaceGrant {
+  const RetainedWorkspaceGrant({required this.id, required this.reused});
+
+  /// The supervisor's workspace ID (`DELETE /v1/workspaces/{id}`).
+  final String id;
+
+  /// Whether the workspace existed before this acquire (an earlier round's,
+  /// re-bound), as opposed to a new, empty one.
+  final bool reused;
+
+  /// The `workspace` object of an acquire answer; null when it is not a
+  /// retained workspace's.
+  static RetainedWorkspaceGrant? parse(Object? raw) {
+    if (raw is! Map || raw['retained'] != true) return null;
+    final id = raw['id'];
+    final reused = raw['reused'];
+    if (id is! String || id.isEmpty || reused is! bool) return null;
+    return RetainedWorkspaceGrant(id: id, reused: reused);
+  }
 }
 
 /// Client of the sandbox supervisor.
@@ -135,9 +163,18 @@ class SupervisorClient {
     return decoded.cast<String, Object?>();
   }
 
+  /// `POST /v1/sandboxes`. [workspaceKey] keys the disk workspace by a
+  /// node's workflow run instead of the execution (docs/agent-v2.md, "Codex
+  /// session retained across rounds"). `409 workspace_in_use` is retried
+  /// like `503 disk_pool_busy` (same budget, interval and cancellation)
+  /// while [workspaceInUseRetryable] says the holder is only still being
+  /// released (asked at each refusal); else, and when the budget is spent,
+  /// it is a `sandbox_unavailable` failure naming that code.
   Future<SandboxGrant> acquire(
     String executionKey, {
     String profile = defaultProfileName,
+    String? workspaceKey,
+    bool Function()? workspaceInUseRetryable,
     CancellationToken? cancel,
   }) async {
     final clock = Stopwatch()..start();
@@ -148,23 +185,49 @@ class SupervisorClient {
         j = await _call('POST', '/v1/sandboxes', {
           'execution_key': executionKey,
           'profile': profile,
+          'workspace_key': ?workspaceKey,
         });
         break;
       } on SandboxFailure catch (e) {
         cancel?.throwIfCancelled();
-        if (e.httpStatus != 503 || e.supervisorCode != 'disk_pool_busy') {
-          rethrow;
-        }
-        final remaining = diskSlotWaitTimeout - clock.elapsed;
-        if (remaining <= Duration.zero) {
+        final inUse =
+            e.httpStatus == 409 && e.supervisorCode == 'workspace_in_use';
+        if (inUse && !(workspaceInUseRetryable?.call() ?? false)) {
           throw SandboxFailure(
             'sandbox_unavailable',
-            'no sandbox disk slot became available within '
-                '${diskSlotWaitTimeout.inMilliseconds} ms',
+            'the retained workspace of this node is in use by another sandbox '
+                '(supervisor: 409 workspace_in_use): ${e.message}',
             supervisorCode: e.supervisorCode,
             httpStatus: e.httpStatus,
           );
         }
+        if (e.httpStatus == 409 && e.supervisorCode == 'workspace_conflict') {
+          throw SandboxFailure(
+            'sandbox_unavailable',
+            'the execution\'s sandbox was created with another workspace '
+                'scope (supervisor: 409 workspace_conflict): ${e.message}',
+            supervisorCode: e.supervisorCode,
+            httpStatus: e.httpStatus,
+          );
+        }
+        if (!inUse &&
+            (e.httpStatus != 503 || e.supervisorCode != 'disk_pool_busy')) {
+          rethrow;
+        }
+        SandboxFailure waitedTooLong() => SandboxFailure(
+          'sandbox_unavailable',
+          inUse
+              ? 'the retained workspace of this node was still in use by the '
+                    'previous round\'s sandbox after '
+                    '${diskSlotWaitTimeout.inMilliseconds} ms (supervisor: '
+                    '409 workspace_in_use): ${e.message}'
+              : 'no sandbox disk slot became available within '
+                    '${diskSlotWaitTimeout.inMilliseconds} ms',
+          supervisorCode: e.supervisorCode,
+          httpStatus: e.httpStatus,
+        );
+        final remaining = diskSlotWaitTimeout - clock.elapsed;
+        if (remaining <= Duration.zero) throw waitedTooLong();
         final ready = Completer<void>();
         final timer = Timer(
           remaining < diskSlotRetryInterval ? remaining : diskSlotRetryInterval,
@@ -180,15 +243,7 @@ class SupervisorClient {
           timer.cancel();
         }
         // Do not send a last request after the waiting budget has expired.
-        if (clock.elapsed >= diskSlotWaitTimeout) {
-          throw SandboxFailure(
-            'sandbox_unavailable',
-            'no sandbox disk slot became available within '
-                '${diskSlotWaitTimeout.inMilliseconds} ms',
-            supervisorCode: e.supervisorCode,
-            httpStatus: e.httpStatus,
-          );
-        }
+        if (clock.elapsed >= diskSlotWaitTimeout) throw waitedTooLong();
       }
     }
     return SandboxGrant(
@@ -205,6 +260,7 @@ class SupervisorClient {
         for (final id in (j['workspace_kept_from'] as List?) ?? const [])
           if (id is String) id,
       ],
+      retained: RetainedWorkspaceGrant.parse(j['workspace']),
     );
   }
 
@@ -224,6 +280,22 @@ class SupervisorClient {
 
   Future<void> release(String sandboxId) =>
       _call('DELETE', '/v1/sandboxes/${Uri.encodeComponent(sandboxId)}');
+
+  /// `DELETE /v1/workspaces/{id}`: deletes a retained workspace once its
+  /// workflow run has ended. A workspace the supervisor does not know (404)
+  /// is already gone; `409` (a container still uses it) and every other
+  /// failure throw [SandboxFailure].
+  Future<void> deleteWorkspace(String workspaceId) async {
+    try {
+      await _call(
+        'DELETE',
+        '/v1/workspaces/${Uri.encodeComponent(workspaceId)}',
+      );
+    } on SandboxFailure catch (e) {
+      if (e.httpStatus == 404) return;
+      rethrow;
+    }
+  }
 
   Future<List<Map<String, Object?>>> list() async {
     final j = await _call('GET', '/v1/sandboxes');
@@ -289,6 +361,16 @@ class ExecutionSandbox {
 
   /// Set once the probes passed in this process.
   bool probed = false;
+
+  /// The supervisor's answer to the latest acquire that returned this
+  /// sandbox ([grant] is the first one's).
+  late SandboxGrant acquired = grant;
+
+  /// With a retained workspace: whether the latest acquire found the
+  /// workspace already there (an earlier round's, or this execution's
+  /// running sandbox), as opposed to a new, empty one.
+  bool get workspaceReused =>
+      (acquired.retained?.reused ?? false) || !acquired.created;
 
   String get sandboxId => grant.sandboxId;
 
@@ -809,6 +891,7 @@ class SandboxManager {
     CancellationToken? cancel,
   }) {
     final executionId = request.execution.executionId;
+    final workspaceKey = request.workspaceKey;
     return _locked(executionId, () async {
       final s = supervisor;
       if (s == null) {
@@ -817,34 +900,85 @@ class SandboxManager {
           'this agent service has no sandbox supervisor',
         );
       }
+      // Indexed before the acquire: the supervisor may create the disk and
+      // then fail (parking it); the workflow run's release still finds it.
+      if (workspaceKey != null) {
+        store.prepareRetainedWorkspace(workspaceKey, request.execution);
+      }
       final SandboxGrant grant;
       try {
         grant = await s.acquire(
           executionId,
           profile: request.executorProfile,
+          workspaceKey: workspaceKey,
+          // The previous round's result is in, and the Swift server's queue
+          // has not yet deleted its sandbox (which parks the workspace).
+          workspaceInUseRetryable: workspaceKey == null
+              ? null
+              : () => store.retainedWorkspaceHolderEnded(
+                  workspaceKey,
+                  executionId,
+                ),
           cancel: cancel,
         );
       } on SandboxFailure {
         _unavailable = true;
         rethrow;
       }
+      if (workspaceKey != null) {
+        final retained = grant.retained;
+        if (retained == null) {
+          _unavailable = true;
+          if (grant.created) await _releaseUnrecorded(s, grant.sandboxId);
+          throw SandboxFailure(
+            'sandbox_unavailable',
+            'the supervisor did not retain the workspace: its answer has no '
+                '"workspace": {"retained": true, "reused", "id"} for the '
+                'workspace_key',
+          );
+        }
+        final predicted = retainedWorkspaceId(workspaceKey);
+        if (retained.id != predicted) {
+          // Never indexed or deleted: one wrong answer must not make the
+          // release delete another workflow run's workspace. The sandbox
+          // goes with the normal DELETE, which only parks a workspace.
+          _unavailable = true;
+          log?.call(
+            'ANOMALY: the supervisor granted sandbox ${grant.sandboxId} with '
+            'retained workspace ${retained.id} for workspace_key '
+            '$workspaceKey; expected $predicted. The grant is refused and '
+            'the sandbox released; the workspace ${retained.id} is not '
+            'deleted by agent_service',
+          );
+          _live.remove(executionId);
+          await _releaseUnrecorded(s, grant.sandboxId);
+          if (sandboxIdOf(executionId) == grant.sandboxId) {
+            store.setSandbox(executionId, null);
+          }
+          throw SandboxFailure(
+            'sandbox_error',
+            'the supervisor granted retained workspace ${retained.id}, not '
+                '$predicted (sha256 of "retained:" + workspace_key): the '
+                'grant was refused and the sandbox released',
+          );
+        }
+        store.retainedWorkspaceGranted(workspaceKey, executionId);
+      }
       if (grant.profile != request.executorProfile) {
         // A supervisor that ignores profiles would give the default image.
         _unavailable = true;
-        if (grant.created) {
-          // Not recorded for the execution yet: release it here.
-          try {
-            await s.release(grant.sandboxId);
-          } catch (e) {
-            log?.call('could not release sandbox ${grant.sandboxId}: $e');
-          }
-        }
+        // Not recorded for the execution yet: release it here.
+        if (grant.created) await _releaseUnrecorded(s, grant.sandboxId);
         throw SandboxFailure(
           'sandbox_unavailable',
           'the supervisor created the sandbox with profile '
               '${grant.profile ?? '(none)'}, not ${request.executorProfile}',
         );
       }
+      // A retained workspace re-used by a new execution (another round of
+      // the node) lists the earlier rounds' sandboxes in
+      // workspace_kept_from; the new execution still gets its files[].
+      final firstOfExecution = sandboxIdOf(executionId) == null;
       store.setSandbox(executionId, grant.sandboxId);
       if (expectedRef != null &&
           expectedRef != grant.sandboxId &&
@@ -866,6 +1000,7 @@ class SandboxManager {
               httpClient: shellctlHttpClient,
               log: log,
             );
+      sandbox.acquired = grant;
       _live[executionId] = sandbox;
       if (!sandbox.probed) {
         final List<String> failed;
@@ -891,11 +1026,21 @@ class SandboxManager {
         _unavailable = false;
         sandbox.probed = true;
       }
-      if (grant.created && grant.workspaceKeptFrom.isEmpty) {
+      if (grant.created &&
+          (grant.workspaceKeptFrom.isEmpty ||
+              (workspaceKey != null && firstOfExecution))) {
         await _materialize(sandbox, request, inner);
       }
       return sandbox;
     });
+  }
+
+  Future<void> _releaseUnrecorded(SupervisorClient s, String sandboxId) async {
+    try {
+      await s.release(sandboxId);
+    } catch (e) {
+      log?.call('could not release sandbox $sandboxId: $e');
+    }
   }
 
   Future<void> _materialize(

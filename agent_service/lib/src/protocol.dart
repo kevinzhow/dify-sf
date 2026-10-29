@@ -27,6 +27,7 @@ const operationFields = {
   'executor_profile',
   'harness_style',
   'continuation',
+  'codex_session',
 };
 
 /// `harness_style` of an operation: how the agent loop is built (tool set,
@@ -387,6 +388,46 @@ class OutputRetryContinuation extends Continuation {
   final List<({String field, String error})> feedback;
 }
 
+/// `codex_session` of an operation request (docs/agent-v2.md, "Codex
+/// session retained across rounds"): `{"retain": true}` keeps the workspace
+/// and the Codex conversation for the next round of the same node in the
+/// same workflow run.
+class CodexSessionRequest {
+  const CodexSessionRequest({required this.retain});
+
+  final bool retain;
+
+  static CodexSessionRequest? parse(Object? raw) {
+    if (raw == null) return null;
+    final o = _object(raw, 'codex_session');
+    final unknown = o.keys.where((k) => k != 'retain');
+    if (unknown.isNotEmpty) {
+      throw invalidRequest(
+        'unknown codex_session fields: ${unknown.join(', ')}',
+      );
+    }
+    if (o['retain'] != true) {
+      throw invalidRequest(
+        'codex_session.retain must be true (send codex_session null to not '
+        'retain the session)',
+      );
+    }
+    return const CodexSessionRequest(retain: true);
+  }
+}
+
+/// The key of a node's retained workspace in one workflow run: the canonical
+/// JSON array `[tenant_id, app_id, workflow_run_id, node_id]` (no separator
+/// a value could contain). The supervisor hashes it.
+String retainedWorkspaceKey(ExecutionRef e) =>
+    canonicalJson([e.tenantId, e.appId, e.workflowRunId, e.nodeId]);
+
+/// The supervisor's ID of the retained workspace [workspaceKey]: its
+/// `hashKey("retained:" + workspace_key)`, the hex SHA-256 of the UTF-8
+/// text. agent_service indexes and deletes only this ID.
+String retainedWorkspaceId(String workspaceKey) =>
+    sha256Hex('retained:$workspaceKey');
+
 /// A validated `POST /v1/operations` body.
 class OperationRequest {
   OperationRequest._({
@@ -414,6 +455,7 @@ class OperationRequest {
     required this.resumeSequence,
     this.officialCodex = false,
     this.codexRunToken,
+    this.codexSession,
   });
 
   final Map<String, Object?> json;
@@ -465,6 +507,18 @@ class OperationRequest {
   /// entry. A secret: removed from [json] (so from the request digest, the
   /// snapshots and the run store) and never logged.
   final String? codexRunToken;
+
+  /// `codex_session`: only with `harness_style: codex`, the official runtime
+  /// and `tools.shell` (the executor profile's disk workspace is checked
+  /// with the profile).
+  final CodexSessionRequest? codexSession;
+
+  /// Whether the run keeps its workspace and Codex conversation.
+  bool get retainsSession => codexSession?.retain ?? false;
+
+  /// The retained workspace's key, with [retainsSession].
+  String? get workspaceKey =>
+      retainsSession ? retainedWorkspaceKey(execution) : null;
 
   String get digest => requestDigest(json);
 
@@ -576,7 +630,9 @@ class OperationRequest {
     }
     final official = officialCodex && harnessStyle == HarnessStyle.codex;
     if (official && runToken == null) {
-      throw invalidRequest('model.run_token is required for harness_style "codex"');
+      throw invalidRequest(
+        'model.run_token is required for harness_style "codex"',
+      );
     }
     if (harnessStyle == HarnessStyle.codex &&
         model.parameters.containsKey('reasoning_effort')) {
@@ -657,6 +713,19 @@ class OperationRequest {
       default:
         break;
     }
+    final codexSession = CodexSessionRequest.parse(json['codex_session']);
+    if (codexSession != null) {
+      if (harnessStyle != HarnessStyle.codex) {
+        throw invalidRequest('codex_session needs harness_style "codex"');
+      }
+      if (!official) {
+        throw invalidRequest(
+          'codex_session needs the official Codex runtime '
+          '(AGENT_CODEX_RUNTIME=official)',
+        );
+      }
+      if (!shell) throw invalidRequest('codex_session needs tools.shell');
+    }
 
     return OperationRequest._(
       json: json,
@@ -683,6 +752,7 @@ class OperationRequest {
       resumeSequence: resumeSequence,
       officialCodex: official,
       codexRunToken: runToken as String?,
+      codexSession: codexSession,
     );
   }
 }

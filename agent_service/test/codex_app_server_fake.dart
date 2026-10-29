@@ -19,6 +19,8 @@ class FakeCodexAppServer {
     this.threadModel,
     this.threadEffort,
     this.threadStartReply,
+    this.threadResumeError,
+    this.threadResumeId,
     required this.turn,
   });
 
@@ -29,6 +31,12 @@ class FakeCodexAppServer {
 
   /// Replaces the whole `thread/start` reply.
   final Map<String, Object?>? threadStartReply;
+
+  /// The JSON-RPC error answered to `thread/resume` (else it resumes).
+  final Map<String, Object?>? threadResumeError;
+
+  /// The thread ID of the `thread/resume` reply (default: the requested).
+  final String? threadResumeId;
 
   /// Plays the turn once `turn/start` is answered.
   final Future<void> Function(FakeCodexAppServer s) turn;
@@ -58,6 +66,20 @@ class FakeCodexAppServer {
 
   Map<String, Object?> paramsOf(String method) =>
       received.firstWhere((r) => r.method == method).params;
+
+  /// The CODEX_HOME of the run (from the app-server job's environment).
+  String get codexHome => _shellctl!.jobs.values
+      .firstWhere((j) => j.script.contains('app-server --listen'))
+      .env!['CODEX_HOME']!;
+
+  /// The fake sandbox whose app-server job this is (for [exit] and
+  /// [codexHome]); [startRun] attaches it.
+  void attach(FakeShellctl s) => _shellctl = s;
+
+  /// Binds the WebSocket port (done by [startRun]).
+  Future<void> start() => _start();
+
+  int get port => _http!.port;
 
   /// The job script handler: the app-server job runs on the port the fake
   /// holds ([startRun] gives it to the runtime).
@@ -146,6 +168,40 @@ class FakeCodexAppServer {
                 'sandbox': {'type': 'dangerFullAccess'},
               },
         );
+      case 'thread/resume':
+        final error = threadResumeError;
+        if (error != null) {
+          _send({'id': id, 'error': error});
+          return;
+        }
+        // As Codex 0.163.0 does: the thread's last usage, of its earlier
+        // turn, before the answer.
+        notify('thread/tokenUsage/updated', {
+          'threadId': params['threadId'],
+          'turnId': 'turn_earlier',
+          'tokenUsage': {
+            'last': {
+              'inputTokens': 5000,
+              'cachedInputTokens': 0,
+              'outputTokens': 500,
+              'reasoningOutputTokens': 0,
+              'totalTokens': 5500,
+            },
+          },
+        });
+        reply({
+          'thread': {
+            'id': threadResumeId ?? params['threadId'],
+            'turns': <Object?>[],
+          },
+          'model': threadModel ?? configModel,
+          'modelProvider': codexProviderId,
+          'reasoningEffort': threadEffort ?? configEffort,
+          'cwd': '/workspace',
+          'approvalPolicy': 'never',
+          'approvalsReviewer': 'user',
+          'sandbox': {'type': 'dangerFullAccess'},
+        });
       case 'turn/start':
         reply({
           'turn': {

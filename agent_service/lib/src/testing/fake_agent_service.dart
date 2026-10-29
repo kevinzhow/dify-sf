@@ -13,7 +13,10 @@
 ///  "executions": {"E1": <execution>},       // by execution_id
 ///  "default_execution": <execution>,
 ///  "delays_ms": {"post": 0, "status": 0, "events": 0, "ack": 0,
-///                "cancel": 0, "lease": 0, "delete": 0},  // defaults
+///                "cancel": 0, "lease": 0, "delete": 0,
+///                "release": 0},             // defaults
+///  "release_failures": 0,                   // POST /v1/workspaces/release
+///                                           //   answering 503 cleanup_failed first
 ///  "snapshot_check": "envelope",            // or "full" (the real check), "none"
 ///  "health": {"status": "ok", "sandbox": "disabled"},
 ///  "profiles": [{"name": "default", "description": "…", "status": "ok",
@@ -52,6 +55,13 @@
 /// <execution> = {"delete_failures": 1,     // DELETEs answering 503 first
 ///                "delete_failure_status": 503, "delays_ms": {"lease", "delete"}}
 /// ```
+///
+/// An operation with `codex_session: {"retain": true}` is validated as the
+/// real service with the official Codex runtime validates it (codex style,
+/// `model.run_token`, `tools.shell`; the profile's disk workspace is not
+/// checked), and its workspace key is remembered: `POST
+/// /v1/workspaces/release` answers `released` with the number of those keys
+/// of the workflow run (and forgets them).
 ///
 /// Strings `{run_id}`, `{operation_id}` and `{execution_id}` in scripted
 /// event data are replaced. Without a script an operation succeeds with
@@ -98,6 +108,10 @@ class FakeAgentService {
   final Map<String, int> _rejections = {};
   final Map<String, int> _lostPosts = {};
 
+  /// Retained workspace keys of accepted operations, with the workflow run.
+  final Map<String, ExecutionRef> _retained = {};
+  int _releaseFailures = 0;
+
   /// Requests received: method, path, query, body and the answered status.
   final List<Map<String, Object?>> requests = [];
   var _counter = 0;
@@ -117,6 +131,8 @@ class FakeAgentService {
     _executions.clear();
     _rejections.clear();
     _lostPosts.clear();
+    _retained.clear();
+    _releaseFailures = 0;
     requests.clear();
   }
 
@@ -332,6 +348,8 @@ class FakeAgentService {
           return await _lease(request, entry, id);
         case ['executions', final id] when method == 'DELETE':
           return await _delete(request, entry, id);
+        case ['workspaces', 'release'] when method == 'POST':
+          return await _release(request, entry);
       }
       throw ApiError(404, 'not_found', 'no such route');
     } on ApiError catch (e) {
@@ -449,7 +467,11 @@ class FakeAgentService {
     Map<String, Object?> entry,
   ) async {
     final body = await _body(request, entry);
-    final op = OperationRequest.parse(body);
+    // codex_session exists only with the official Codex runtime.
+    final op = OperationRequest.parse(
+      body,
+      officialCodex: body['codex_session'] != null,
+    );
     final script = _operationScript(op.operationId);
     await _sleep(_delay('post', script));
     final reject = _map(script['reject']);
@@ -518,11 +540,58 @@ class FakeAgentService {
       throw invalidRequest('the X-Agent-Run-Token header is required');
     }
     final run = _createRun(op, digest, script);
+    final workspaceKey = op.workspaceKey;
+    if (workspaceKey != null) _retained[workspaceKey] = op.execution;
     if (_loseResponse(op.operationId, script)) await _reset(request);
     return _ok(entry, request.response, 202, {
       'protocol': protocolName,
       'run_id': run.runId,
       'status': 'running',
+    });
+  }
+
+  /// `POST /v1/workspaces/release` (see the library comment).
+  Future<void> _release(HttpRequest request, Map<String, Object?> entry) async {
+    final body = await _body(request, entry);
+    await _sleep(_delay('release', const {}));
+    const fields = {'protocol', 'tenant_id', 'app_id', 'workflow_run_id'};
+    final unknown = body.keys.where((k) => !fields.contains(k));
+    if (unknown.isNotEmpty) {
+      throw invalidRequest('unknown request fields: ${unknown.join(', ')}');
+    }
+    String field(String key) {
+      final v = body[key];
+      if (v is String && v.isNotEmpty) return v;
+      throw invalidRequest('$key must be a non-empty string');
+    }
+
+    final tenantId = field('tenant_id');
+    final appId = field('app_id');
+    final workflowRunId = field('workflow_run_id');
+    final failures = _script['release_failures'];
+    if (failures is int && _releaseFailures < failures) {
+      _releaseFailures++;
+      throw ApiError(
+        503,
+        'cleanup_failed',
+        'scripted failure',
+        extra: {'released': 0, 'failed': 1},
+      );
+    }
+    final keys = [
+      for (final e in _retained.entries)
+        if (e.value.tenantId == tenantId &&
+            e.value.appId == appId &&
+            e.value.workflowRunId == workflowRunId)
+          e.key,
+    ];
+    keys.forEach(_retained.remove);
+    return _ok(entry, request.response, 200, {
+      'protocol': protocolName,
+      'tenant_id': tenantId,
+      'app_id': appId,
+      'workflow_run_id': workflowRunId,
+      'released': keys.length,
     });
   }
 

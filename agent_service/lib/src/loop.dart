@@ -20,6 +20,7 @@ import 'harness/codex/apply_patch.dart';
 import 'harness/codex/exec_output.dart';
 import 'harness/codex/official.dart';
 import 'harness/codex/prompts.dart';
+import 'harness/codex/retained_session.dart';
 import 'harness/codex/retry.dart';
 import 'harness/codex/sandbox_patch_fs.dart';
 import 'harness/codex/tools.dart';
@@ -503,7 +504,8 @@ class AgentRun {
       if (r.officialCodex) ...{
         'model_wire': {
           'wire': 'responses',
-          'reason': 'the official Codex CLI in the sandbox calls the '
+          'reason':
+              'the official Codex CLI in the sandbox calls the '
               'gateway\'s Codex Responses entry',
           'reduced_fidelity': false,
         },

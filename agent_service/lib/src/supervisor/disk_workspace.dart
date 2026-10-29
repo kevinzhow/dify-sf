@@ -392,6 +392,8 @@ class DiskLease {
     this.dev,
     this.ino,
     this.attached = false,
+    this.retained = false,
+    this.profile,
     List<String>? sandboxIds,
   }) : sandboxIds = sandboxIds ?? [];
 
@@ -414,6 +416,10 @@ class DiskLease {
   /// The helper reported the image bound to [device] in boot [bootId].
   bool attached;
 
+  /// Retained until the owning workflow terminates; parked leases hold no slot.
+  final bool retained;
+  final String? profile;
+
   /// Sandboxes that used this workspace, oldest first (at most 16).
   final List<String> sandboxIds;
 
@@ -428,6 +434,8 @@ class DiskLease {
     'dev': dev,
     'ino': ino,
     'attached': attached,
+    'retained': retained,
+    'profile': profile,
     'sandbox_ids': sandboxIds,
   };
 
@@ -444,6 +452,8 @@ class DiskLease {
         dev: j['dev'] as int?,
         ino: j['ino'] as int?,
         attached: j['attached'] == true,
+        retained: j['retained'] == true,
+        profile: j['profile'] as String?,
         sandboxIds: [...(j['sandbox_ids'] as List).cast<String>()],
       );
     } on TypeError {
@@ -654,8 +664,24 @@ class DiskWorkspaces {
   /// image's binding) or created. Throws [SupervisorError] 503
   /// `disk_budget_exceeded`, `disk_space_low`, `disk_pool_busy`,
   /// `disk_workspace_conflict` or `disk_workspace_failed`.
-  Future<DiskGrant> ensure(String hash, int sizeMb) => _serial(() async {
+  Future<DiskGrant> ensure(
+    String hash,
+    int sizeMb, {
+    bool retained = false,
+    String? profile,
+  }) => _serial(() async {
     var lease = read(hash);
+    if (lease != null &&
+        (lease.retained != retained || lease.profile != profile)) {
+      throw _error(
+        'disk_workspace_conflict',
+        'workspace profile or retention does not match',
+      );
+    }
+    if (lease?.state == 'parking') {
+      await _park(lease!);
+      lease = read(hash);
+    }
     if (lease != null &&
         (lease.state == 'preparing' || lease.state == 'releasing')) {
       // Left by an interrupted creation or release: finish the release.
@@ -669,11 +695,18 @@ class DiskWorkspaces {
             'conflict)',
       );
     }
-    if (lease == null) return _create(hash, sizeMb);
+    if (lease == null) {
+      return _create(hash, sizeMb, retained: retained, profile: profile);
+    }
     return _reuse(lease);
   });
 
-  Future<DiskGrant> _create(String hash, int sizeMb) async {
+  Future<DiskGrant> _create(
+    String hash,
+    int sizeMb, {
+    required bool retained,
+    String? profile,
+  }) async {
     final all = _all();
     final used = all.fold<int>(0, (a, l) => a + l.sizeMb);
     if (used + sizeMb > config.budgetMb) {
@@ -691,7 +724,10 @@ class DiskWorkspaces {
             'free; $sizeMb MiB plus ${config.minFreeMb} MiB reserve are needed',
       );
     }
-    final taken = {for (final l in all) l.device};
+    final taken = {
+      for (final l in all)
+        if (l.state != 'parked') l.device,
+    };
     final candidates = [
       for (final d in config.devices)
         if (!taken.contains(d)) d,
@@ -721,6 +757,8 @@ class DiskWorkspaces {
       device: candidates.first,
       volume: volumeName(hash),
       bootId: bootId(),
+      retained: retained,
+      profile: profile,
     );
     _write(lease);
     try {
@@ -791,6 +829,25 @@ class DiskWorkspaces {
       );
     }
     final boot = bootId();
+    if (lease.state == 'parked') {
+      final taken = {
+        for (final l in _all())
+          if (l.hash != hash && l.state != 'parked') l.device,
+      };
+      final available = config.devices
+          .where((d) => !taken.contains(d))
+          .toList();
+      if (available.isEmpty) {
+        throw _error(
+          'disk_pool_busy',
+          'no disk slot is free for this workspace',
+        );
+      }
+      lease.device = available.first;
+      lease.state = 'attaching';
+      lease.attached = false;
+      _write(lease);
+    }
     var r = await helper.run(hash, 'attach', lease.device, id);
     if (r.out['state'] == 'busy') {
       if (lease.bootId == boot && lease.attached) {
@@ -804,7 +861,10 @@ class DiskWorkspaces {
       }
       // Bindings did not survive a reboot and the device was reused: take
       // another free one of the pool.
-      final taken = {for (final l in _all()) l.device};
+      final taken = {
+        for (final l in _all())
+          if (l.state != 'parked') l.device,
+      };
       for (final d in config.devices) {
         if (taken.contains(d)) continue;
         r = await helper.run(hash, 'attach', d, id);
@@ -827,7 +887,8 @@ class DiskWorkspaces {
     }
     lease
       ..bootId = boot
-      ..attached = true;
+      ..attached = true
+      ..state = 'ready';
     _write(lease);
     await _ensureVolume(lease);
     return (
@@ -892,6 +953,62 @@ class DiskWorkspaces {
       if (id != sandboxId) id,
   ];
 
+  /// Unmount and detach a retained workspace while keeping its bounded image.
+  Future<bool> park(String hash) => _serial(() async {
+    final lease = read(hash);
+    if (lease == null) return false;
+    return _park(lease);
+  });
+
+  Future<bool> _park(DiskLease lease) async {
+    if (!lease.retained) {
+      throw _error('disk_workspace_conflict', 'workspace is not retained');
+    }
+    if (lease.state == 'conflict') {
+      throw _error('disk_workspace_conflict', 'workspace needs an operator');
+    }
+    if (lease.state == 'parked') return true;
+    final image = _image(lease.hash);
+    final id = await fileIdentity(image.path);
+    if (id == null || id.dev != lease.dev || id.ino != lease.ino) {
+      lease.state = 'conflict';
+      _write(lease);
+      throw _error(
+        'disk_workspace_conflict',
+        'workspace image identity changed',
+      );
+    }
+    lease.state = 'parking';
+    _write(lease);
+    final volume = await docker.inspectVolume(lease.volume);
+    if (volume != null) {
+      if (!_ownVolume(volume, lease.hash)) {
+        throw _error(
+          'disk_workspace_conflict',
+          'workspace volume owner changed',
+        );
+      }
+      await _removeVolume(lease);
+    }
+    final r = await helper.run(lease.hash, 'detach', lease.device, id);
+    final state = r.out['state'];
+    if (r.exitCode != 0 || (state != 'detached' && state != 'free')) {
+      if (state == 'other' || state == 'image_identity') {
+        lease.state = 'conflict';
+        _write(lease);
+      }
+      throw _error(
+        'disk_workspace_failed',
+        'could not detach retained workspace',
+      );
+    }
+    lease
+      ..attached = false
+      ..state = 'parked';
+    _write(lease);
+    return true;
+  }
+
   /// Releases the execution's workspace (no sandbox may use it any more).
   /// True when nothing is left; false when there was nothing or the lease
   /// is kept in `conflict`.
@@ -924,11 +1041,17 @@ class DiskWorkspaces {
       );
       return false;
     }
+    final wasParked =
+        lease.state == 'parked' ||
+        (lease.state == 'releasing' && !lease.attached);
     lease.state = 'releasing';
     _write(lease);
     final v = await docker.inspectVolume(lease.volume);
     if (v != null && _ownVolume(v, hash)) await _removeVolume(lease);
-    if (image.existsSync() && lease.dev != null && lease.ino != null) {
+    if (!wasParked &&
+        image.existsSync() &&
+        lease.dev != null &&
+        lease.ino != null) {
       final id = (dev: lease.dev!, ino: lease.ino!);
       final r = await helper.run(hash, 'detach', lease.device, id);
       final state = r.out['state'];
@@ -979,6 +1102,16 @@ class DiskWorkspaces {
     final leased = <String>{};
     for (final lease in _all()) {
       leased.add(lease.hash);
+      if (lease.retained &&
+          (lease.state == 'parking' ||
+              (lease.state == 'ready' && removedHashes.contains(lease.hash)))) {
+        try {
+          await _park(lease);
+        } catch (e) {
+          log?.call('sweep: retained workspace could not park: $e');
+        }
+        continue;
+      }
       final interrupted =
           lease.state == 'preparing' || lease.state == 'releasing';
       if (!interrupted &&
