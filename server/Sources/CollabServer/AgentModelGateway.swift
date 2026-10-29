@@ -361,8 +361,14 @@ actor AgentModelScopes {
     func revoke(token: String) -> LLMUsage {
         guard let entry = entries.removeValue(forKey: Tokens.sha256(token)) else { return .empty }
         for task in Array(entry.tasks.values) + Array(entry.sockets.values) { task.cancel() }
-        return entry.usage.keys.sorted().reduce(LLMUsage.empty) { $0.plus(entry.usage[$1]!) }
-            .plus(entry.warmupUsage.keys.sorted().reduce(LLMUsage.empty) { $0.plus(entry.warmupUsage[$1]!) })
+        var total = entry.usage.keys.sorted().reduce(LLMUsage.empty) { $0.plus(entry.usage[$1]!) }
+        // An absent/zero-token warmup is not an unknown generating call.
+        // Adding `.empty` would erase known cache/reasoning detail counters.
+        for lane in entry.warmupUsage.keys.sorted() {
+            let usage = entry.warmupUsage[lane]!
+            if usage.totalTokens > 0 || usage.totalPrice != .zero { total = total.plus(usage) }
+        }
+        return total
     }
 
     private static func denied() -> ServerError {

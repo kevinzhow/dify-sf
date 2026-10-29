@@ -59,6 +59,21 @@ struct AgentCodexWebSocketTests {
         _ = await scopes.revoke(token: token)
         #expect(task.isCancelled)
     }
+    @Test(arguments: [0, 5]) func warmupUsageKeepsKnownDetailsAndNeverConsumesACallSlot(tokens: Int) async throws {
+        let scopes = AgentModelScopes(); let token = try await scopes.activate(AgentResponsesTests.scope())
+        let idle = Task<Void, Never> { try? await Task.sleep(for: .seconds(100)) }; defer { idle.cancel() }
+        try await scopes.openCodexSocket(token: token, lane: "root", id: "socket", task: idle)
+        try await scopes.startCodexSocket(token: token, lane: "root")
+        await scopes.observeCodexWarmupUsage(token: token, lane: "root", usage: tokens == 0 ? .empty : LLMUsage(json: [
+            "input_tokens": .int(tokens), "total_tokens": .int(tokens), "cached_tokens": 1, "reasoning_tokens": 0]))
+        let call = try await scopes.claimCodex(token: token)
+        #expect(call.index == 1)
+        await scopes.finish(call, usage: LLMUsage(json: ["input_tokens": 20, "output_tokens": 3, "total_tokens": 23,
+            "cached_tokens": 12, "reasoning_tokens": 2]), succeeded: true)
+        let total = await scopes.revoke(token: token)
+        #expect(total.totalTokens == 23 + tokens && total.cachedTokens == 12 + (tokens > 0 ? 1 : 0) && total.reasoningTokens == 2)
+    }
+
     @Test func incrementalHTTPFallbackFailsBeforeUpstreamOrBudget() async throws {
         try await withFakeDaemon { daemon, _ in
             try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
