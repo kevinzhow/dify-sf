@@ -12,6 +12,7 @@ tool/dify_spec/cases.txt. The optional todo.tsv records remaining work for appli
 """
 import re, sys
 from pathlib import Path
+import retained_actions
 
 ROOTS = ['web/app/components/workflow', 'web/app/components/header/account-setting/model-provider-page',
          'packages/dify-ui/src', 'web/app/components/app/app-publisher',
@@ -89,6 +90,9 @@ def ported(repo):
         names = cases(text.replace('group(', 'describe(').replace('testWidgets(', 'test(').replace('\\$', '$'))
         for s in specs:
             done.update((s, n) for n in names)
+    for action in retained_actions.load(repo, cases):
+        spec, case = action['upstream_case'].split(' :: ', 1)
+        done.add((spec, case))
     return done
 
 
@@ -126,6 +130,12 @@ def main():
     print(f'{len(all_cases)} Dify cases: {total["ported"]} ported, {total["n/a"]} not applicable, {total["todo"]} to do')
     for area, v in sorted(by_area.items(), key=lambda kv: -sum(kv[1].values())):
         print(f'  {area}: {v["ported"]} ported, {v["n/a"]} n/a, {v["todo"]} to do')
+    if '--results' in sys.argv:
+        result = sys.argv[sys.argv.index('--results') + 1]
+        retained_actions.check_results(retained_actions.load(repo, cases), result)
+        print('Retained interaction actions: passed in the supplied test run')
+    else:
+        print('Inventory only: test names are not execution evidence; supply --results <Flutter --machine log>.')
 
 
 if __name__ == '__main__':

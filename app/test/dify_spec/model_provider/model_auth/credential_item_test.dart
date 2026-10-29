@@ -4,6 +4,7 @@ import 'package:dify_sf_app/src/design/widgets/widgets.dart' show DifyStatusDot,
 import 'package:dify_sf_app/src/settings/model_provider/model_auth.dart';
 import 'package:dify_sf_app/src/workflow/model_catalog.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/model_fakes.dart';
@@ -154,6 +155,47 @@ void main() {
         const CredentialItem(credential: credential, showSelectedIcon: true, selectedCredentialId: 'other-cred'),
       );
       expect(find.byWidgetPredicate((w) => w is RemixIcon && w.name == 'check-line'), findsNothing);
+    });
+
+    testWidgets('keyboard focus reveals credential editing and Enter can activate the edit action', (t) async {
+      final edits = <Credential>[];
+      await renderSettings(
+        t,
+        Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 360,
+            child: CredentialItem(credential: credential, onEdit: edits.add),
+          ),
+        ),
+        env: envOf(RecordingModelsApi()),
+      );
+      expect(editButton, findsNothing);
+      Focus.of(t.element(find.byKey(const ValueKey('credential-item-cred-1')))).requestFocus();
+      await settle(t);
+      expect(editButton, findsOneWidget);
+      await t.sendKeyEvent(LogicalKeyboardKey.tab);
+      await t.sendKeyEvent(LogicalKeyboardKey.enter);
+      await settle(t);
+      expect(edits, [credential]);
+    });
+
+    testWidgets('narrow-screen credential actions are reachable without hover', (t) async {
+      final edits = <Credential>[];
+      await renderSettings(
+        t,
+        Align(
+          alignment: Alignment.topLeft,
+          child: CredentialItem(credential: credential, onEdit: edits.add),
+        ),
+        env: envOf(RecordingModelsApi()),
+      );
+      t.view.physicalSize = const Size(300, 600);
+      await t.pump();
+      expect(editButton, findsOneWidget);
+      await t.tap(editButton);
+      expect(edits, [credential]);
+      expect(t.takeException(), isNull);
     });
   });
 }

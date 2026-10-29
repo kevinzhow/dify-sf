@@ -248,13 +248,21 @@ class WorkspaceModels extends ChangeNotifier {
       updateModelProviders(),
       for (final t in (provider['supported_model_types'] as List? ?? const [])) updateModelList('$t'),
     ];
-    final custom = provider['custom_configuration'];
-    if (refreshModelList && custom is Map && custom['status'] == 'active') {
-      setExpanded(name, true);
-      work.add(fetchProviderModels(name));
-      if (modelType != null) work.add(updateModelList(modelType));
-    }
     await Future.wait(work);
+    // A mutation can change configuration state. Decide from the refreshed
+    // summary, while still clearing an old visible list after its last removal.
+    if (refreshModelList) {
+      final latest = summaryOf(name) ?? provider;
+      final current = latest['custom_configuration'];
+      final previous = provider['custom_configuration'];
+      final active = current is Map && current['status'] == 'active';
+      final wasActive = previous is Map && previous['status'] == 'active';
+      if (active || wasActive || _providerModels.containsKey(name)) {
+        await fetchProviderModels(name);
+        if (active) setExpanded(name, true);
+        if (modelType != null) await updateModelList(modelType);
+      }
+    }
   }
 
   // ----- parameter rules -----

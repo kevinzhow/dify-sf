@@ -131,4 +131,65 @@ void main() {
     expect(find.byKey(const ValueKey('system-model-selector-button')), findsNothing);
     expect(find.byKey(const ValueKey('add-model-button')), findsNothing);
   });
+
+  testWidgets('custom model settings support switching, removal and re-adding with credentials retained', (t) async {
+    const ollama = 'langgenius/ollama/ollama';
+    const name = 'journey-model';
+    await _open(t);
+    for (final label in ['Primary', 'Backup']) {
+      await api.createModelCredential(
+        ollama,
+        model: name,
+        modelType: 'llm',
+        credentials: {
+          'base_url': 'http://fixture.invalid:11434',
+          'mode': 'chat',
+          'context_size': '4096',
+          'max_tokens': '4096',
+        },
+        name: label,
+      );
+    }
+    await models.refreshSummary();
+    await settle(t);
+    await t.ensureVisible(_in(ollama, find.byKey(const ValueKey('provider-show-models'))));
+    await t.tap(_in(ollama, find.byKey(const ValueKey('provider-show-models'))));
+    await settle(t);
+    final configure = find.byKey(const ValueKey('model-configure-journey-model'));
+    await t.ensureVisible(configure);
+    await t.tap(configure);
+    await settle(t);
+    await t.tap(find.text('Backup'));
+    await settle(t);
+    var saved = await api.modelCredentials(ollama, model: name, modelType: 'llm');
+    expect(saved['current_credential_name'], 'Backup');
+    final before = saved['available_credentials'] as List;
+
+    final remove = find.byKey(const ValueKey('model-remove-journey-model'));
+    await t.ensureVisible(remove);
+    await t.tap(remove);
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('alert-confirm')));
+    await settle(t);
+    expect(find.byKey(const ValueKey('model-remove-journey-model')), findsNothing);
+    saved = await api.modelCredentials(ollama, model: name, modelType: 'llm');
+    expect(saved['available_credentials'], before);
+
+    await t.ensureVisible(_in(ollama, find.byKey(const ValueKey('add-model-button'))));
+    await t.tap(_in(ollama, find.byKey(const ValueKey('add-model-button'))));
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('can-added-model-journey-model')));
+    await settle(t);
+    expect(t.widget<ModelModal>(find.byType(ModelModal)).mode, ModelModalModeEnum.addCustomModelToModelList);
+    await t.tap(find.byKey(const ValueKey('credential-selector-trigger')));
+    await settle(t);
+    await t.tap(find.text('Backup').last);
+    await settle(t);
+    await t.tap(find.byKey(const ValueKey('model-modal-save')));
+    await settle(t);
+    expect((await api.providerModels(ollama)).any((m) => m['model'] == name), isTrue);
+    expect(find.byKey(const ValueKey('model-remove-journey-model')), findsOneWidget);
+    expect(api.requests['removeCustomModel'], 1);
+    expect(api.requests['deleteModelCredential'] ?? 0, 0);
+  });
 }

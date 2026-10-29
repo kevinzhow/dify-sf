@@ -166,6 +166,7 @@ class _ModelModalState extends State<ModelModal> {
   Future<void> _save(ModelProviderEnv env, ModelAuth auth) async {
     final w = widget;
     final selected = _selectedCredential;
+    if (w.mode == ModelModalModeEnum.addCustomModelToModelList && selected == null) return;
     if (w.mode == ModelModalModeEnum.addCustomModelToModelList && selected != null && !selected.addNewCredential) {
       if (!env.canUseCredential) return;
       unawaited(auth.handleActiveCredential(selected.credential, w.model));
@@ -322,9 +323,8 @@ class _ModelModalState extends State<ModelModal> {
         w.mode == ModelModalModeEnum.addCustomModelToModelList || w.mode == ModelModalModeEnum.configCustomModel
         ? _t('operation.add')
         : _t('operation.save');
-    final canSave =
-        w.mode == ModelModalModeEnum.addCustomModelToModelList && selected != null && !selected.addNewCredential
-        ? env.canUseCredential
+    final canSave = w.mode == ModelModalModeEnum.addCustomModelToModelList
+        ? selected != null && (selected.addNewCredential ? env.canCreateCredential : env.canUseCredential)
         : w.credential != null
         ? env.canManageCredential
         : env.canCreateCredential;

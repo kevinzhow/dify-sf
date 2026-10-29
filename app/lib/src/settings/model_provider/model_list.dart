@@ -1,6 +1,6 @@
 /// provider-added-card/model-list.tsx and model-list-item.tsx: a provider's expanded model list (every model with
-/// its status) and the enable / disable switch of each model. Load balancing (the "Config" button, the balance
-/// badge and its modal) is not part of dify-sf.
+/// its status), enable / disable and basic credential configuration. Balancing
+/// pools and cooldowns are deferred independently of configuration and removal.
 library;
 
 import 'dart:async';
@@ -14,6 +14,8 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/model_catalog.dart';
 import '../../workflow/workspace_models.dart' show Json;
+import 'model_auth.dart' show ModelAuth;
+import 'model_credentials_action.dart';
 import 'model_provider_env.dart';
 import 'provider_added_card.dart' show LazyCustomModelActions;
 import 'provider_data.dart';
@@ -134,7 +136,37 @@ class ModelListItem extends StatefulWidget {
 
 class _ModelListItemState extends State<ModelListItem> {
   bool _hovered = false;
+  bool _removing = false;
   Timer? _debounce;
+
+  bool get _customModel => widget.isConfigurable && widget.model.fetchFrom == ConfigurationMethodEnum.customizableModel;
+
+  Future<void> _remove(ModelProviderEnv env) async {
+    if (_removing || !_customModel || !env.canConfigureModels) return;
+    _debounce?.cancel();
+    setState(() => _removing = true);
+    final m = widget.model;
+    final auth = ModelAuth(
+      env: env,
+      provider: widget.provider,
+      configurationMethod: ConfigurationMethodEnum.customizableModel,
+      isModelCredential: true,
+    );
+    try {
+      final removed = await auth.confirmDelete(
+        context,
+        model: (model: m.model, modelType: m.modelType),
+        confirmLabel: _t('operation.remove'),
+        description: env.language.startsWith('zh')
+            ? '将「${m.model}」从可用模型列表移除。已保存的凭据会保留，可以重新添加此模型。使用此模型的工作流需要改选模型。'
+            : 'Remove "${m.model}" from the available model list. Saved credentials remain, so you can add it again. Workflows using this model will need another model selected.',
+        lockCancelWhileBusy: true,
+      );
+      if (removed) widget.onChange?.call(widget.provider.providerName);
+    } finally {
+      if (mounted) setState(() => _removing = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -218,6 +250,14 @@ class _ModelListItemState extends State<ModelListItem> {
                 ),
               ),
             ),
+          if (!m.deprecated &&
+              usable &&
+              env.canConfigureModels &&
+              (env.canUseCredential || env.canManageCredential || env.canCreateCredential))
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: ModelCredentialsAction(provider: widget.provider, model: m),
+            ),
           if (m.deprecated)
             DifyTooltip(
               content: DifyTextLine(
@@ -235,13 +275,30 @@ class _ModelListItemState extends State<ModelListItem> {
               child: DifySwitch(
                 key: ValueKey('model-switch-${m.model}'),
                 checked: m.status == ModelStatusEnum.active,
-                disabled: !usable,
+                disabled: !usable || _removing,
                 size: DifySwitchSize.md,
                 semanticLabel: m.model,
                 onCheckedChange: (value) {
                   _debounce?.cancel();
                   _debounce = Timer(const Duration(milliseconds: 500), () => unawaited(_toggle(env, value)));
                 },
+              ),
+            ),
+          if (_customModel && env.canConfigureModels)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: DifyTooltip(
+                content: DifyTextLine(
+                  env.language.startsWith('zh') ? '移除模型' : 'Remove model',
+                ),
+                child: DifyIconButton(
+                  key: ValueKey('model-remove-${m.model}'),
+                  label: '${env.language.startsWith('zh') ? '移除模型' : 'Remove model'} ${m.model}',
+                  icon: const RemixIcon('delete-bin-line', size: 16),
+                  tone: DifyButtonTone.destructive,
+                  disabled: _removing,
+                  onPressed: () => unawaited(_remove(env)),
+                ),
               ),
             ),
         ],

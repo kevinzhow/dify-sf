@@ -1,2 +1,4 @@
 # All 13 editor gaps from the second-batch audit have been wired and covered by their source cases.
 # <spec path> :: <case>\t<remaining work>
+
+web/app/components/header/account-setting/model-provider-page/model-selector/__tests__/popup-item.spec.tsx :: PopupItem > should open model modal when clicking add on unconfigured model	The old no-model-settings-service exclusion is stale. Verify the unconfigured model Add action through the current real settings modal before claiming this case is covered.

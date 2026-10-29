@@ -129,7 +129,13 @@ class _ProviderAddedCardState extends State<ProviderAddedCard> {
     _env = env;
     _wasExpanded = env.models.isExpanded(_name);
     // A list that is expanded when the card appears is fetched (the query mounts enabled).
-    if (_wasExpanded && env.canSetPluginPreferences) unawaited(env.models.fetchProviderModels(_name));
+    if (_wasExpanded && env.canSetPluginPreferences) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _env == env && env.models.isExpanded(_name) && !env.models.isProviderModelsFetching(_name)) {
+          unawaited(env.models.fetchProviderModels(_name));
+        }
+      });
+    }
   }
 
   @override
