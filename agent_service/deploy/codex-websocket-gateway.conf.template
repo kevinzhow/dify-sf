@@ -13,6 +13,11 @@ http {
     uwsgi_temp_path /tmp/uwsgi;
     scgi_temp_path /tmp/scgi;
     client_max_body_size 128m;
+    # Refuse a marked HTTP fallback before proxying any uploaded history.
+    map "$request_method:$http_x_difysf_require_incremental" $codex_reject_full_post {
+        default 0;
+        ~^POST:.+ 1;
+    }
     upstream codex_http { server ${CODEX_UPSTREAM}; }
     upstream codex_socket { server ${CODEX_WS_UPSTREAM}; }
     map $request_method $codex_upstream { default codex_http; GET codex_socket; }
@@ -22,6 +27,8 @@ http {
         location = /inner/agent/codex/v1/responses {
             if ($request_method !~ ^(GET|POST)$) { return 405; }
             if ($is_args != "") { return 403; }
+            default_type application/json;
+            if ($codex_reject_full_post) { return 400 '{"error":{"code":"incremental_required","message":"This operation requires the incremental WebSocket transport"}}'; }
             proxy_pass http://$codex_upstream;
             proxy_http_version 1.1;
             proxy_pass_request_headers off;
