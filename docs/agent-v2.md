@@ -111,7 +111,8 @@ Starts one operation. Every operation is a separate request; there is no separat
   "limits": {"max_turns": 50, "timeout_seconds": 1800},
   "executor_profile": "default",
   "harness_style": "dify",
-  "continuation": null
+  "continuation": null,
+  "codex_session": null
 }
 ```
 
@@ -155,6 +156,9 @@ Starts one operation. Every operation is a separate request; there is no separat
   `model.api_type` (optional string, e.g. `"responses"`) is the credential's API mode; the `codex` style chooses its
   model wire from it (see [Model wire](#model-wire)).
 - Top-level fields other than the ones above are `400 invalid_request` ("unknown request fields: …").
+- `codex_session` (optional, `null` when absent): `{"retain": true}` keeps the workspace and the Codex conversation for
+  the next round of the same node in the same workflow run. See
+  [Codex session retained across rounds](#codex-session-retained-across-rounds).
 - `continuation` is `null` for the first run. Otherwise it is one of:
   - `{"kind": "answer", "snapshot": <envelope>, "question_id": "…", "result": <ask_human result>}` after a question.
   - `{"kind": "output_retry", "snapshot": <envelope>, "feedback": [{"field": "score", "error": "…"}]}` after the Swift
@@ -220,7 +224,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 
 | `event` | `data` |
 |---|---|
-| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style", "model_wire"?, "runtime"?}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex`; with the official Codex runtime `model_wire.wire` is `responses` and `runtime` is `{"name": "codex-cli", "version": "0.163.0", "sha256", "skills"?, "context_window", "context_window_source", "model", "reasoning_effort", "request_reasoning_effort"?}`; `context_window` is the catalog entry's and `context_window_source` `operation`, `bundled` or `fallback` (see [Codex runtime](#codex-runtime)); `skills` (names, sorted) when the profile declares `codex.skills_dirs`; `model` and `reasoning_effort` as Codex's `thread/start` answered them, `request_reasoning_effort` the level Codex sends when it differs (`ultra`). With the official runtime `run_started` is written once Codex has started the thread, still before any other event; a run that fails earlier writes it without these fields (see [Codex runtime](#codex-runtime)) |
+| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style", "model_wire"?, "runtime"?}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex`; with the official Codex runtime `model_wire.wire` is `responses` and `runtime` is `{"name": "codex-cli", "version": "0.163.0", "sha256", "skills"?, "context_window", "context_window_source", "model", "reasoning_effort", "request_reasoning_effort"?, "session"?}`; `session` with `codex_session.retain` (see [Codex session retained across rounds](#codex-session-retained-across-rounds)); `context_window` is the catalog entry's and `context_window_source` `operation`, `bundled` or `fallback` (see [Codex runtime](#codex-runtime)); `skills` (names, sorted) when the profile declares `codex.skills_dirs`; `model` and `reasoning_effort` as Codex's `thread/start` answered them, `request_reasoning_effort` the level Codex sends when it differs (`ultra`). With the official runtime `run_started` is written once Codex has started the thread, still before any other event; a run that fails earlier writes it without these fields (see [Codex runtime](#codex-runtime)) |
 | `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB of UTF-8 is split into several, cut only between code points |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
 | `model_call` | `{"invocation_id", "usage", "prompt"}` after each model call; `prompt` is `{"messages", "prefix_stable", "first_changed_message"}` (see [Prompt cache](#prompt-cache)). Not emitted by the official Codex runtime: the Swift server records those calls from its gateway |
@@ -230,7 +234,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 | `plan` | `codex` style with `tools.update_plan`: `{"explanation", "plan": [{"step", "status"}], "call_index"}` |
 | `compaction` | Official Codex runtime: `{"phase": "started" \| "finished", "call_index"}` around Codex's compaction of the conversation (a `contextCompaction` item of the root thread) |
 | `model_retry` | `codex` style: `{"call_index", "attempt", "layer": "request" \| "stream", "kind", "message", "delay_ms"}` before a retried model call (see [Harness styles](#harness-styles)); the official Codex runtime sends `"layer": "codex"`, `kind` = Codex's error code, `attempt` and `delay_ms` null |
-| `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage", "partial"}`; `partial` is `null`, or `{"reason", "notice_call_index"}` when the result came after a budget notice |
+| `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage", "partial", "session"?}`; `partial` is `null`, or `{"reason", "notice_call_index"}` when the result came after a budget notice; `session` with `codex_session.retain`: `{"saved": true, "thread_id", "turns"}` or `{"saved": false, "error": {"code": "save_failed", "message"}}` (see [Codex session retained across rounds](#codex-session-retained-across-rounds)) |
 | `paused` | `{"question_id", "tool_call_id", "question": <ask_human args>, "snapshot": <envelope>, "usage"}` |
 | `failed` | `{"error_type", "message", "usage", "snapshot"?}` |
 | `cancelled` | `{"usage", "snapshot"?}` |
@@ -254,7 +258,7 @@ streamed.
   [Prompt cache](#prompt-cache)). Summed counters (reasoning and cache) are the sums of the values that were
   reported.
 - `error_type`: `model_error`, `model_quota`, `max_turns`, `timeout`, `ask_human_invalid`, `sandbox_unavailable`,
-  `sandbox_error`, `file_error`, `cancel_lost`, `internal`.
+  `sandbox_error`, `file_error`, `session_restore_failed`, `cancel_lost`, `internal`.
 - `paused`: `question_id` is `<execution_id>:q<resume_sequence + 1>`; `question` is the normalized ask_human arguments
   (Dify's default `Submit` action added when the model gave none).
 - A run that was in flight when the service process ended is recorded as `failed` (`internal`), on a graceful stop or
@@ -290,6 +294,17 @@ answer is `503 cleanup_failed`, the records stay and the Swift server retries. A
 `410 execution_deleted`. The Swift server calls
 it once the execution's node reaches a final state, after output files were received.
 
+### `POST /v1/workspaces/release`
+
+`{"protocol", "tenant_id", "app_id", "workflow_run_id"}`, sent by the Swift server (from its persistent job queue) when
+a workflow run has ended: agent_service deletes every retained workspace of the run it has indexed (see [Codex session
+retained across rounds](#codex-session-retained-across-rounds)), also those of rounds that failed, through the
+supervisor's `DELETE /v1/workspaces/{id}` with the predicted ID (`200 {"deleted": false}` or `404` for one never
+created count as gone) and forgets each with its Codex session. Idempotent:
+nothing known answers `200` with `released: 0`. A delete that fails or is refused (`409 workspace_in_use`: a container
+still uses it) answers `503 cleanup_failed` naming each failure, with `released` and `failed` counts; the deleted ones
+stay deleted and the Swift server retries. Other fields are `400 invalid_request`.
+
 ### `GET /v1/runs?state=active`
 
 Lists running and unacknowledged runs with their `operation_id`, `generation` and the identity of the execution they
@@ -318,6 +333,7 @@ Fixed while generating the fixtures (they record these exact bodies):
 | `cancel` accepted | `202 {"protocol", "run_id", "status"}` |
 | `lease` | `200 {"protocol", "expires_at"}` |
 | `DELETE /v1/executions/{id}` | `200 {"protocol", "execution_id", "deleted": true}`; `503 cleanup_failed` to retry |
+| `POST /v1/workspaces/release` | `200 {"protocol", "tenant_id", "app_id", "workflow_run_id", "released"}`; `503 cleanup_failed` (`released`, `failed`) to retry |
 | `GET /v1/runs?state=active` | each run: `run_id`, `operation_id`, `execution_id`, `tenant_id`, `app_id`, `workflow_run_id`, `node_id`, `generation`, `status`, `acknowledged`, `last_event_id` |
 
 `usage` of a `cancelled` or `cancel_lost` run counts only the model calls that finished; the gateway's own records are
@@ -348,7 +364,9 @@ code against the scripted gateway; a change that alters them changes this docume
 IDs, timestamps, URLs) are fixed placeholders described there. The fake agent service
 (`agent_service/bin/fake_agent_service.dart`) serves the same API with scripted runs, including the fixtures' runs, and
 fault injection (dropped streams, duplicate or late terminal events, lost POST responses, expired cursors, scripted
-409/422/400 answers, failing DELETEs, delays) for the Swift server's tests.
+409/422/400 answers, failing DELETEs, delays) for the Swift server's tests. It accepts `codex_session {"retain":
+true}` as the official runtime does (without the profile's disk check) and answers `POST /v1/workspaces/release` with
+the number of the workflow run's retained keys (`release_failures`: that many `503 cleanup_failed` first).
 
 ## Session envelope
 
@@ -663,6 +681,99 @@ with `willRetry`, every thread); every other `usageLimitExceeded` ends it `model
 provider quota, "Quota exceeded…", a billing or plan limit, or an unmarked refusal before `max_turns` calls). Codex's
 silent request retries count at the gateway but are not seen here: until the gateway sends the mark, a call limit
 reached through such retries is reported `model_quota`.
+
+### Codex session retained across rounds
+
+Status: agreed design (2026-10-29), implemented in agent_service (branch `alice/codex-session-retain`) and the
+supervisor (Winnie, 604eeb19). Kevin 0269595b: during one workflow run the agent's workspace is kept, the next round of
+the same node goes on with it, and it is cleaned only when the workflow run ends. Split agreed with Winnie (b64a3959,
+ea75f1eb, 3923a169): the supervisor keeps, re-mounts, parks and finally deletes the workspace; agent_service calls the
+supervisor with the workspace key, indexes the workspaces it acquires, carries the Codex conversation and deletes the
+workspaces when the Swift server reports the workflow run ended. The earlier session-archive proposal (export, upload,
+download) is withdrawn.
+
+**Request.** `codex_session: {"retain": true}` (the Swift server sends it when the node has `agent_session: {enabled:
+true}`; another value is `400 invalid_request`, send `null` not to retain). Only with `harness_style: codex`, the
+official runtime, `tools.shell` and an executor profile with a disk workspace (`400 invalid_request` otherwise); part
+of the request digest. The workspace key is the canonical JSON array `["<tenant_id>","<app_id>","<workflow_run_id>",
+"<node_id>"]` of `execution` (no separator a value could contain); the supervisor's workspace ID is
+`sha256("retained:" + workspace key)`.
+
+**Supervisor** (Winnie, 604eeb19; the supervisor's code and documentation are authoritative):
+`POST /v1/sandboxes {"execution_key", "profile", "workspace_key"}` keys the disk workspace by `workspace_key` instead of
+the execution key and re-binds a parked one (a tmpfs profile: `400 invalid_request`). The answer adds `"workspace":
+{"retained": true, "reused": bool, "id"}` and keeps `workspace_kept_from`; `reused` is true when earlier sandboxes kept
+the workspace (`workspace_kept_from` not empty), so a repeated acquire of the execution's running sandbox answers
+`reused: false` with `created: false`, which agent_service counts as re-used (the workspace is the one its earlier
+operation used). One sandbox per workspace at a time: another execution's acquire answers `409 workspace_in_use`;
+the same execution with another `workspace_key` (or none) `409 workspace_conflict`; agent_service ends the run
+`sandbox_unavailable` naming the code. A grant whose `workspace.id` is not the predicted `workspace_id` is refused
+(Winnie 1922c599: one wrong answer must not make the release delete another workflow run's workspace): logged as an
+anomaly, the sandbox released with the normal `DELETE /v1/sandboxes/{id}` (which only parks), the run `sandbox_error`
+naming both IDs; the other ID is never indexed or deleted. `409 workspace_in_use` is waited for instead (Winnie 49eaab37: the Swift
+server's queue sends the previous round's ack and sandbox `DELETE` after committing its result, so the next round can
+come first) while the holder in agent_service's index is an earlier execution of the key whose runs here have all
+ended, or that was deleted: retried as `503 disk_pool_busy` is (every 500 ms, at most 60 s, ended by a cancel or the
+run's timeout), then `sandbox_unavailable` "… still in use by the previous round's sandbox after 60000 ms (supervisor:
+409 workspace_in_use)". A holder whose run still runs, or one agent_service does not know, fails at once. `DELETE /v1/sandboxes/{id}` of such a sandbox removes the container and network
+and frees the disk slot but keeps the image and lease (answer `"workspace": "parked"`). `DELETE /v1/workspaces/{id}`
+deletes a parked workspace (`409 workspace_in_use` while a container uses it; `200 {"deleted": false}` when unknown).
+A new execution of the node (the next round) gets its `files[]` written into the re-used workspace (the new inputs
+win; the rest of the workspace stays), although `workspace_kept_from` is not empty.
+
+**Index.** agent_service records every retained workspace before its first acquire (the supervisor may create the
+disk and then fail to start the network or container: it parks the disk and answers an error, and the release must
+still find it): `{workspace_key, workspace_id, tenant_id, app_id, workflow_run_id, node_id, execution_id}` with
+`workspace_id` = the supervisor's `hashKey("retained:" + workspace_key)` (hex SHA-256 of the UTF-8 text), computed from
+the scope and never taken from an answer, and `execution_id` the holder (a new record names the acquiring execution;
+an existing one keeps its holder until the next grant, which makes the granted execution the holder) in
+`<data dir>/workspaces/<sha256(workspace key)>.json` (kept across restarts), so a workspace whose rounds all failed is still found at the end. There is no
+expiry in agent_service: a record is removed only by `POST /v1/workspaces/release` (the Swift server's persistent job
+queue sends it, and its sweep of ended workflow runs sends it again for any it missed). The record's session state
+says what the next round finds:
+
+| `session_state` | Set when | The next round |
+|---|---|---|
+| `none` | the workspace was acquired; no round of it has succeeded yet (round 1 failed, was cancelled, timed out or never finished) | starts a new thread; in a re-used workspace its files stay, the run log says so and `run_started.runtime.session.reason` is `"no earlier round succeeded"` (there is no conversation to continue) |
+| `saved` | a round succeeded and its rollout was saved (`session`: `{thread_id, sha256, size, turns, model, system_prompt_sha256, codex_sha256, rollout_path}`) | must resume it, else `session_restore_failed` |
+| `save_failed` | a round succeeded but its rollout was not saved (over 128 MiB, a copy or hash error; `save_error`) | fails `session_restore_failed` "… (record): the previous round's session was not saved: …"; never a new thread |
+
+A round that fails, is cancelled or times out changes nothing: a `saved` session stays the one the next round resumes
+(its later turns are lost; its workspace changes stay).
+
+**Conversation.** With `retain`, `thread/start` is sent with `ephemeral: false`. `CODEX_HOME` stays in the home and is
+written fresh for every run (`config.toml`, `models.json`, `AGENTS.md`): nothing the model can write configures Codex.
+After a run ends `succeeded`, before its terminal event, agent_service copies the root thread's rollout to
+`/workspace/.dify-sf/codex/<thread_id>.jsonl` (a shell `cp` through a part file, `sha256sum` and `stat` in the sandbox;
+no copy in agent_service's memory) and records the session (`saved`; `rollout_path`: where Codex kept it under
+`CODEX_HOME`, `sessions/YYYY/MM/DD/rollout-…-<thread_id>.jsonl`). A rollout over 128 MiB, or a copy that fails, is
+logged and recorded as `save_failed`: the round stays `succeeded` (its result is good; there is no
+`session_save_failed` error type) and the next round fails `session_restore_failed` instead of resuming an older
+turn. The `succeeded` event's data says which: `"session": {"saved": true, "thread_id", "turns"}` or `{"saved": false,
+"error": {"code": "save_failed", "message"}}` (only with `retain`). `CODEX_HOME` is removed before the terminal event in
+every case.
+
+**Resume.** When the record is `saved` and the workspace is re-used, before any model call: check the
+record's Codex sha256, `model.name` and `system_prompt_sha256` against the run; copy the rollout copy into the new
+`CODEX_HOME` at `rollout_path` and check the size and sha256 of what Codex will read against the record;
+`thread/resume` (`threadId`, `cwd: /workspace`, the same approval, sandbox and `config` as `thread/start`, plus `model`
+and `config.model_reasoning_effort` when the operation has one: without them Codex keeps the model and effort saved in
+the rollout, checked with 0.163.0) with `excludeTurns: true`; check the answer's thread ID, model and effort as for
+`thread/start`; start the turn with the operation's `task`. `report_progress` comes back from the rollout (its first
+line, `session_meta`, stores the dynamic tools; checked with 0.163.0); the run checks that it is there when
+`tools.report_progress` is on. Codex 0.163.0 replays the thread's last `thread/tokenUsage/updated` (with the earlier
+turn's ID) when it resumes; it is no model call of the run and is ignored. Any mismatch, a missing or changed file, or a
+refused resume ends the run `failed`, `error_type: session_restore_failed`, `message` "the Codex session of this node
+could not be resumed (<step>): <reason>" with the step `workspace`, `record`, `rollout` or `thread/resume`; it never
+starts a new thread instead. A `saved` session without a re-used workspace is the same failure (step `workspace`: the
+workspace is gone), and so is `save_failed` (step `record`). `run_started.runtime.session` is `{"resumed": true|false,
+"thread_id", "turns_before", "reason"?}`; `reason` only when a re-used workspace starts a new thread (`none`).
+
+**Release.** When a workflow run has ended the Swift server sends `POST /v1/workspaces/release` (below); agent_service
+deletes every retained workspace of the run through `DELETE /v1/workspaces/{id}` and forgets it with its session.
+
+The model sees the rollout copy as a file in `/workspace/.dify-sf/`; changing it changes nothing but makes the next
+resume fail (sha256). The run token in it is revoked when its run ends.
 
 ### What agent_service expects in the operation
 

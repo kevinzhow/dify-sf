@@ -176,6 +176,8 @@ class AgentService {
           return await _lease(request, id);
         case ['executions', final id] when method == 'DELETE':
           return await _deleteExecution(request, id);
+        case ['workspaces', 'release'] when method == 'POST':
+          return await _releaseWorkspaces(request);
         case ['health'] ||
             ['profiles'] ||
             ['operations'] ||
@@ -183,7 +185,8 @@ class AgentService {
             ['runs', _] ||
             ['runs', _, 'events' || 'ack' || 'cancel'] ||
             ['executions', _, 'lease'] ||
-            ['executions', _]:
+            ['executions', _] ||
+            ['workspaces', 'release']:
           throw ApiError(405, 'method_not_allowed', '$method is not allowed');
         default:
           throw ApiError(404, 'not_found', 'no such route');
@@ -332,6 +335,15 @@ class AgentService {
     }
     if (op.shell || op.officialCodex) {
       final p = profiles[op.executorProfile];
+      if (p != null &&
+          op.retainsSession &&
+          p.workspaceBacking != WorkspaceBacking.disk) {
+        throw invalidRequest(
+          'codex_session needs an executor profile with a disk workspace '
+          '(workspace.backing "disk"); ${op.executorProfile} has '
+          '${p.workspaceBacking.name}',
+        );
+      }
       checkOperationProfile(
         op,
         p == null
@@ -570,6 +582,79 @@ class AgentService {
       'protocol': protocolName,
       'execution_id': executionId,
       'deleted': true,
+    });
+  }
+
+  /// `POST /v1/workspaces/release`: the workflow run ended; every retained
+  /// workspace of it is deleted through the supervisor and forgotten with
+  /// its Codex session. Idempotent. A failed or refused (`409`, still in use)
+  /// delete answers `503 cleanup_failed`; the deleted ones stay deleted and
+  /// a retry deletes the rest.
+  Future<void> _releaseWorkspaces(HttpRequest request) async {
+    final body = await _body(request);
+    const fields = {'protocol', 'tenant_id', 'app_id', 'workflow_run_id'};
+    final unknown = body.keys.where((k) => !fields.contains(k));
+    if (unknown.isNotEmpty) {
+      throw invalidRequest('unknown request fields: ${unknown.join(', ')}');
+    }
+    String field(String key) {
+      final v = body[key];
+      if (v is String && v.isNotEmpty) return v;
+      throw invalidRequest('$key must be a non-empty string');
+    }
+
+    final tenantId = field('tenant_id');
+    final appId = field('app_id');
+    final workflowRunId = field('workflow_run_id');
+    final workspaces = store.retainedWorkspacesOf(
+      tenantId: tenantId,
+      appId: appId,
+      workflowRunId: workflowRunId,
+    );
+    final supervisor = sandboxes.supervisor;
+    if (workspaces.isNotEmpty && supervisor == null) {
+      throw ApiError(
+        503,
+        'cleanup_failed',
+        'this agent service has no sandbox supervisor to delete '
+            '${workspaces.length} retained workspaces',
+      );
+    }
+    final failed = <String>[];
+    var released = 0;
+    for (final w in workspaces) {
+      try {
+        await supervisor!.deleteWorkspace(w.workspaceId);
+      } on SandboxFailure catch (e) {
+        failed.add(
+          'node ${w.nodeId} (workspace ${w.workspaceId})'
+          '${e.supervisorCode == null ? '' : ' ${e.supervisorCode}'}: '
+          '${e.message}',
+        );
+        continue;
+      }
+      store.removeRetainedWorkspace(w.workspaceKey);
+      released++;
+    }
+    if (failed.isNotEmpty) {
+      _log(
+        LogLevel.warning,
+        'release of workflow run $workflowRunId: ${failed.join('; ')}',
+      );
+      throw ApiError(
+        503,
+        'cleanup_failed',
+        '${failed.length} of ${workspaces.length} retained workspaces could '
+            'not be deleted: ${failed.join('; ')}',
+        extra: {'released': released, 'failed': failed.length},
+      );
+    }
+    _json(request.response, 200, {
+      'protocol': protocolName,
+      'tenant_id': tenantId,
+      'app_id': appId,
+      'workflow_run_id': workflowRunId,
+      'released': released,
     });
   }
 

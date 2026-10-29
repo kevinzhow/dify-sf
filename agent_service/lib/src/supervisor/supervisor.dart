@@ -53,6 +53,7 @@ const shellctlPort = 5004;
 
 /// Label holding the SHA-256 of the execution key (containers and networks).
 const executionLabel = 'dify-sf.sandbox.execution';
+const retainedWorkspaceLabel = 'dify-sf.sandbox.retained-workspace';
 
 /// Label holding the sandbox's executor profile (containers). A container
 /// without it predates profiles and counts as `default`.
@@ -597,6 +598,7 @@ class SandboxSupervisor {
     ExecutorProfile? profile,
     Map<String, DeviceInfo> devices = const {},
     String? workspaceVolume,
+    String? retainedWorkspace,
   }) {
     final c = config;
     final p = profile ?? c.profiles[defaultProfileName]!;
@@ -625,7 +627,10 @@ class SandboxSupervisor {
           'no_proxy=${c.noProxy}',
         ],
       ],
-      'Labels': _labels(hashKey(executionKey), profile: p.name),
+      'Labels': {
+        ..._labels(hashKey(executionKey), profile: p.name),
+        retainedWorkspaceLabel: ?retainedWorkspace,
+      },
       'Healthcheck': {
         'Test': [
           'CMD',
@@ -742,7 +747,8 @@ class SandboxSupervisor {
       }
       await docker.removeContainer(id);
       removed.add(id);
-      final hash = (c['Labels'] as Map?)?[executionLabel];
+      final labels = c['Labels'] as Map?;
+      final hash = labels?[retainedWorkspaceLabel] ?? labels?[executionLabel];
       if (hash is String) removedHashes.add(hash);
       log?.call('sweep removed unknown sandbox $id');
     }
@@ -985,6 +991,29 @@ class SandboxSupervisor {
   Future<Map<String, Object?>> acquire(
     String executionKey, {
     String profileName = defaultProfileName,
+    String? workspaceKey,
+  }) {
+    if (workspaceKey != null &&
+        (workspaceKey.isEmpty || workspaceKey.length > 4096)) {
+      throw SupervisorError(400, 'invalid_request', 'invalid workspace_key');
+    }
+    final workspaceHash = workspaceKey == null
+        ? null
+        : hashKey('retained:$workspaceKey');
+    Future<Map<String, Object?>> work() => _acquire(
+      executionKey,
+      profileName: profileName,
+      workspaceHash: workspaceHash,
+    );
+    return workspaceHash == null
+        ? work()
+        : _locked('workspace:$workspaceHash', work);
+  }
+
+  Future<Map<String, Object?>> _acquire(
+    String executionKey, {
+    required String profileName,
+    String? workspaceHash,
   }) => _locked(hashKey(executionKey), () async {
     final profile = _profile(profileName);
     final withProxy = profile.egress == Egress.allowlist;
@@ -993,6 +1022,27 @@ class SandboxSupervisor {
     final disks = profile.workspaceBacking == WorkspaceBacking.disk
         ? this.disks
         : null;
+    if (workspaceHash != null) {
+      if (disks == null) {
+        throw SupervisorError(
+          400,
+          'invalid_request',
+          'retained workspaces require a disk profile',
+        );
+      }
+      final users = await docker.listContainers([
+        ...config.sandboxFilters,
+        '$retainedWorkspaceLabel=$workspaceHash',
+      ]);
+      if (users.any((c) => (c['Labels'] as Map?)?[executionLabel] != hash)) {
+        throw SupervisorError(
+          409,
+          'workspace_in_use',
+          'workspace already has a sandbox',
+        );
+      }
+    }
+    final diskHash = workspaceHash ?? hash;
     for (var attempt = 0; attempt < 3; attempt++) {
       final existing = await docker.inspectContainer(name);
       if (existing != null) {
@@ -1001,6 +1051,16 @@ class SandboxSupervisor {
             409,
             'name_conflict',
             'a container named $name exists and is not a sandbox',
+          );
+        }
+        final existingWorkspace =
+            ((existing['Config'] as Map?)?['Labels']
+                as Map?)?[retainedWorkspaceLabel];
+        if (existingWorkspace != workspaceHash) {
+          throw SupervisorError(
+            409,
+            'workspace_conflict',
+            'execution workspace scope changed',
           );
         }
         final had = profileOf(existing);
@@ -1025,12 +1085,12 @@ class SandboxSupervisor {
           _saveState();
           await _attachPeers(name, subnet, await _peers(withProxy: withProxy));
           final ready = await _waitHealthy(id);
-          await disks?.addSandbox(hash, id);
+          await disks?.addSandbox(diskHash, id);
           return _describe(
             ready,
             subnet,
             created: false,
-            keptFrom: disks?.keptFrom(hash, id),
+            keptFrom: disks?.keptFrom(diskHash, id),
           );
         }
         // Stopped (its tmpfs workspace is gone; a disk workspace stays),
@@ -1054,14 +1114,18 @@ class SandboxSupervisor {
       final devices = {for (final d in profile.devices) d: config.device(d)!};
       // Before the network: a busy pool or budget answers without leftovers.
       final workspace = await disks?.ensure(
-        hash,
+        diskHash,
         config.limitsOf(profile).workspaceMb,
+        retained: workspaceHash != null,
+        profile: workspaceHash == null ? null : profile.name,
       );
       final Ipv4Net subnet;
       try {
         subnet = await _createNetwork(name, hash);
       } catch (_) {
-        if (workspace?.fresh == true) await _releaseDisk(hash);
+        if (workspace != null && (workspace.fresh || workspaceHash != null)) {
+          await _releaseDisk(diskHash);
+        }
         rethrow;
       }
       String? id;
@@ -1084,6 +1148,7 @@ class SandboxSupervisor {
             profile: profile,
             devices: devices,
             workspaceVolume: workspace?.volume,
+            retainedWorkspace: workspaceHash,
           ),
         );
         if (id == null) {
@@ -1093,7 +1158,7 @@ class SandboxSupervisor {
         }
         _known[id] = hash;
         _saveState();
-        await disks?.addSandbox(hash, id);
+        await disks?.addSandbox(diskHash, id);
         for (final a in peers.agents) {
           await docker.connectNetwork(name, a);
         }
@@ -1115,7 +1180,9 @@ class SandboxSupervisor {
         await _removeNetwork(name).catchError((_) => false);
         // A new disk workspace goes with the failed sandbox; a kept one
         // stays for the execution.
-        if (workspace?.fresh == true) await _releaseDisk(hash);
+        if (workspace != null && (workspace.fresh || workspaceHash != null)) {
+          await _releaseDisk(diskHash);
+        }
         rethrow;
       }
     }
@@ -1153,7 +1220,11 @@ class SandboxSupervisor {
   /// Releases a disk workspace on a failure path (logged, never thrown).
   Future<void> _releaseDisk(String hash) async {
     try {
-      await disks?.release(hash);
+      if (disks?.read(hash)?.retained == true) {
+        await disks?.park(hash);
+      } else {
+        await disks?.release(hash);
+      }
     } catch (e) {
       log?.call('disk workspace $hash not released: $e');
     }
@@ -1199,6 +1270,14 @@ class SandboxSupervisor {
         'workspace': 'disk',
         'workspace_kept_from': keptFrom,
       },
+      if (((inspect['Config'] as Map?)?['Labels']
+              as Map?)?[retainedWorkspaceLabel]
+          case final String workspace)
+        'workspace': {
+          'retained': true,
+          'reused': keptFrom?.isNotEmpty == true,
+          'id': workspace,
+        },
       if (config.codexGateway &&
           config.profiles[profileOf(inspect)]?.egress == Egress.allowlist)
         'codex_gateway_url':
@@ -1222,58 +1301,89 @@ class SandboxSupervisor {
       throw SupervisorError(400, 'invalid_request', 'invalid sandbox_id');
     }
     final inspect = await docker.inspectContainer(sandboxId);
-    if (inspect == null) {
-      if (_known.remove(sandboxId) != null) _saveState();
-      // Its container is gone; its disk workspace goes unless another
-      // sandbox of the execution uses it (a retried or late removal).
-      final lease = disks?.leaseOfSandbox(sandboxId);
-      if (lease != null) {
-        await _locked(lease.hash, () async {
-          final users = await docker.listContainers([
-            ...config.sandboxFilters,
-            '$executionLabel=${lease.hash}',
-          ]);
-          if (users.isEmpty) await disks!.release(lease.hash);
-        });
-      }
-      return false;
-    }
-    if (!_labelled(inspect)) {
+    if (inspect != null && !_labelled(inspect)) {
       throw SupervisorError(404, 'not_found', 'no sandbox $sandboxId');
     }
-    final id = inspect['Id'] as String;
-    final hash =
-        ((inspect['Config'] as Map?)?['Labels'] as Map)[executionLabel]
-            as String;
-    return _locked(hash, () async {
-      // The initial inspection can precede a concurrent acquire that
-      // replaces this container and reuses its network name. Recheck the
-      // immutable container ID after taking the execution lock before
-      // removing any network or disk belonging to that execution.
+    final lease = disks?.leaseOfSandbox(sandboxId);
+    final labels = (inspect?['Config'] as Map?)?['Labels'] as Map?;
+    final retainedHash =
+        labels?[retainedWorkspaceLabel] as String? ??
+        (lease?.retained == true ? lease!.hash : null);
+    final hash = labels?[executionLabel] as String? ?? lease?.hash;
+    if (hash == null) {
+      if (_known.remove(sandboxId) != null) _saveState();
+      return false;
+    }
+    Future<bool> work() => _locked(hash, () async {
+      // Immutable container id prevents a late removal of a replacement.
+      final id = inspect?['Id'] as String? ?? sandboxId;
       final current = await docker.inspectContainer(id);
-      if (current == null) {
-        if (_known.remove(id) != null) _saveState();
-        final users = await docker.listContainers([
-          ...config.sandboxFilters,
-          '$executionLabel=$hash',
-        ]);
-        if (users.isEmpty) await disks?.release(hash);
-        return false;
+      var removed = false;
+      if (current != null) {
+        if (!_labelled(current) ||
+            ((current['Config'] as Map?)?['Labels'] as Map?)?[executionLabel] !=
+                hash) {
+          throw SupervisorError(404, 'not_found', 'no sandbox $sandboxId');
+        }
+        final network =
+            (current['HostConfig'] as Map?)?['NetworkMode'] as String? ??
+            (current['Name'] as String? ?? '').replaceFirst('/', '');
+        removed = await _removeSandbox(id, network);
+      } else if (_known.remove(id) != null) {
+        _saveState();
       }
-      if (!_labelled(current) ||
-          ((current['Config'] as Map?)?['Labels'] as Map?)?[executionLabel] !=
-              hash) {
-        throw SupervisorError(404, 'not_found', 'no sandbox $sandboxId');
+      final users = await docker.listContainers([
+        ...config.sandboxFilters,
+        retainedHash == null
+            ? '$executionLabel=$hash'
+            : '$retainedWorkspaceLabel=$retainedHash',
+      ]);
+      if (users.isEmpty) {
+        if (retainedHash != null) {
+          await disks?.park(retainedHash);
+        } else {
+          await disks?.release(hash);
+        }
       }
-      final network =
-          (current['HostConfig'] as Map?)?['NetworkMode'] as String? ??
-          (current['Name'] as String? ?? '').replaceFirst('/', '');
-      final removed = await _removeSandbox(id, network);
-      log?.call('removed sandbox $id and its network');
-      await disks?.release(hash);
       return removed;
     });
+    return retainedHash == null
+        ? work()
+        : _locked('workspace:$retainedHash', work);
   }
+
+  /// Terminal workflow cleanup. An old round cannot remove an active owner.
+  Future<bool> releaseWorkspace(String hash) =>
+      _locked('workspace:$hash', () async {
+        if (!RegExp(r'^[a-f0-9]{64}$').hasMatch(hash)) {
+          throw SupervisorError(400, 'invalid_request', 'invalid workspace id');
+        }
+        final lease = disks?.read(hash);
+        if (lease == null) return false;
+        if (!lease.retained) {
+          throw SupervisorError(404, 'not_found', 'no retained workspace');
+        }
+        final users = await docker.listContainers([
+          ...config.sandboxFilters,
+          '$retainedWorkspaceLabel=$hash',
+        ]);
+        if (users.isNotEmpty) {
+          throw SupervisorError(
+            409,
+            'workspace_in_use',
+            'workspace has a sandbox',
+          );
+        }
+        final released = await disks!.release(hash);
+        if (!released) {
+          throw SupervisorError(
+            409,
+            'disk_workspace_conflict',
+            'workspace could not be released',
+          );
+        }
+        return true;
+      });
 
   Future<List<Map<String, Object?>>> list() async => [
     for (final c in await docker.listContainers(config.sandboxFilters))
@@ -1322,13 +1432,16 @@ class SandboxSupervisor {
         case ('POST', ['v1', 'sandboxes']):
           final body = await _body(request);
           final extra = body.keys
-              .where((k) => k != 'execution_key' && k != 'profile')
+              .where(
+                (k) =>
+                    !{'execution_key', 'profile', 'workspace_key'}.contains(k),
+              )
               .toList();
           if (extra.isNotEmpty) {
             throw SupervisorError(
               400,
               'invalid_request',
-              'only execution_key and profile may be given; got '
+              'only execution_key, profile and workspace_key may be given; got '
                   '${extra.join(', ')}',
             );
           }
@@ -1348,7 +1461,19 @@ class SandboxSupervisor {
               'execution_key must be a string of 1..512 characters',
             );
           }
-          final sandbox = await acquire(key, profileName: profile);
+          final workspace = body['workspace_key'];
+          if (workspace != null && workspace is! String) {
+            throw SupervisorError(
+              400,
+              'invalid_request',
+              'workspace_key must be a string',
+            );
+          }
+          final sandbox = await acquire(
+            key,
+            profileName: profile,
+            workspaceKey: workspace as String?,
+          );
           return _json(
             response,
             sandbox['created'] == true ? 201 : 200,
@@ -1357,8 +1482,18 @@ class SandboxSupervisor {
         case ('GET', ['v1', 'sandboxes']):
           return _json(response, 200, {'sandboxes': await list()});
         case ('DELETE', ['v1', 'sandboxes', final id]):
+          final lease = disks?.leaseOfSandbox(id);
           final deleted = await remove(id);
-          return _json(response, 200, {'sandbox_id': id, 'deleted': deleted});
+          return _json(response, 200, {
+            'sandbox_id': id,
+            'deleted': deleted,
+            if (lease?.retained == true) 'workspace': 'parked',
+          });
+        case ('DELETE', ['v1', 'workspaces', final id]):
+          return _json(response, 200, {
+            'workspace_id': id,
+            'deleted': await releaseWorkspace(id),
+          });
         default:
           throw SupervisorError(404, 'not_found', 'no such route');
       }

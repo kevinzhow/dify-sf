@@ -399,4 +399,74 @@ void main() {
     final (gs, _) = await c.send('GET', '/v1/runs/$run');
     expect(gs, 404);
   });
+
+  test('codex_session {"retain": true} is accepted as the official runtime '
+      'accepts it; POST /v1/workspaces/release counts and forgets the '
+      'workflow run\'s workspaces; a scripted failure answers 503', () async {
+    final c = await startFake({
+      'release_failures': 1,
+      'health': {'sandbox': 'isolated'},
+    });
+    Map<String, Object?> retain(String executionId, {String node = 'N1'}) {
+      final o = operation(executionId: executionId, shell: true);
+      return {
+        ...o,
+        'execution': {...o['execution'] as Map, 'node_id': node},
+        'harness_style': 'codex',
+        'model': {...o['model'] as Map, 'run_token': 'secret'},
+        'codex_session': {'retain': true},
+      };
+    }
+
+    final (s1, _) = await c.send('POST', '/v1/operations', body: retain('E1'));
+    expect(s1, 202);
+    final (s2, _) = await c.send(
+      'POST',
+      '/v1/operations',
+      body: retain('E2', node: 'N2'),
+    );
+    expect(s2, 202);
+    final (bad, badBody) = await c.send(
+      'POST',
+      '/v1/operations',
+      body: {
+        ...operation(executionId: 'E3'),
+        'codex_session': {'retain': true},
+      },
+    );
+    expect(bad, 400, reason: jsonEncode(badBody));
+    final release = {
+      'protocol': protocolName,
+      'tenant_id': 'T1',
+      'app_id': 'A1',
+      'workflow_run_id': 'W1',
+    };
+    final (failed, failure) = await c.send(
+      'POST',
+      '/v1/workspaces/release',
+      body: release,
+    );
+    expect(failed, 503);
+    expect(failure['error'], 'cleanup_failed');
+    final (ok, done) = await c.send(
+      'POST',
+      '/v1/workspaces/release',
+      body: release,
+    );
+    expect(ok, 200);
+    expect(done, {...release, 'released': 2});
+    final (again, none) = await c.send(
+      'POST',
+      '/v1/workspaces/release',
+      body: release,
+    );
+    expect(again, 200);
+    expect(none['released'], 0);
+    final (malformed, _) = await c.send(
+      'POST',
+      '/v1/workspaces/release',
+      body: {...release, 'node_id': 'N1'},
+    );
+    expect(malformed, 400);
+  });
 }

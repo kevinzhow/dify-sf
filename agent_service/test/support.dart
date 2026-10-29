@@ -40,6 +40,9 @@ class Harness {
   ExecutorProfiles? _profiles;
   CodexRuntime _codexRuntime = CodexRuntime.port;
   String? _codexGatewayUrl;
+  SandboxLayout _sandboxLayout = const SandboxLayout();
+  Duration _supervisorWait = const Duration(seconds: 60);
+  Duration _supervisorRetry = const Duration(milliseconds: 500);
 
   Uri get base => Uri.parse('http://127.0.0.1:${service.port}');
 
@@ -54,6 +57,9 @@ class Harness {
     ExecutorProfiles? profiles,
     CodexRuntime codexRuntime = CodexRuntime.port,
     String? codexGatewayUrl,
+    SandboxLayout sandboxLayout = const SandboxLayout(),
+    Duration supervisorWait = const Duration(seconds: 60),
+    Duration supervisorRetry = const Duration(milliseconds: 500),
   }) async {
     final gateway = ScriptedGateway(
       calls: calls,
@@ -66,7 +72,10 @@ class Harness {
       .._supervisorKey = supervisorKey
       .._profiles = profiles
       .._codexRuntime = codexRuntime
-      .._codexGatewayUrl = codexGatewayUrl;
+      .._codexGatewayUrl = codexGatewayUrl
+      .._sandboxLayout = sandboxLayout
+      .._supervisorWait = supervisorWait
+      .._supervisorRetry = supervisorRetry;
     await h._startService();
     return h;
   }
@@ -80,13 +89,19 @@ class Harness {
       logLevel: LogLevel.error,
       supervisor: supervisorUrl == null
           ? null
-          : SupervisorClient(supervisorUrl!, _supervisorKey),
+          : SupervisorClient(
+              supervisorUrl!,
+              _supervisorKey,
+              diskSlotWaitTimeout: _supervisorWait,
+              diskSlotRetryInterval: _supervisorRetry,
+            ),
       profiles: _profiles,
       profileStatusTtl: Duration.zero,
       // These suites test the Dart port unless a test asks for the official
       // runtime.
       codexRuntime: _codexRuntime,
       codexGatewayUrl: _codexGatewayUrl,
+      sandboxLayout: _sandboxLayout,
     );
     await service.start(address: '127.0.0.1', port: 0);
   }

@@ -232,6 +232,91 @@ void main() {
   );
 
   test(
+    'retained workflow files survive parking and restart without holding the only slot',
+    skip: enabled ? false : 'set AGENT_DISK_IT=1',
+    () async {
+      final a = await supervisor!.acquire(
+        'retained-round-1',
+        profileName: 'modelling',
+        workspaceKey: 'workflow-A/node-A',
+      );
+      final first = a['sandbox_id'] as String;
+      final workspace = a['workspace'] as Map;
+      final hash = workspace['id'] as String;
+      final file = File('$root/$hash/workspace.img');
+      final identity = await DiskWorkspaces.statIdentity(file.path);
+      var result = await sh(
+        first,
+        "mkdir -p /workspace/.dify-sf/codex && echo history > /workspace/.dify-sf/codex/rollout.jsonl && echo original-model > /workspace/model.blend && sync",
+      );
+      expect(result.$1, 0);
+      await supervisor!.remove(first);
+      expect(deviceBound(), isFalse);
+      expect(supervisor!.disks!.read(hash)!.state, 'parked');
+      expect(file.existsSync(), isTrue);
+      final b = await supervisor!.acquire(
+        'another-workflow',
+        profileName: 'modelling',
+      );
+      expect(deviceBound(), isTrue);
+      await supervisor!.remove(first); // late duplicate from the old round
+      expect(deviceBound(), isTrue);
+      expect(
+        (await sh(
+          b['sandbox_id'] as String,
+          'test ! -e /workspace/model.blend',
+        )).$1,
+        0,
+      );
+      await supervisor!.stop();
+      docker = DockerClient('/var/run/docker.sock');
+      supervisor = await startSupervisor();
+      expect(supervisor!.disks!.read(hash)!.state, 'parked');
+      await supervisor!.remove(b['sandbox_id'] as String);
+      final second = await supervisor!.acquire(
+        'retained-round-2',
+        profileName: 'modelling',
+        workspaceKey: 'workflow-A/node-A',
+      );
+      expect(second['workspace'], {
+        'retained': true,
+        'reused': true,
+        'id': hash,
+      });
+      expect(await DiskWorkspaces.statIdentity(file.path), identity);
+      result = await sh(
+        second['sandbox_id'] as String,
+        'cat /workspace/model.blend /workspace/.dify-sf/codex/rollout.jsonl',
+      );
+      expect(result.$1, 0);
+      expect(result.$2.trim(), 'original-model\nhistory');
+      await supervisor!.remove(first);
+      expect(deviceBound(), isTrue);
+      await supervisor!.remove(second['sandbox_id'] as String);
+      final c = await supervisor!.acquire(
+        'other-round',
+        profileName: 'modelling',
+      );
+      expect(await supervisor!.releaseWorkspace(hash), isTrue);
+      expect(file.existsSync(), isFalse);
+      expect(deviceBound(), isTrue);
+      expect(
+        (await sh(
+          c['sandbox_id'] as String,
+          'echo still-mounted > /workspace/new.txt',
+        )).$1,
+        0,
+      );
+      await supervisor!.remove(c['sandbox_id'] as String);
+      expect(deviceBound(), isFalse);
+      expect(supervisor!.disks!.leases(), isEmpty);
+      log(
+        'retained workflow round trip, isolation, restart and final purge passed',
+      );
+    },
+  );
+
+  test(
     'single disk slot: next execution waits, cancellation and timeout leave '
     'no resources, and an image reviewer needs no disk slot',
     skip: enabled && env['AGENT_DISK_IT_CODEX_DIR'] != null

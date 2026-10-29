@@ -1618,6 +1618,151 @@ void main() {
       expect(b['workspace_kept_from'], [a['sandbox_id']]);
     });
 
+    Future<(int, Map<String, Object?>)> retained(
+      String execution,
+      String workspace,
+    ) => call(
+      'POST',
+      '/v1/sandboxes',
+      body: {
+        'execution_key': execution,
+        'profile': 'modelling',
+        'workspace_key': workspace,
+      },
+    );
+
+    test('retained workspace parks, frees the only slot and resumes across restart', () async {
+      final state = '${dir.path}/state.json';
+      await start(statePath: state);
+      final (status1, first) = await retained('round-1', 'scope-A');
+      expect(status1, 201, reason: '$first');
+      final workspace = first['workspace'] as Map;
+      final hash = workspace['id'] as String;
+      expect(workspace, {'retained': true, 'reused': false, 'id': hash});
+      final file = File('$root/$hash/workspace.img');
+      file.writeAsStringSync('retained payload');
+      expect(
+        (await retained('competing', 'scope-A')).$2['error'],
+        'workspace_in_use',
+      );
+      expect(
+        (await call('DELETE', '/v1/workspaces/$hash')).$2['error'],
+        'workspace_in_use',
+      );
+      final released = await call(
+        'DELETE',
+        '/v1/sandboxes/${first['sandbox_id']}',
+      );
+      expect(released.$2['workspace'], 'parked');
+      expect(supervisor.disks!.read(hash)!.state, 'parked');
+      expect(loop.bound, isEmpty);
+      expect(docker.volumes, isEmpty);
+      final (_, other) = await acquireDisk('other-workflow');
+      // Final cleanup of a parked workspace must not detach another owner.
+      final bound = Map.of(loop.bound);
+      expect(
+        (await call('DELETE', '/v1/sandboxes/${first['sandbox_id']}')).$1,
+        200,
+      );
+      expect(loop.bound, bound);
+      expect(file.readAsStringSync(), 'retained payload');
+      await call('DELETE', '/v1/sandboxes/${other['sandbox_id']}');
+      await supervisor.stop();
+      await start(statePath: state);
+      final (status, second) = await retained('round-2', 'scope-A');
+      expect(status, 201);
+      expect(second['workspace'], {
+        'retained': true,
+        'reused': true,
+        'id': hash,
+      });
+      expect(file.readAsStringSync(), 'retained payload');
+      final attached = Map.of(loop.bound);
+      await call('DELETE', '/v1/sandboxes/${first['sandbox_id']}');
+      expect(loop.bound, attached);
+      expect(file.existsSync(), isTrue);
+      await call('DELETE', '/v1/sandboxes/${second['sandbox_id']}');
+      expect(
+        (await call('DELETE', '/v1/workspaces/$hash')).$2['deleted'],
+        isTrue,
+      );
+      expect(file.existsSync(), isFalse);
+      expect(
+        (await call('DELETE', '/v1/workspaces/$hash')).$2['deleted'],
+        isFalse,
+      );
+    });
+
+    test('parked final cleanup cannot detach another workflow and scope cannot change', () async {
+      await start();
+      final (status1, a) = await retained('r1', 'A');
+      expect(status1, 201, reason: '$a');
+      final hash = (a['workspace'] as Map)['id'];
+      expect((await retained('r1', 'B')).$2['error'], 'workspace_conflict');
+      await call('DELETE', '/v1/sandboxes/${a['sandbox_id']}');
+      final (_, b) = await retained('r2', 'B');
+      final bound = Map.of(loop.bound);
+      await call('DELETE', '/v1/workspaces/$hash');
+      expect(loop.bound, bound);
+      expect(
+        supervisor.disks!.leases().single.hash,
+        (b['workspace'] as Map)['id'],
+      );
+    });
+
+    test(
+      'retained startup failure parks an indexed disk for terminal cleanup',
+      () async {
+        await start();
+        docker.failStart = true;
+        final (status, _) = await retained('failed-round', 'scope-failed');
+        expect(status, 502);
+        final hash = SandboxSupervisor.hashKey('retained:scope-failed');
+        expect(supervisor.disks!.read(hash)!.state, 'parked');
+        expect(loop.bound, isEmpty);
+        expect(
+          docker.containers.values.where(
+            (c) => ((c['Config'] as Map)['Labels'] as Map).containsKey(
+              'dify-sf.sandbox.execution',
+            ),
+          ),
+          isEmpty,
+        );
+        expect(
+          (await call('DELETE', '/v1/workspaces/$hash')).$2['deleted'],
+          isTrue,
+        );
+        expect(supervisor.disks!.leases(), isEmpty);
+      },
+    );
+
+    test(
+      'retained workspace rejects tmpfs and malformed keys without allocating',
+      () async {
+        await start();
+        final a = await call(
+          'POST',
+          '/v1/sandboxes',
+          body: {
+            'execution_key': 'a',
+            'profile': 'default',
+            'workspace_key': 'A',
+          },
+        );
+        expect(a.$1, 400);
+        expect(
+          (await call(
+            'POST',
+            '/v1/sandboxes',
+            body: {'execution_key': 'a', 'workspace_key': 42},
+          )).$1,
+          400,
+        );
+        expect(supervisor.disks!.leases(), isEmpty);
+        expect(docker.creates, isEmpty);
+      },
+    );
+
     test('configuration: disk profiles need SANDBOX_DISK_*; only tmpfs '
         'directories count against memory', () {
       SupervisorConfig make(DiskWorkspaceConfig? d) => SupervisorConfig(

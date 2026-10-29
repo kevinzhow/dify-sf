@@ -145,10 +145,33 @@ class _OfficialCodexRun {
   /// The CODEX_HOME of this run in the sandbox.
   String? _home;
 
+  /// The run's sandbox, once open.
+  ExecutionSandbox? _sandbox;
+
+  /// With `codex_session.retain`: the turns the thread had before this run.
+  int _turnsBefore = 0;
+
+  /// Set when the turn completed: the `succeeded` result (built by
+  /// [execute]'s finish) still needs CODEX_HOME to keep the session.
+  bool _completedTurn = false;
+
   static final Random _random = Random.secure();
 
+  /// Runs the turn and ends the run. CODEX_HOME is removed before the
+  /// terminal event in every case (after the session copy of a `succeeded`
+  /// run), so a `DELETE` of the execution right after the result never
+  /// races the removal.
   Future<void> execute() async {
     run._onStop = _interrupt;
+    try {
+      await _execute();
+    } finally {
+      // Also when something else was thrown (the run then fails internal).
+      await _removeHome();
+    }
+  }
+
+  Future<void> _execute() async {
     Future<void> Function() finish;
     StopReason? stopped;
     try {
@@ -164,38 +187,47 @@ class _OfficialCodexRun {
         finish = () async => run._fail('internal', '$e');
       }
     } finally {
-      // Also when something else was thrown (the run then fails internal).
       stopped = run._stopReason;
       await _cleanup();
     }
     if (stopped != null || run._stopReason != null) {
+      await _removeHome();
       return run._finishStopped(stopped ?? run._stopReason!);
     }
+    // Only a completed turn's result keeps the session (and removes the
+    // home itself once done).
+    if (!_completedTurn) await _removeHome();
     await finish();
   }
 
-  /// Closes the connection, ends the shell session (terminating the
-  /// app-server job; the reap kills Codex and its children) and removes the
-  /// run's CODEX_HOME. Never throws.
+  /// Closes the connection and ends the shell session (terminating the
+  /// app-server job; the reap kills Codex and its children). The run's
+  /// CODEX_HOME stays when the run retains its session: the session copy
+  /// reads the rollout from it. Never throws.
   Future<void> _cleanup() async {
     try {
       await _server?.close();
     } catch (e) {
       run.log?.call('run ${run.runId}: closing the codex connection: $e');
     }
-    final home = _home;
-    final session = run._session;
     try {
       await run._endShell();
     } catch (e) {
       run.log?.call('run ${run.runId}: ending the shell session: $e');
     }
-    if (home != null && session != null) {
-      try {
-        await session.sandbox.control('rm -rf -- ${shellQuote(home)}');
-      } catch (e) {
-        run.log?.call('run ${run.runId}: could not remove $home: $e');
-      }
+    if (!r.retainsSession) await _removeHome();
+  }
+
+  /// Removes the run's CODEX_HOME (once). Never throws.
+  Future<void> _removeHome() async {
+    final home = _home;
+    final sandbox = _sandbox;
+    if (home == null || sandbox == null) return;
+    _home = null;
+    try {
+      await sandbox.control('rm -rf -- ${shellQuote(home)}');
+    } catch (e) {
+      run.log?.call('run ${run.runId}: could not remove $home: $e');
     }
   }
 
@@ -479,11 +511,293 @@ class _OfficialCodexRun {
     return input;
   }
 
+  // ---- codex_session.retain ------------------------------------------------
+
+  /// Ends the run `session_restore_failed`: the kept session cannot be
+  /// resumed at [step]; a new thread is never started instead.
+  Never _restoreFailed(String step, String reason) => _failWith(
+    'session_restore_failed',
+    'the Codex session of this node could not be resumed ($step): $reason',
+  );
+
+  /// Why a re-used workspace starts a new thread (`run_started.runtime.
+  /// session.reason`); null otherwise.
+  String? _freshReason;
+
+  /// The recorded session to resume in [sandbox]'s retained workspace, or
+  /// null for a new thread: no round of the workspace has succeeded yet
+  /// ([SessionState.none]; in a re-used workspace its files stay). A saved
+  /// session without a re-used workspace, a session that could not be saved
+  /// and a session that does not fit this run end the run.
+  CodexSessionRecord? _sessionToResume(ExecutionSandbox sandbox) {
+    final key = r.workspaceKey!;
+    final w = run.store.retainedWorkspace(key);
+    final reused = sandbox.workspaceReused;
+    switch (w?.sessionState ?? SessionState.none) {
+      case SessionState.none:
+        if (reused) {
+          _freshReason = 'no earlier round succeeded';
+          run.log?.call(
+            'run ${run.runId}: the retained workspace is re-used but no '
+            'earlier round of the node succeeded: a new Codex thread starts '
+            'in the kept workspace',
+          );
+        }
+        return null;
+      case SessionState.saveFailed:
+        _restoreFailed(
+          'record',
+          'the previous round\'s session was not saved: '
+              '${w?.saveError ?? 'unknown error'}',
+        );
+      case SessionState.saved:
+        break;
+    }
+    final record = w?.session;
+    if (record == null) {
+      _restoreFailed('record', 'the saved session has no record');
+    }
+    if (!reused) {
+      _restoreFailed(
+        'workspace',
+        'a Codex session is recorded for this node (thread '
+            '${record.threadId}, ${record.turns} turns), but the supervisor '
+            'gave a new, empty workspace (reused: false): the retained '
+            'workspace is gone',
+      );
+    }
+    if (!codexThreadIdPattern.hasMatch(record.threadId) ||
+        !isRolloutPath(record.rolloutPath, record.threadId)) {
+      _restoreFailed(
+        'record',
+        'the recorded session is malformed (thread '
+            '${jsonEncode(record.threadId)}, rollout '
+            '${jsonEncode(record.rolloutPath)})',
+      );
+    }
+    if (record.codexSha256 != officialCodexSha256) {
+      _restoreFailed(
+        'record',
+        'the session was written by the Codex binary with sha256 '
+            '${record.codexSha256}; this run has $officialCodexSha256 '
+            '(codex-cli $officialCodexVersion)',
+      );
+    }
+    if (record.model != r.model.name) {
+      _restoreFailed(
+        'record',
+        'the session is of model ${jsonEncode(record.model)}; this run asks '
+            'for ${jsonEncode(r.model.name)}',
+      );
+    }
+    final prompt = sha256Hex(r.systemPrompt);
+    if (record.systemPromptSha256 != prompt) {
+      _restoreFailed(
+        'record',
+        'the node\'s system prompt changed since the session was kept '
+            '(sha256 ${record.systemPromptSha256}, now $prompt)',
+      );
+    }
+    return record;
+  }
+
+  /// Copies the workspace's rollout copy into the fresh CODEX_HOME [home]
+  /// where Codex looks for it and checks what Codex will read against
+  /// [record]. Returns the dynamic tools of its `session_meta`.
+  Future<List<String>?> _restoreRollout(
+    ExecutionSandbox sandbox,
+    String home,
+    CodexSessionRecord record,
+  ) async {
+    final ws = sandbox.layout.workspaceDir;
+    final file = retainedRolloutFile(ws, record.threadId);
+    final out = await sandbox.control(
+      rolloutRestoreScript(
+        home: home,
+        workspaceDir: ws,
+        threadId: record.threadId,
+        rolloutPath: record.rolloutPath,
+      ),
+      mergeStderr: false,
+      timeout: const Duration(minutes: 2),
+    );
+    final v = scriptValues(out.output);
+    if (out.exitCode != 0) {
+      _restoreFailed(
+        'rollout',
+        'copying $file into CODEX_HOME failed (${out.status} '
+            '${out.exitCode}): ${out.output.trim()}',
+      );
+    }
+    if (v.containsKey('missing')) {
+      _restoreFailed('rollout', '$file is missing from the workspace');
+    }
+    final error = v['error'];
+    if (error != null) _restoreFailed('rollout', '$file: $error');
+    final size = int.tryParse(v['size'] ?? '');
+    final sum = v['sha256'];
+    if (size != record.size || sum != record.sha256) {
+      _restoreFailed(
+        'rollout',
+        '$file changed since the session was kept: ${size ?? '?'} bytes, '
+            'sha256 ${sum ?? '?'}; recorded ${record.size} bytes, sha256 '
+            '${record.sha256}',
+      );
+    }
+    String line;
+    try {
+      line = utf8.decode(base64.decode(v['meta'] ?? ''));
+    } on FormatException {
+      line = '';
+    }
+    final tools = sessionMetaDynamicTools(line);
+    if (tools == null) {
+      run.log?.call(
+        'run ${run.runId}: the first line of $file is not a readable '
+        'session_meta',
+      );
+    }
+    return tools;
+  }
+
+  /// `thread/resume` of the recorded thread with this run's settings: the
+  /// same cwd, approval, sandbox and `config` as `thread/start`, plus the
+  /// model and reasoning effort (without them Codex keeps the rollout's).
+  /// `excludeTurns`: the answer does not carry the history.
+  Future<Map<String, Object?>> _resumeThread(
+    CodexAppServer server,
+    ExecutionSandbox sandbox,
+    CodexSessionRecord record,
+    Map<String, Object?> config,
+  ) async {
+    final effort = r.reasoningEffort;
+    final Map<String, Object?> thread;
+    try {
+      thread = await server.request('thread/resume', {
+        'threadId': record.threadId,
+        'cwd': sandbox.layout.workspaceDir,
+        'approvalPolicy': 'never',
+        'sandbox': 'danger-full-access',
+        'model': r.model.name,
+        'excludeTurns': true,
+        if (config.isNotEmpty || effort != null)
+          'config': {...config, 'model_reasoning_effort': ?effort},
+      }, timeout: const Duration(minutes: 2));
+    } on CodexRpcError catch (e) {
+      final error = e.error;
+      _restoreFailed(
+        'thread/resume',
+        'Codex refused thread/resume: '
+            '${error is Map && error['message'] is String ? error['message'] : jsonEncode(error)}',
+      );
+    }
+    final id = (thread['thread'] as Map?)?['id'];
+    if (id != record.threadId) {
+      _restoreFailed(
+        'thread/resume',
+        'Codex resumed thread ${jsonEncode(id)}, not ${record.threadId}',
+      );
+    }
+    return thread;
+  }
+
+  /// After a `succeeded` round: copies the root thread's rollout into the
+  /// retained workspace (a `cp` in the sandbox) and records the session for
+  /// the next round. Returns the `succeeded` event's `session`: `{"saved":
+  /// true, "thread_id", "turns"}`, or `{"saved": false, "error": {"code":
+  /// "save_failed", "message"}}` for a rollout over [codexSessionMaxBytes]
+  /// or a failed copy, which is logged and recorded
+  /// ([SessionState.saveFailed]): the round stays `succeeded` and the next
+  /// round fails `session_restore_failed` instead of resuming an older
+  /// turn. Never throws.
+  Future<Map<String, Object?>> _keepSession() async {
+    final key = r.workspaceKey!;
+    final sandbox = _sandbox;
+    final home = _home;
+    final thread = _threadId;
+    Map<String, Object?> drop(String why) {
+      final message = 'the Codex session of thread $thread was not saved: $why';
+      run.log?.call(
+        'run ${run.runId}: $message; the next round of this node cannot '
+        'resume it',
+      );
+      run.store.setSessionSaveFailed(key, message);
+      return {
+        'saved': false,
+        'error': {'code': 'save_failed', 'message': message},
+      };
+    }
+
+    if (sandbox == null || home == null || thread == null) {
+      return drop('the run has no Codex home');
+    }
+    if (!codexThreadIdPattern.hasMatch(thread)) {
+      return drop('unexpected thread ID ${jsonEncode(thread)}');
+    }
+    final ControlResult out;
+    try {
+      out = await sandbox.control(
+        rolloutSaveScript(
+          home: home,
+          workspaceDir: sandbox.layout.workspaceDir,
+          threadId: thread,
+        ),
+        mergeStderr: false,
+        timeout: const Duration(minutes: 2),
+      );
+    } catch (e) {
+      return drop('the copy failed: $e');
+    }
+    final v = scriptValues(out.output);
+    final error = v['error'];
+    if (error != null && error.startsWith('too_large ')) {
+      return drop(
+        'the rollout has ${error.substring(10)} bytes, more than '
+        '$codexSessionMaxBytes',
+      );
+    }
+    if (error != null) return drop(error);
+    final rollout = v['rollout'] ?? '';
+    final size = int.tryParse(v['size'] ?? '');
+    final sum = v['sha256'] ?? '';
+    if (out.exitCode != 0 ||
+        size == null ||
+        !RegExp(r'^[0-9a-f]{64}$').hasMatch(sum) ||
+        !isRolloutPath(rollout, thread)) {
+      return drop(
+        'unexpected copy output (${out.status} ${out.exitCode}): '
+        '${out.output.trim()}',
+      );
+    }
+    final record = CodexSessionRecord(
+      threadId: thread,
+      sha256: sum,
+      size: size,
+      turns: _turnsBefore + 1,
+      model: r.model.name,
+      systemPromptSha256: sha256Hex(r.systemPrompt),
+      codexSha256: officialCodexSha256,
+      rolloutPath: rollout,
+      runId: run.runId,
+      recordedAt: run.store.clock(),
+    );
+    if (!run.store.setCodexSession(key, record)) {
+      return drop('the retained workspace was released during the run');
+    }
+    run.log?.call(
+      'run ${run.runId}: kept the Codex session: thread $thread, '
+      '${record.turns} turns, $size bytes, sha256 $sum',
+    );
+    return {'saved': true, 'thread_id': thread, 'turns': record.turns};
+  }
+
   Future<Future<void> Function()> _run() async {
     if (r.continuation != null) verifyOfficialCodexContinuation(r);
     final session = await run._shellSession();
     _checkStopped();
-    final sandbox = session.sandbox;
+    final sandbox = _sandbox = session.sandbox;
+    // The kept session must match the kept workspace (before anything runs).
+    final resume = r.retainsSession ? _sessionToResume(sandbox) : null;
     final baseUrl =
         sandbox.grant.codexGatewayUrl?.toString() ?? run.codexGatewayUrl;
     if (baseUrl == null) {
@@ -570,6 +884,9 @@ class _OfficialCodexRun {
     if (r.systemPrompt.trim().isNotEmpty) {
       await _writeHome(sandbox, '$home/AGENTS.md', r.systemPrompt);
     }
+    final List<String>? resumedTools = resume == null
+        ? null
+        : await _restoreRollout(sandbox, home, resume);
     final input = await _input(sandbox);
     _checkStopped();
 
@@ -649,27 +966,34 @@ class _OfficialCodexRun {
     });
     server.notify('initialized');
     final disabledSkills = await _loadSkills(server, sandbox, skillsDirs);
-    final thread = await server.request('thread/start', {
-      'cwd': sandbox.layout.workspaceDir,
-      'approvalPolicy': 'never',
-      'sandbox': 'danger-full-access',
-      'ephemeral': true,
+    final config = <String, Object?>{
       if (disabledSkills.isNotEmpty)
-        'config': {
-          'skills.config': [
-            for (final p in disabledSkills) {'path': p, 'enabled': false},
-          ],
-        },
-      'dynamicTools': [
-        if (r.reportProgress)
-          {
-            'type': 'function',
-            'name': reportProgressToolName,
-            'description': reportProgressDescription,
-            'inputSchema': reportProgressInputSchema,
-          },
-      ],
-    });
+        'skills.config': [
+          for (final p in disabledSkills) {'path': p, 'enabled': false},
+        ],
+    };
+    final Map<String, Object?> thread;
+    if (resume != null) {
+      thread = await _resumeThread(server, sandbox, resume, config);
+    } else {
+      thread = await server.request('thread/start', {
+        'cwd': sandbox.layout.workspaceDir,
+        'approvalPolicy': 'never',
+        'sandbox': 'danger-full-access',
+        // A retained session needs the rollout on disk.
+        'ephemeral': !r.retainsSession,
+        if (config.isNotEmpty) 'config': config,
+        'dynamicTools': [
+          if (r.reportProgress)
+            {
+              'type': 'function',
+              'name': reportProgressToolName,
+              'description': reportProgressDescription,
+              'inputSchema': reportProgressInputSchema,
+            },
+        ],
+      });
+    }
     _threadId = (thread['thread'] as Map)['id'] as String;
     // Codex's settings for the thread, as it will send them.
     final model = thread['model'];
@@ -686,12 +1010,49 @@ class _OfficialCodexRun {
       'reasoning_effort': effort,
       if (sent != effort) 'request_reasoning_effort': sent,
     });
-    final mismatch = _settingsMismatch(
-      'started the thread with',
-      model,
-      effort,
-    );
-    if (mismatch != null) _failWith('internal', mismatch);
+    if (resume != null) {
+      final mismatch = _settingsMismatch(
+        'resumed the thread with',
+        model,
+        effort,
+      );
+      if (mismatch != null) _restoreFailed('thread/resume', mismatch);
+      // Codex restores the thread's dynamic tools from the rollout's
+      // session_meta (thread/resume takes none).
+      final tools = resumedTools ?? const [];
+      if (r.reportProgress && !tools.contains(reportProgressToolName)) {
+        _restoreFailed(
+          'thread/resume',
+          'report_progress is missing from the resumed thread (its rollout '
+              'has the dynamic tools ${jsonEncode(tools)}; thread/resume '
+              'cannot add one)',
+        );
+      }
+      if (!r.reportProgress && tools.contains(reportProgressToolName)) {
+        run.log?.call(
+          'run ${run.runId}: the resumed thread keeps report_progress; '
+          'tools.report_progress is off, so its calls are refused',
+        );
+      }
+    } else {
+      final mismatch = _settingsMismatch(
+        'started the thread with',
+        model,
+        effort,
+      );
+      if (mismatch != null) _failWith('internal', mismatch);
+    }
+    if (r.retainsSession) {
+      _turnsBefore = resume?.turns ?? 0;
+      _addRuntime({
+        'session': {
+          'resumed': resume != null,
+          'thread_id': _threadId,
+          'turns_before': _turnsBefore,
+          'reason': ?_freshReason,
+        },
+      });
+    }
     run._runStarted();
     _checkAborted();
     final turn = await server.request('turn/start', {
@@ -824,6 +1185,7 @@ class _OfficialCodexRun {
         (hasMessageOrTool ? null : _unphased?['text'] as String?) ??
         '';
     final schema = r.outputSchema;
+    _completedTurn = true;
     return () async {
       Object? candidate;
       var errors = <Map<String, Object?>>[];
@@ -840,6 +1202,7 @@ class _OfficialCodexRun {
           try {
             (candidate, errors) = await run._resolveFileOutputs(map, errors);
           } on SandboxFailure catch (e) {
+            await _removeHome();
             return run._fail(e.errorType, e.message);
           }
         } else {
@@ -854,12 +1217,17 @@ class _OfficialCodexRun {
           ];
         }
       }
+      // The session of a succeeded round, before the result (and the
+      // home's removal), so the next round can resume it.
+      final session = r.retainsSession ? await _keepSession() : null;
+      await _removeHome();
       run._finish('succeeded', {
         'candidate': candidate,
         'candidate_errors': errors,
         'snapshot': _snapshot(text),
         'usage': run.usage.toJson(),
         'partial': run._partial,
+        'session': ?session,
       });
     };
   }
@@ -1094,6 +1462,19 @@ class _OfficialCodexRun {
           'call_index': _callIndex,
         });
       case 'thread/tokenUsage/updated':
+        // Codex replays the thread's last usage when it resumes a thread
+        // (with that earlier turn's ID, before this run's turn starts): no
+        // model call of this run.
+        if (_turnId == null ||
+            (p['threadId'] == _threadId &&
+                p['turnId'] != null &&
+                p['turnId'] != _turnId)) {
+          run.log?.call(
+            'run ${run.runId}: ignored token usage of an earlier turn '
+            '(${p['turnId']})',
+          );
+          return;
+        }
         _onUsage(p);
       case 'error':
         final error = (p['error'] as Map?) ?? const {};

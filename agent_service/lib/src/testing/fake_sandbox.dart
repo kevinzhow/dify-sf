@@ -8,6 +8,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart' show sha256;
+
 /// How a user job behaves.
 class FakeJobSpec {
   FakeJobSpec({this.output = '', this.exitCode = 0, this.running = false});
@@ -36,6 +38,10 @@ class FakeShellctl {
 
   final String token;
   HttpServer? _server;
+
+  /// The retained workspace this sandbox mounts (its supervisor ID), set
+  /// before [FakeSupervisor.configure] runs; null for an execution's own.
+  String? retainedWorkspaceId;
 
   /// Workspace files by absolute path.
   final Map<String, List<int>> files = {};
@@ -335,6 +341,23 @@ class FakeShellctl {
   }
 }
 
+/// A retained workspace of the fake supervisor: its files outlive the
+/// sandboxes that mount it.
+class FakeRetainedWorkspace {
+  FakeRetainedWorkspace(this.id, this.workspaceKey);
+  final String id;
+  final String workspaceKey;
+
+  /// The sandbox mounting it; null while parked.
+  String? boundTo;
+
+  /// Every sandbox that mounted it, in order.
+  final List<String> sandboxes = [];
+
+  /// Workspace files (under /workspace) kept while parked.
+  final Map<String, List<int>> files = {};
+}
+
 /// A fake supervisor: one [FakeShellctl] per execution key.
 class FakeSupervisor {
   FakeSupervisor({required this.key, this.configure});
@@ -348,12 +371,18 @@ class FakeSupervisor {
   /// Live sandboxes by ID.
   final Map<String, FakeShellctl> sandboxes = {};
   final Map<String, String> _idByKey = {};
+
+  /// The workspace_key each sandbox was created with.
+  final Map<String, String?> _scopeOf = {};
   final List<String> acquires = [];
   final List<String> created = [];
   final List<String> deletes = [];
 
   /// The `gateway` reported for every sandbox.
   String gateway = '10.213.0.1';
+
+  /// The `codex_gateway_url` reported for every sandbox (none when null).
+  String? codexGatewayUrl;
 
   /// Answer acquires with this status instead (e.g. 503).
   int? failAcquire;
@@ -378,6 +407,34 @@ class FakeSupervisor {
   /// (a supervisor that ignores profiles).
   String? reportProfile;
   var _next = 0;
+
+  /// Retained workspaces by ID (acquires with a `workspace_key`).
+  final Map<String, FakeRetainedWorkspace> workspaces = {};
+
+  /// The `workspace_key` of each acquire (null when none was named).
+  final List<String?> workspaceKeys = [];
+
+  /// `DELETE /v1/workspaces/{id}` requests.
+  final List<String> workspaceDeletes = [];
+
+  /// Answer workspace deletes with this status instead.
+  int? failWorkspaceDelete;
+
+  /// Answer acquires with a `workspace_key` without the `workspace` object
+  /// (a supervisor that does not retain workspaces).
+  bool omitRetained = false;
+
+  /// Answer acquires with a `workspace_key` with this status after the
+  /// retained workspace was created (left parked), as when the network or
+  /// container then fails to start.
+  int? failAfterWorkspace;
+
+  /// The workspace `id` reported instead of the right one.
+  String? reportWorkspaceId;
+
+  /// The supervisor's workspace ID of [workspaceKey].
+  static String workspaceIdOf(String workspaceKey) =>
+      sha256.convert(utf8.encode('retained:$workspaceKey')).toString();
 
   Uri get url => Uri.parse('http://127.0.0.1:${_server!.port}');
 
@@ -407,8 +464,10 @@ class FakeSupervisor {
       case ('POST', ['v1', 'sandboxes']):
         final body = jsonDecode(text) as Map;
         final k = body['execution_key'] as String;
+        final workspaceKey = body['workspace_key'] as String?;
         acquires.add(k);
         acquiredProfiles.add(body['profile'] as String?);
+        workspaceKeys.add(workspaceKey);
         if (failAcquire != null) {
           return FakeShellctl._json(res, failAcquire!, {
             'error': failAcquireCode,
@@ -417,26 +476,78 @@ class FakeSupervisor {
         }
         var id = _idByKey[k];
         final isNew = id == null || !sandboxes.containsKey(id);
+        if (!isNew && _scopeOf[id] != workspaceKey) {
+          return FakeShellctl._json(res, 409, {
+            'error': 'workspace_conflict',
+            'message': 'execution workspace scope changed',
+          });
+        }
+        FakeRetainedWorkspace? retained;
+        if (workspaceKey != null) {
+          final wid = workspaceIdOf(workspaceKey);
+          retained = workspaces[wid];
+          final bound = retained?.boundTo;
+          if (isNew && bound != null && sandboxes.containsKey(bound)) {
+            return FakeShellctl._json(res, 409, {
+              'error': 'workspace_in_use',
+              'message': 'workspace already has a sandbox',
+            });
+          }
+          retained ??= workspaces[wid] = FakeRetainedWorkspace(
+            wid,
+            workspaceKey,
+          );
+          if (isNew && failAfterWorkspace != null) {
+            return FakeShellctl._json(res, failAfterWorkspace!, {
+              'error': 'sandbox_start_failed',
+              'message': 'scripted failure after the workspace was created',
+            });
+          }
+        }
         if (isNew) {
           id = 'sbx${++_next}';
-          final s = FakeShellctl(token: 'tok-$id');
+          final s = FakeShellctl(token: 'tok-$id')
+            ..retainedWorkspaceId = retained?.id;
           configure?.call(s);
           await s.start();
           final history = _history.putIfAbsent(k, () => []);
           if (diskWorkspaces && history.isNotEmpty) {
             s.files.addAll(history.last.$2.files);
           }
+          if (retained != null) {
+            s.files.addAll(retained.files);
+            retained
+              ..boundTo = id
+              ..sandboxes.add(id);
+          }
           history.add((id, s));
           sandboxes[id] = s;
           _idByKey[k] = id;
+          _scopeOf[id] = workspaceKey;
           created.add(id);
         }
         final s = sandboxes[id]!;
+        // As the supervisor answers: `reused` is whether earlier sandboxes
+        // kept the workspace (`workspace_kept_from`), so a repeated acquire
+        // of the running sandbox answers false.
+        final keptFrom = [
+          for (final old in retained?.sandboxes ?? const <String>[])
+            if (old != id) old,
+        ];
         return FakeShellctl._json(res, isNew ? 201 : 200, {
+          if (retained != null && !omitRetained) ...{
+            'workspace_kept_from': keptFrom,
+            'workspace': {
+              'retained': true,
+              'reused': keptFrom.isNotEmpty,
+              'id': reportWorkspaceId ?? retained.id,
+            },
+          },
           'sandbox_id': id,
           'url': '${s.url}',
           'token': s.token,
           'gateway': gateway,
+          'codex_gateway_url': ?codexGatewayUrl,
           'created': isNew,
           if (reportProfile != '')
             'profile': reportProfile ?? body['profile'] ?? 'default',
@@ -458,9 +569,49 @@ class FakeSupervisor {
         }
         final s = sandboxes.remove(id);
         await s?.close();
+        // A retained workspace is parked with its files.
+        final parked = workspaces.values.any((w) => w.boundTo == id);
+        for (final w in workspaces.values) {
+          if (w.boundTo != id || s == null) continue;
+          w
+            ..boundTo = null
+            ..files.clear()
+            ..files.addAll({
+              for (final e in s.files.entries)
+                if (e.key.startsWith('/workspace/')) e.key: e.value,
+            });
+        }
         return FakeShellctl._json(res, 200, {
           'sandbox_id': id,
           'deleted': s != null,
+          if (parked) 'workspace': 'parked',
+        });
+      case ('DELETE', ['v1', 'workspaces', final id]):
+        workspaceDeletes.add(id);
+        if (failWorkspaceDelete != null) {
+          return FakeShellctl._json(res, failWorkspaceDelete!, {
+            'error': 'docker_error',
+            'message': 'scripted failure',
+          });
+        }
+        final w = workspaces[id];
+        if (w == null) {
+          return FakeShellctl._json(res, 200, {
+            'workspace_id': id,
+            'deleted': false,
+          });
+        }
+        final bound = w.boundTo;
+        if (bound != null && sandboxes.containsKey(bound)) {
+          return FakeShellctl._json(res, 409, {
+            'error': 'workspace_in_use',
+            'message': 'workspace has a sandbox',
+          });
+        }
+        workspaces.remove(id);
+        return FakeShellctl._json(res, 200, {
+          'workspace_id': id,
+          'deleted': true,
         });
       case ('GET', ['v1', 'profiles']):
         final p = profiles;
