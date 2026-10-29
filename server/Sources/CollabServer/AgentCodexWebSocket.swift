@@ -9,6 +9,7 @@ import NIOPosix
 import NIOSSL
 import NIOWebSocket
 import ServiceLifecycle
+import Synchronization
 import Vapor
 
 struct AgentCodexSocketError: Error, Sendable {
@@ -246,7 +247,7 @@ struct AgentCodexWebSocketService: Service {
 
     private enum Upgraded: Sendable {
         case socket(NIOAsyncChannel<WebSocketFrame, WebSocketFrame>, Request, String)
-        case http(NIOAsyncChannel<HTTPServerRequestPart, HTTPPart<HTTPResponseHead, ByteBuffer>>)
+        case http(NIOAsyncChannel<HTTPServerRequestPart, HTTPPart<HTTPResponseHead, ByteBuffer>>, Int)
     }
     private func request(_ head: HTTPRequestHead) -> Request {
         var fields = HTTPFields()
@@ -286,10 +287,14 @@ struct AgentCodexWebSocketService: Service {
             .serverChannelOption(.socketOption(.so_reuseaddr), value: 1)
             .childChannelOption(.maxMessagesPerRead, value: 1)
             .bind(host: host, port: port) { channel in channel.eventLoop.makeCompletedFuture {
+                let rejectedStatus = Mutex(400)
                 let upgrader = NIOTypedWebSocketServerUpgrader<Upgraded>(maxFrameSize: AgentCodexGatewayLimits.requestBytes,
                     shouldUpgrade: { channel, head in
                         let promise = channel.eventLoop.makePromise(of: HTTPHeaders?.self)
-                        promise.completeWithTask { do { _ = try await authenticate(head); _ = try lane(head); return HTTPHeaders() } catch { return nil } }
+                        promise.completeWithTask { do { _ = try await authenticate(head); _ = try lane(head); return HTTPHeaders() } catch {
+                            rejectedStatus.withLock { $0 = AgentCodexSocketError.safe(error).status }
+                            return nil
+                        } }
                         return promise.futureResult
                     }, upgradePipelineHandler: { channel, head in channel.eventLoop.makeCompletedFuture {
                         try channel.pipeline.syncOperations.addHandler(NIOWebSocketFrameAggregator(
@@ -301,7 +306,7 @@ struct AgentCodexWebSocketService: Service {
                     upgradeConfiguration: .init(upgraders: [upgrader], notUpgradingCompletionHandler: { channel in
                         channel.eventLoop.makeCompletedFuture {
                             try channel.pipeline.syncOperations.addHandler(AgentCodexHTTPResponseEncoder())
-                            return .http(try NIOAsyncChannel<HTTPServerRequestPart, HTTPPart<HTTPResponseHead, ByteBuffer>>(wrappingChannelSynchronously: channel))
+                            return .http(try NIOAsyncChannel<HTTPServerRequestPart, HTTPPart<HTTPResponseHead, ByteBuffer>>(wrappingChannelSynchronously: channel), rejectedStatus.withLock { $0 })
                         }
                     })))
             } }
@@ -329,15 +334,11 @@ struct AgentCodexWebSocketService: Service {
                         try await output.write(.init(fin: true, opcode: .text, data: ByteBuffer(string: AgentCodexSocketError.safe(error).json.compactJSON())))
                     }
                 }
-            case .http(let channel):
-                try await channel.executeThenClose { inbound, output in
-                    for try await part in inbound {
-                        guard case .head(let head) = part else { continue }
-                        var status = 400
-                        do { _ = try await authenticate(head); _ = try lane(head) } catch { status = AgentCodexSocketError.safe(error).status }
-                        try await output.write(contentsOf: [.head(.init(version: .http1_1, status: .init(statusCode: status), headers: ["Connection": "close", "Content-Length": "0"])), .end(nil)])
-                        return
-                    }
+            case .http(let channel, let status):
+                // The typed NIO upgrader consumes an attempted upgrade's head.
+                // Waiting for that head again leaves rejected clients hanging.
+                try await channel.executeThenClose { _, output in
+                    try await output.write(contentsOf: [.head(.init(version: .http1_1, status: .init(statusCode: status), headers: ["Connection": "close", "Content-Length": "0"])), .end(nil)])
                 }
             }
         } catch { /* No transport descriptions: these may contain credentials/URLs. */ }

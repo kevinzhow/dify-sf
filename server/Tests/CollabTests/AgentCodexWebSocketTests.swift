@@ -1,6 +1,8 @@
+import AsyncHTTPClient
 import CollabRuntime
 import Foundation
 import NIOCore
+import NIOHTTP1
 import NIOWebSocket
 import Synchronization
 import Testing
@@ -72,6 +74,40 @@ struct AgentCodexWebSocketTests {
             "cached_tokens": 12, "reasoning_tokens": 2]), succeeded: true)
         let total = await scopes.revoke(token: token)
         #expect(total.totalTokens == 23 + tokens && total.cachedTokens == 12 + (tokens > 0 ? 1 : 0) && total.reasoningTokens == 2)
+    }
+
+    @Test func refusedUpgradesReplyWithoutWaitingForAConsumedRequestHead() async throws {
+        try await withFakeDaemon { daemon, _ in
+            try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                let (_, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: "http://127.0.0.1:1")
+                let (ports, signal) = AsyncStream<Int>.makeStream(bufferingPolicy: .bufferingNewest(1))
+                let service = AgentCodexWebSocketService(routes: routes, host: "127.0.0.1", port: 0, onListening: { signal.yield($0); signal.finish() })
+                let listener = Task { try await service.run() }
+                defer { listener.cancel() }
+                var portIterator = ports.makeAsyncIterator()
+                let port = try #require(await portIterator.next())
+                func rejected(_ path: String, bearer: String?, identity: Bool = true, upgrade: Bool = true) async throws -> Int {
+                    var headers = HTTPHeaders()
+                    if upgrade {
+                        headers.add(name: "Connection", value: "Upgrade"); headers.add(name: "Upgrade", value: "websocket")
+                        headers.add(name: "Sec-WebSocket-Version", value: "13"); headers.add(name: "Sec-WebSocket-Key", value: "dGhlIHNhbXBsZSBub25jZQ==")
+                    }
+                    if let bearer { headers.add(name: "Authorization", value: "Bearer " + bearer) }
+                    if identity { headers.add(name: "session-id", value: "rejection-fixture") }
+                    let request = try HTTPClient.Request(url: "http://127.0.0.1:\(port)" + path, method: .GET, headers: headers)
+                    return Int(try await HTTPClient.shared.execute(request, timeout: .seconds(3)).status.code)
+                }
+                #expect(try await rejected(AgentCodexWebSocketService.path, bearer: nil) == 401)
+                #expect(try await rejected(AgentCodexWebSocketService.path, bearer: "invalid-fixture-token") == 401)
+                #expect(try await rejected(AgentCodexWebSocketService.path, bearer: token, identity: false) == 400)
+                #expect(try await rejected("/unrelated", bearer: token) == 403)
+                #expect(try await rejected(AgentCodexWebSocketService.path, bearer: nil, upgrade: false) == 400)
+                let first = try await routes.agentModelScopes.claimCodex(token: token)
+                #expect(first.index == 1)
+                _ = await routes.agentModelScopes.revoke(token: token)
+                #expect(try await rejected(AgentCodexWebSocketService.path, bearer: token) == 401)
+            }
+        }
     }
 
     @Test func incrementalHTTPFallbackFailsBeforeUpstreamOrBudget() async throws {
