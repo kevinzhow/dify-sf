@@ -32,7 +32,8 @@ import 'protocol.dart';
 import 'report_progress.dart';
 import 'run_store.dart';
 import 'sandbox/sandbox.dart';
-import 'sandbox/shellctl.dart' show JobResult, ShellctlException;
+import 'sandbox/shellctl.dart'
+    show JobResult, ShellctlClient, ShellctlException;
 import 'sandbox/shell_tools.dart';
 import 'view_image.dart';
 
@@ -513,6 +514,7 @@ class AgentRun {
           'name': 'codex-cli',
           'version': officialCodexVersion,
           'sha256': officialCodexSha256,
+          'transport': r.model.websocket ? 'websocket' : 'http',
         },
       } else if (r.harnessStyle == HarnessStyle.codex)
         'model_wire': switch (selectWire(r)) {

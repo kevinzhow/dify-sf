@@ -232,12 +232,16 @@ class ModelSpec {
           : _object(json['parameters'], 'model.parameters'),
       apiType = _optString(json, 'api_type', 'model'),
       wire = _optString(json, 'wire', 'model'),
+      transport = _optString(json, 'transport', 'model'),
       contextWindow = _optPositiveInt(json, 'context_window', 'model'),
       maxOutputTokens = _optPositiveInt(json, 'max_output_tokens', 'model'),
       reasoningEfforts = _optStrings(json, 'reasoning_efforts', 'model'),
       inputModalities = _optStrings(json, 'input_modalities', 'model') {
     if (wire != null && wire != 'plugin' && wire != 'responses') {
       throw invalidRequest('model.wire must be "plugin" or "responses"');
+    }
+    if (transport != null && transport != 'http' && transport != 'websocket') {
+      throw invalidRequest('model.transport must be "http" or "websocket"');
     }
   }
 
@@ -256,6 +260,17 @@ class ModelSpec {
   /// `plugin` (`llm/invoke`) or `responses` (`POST /inner/agent/responses`);
   /// without it the `codex` style chooses from [apiType] and [provider].
   final String? wire;
+
+  /// `model.transport` (optional): how the official Codex runtime's Codex
+  /// talks to the gateway's Codex entry: `http` (one `POST …/responses` per
+  /// model call, each with the whole conversation; the default) or
+  /// `websocket` (the Responses WebSocket: `previous_response_id` and only
+  /// the new items). `websocket` needs `harness_style: codex` and the
+  /// official runtime.
+  final String? transport;
+
+  /// Whether the official Codex runtime uses the Responses WebSocket.
+  bool get websocket => transport == 'websocket';
 
   /// `model.context_window` and `model.max_output_tokens` (optional, from
   /// the model schema): accepted and checked; used by compaction later.
@@ -633,6 +648,19 @@ class OperationRequest {
       throw invalidRequest(
         'model.run_token is required for harness_style "codex"',
       );
+    }
+    if (model.websocket) {
+      if (harnessStyle != HarnessStyle.codex) {
+        throw invalidRequest(
+          'model.transport "websocket" needs harness_style "codex"',
+        );
+      }
+      if (!official) {
+        throw invalidRequest(
+          'model.transport "websocket" needs the official Codex runtime '
+          '(AGENT_CODEX_RUNTIME=official)',
+        );
+      }
     }
     if (harnessStyle == HarnessStyle.codex &&
         model.parameters.containsKey('reasoning_effort')) {

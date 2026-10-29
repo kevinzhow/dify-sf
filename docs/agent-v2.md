@@ -224,7 +224,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 
 | `event` | `data` |
 |---|---|
-| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style", "model_wire"?, "runtime"?}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex`; with the official Codex runtime `model_wire.wire` is `responses` and `runtime` is `{"name": "codex-cli", "version": "0.163.0", "sha256", "skills"?, "context_window", "context_window_source", "model", "reasoning_effort", "request_reasoning_effort"?, "session"?}`; `session` with `codex_session.retain` (see [Codex session retained across rounds](#codex-session-retained-across-rounds)); `context_window` is the catalog entry's and `context_window_source` `operation`, `bundled` or `fallback` (see [Codex runtime](#codex-runtime)); `skills` (names, sorted) when the profile declares `codex.skills_dirs`; `model` and `reasoning_effort` as Codex's `thread/start` answered them, `request_reasoning_effort` the level Codex sends when it differs (`ultra`). With the official runtime `run_started` is written once Codex has started the thread, still before any other event; a run that fails earlier writes it without these fields (see [Codex runtime](#codex-runtime)) |
+| `run_started` | `{"model", "call_index_base", "executor_profile", "harness_style", "model_wire"?, "runtime"?}`; `call_index_base` is 0 (call indexes of the run start at 1); `executor_profile` is the resolved profile name; `harness_style` is `dify` or `codex`; with the official Codex runtime `model_wire.wire` is `responses` and `runtime` is `{"name": "codex-cli", "version": "0.163.0", "sha256", "transport", "skills"?, "context_window", "context_window_source", "model", "reasoning_effort", "request_reasoning_effort"?, "session"?}`; `transport` is `http` or `websocket` (`model.transport`, see [Codex runtime](#codex-runtime)); `session` with `codex_session.retain` (see [Codex session retained across rounds](#codex-session-retained-across-rounds)); `context_window` is the catalog entry's and `context_window_source` `operation`, `bundled` or `fallback` (see [Codex runtime](#codex-runtime)); `skills` (names, sorted) when the profile declares `codex.skills_dirs`; `model` and `reasoning_effort` as Codex's `thread/start` answered them, `request_reasoning_effort` the level Codex sends when it differs (`ultra`). With the official runtime `run_started` is written once Codex has started the thread, still before any other event; a run that fails earlier writes it without these fields (see [Codex runtime](#codex-runtime)) |
 | `thought` | `{"text"}`: reasoning of the model; never part of the answer. One per model call, written when the call ends (also when it is cancelled); reasoning longer than 16 KiB of UTF-8 is split into several, cut only between code points |
 | `tool_call` | `{"id", "name", "phase": "started" \| "finished", "input"?, "output"?, "error"?}`; `id` is the provider's ID |
 | `model_call` | `{"invocation_id", "usage", "prompt"}` after each model call; `prompt` is `{"messages", "prefix_stable", "first_changed_message"}` (see [Prompt cache](#prompt-cache)). Not emitted by the official Codex runtime: the Swift server records those calls from its gateway |
@@ -550,12 +550,14 @@ binary ends the run `sandbox_error`.
 | `model.name` | Codex's `model`; the gateway checks it against the run's model configuration |
 | `model.parameters.reasoning_effort` | `none` … `max`, or `ultra` (Codex resolves it from the catalog: the model's `multi_agent_reasoning_effort` or `max`, and turns on sub-agents for that run only). `persistent` is refused (`422`) |
 | `model.context_window`, `model.reasoning_efforts`, `model.input_modalities` | Optional; written into Codex's catalog entry (context window; supported levels; `["text", "image"]` or `["text"]`) |
+| `model.transport` | Optional `"http"` (the same as absent) or `"websocket"`: how Codex talks to the gateway's Codex entry. `http`: one `POST <codex_gateway_url>/responses` per model call, each with the whole conversation (Codex's HTTP path never sends `previous_response_id`). `websocket`: Codex's Responses WebSocket at `<codex_gateway_url>/responses` (`ws://`, `wss://`), one socket for the run's model calls, each request after the first with `previous_response_id` and only the new input items; a fallback to HTTP ends the run (see [Codex over the Responses WebSocket](#codex-over-the-responses-websocket)). `"websocket"` needs `harness_style: codex` and the official runtime, another value is refused (`400 invalid_request` both). In the request digest; echoed in `run_started.runtime.transport`. The Swift server sends `"websocket"` only once its gateway accepts the upgrade |
 | `tools.shell`, `tools.view_image`, `tools.update_plan`, `tools.report_progress` | Codex's shell and `apply_patch`, `view_image`, `update_plan`; `report_progress` as a Codex dynamic tool. `tools.ask_human` is ignored: no question tool in this step |
 
 **Per-run setup** in the sandbox (`CODEX_HOME=/home/dify/agent/.codex-runs/<run_id>`, removed after the run however
 it ended, as the connection is closed and the app-server job ended, also after an unexpected error):
 `config.toml` (provider `difysf`: `base_url` = the Codex entry, `wire_api = "responses"`, `env_key =
-"DIFYSF_RUN_TOKEN"`, `supports_websockets = false`, `request_max_retries = 2` and `stream_max_retries = 2` (Codex's
+"DIFYSF_RUN_TOKEN"`, `supports_websockets = false` (`true` with `model.transport: websocket`, see [Codex over the
+Responses WebSocket](#codex-over-the-responses-websocket)), `request_max_retries = 2` and `stream_max_retries = 2` (Codex's
 defaults 4 and 5): every retried request or stream is another POST the gateway counts against `max_turns`, so a run
 loses at most a few calls to a failing provider; request retries (5xx, transport) are silent, stream retries are
 `error` notifications with `willRetry` (`model_retry`); `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`
@@ -590,7 +592,8 @@ MCP-dependency prompt is off. Skills whose `SKILL.md` Codex could not parse are 
 one Codex itself would pick (longest slug prefix, then after one `namespace/` segment), else `gpt-6-astra` for
 `gpt-6*` names (as the port did), else Codex's fallback metadata (`prompt.md`, `unified_exec`); renamed to `model.name`,
 with the operation's facts above, Direct tools (`tool_mode` unset: the code-mode host is not installed), no
-Responses-lite request shape, no WebSocket preference, no service tiers, and `apply_patch` as Codex's freeform tool
+Responses-lite request shape, no WebSocket preference (`prefer_websockets: false`, which 0.163.0 does not read: the
+provider's `supports_websockets` decides), no service tiers, and `apply_patch` as Codex's freeform tool
 (with the shell; DeepSeek accepts no other custom tool). The context window Codex compacts by and stops at is
 `model.context_window`, else the bundled entry's, else Codex's fallback of 272000 tokens whatever the model has: that
 fallback is kept (configs without the field keep working) but logged, and `run_started.runtime` names the window and
@@ -681,6 +684,91 @@ with `willRetry`, every thread); every other `usageLimitExceeded` ends it `model
 provider quota, "Quota exceeded…", a billing or plan limit, or an unmarked refusal before `max_turns` calls). Codex's
 silent request retries count at the gateway but are not seen here: until the gateway sends the mark, a call limit
 reached through such retries is reported `model_quota`.
+
+### Codex over the Responses WebSocket
+
+With `model.transport: "websocket"` (absent or `"http"`: the HTTP transport above; the Swift server sends it once its
+gateway accepts the upgrade) Codex talks to the gateway's Codex entry over Codex's Responses WebSocket. Codex's HTTP path
+sends the whole conversation on every model call (`store: false`, no `previous_response_id`); on the WebSocket each
+request after a socket's first carries `previous_response_id` and only the new input items. Codex 0.163.0 behaves as
+follows (source read at `rust-v0.163.0`, checked with the binary by `test/codex_websocket_binary_test.dart`):
+
+- It opens `<codex_gateway_url>/responses` (`http://` becomes `ws://`, `https://` `wss://`) with `Authorization: Bearer
+  <model.run_token>`, `OpenAI-Beta: responses_websockets=2026-02-06`, `X-DifySF-Require-Incremental: v1` (below) and
+  its own headers (`session-id`, `thread-id`, `x-client-request-id`, `x-codex-turn-metadata`, `x-codex-window-id`,
+  `x-codex-beta-features`, `originator`, `User-Agent`), offering permessage-deflate. Text frames, one JSON event each.
+- When the thread starts it connects (a preconnect) and sends a warm-up `response.create` with `"generate": false` and
+  the base instructions (the whole prompt so far); the gateway answers `response.created` and `response.completed`
+  without output. The turn's first request then continues the warm-up (`previous_response_id` = its ID, the new items:
+  the turn's context and the task), and every later request the previous response (for example only the `function_call_output`). The socket is
+  kept for the run's model calls; a new socket (after a drop, an error event or `previous_response_not_found`) starts
+  with a full request. Measured with the scripted gateway: warm-up frame 25844 bytes (a 21338-byte instructions
+  item, the tools and metadata), the turn's first request 6159 bytes, the follow-up with the command's output 5252 bytes,
+  where an HTTP POST carries the whole conversation each time (27607 bytes for the turn's first request).
+- It switches the session to HTTP for good, sub-agents included, in two cases: the gateway answers the upgrade `426`
+  (silently: no app-server notification), or a model request still fails on the WebSocket once the stream retries
+  (`stream_max_retries = 2`) are used up (the `warning` notification "Falling back from WebSockets to HTTPS transport.
+  <error>"). In both cases it sends the request it was making over HTTP at once, with the whole conversation. A `400`
+  ends the turn; other upgrade failures (404, 5xx, a refused connection) are retried as stream errors (`error` with `willRetry`, the
+  first one not notified by Codex: `model_retry` events), each a new upgrade.
+
+**Configuration.** The provider in `config.toml` gets `supports_websockets = true` (the only switch in 0.163.0: its
+`responses_websockets` and `responses_websockets_v2` features are removed and the catalog's `prefer_websockets` is not
+read), `websocket_connect_timeout_ms = 15000` (Codex's default, written so that the startup check below agrees) and
+`http_headers = { "X-DifySF-Require-Incremental" = "v1" }`; everything else as with HTTP. The app-server runs with
+`RUST_LOG=error,codex_core::client=warn,codex_api::endpoint::responses_websocket=info` and `LOG_FORMAT=json`: its
+stderr (merged into the shellctl job's output) then has one JSON line per handshake ("successfully connected to
+websocket: <url>", "failed to connect to websocket: <error>, url: <url>") and the line "falling back to HTTP" of
+`codex_core::client`, which Codex writes for every switch, also the silent one. The commands Codex runs do not inherit
+these two variables (`shell_environment_policy.exclude`); they get the run's own values back (`env` or the profile's,
+else the sandbox's) through `shell_environment_policy.set`.
+
+**`X-DifySF-Require-Incremental: v1`** (agreed with Winnie, 2026-10-29). Codex sends provider headers on the upgrade
+and on every HTTP POST, so the header marks every model call of a WebSocket run. The gateway refuses a POST carrying
+it, before billing or counting it, with `400 {"error": {"type": "invalid_request_error", "code":
+"incremental_required", "message": …}}`: Codex does not retry a 400 and its turn fails with the body as the message.
+That closes the race agent_service cannot win alone (Codex sends the HTTP request right after switching); the
+detection below stays as a second line.
+
+**A fallback to HTTP ends the run.** agent_service follows the app-server job's output (shellctl `wait`, which answers
+0.5 s after new output) and reads Codex's notifications. The `warning` above, or the log line, interrupts the turn
+(`turn/interrupt`) and ends the run `failed`, `error_type: model_error`, message "Codex fell back from WebSockets to
+HTTP: <why>; <what went over HTTP>":
+
+- Before `turn/start` the run waits until Codex's startup handshake is decided in its log: answered (the turn starts),
+  failed (Codex tries again in the turn; the turn starts one second later unless the switch follows), or switched; with
+  no handshake line within the connect timeout and 5 s the turn starts and the run log says so. A `426` there ends the
+  run before its turn: "…: the WebSocket handshake failed (HTTP error: 426 Upgrade Required); the run ended before its
+  turn started: no request went over HTTP" (no POST reaches the gateway).
+- During the turn: "…: the WebSocket handshake failed (HTTP error: 426 Upgrade Required)" (a reconnect answered 426) or
+  "…: the model request kept failing on the WebSocket and Codex's stream retries (2) were used up: <Codex's error>",
+  then "Codex sends the model request it was making over HTTP right after switching (the whole conversation, marked
+  X-DifySF-Require-Incremental for the gateway to refuse); the turn was interrupted". With the binary, the interrupt
+  sometimes beats that POST; when it gets out, the gateway's refusal ends the turn.
+- A switch read after the turn ended (the log is read once more before the result, so a turn that completed or failed
+  in between still ends the run this way): "Codex sent the model request it was making over HTTP (…) and the gateway
+  refused it (incremental_required); the turn ended", or "…for the gateway to refuse); the turn ended".
+- A turn that failed with the gateway's `incremental_required` without the log showing a switch: "Codex fell back from
+  WebSockets to HTTP: the gateway refused its HTTP model request (X-DifySF-Require-Incremental, incremental_required);
+  Codex: <message>".
+
+`model_error`, not a new `error_type`: it is the model channel that failed, and the Swift server already handles
+`model_error`; a new type would change both sides of the protocol for this one case. Handshakes, their failures and
+the switch are in the run log, with a closing line "codex transport websocket: <n> connection(s), <m> failed
+handshake(s)[, fell back to HTTP]"; `run_started.runtime.transport` is `websocket`.
+
+**Gateway entry over the WebSocket** (Swift, Winnie's task #133; what agent_service and its tests assume, the scripted
+gateway's Codex entry doing the same): `GET <codex_gateway_url>/responses` upgrade with the run token (`401` otherwise)
+and the beta header; `426` while the entry is off. One `response.create` at a time per socket; `generate: false`
+answered `response.created` + `response.completed` (no output, not a model call); every other request answered with
+`response.created`, the output items (`response.output_item.done` for each, exactly as Codex will send them back), then
+`response.completed` with the same `response.id`. `previous_response_id` names a response completed earlier on the same
+socket (`store: false`: a per-socket cache of input plus output items is enough); an unknown one is an `error` event
+with `status` and `error.code: previous_response_not_found`, which Codex retries once with a full request on a new
+socket. Error events carry `status` (an event without it is ignored and Codex keeps waiting); usage limits as over
+HTTP (`429`, `usage_limit_reached`, the call-limit header in the event's `headers`; not yet checked with the binary). Codex sends no pings and its idle
+timeout (300 s) counts only JSON events. The call counting, token budget and run-token checks are those of the HTTP
+entry, per `response.create` that generates.
 
 ### Codex session retained across rounds
 
@@ -789,6 +877,7 @@ For the Swift server's harness selector, model channel and context-capacity fiel
 | `model.parameters.reasoning_effort` | `none` … `max` | With `codex`: `ultra`, `persistent`, other strings or non-strings `422 unsupported_reasoning_effort`. Forwarded unchanged on the plugin wire (the gateway's byte-equality check still holds), sent as `reasoning.effort` on the native wire |
 | `model.wire` | `"plugin"` \| `"responses"`, optional | The channel the Swift server chose; wins over the automatic choice. `"responses"` needs `codex` (`400 invalid_request`); another value `400 invalid_request` |
 | `model.api_type` | string, optional (e.g. `"responses"`) | The credential's API mode; used for the automatic choice when `model.wire` is absent |
+| `model.transport` | `"http"` \| `"websocket"`, optional | The official Codex runtime's transport to the gateway's Codex entry (see [Codex runtime](#codex-runtime)); absent = `http`. `"websocket"` needs `codex` and the official runtime (`400 invalid_request`); another value `400 invalid_request`. In the request digest; echoed in `run_started.runtime.transport` |
 | `model.context_window`, `model.max_output_tokens` | integers ≥ 1, optional | From the model schema; checked (`400 invalid_request`) and kept in the request; used by compaction in a later step |
 
 The resolved channel is echoed in `run_started.model_wire` (`codex` only). The Swift server should check that the
@@ -1375,3 +1464,42 @@ operational mount paths and per-run measurements belong in the deployment's priv
 A feasibility check of Genkit Dart (scripted OpenAI-compatible host, and one real model over `genkit_openai`) passed:
 tool loop with streaming, JSON-schema output, interrupt and resume of the original tool call in a new process, cancel
 during streaming, image input. It did not exercise the Genkit → Swift → plugin daemon path; phase 1 does.
+
+### API-side paired WebSocket gateway
+
+The optional internal listener `COLLAB_AGENT_CODEX_WEBSOCKET_PORT` (default `0`, disabled) uses SwiftNIO and the
+same active execution capability as the HTTP Codex entry. With it enabled, an official OpenAI Responses endpoint
+(`https://api.openai.com/v1/responses`) selects `model.transport: "websocket"` in the operation envelope. Other
+configured endpoints keep their existing HTTP transport. Enable it only together with the matching Agent version
+and `agent_service/deploy/codex-websocket-gateway.conf.template`: GET upgrades go to this internal listener; POST
+continues to the existing API port. The proxy exposes only the exact Codex Responses path, rejects queries, strips
+all other caller headers and forwards the incremental-required header on POST as well as on the upgrade.
+
+Each authenticated downstream socket owns exactly one upstream Responses socket with full TLS hostname and
+certificate verification, a 15-second connect/upgrade deadline and no redirect. Provider credentials are read only
+by the API process. The client request still undergoes active workflow/durable-owner checks, model and reasoning
+pinning, output caps and execution-scoped file authorization before forwarding. The initial frame retains the
+128 MiB JSON / 96 MiB decoded-file budgets. Frame aggregation and async writers apply bounded backpressure;
+provider events are capped at 16 MiB. No conversation or image cache is created in the gateway.
+
+`previous_response_id`, delta `input`, `store:false`, opaque output items and encrypted reasoning pass through on
+that socket. A `generate:false` warmup is allowed once and does not consume a model-call slot. Each generating
+create consumes a normal call slot, including failed upstream calls. Usage is recorded before completion reaches
+Codex. Events record transport, byte counts and whether a previous id was supplied; never request content or
+credential values. A gateway call-limit error has status 429, `error.type: usage_limit_reached`,
+`error.code: agent_call_limit` and the existing Codex promo marker. Upstream quota errors do not acquire that marker.
+
+The default loss policy is strict: the capability remembers which `session-id`/`thread-id` lanes have submitted a
+request. A reconnect on such a lane receives fatal status 400 `agent_incremental_context_lost`, even when its first
+request omits `previous_response_id`. This prevents Codex's automatic full-context replay from creating an extra
+paid request. Child-agent lanes remain independent, with at most eight open sockets per capability. Revocation,
+ownership change, cancellation or the workflow deadline closes idle sockets as well as active streams. Unknown
+JSON keepalives every 15 seconds prevent Codex's message timer from confusing long reasoning with a dead socket;
+WebSocket pings alone do not reset that timer in the pinned client.
+
+Ordinary HTTP requests carrying `X-DifySF-Require-Incremental` fail with 400 `incremental_required` before spending
+any call slot or contacting the provider. There is no automatic HTTP fallback or full-history reconstruction.
+A disconnected `store:false` connection loses its local continuation cache. Incremental transport saves repeated
+network payloads; previous input tokens remain billable under the API's normal usage rules. See the official
+[WebSocket guide](https://developers.openai.com/api/docs/guides/websocket-mode) and
+[conversation-state guide](https://developers.openai.com/api/docs/guides/conversation-state).

@@ -15,16 +15,19 @@ enum AgentCodexGatewayLimits {
 }
 
 extension AgentResponsesRequest {
-    init(codexBody value: JSONValue, scope: AgentModelScope) throws {
+    init(codexBody value: JSONValue, scope: AgentModelScope, incremental: Bool = false) throws {
         guard scope.harnessStyle == "codex", scope.modelWire == "responses",
               var fields = value.object, fields["model"] == .string(scope.model),
               fields["stream"] == true, fields["store"] == false,
-              let input = fields["input"]?.array, !input.isEmpty,
+              let input = fields["input"]?.array, (!input.isEmpty || (incremental && fields["previous_response_id"]?.string != nil)),
               input.count <= AgentModelGatewayLimits.messages else { throw AgentModelGatewayRequest.invalid() }
-        let allowed: Set<String> = ["model", "input", "instructions", "tools", "tool_choice", "parallel_tool_calls",
+        var allowed: Set<String> = ["model", "input", "instructions", "tools", "tool_choice", "parallel_tool_calls",
             "reasoning", "store", "stream", "include", "prompt_cache_key", "text", "max_output_tokens",
             "temperature", "top_p", "stream_options", "service_tier", "client_metadata"]
-        guard Set(fields.keys).isSubset(of: allowed),
+        if incremental { allowed.formUnion(["previous_response_id", "generate"]) }
+        guard fields["previous_response_id"] == nil || (fields["previous_response_id"]?.string.map { !$0.isEmpty && $0.utf8.count <= 256 } ?? false),
+              fields["generate"] == nil || fields["generate"] == false,
+              Set(fields.keys).isSubset(of: allowed),
               fields["instructions"] == nil || fields["instructions"]?.string != nil,
               fields["prompt_cache_key"] == nil || (fields["prompt_cache_key"]?.string.map { $0.utf8.count <= 512 } ?? false),
               fields["include"]?.array.map({ $0.count <= 16 && $0.allSatisfy { ($0.string?.utf8.count ?? 1000) <= 128 } }) ?? (fields["include"] == nil)
@@ -76,6 +79,16 @@ extension AgentResponsesRequest {
 }
 
 extension Routes {
+    func requireActiveAgentCodexScope(_ scope: AgentModelScope) async throws {
+        guard scope.harnessStyle == "codex", scope.modelWire == "responses" else { throw AgentModelGatewayRequest.invalid() }
+        if scope.durableOwner != nil { try await requireDurableAgentScope(scope) }
+        guard let run = try await store.workflowRun(doc: scope.appID, id: scope.workflowRunID),
+              run.status == "running", run.type == "workflow" else {
+            throw ServerError.forbidden(code: "agent_run_inactive", message: "The workflow run is not active")
+        }
+        _ = try await liveApp(scope.appID, viewer: scope.userID)
+    }
+
     func authenticateAgentCodex(_ req: Request) throws -> String {
         guard config.agentService.isConfigured else {
             throw ServerError.http(status: 503, code: "agent_not_configured", message: "The agent service is not configured")
@@ -90,7 +103,8 @@ extension Routes {
     }
 
     func recordCodexModelCall(scope: AgentModelScope, claim: AgentModelScopes.Claim, phase: String,
-                             body: JSONObject, model: String, usage: LLMUsage?, status: Int?) async throws {
+                             body: JSONObject, model: String, usage: LLMUsage?, status: Int?,
+                             transport: String = "http", receivedBytes: Int? = nil, forwardedBytes: Int? = nil) async throws {
         guard let session = try await store.agentSession(execution: scope.executionID) else {
             if scope.durableOwner != nil { throw AgentModelGatewayRequest.invalid() }
             return // Standalone gateway fixtures have no durable Agent session.
@@ -99,6 +113,10 @@ extension Routes {
             "provider": .string(scope.provider), "model": .string(model), "wire": "responses", "harness_style": "codex",
             "reasoning_effort": body["reasoning"]?["effort"] ?? .null,
             "include": body["include"] ?? .array([]), "max_output_tokens": body["max_output_tokens"] ?? .null]
+        data["transport"] = .string(transport)
+        data["has_previous_response_id"] = .bool(body["previous_response_id"] != nil)
+        if let receivedBytes { data["received_bytes"] = .int(receivedBytes) }
+        if let forwardedBytes { data["forwarded_bytes"] = .int(forwardedBytes) }
         if let usage { data["usage"] = usage.json }
         if let status { data["http_status"] = .int(status) }
         try await recordAgentEvent(session: session, run: "codex-gateway:" + scope.operationID,

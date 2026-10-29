@@ -13,9 +13,12 @@ public struct AgentServiceConfig: Sendable {
     public var timeoutSeconds: Int
     public var timeoutSecondsMax: Int
     public var inlineEnabled: Bool
+    /// Optional internal WebSocket listener. Zero keeps the existing HTTP path unchanged.
+    public var codexWebsocketPort: Int
     public var shellEnabled: Bool
 
     public init(reader: ConfigReader) {
+        codexWebsocketPort = reader.int(forKey: "collab.agent.codex.websocket.port", default: 0)
         shellEnabled = reader.bool(forKey: "collab.agent.shell.enabled", default: false)
         inlineEnabled = reader.bool(forKey: "collab.agent.inline.enabled", default: false)
         url = reader.string(forKey: "collab.agent.service.url", default: "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -179,6 +182,10 @@ actor AgentModelScopes {
         var retryableCalls: [Int: Int] = [:]
         var invocations: [Int: String] = [:]
         var codexActive: Set<Int> = []
+        var sockets: [String: Task<Void, Never>] = [:]
+        var socketLanes: Set<String> = []
+        var startedSocketLanes: Set<String> = []
+        var warmupUsage: [String: LLMUsage] = [:]
     }
     struct Claim: Sendable { var digest: String; var scope: AgentModelScope; var index: Int; var attempt: Int = 1; var codex: Bool = false }
     private var entries: [String: Entry] = [:]
@@ -193,7 +200,7 @@ actor AgentModelScopes {
         if let generation = generations[scope.executionKey], scope.generation < generation { throw Self.stale() }
         if scope.generation > (generations[scope.executionKey] ?? 0) {
             for (digest, entry) in entries where entry.scope.executionKey == scope.executionKey {
-                for task in entry.tasks.values { task.cancel() }
+                for task in Array(entry.tasks.values) + Array(entry.sockets.values) { task.cancel() }
                 entries[digest] = nil
             }
         }
@@ -286,6 +293,39 @@ actor AgentModelScopes {
         entries[claim.digest] = entry
     }
 
+    /// No implicit full-history replay after a socket that submitted a request
+    /// disconnects. Only identities/flags are retained, never conversation items.
+    func openCodexSocket(token: String, lane: String, id: String, task: Task<Void, Never>) throws {
+        let digest = Tokens.sha256(token)
+        guard var entry = entries[digest], entry.scope.expiresAt > Date(),
+              generations[entry.scope.executionKey] == entry.scope.generation else { throw Self.denied() }
+        guard !entry.startedSocketLanes.contains(lane) else {
+            throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
+        }
+        guard entry.sockets.count < 8, !entry.socketLanes.contains(lane), entry.startedSocketLanes.count < 256 else {
+            throw AgentCodexSocketError(status: 400, code: "agent_socket_limit")
+        }
+        entry.socketLanes.insert(lane); entry.sockets[id] = task; entries[digest] = entry
+    }
+
+    func startCodexSocket(token: String, lane: String) throws {
+        let digest = Tokens.sha256(token)
+        guard var entry = entries[digest], entry.socketLanes.contains(lane) else { throw Self.denied() }
+        entry.startedSocketLanes.insert(lane); entries[digest] = entry
+    }
+
+    func observeCodexWarmupUsage(token: String, lane: String, usage: LLMUsage) {
+        let digest = Tokens.sha256(token)
+        guard var entry = entries[digest], entry.startedSocketLanes.contains(lane) else { return }
+        entry.warmupUsage[lane] = usage; entries[digest] = entry
+    }
+
+    func closeCodexSocket(token: String, lane: String, id: String) {
+        let digest = Tokens.sha256(token)
+        guard var entry = entries[digest] else { return }
+        entry.socketLanes.remove(lane); entry.sockets[id] = nil; entries[digest] = entry
+    }
+
     /// Official Codex owns retry identities. Every accepted HTTP POST consumes
     /// a new slot, including retries and calls made by child agents.
     func claimCodex(token: String) throws -> Claim {
@@ -314,14 +354,21 @@ actor AgentModelScopes {
 
     func revokeExecution(_ execution: String, generation: Int) {
         for (digest, entry) in entries where entry.scope.executionID == execution && entry.scope.generation == generation {
-            for task in entry.tasks.values { task.cancel() }; entries[digest] = nil
+            for task in Array(entry.tasks.values) + Array(entry.sockets.values) { task.cancel() }; entries[digest] = nil
         }
     }
 
     func revoke(token: String) -> LLMUsage {
         guard let entry = entries.removeValue(forKey: Tokens.sha256(token)) else { return .empty }
-        for task in entry.tasks.values { task.cancel() }
-        return entry.usage.keys.sorted().reduce(.empty) { $0.plus(entry.usage[$1]!) }
+        for task in Array(entry.tasks.values) + Array(entry.sockets.values) { task.cancel() }
+        var total = entry.usage.keys.sorted().reduce(LLMUsage.empty) { $0.plus(entry.usage[$1]!) }
+        // An absent/zero-token warmup is not an unknown generating call.
+        // Adding `.empty` would erase known cache/reasoning detail counters.
+        for lane in entry.warmupUsage.keys.sorted() {
+            let usage = entry.warmupUsage[lane]!
+            if usage.totalTokens > 0 || usage.totalPrice != .zero { total = total.plus(usage) }
+        }
+        return total
     }
 
     private static func denied() -> ServerError {
@@ -351,9 +398,19 @@ extension Routes {
                 }
             }
         }
+        // If no internal socket listener is configured, pinned Codex recognizes
+        // this explicit upgrade refusal. Incremental-marked POST still fails.
+        routes.get("inner", "agent", "codex", "v1", "responses") { _ in
+            rawJSON(["error": ["code": "websocket_not_configured", "message": "The WebSocket listener is not configured"]], status: .init(code: 426))
+        }
         routes.post("inner", "agent", "codex", "v1", "responses") { req in
             await handle(req, cancellable: true) {
-                do { return try await invokeAgentResponses(req, codex: true) }
+                do {
+                    guard req.headers[HTTPField.Name("X-DifySF-Require-Incremental")!] == nil else {
+                        throw ServerError.http(status: 400, code: "incremental_required", message: "This operation requires the incremental WebSocket transport")
+                    }
+                    return try await invokeAgentResponses(req, codex: true)
+                }
                 catch is AgentCodexCallLimit {
                     var response = rawJSON(["error": ["type": "usage_limit_reached", "code": "agent_call_limit", "message": "Agent model call limit reached"]], status: .init(code: 429))
                     // Codex drops the body's code for this error type but retains

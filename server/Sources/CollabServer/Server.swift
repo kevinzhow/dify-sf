@@ -77,6 +77,9 @@ public enum CollabServerMain {
         let agentMaintenanceServices: [ServiceGroupConfiguration.ServiceConfiguration] = config.agentService.isConfigured
             ? [.init(service: Named(name: "agent-maintenance", base: AgentMaintenance(routes: routes, readiness: databaseReady), logger: logger))]
             : []
+        let socketServices: [ServiceGroupConfiguration.ServiceConfiguration] = config.agentService.isConfigured && config.agentService.codexWebsocketPort > 0
+            ? [.init(service: Named(name: "codex-websocket", base: AgentCodexWebSocketService(routes: routes,
+                host: config.httpHost, port: config.agentService.codexWebsocketPort), logger: logger))] : []
         let group = ServiceGroup(
             configuration: .init(
                 services: [
@@ -85,7 +88,7 @@ public enum CollabServerMain {
                         staleRunSeconds: config.runtimeMaxTimeSeconds + 300, blobs: routes.blobs,
                         afterMigration: startupWork, readiness: databaseReady), logger: logger)),
                     .init(service: Named(name: "streams", base: StreamMaintenance(registry: registry, intervalSeconds: config.ssePingSeconds), logger: logger)),
-                ] + agentMaintenanceServices + [
+                ] + agentMaintenanceServices + socketServices + [
                     // Protocol 1.16: node and global human-input deadlines, scanned in the product, not only in tests.
                     .init(service: Named(name: "human-input-timeouts",
                                          base: HumanInputTimeouts(routes: routes, intervalSeconds: config.humanInputScanSeconds, logger: logger, readiness: databaseReady),

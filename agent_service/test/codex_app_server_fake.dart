@@ -21,8 +21,14 @@ class FakeCodexAppServer {
     this.threadStartReply,
     this.threadResumeError,
     this.threadResumeId,
+    this.websocketStartup,
     required this.turn,
   });
+
+  /// With `supports_websockets = true` in config.toml: the log lines the
+  /// app-server writes when the thread starts (its startup handshake).
+  /// Default: one answered handshake ([wsConnected]).
+  final List<Map<String, Object?>>? websocketStartup;
 
   /// The `model` and `reasoningEffort` of the `thread/start` reply (default:
   /// what the operation asked for).
@@ -58,6 +64,11 @@ class FakeCodexAppServer {
   /// the app-server starts.
   String? configModel;
   String? configEffort;
+
+  /// The written config.toml, and whether it enables the WebSocket.
+  String? configToml;
+  bool get configWebsocket =>
+      configToml?.contains('supports_websockets = true') ?? false;
 
   static final _listen = RegExp(r'app-server --listen ws://0\.0\.0\.0:(\d+)');
 
@@ -99,6 +110,7 @@ class FakeCodexAppServer {
     ).firstMatch(script);
     if (m == null || !m.group(1)!.endsWith('/config.toml')) return;
     final toml = utf8.decode(base64.decode(m.group(2)!.replaceAll('\n', '')));
+    configToml = toml;
     configModel = RegExp(
       r'^model = "(.*)"$',
       multiLine: true,
@@ -153,6 +165,14 @@ class FakeCodexAppServer {
     final id = m['id'];
     if (id == null) return;
     void reply(Object? result) => _send({'id': id, 'result': result});
+    switch (method) {
+      case 'initialize':
+        appServerEnv = job.env;
+      case 'thread/start' || 'thread/resume' when configWebsocket:
+        for (final l in websocketStartup ?? [wsConnected()]) {
+          log(l);
+        }
+    }
     switch (method) {
       case 'thread/start':
         reply(
@@ -220,6 +240,39 @@ class FakeCodexAppServer {
   }
 
   // ---- transcript helpers --------------------------------------------------
+
+  /// The app-server job's environment (kept: the job is deleted when the
+  /// run ends).
+  Map<String, String>? appServerEnv;
+
+  /// The app-server job (its environment and output), while the run runs.
+  FakeJob get job => _shellctl!.jobs.values.firstWhere(
+    (j) => j.script.contains('app-server --listen'),
+  );
+
+  /// Appends a JSON line to the app-server's output (its stderr log).
+  void log(Map<String, Object?> line) => job.output += '${jsonEncode(line)}\n';
+
+  static Map<String, Object?> logLine(String target, String message) => {
+    'timestamp': '2026-10-29T03:00:00.000000Z',
+    'level': 'INFO',
+    'fields': {'message': message},
+    'target': target,
+  };
+
+  static Map<String, Object?> wsConnected() => logLine(
+    'codex_api::endpoint::responses_websocket',
+    'successfully connected to websocket: ws://gw/inner/agent/codex/v1/responses',
+  );
+
+  static Map<String, Object?> wsFailed(String error) => logLine(
+    'codex_api::endpoint::responses_websocket',
+    'failed to connect to websocket: $error, '
+        'url: ws://gw/inner/agent/codex/v1/responses',
+  );
+
+  static Map<String, Object?> wsFallback() =>
+      logLine('codex_core::client', 'falling back to HTTP');
 
   void item(String phase, Map<String, Object?> item, {String? thread}) =>
       notify('item/$phase', {

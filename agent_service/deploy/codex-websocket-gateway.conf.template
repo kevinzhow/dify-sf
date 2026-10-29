@@ -1,0 +1,48 @@
+# Opt-in companion to codex-gateway.conf.template. Render BOTH upstreams:
+# CODEX_UPSTREAM = existing API HTTP listener, CODEX_WS_UPSTREAM = the same
+# API process's COLLAB_AGENT_CODEX_WEBSOCKET_PORT. No host/public port.
+pid /tmp/nginx.pid;
+error_log /dev/stderr warn;
+events { worker_connections 128; }
+http {
+    log_format codex_size 'length=$request_length seconds=$request_time status=$status upstream=$upstream_status';
+    access_log /dev/stdout codex_size;
+    client_body_temp_path /tmp/client_body;
+    proxy_temp_path /tmp/proxy;
+    fastcgi_temp_path /tmp/fastcgi;
+    uwsgi_temp_path /tmp/uwsgi;
+    scgi_temp_path /tmp/scgi;
+    client_max_body_size 128m;
+    upstream codex_http { server ${CODEX_UPSTREAM}; }
+    upstream codex_socket { server ${CODEX_WS_UPSTREAM}; }
+    map $request_method $codex_upstream { default codex_http; GET codex_socket; }
+    map "$request_method:$http_upgrade" $codex_connection { default close; ~*^GET:websocket$ upgrade; }
+    server {
+        listen 3128;
+        location = /inner/agent/codex/v1/responses {
+            if ($request_method !~ ^(GET|POST)$) { return 405; }
+            if ($is_args != "") { return 403; }
+            proxy_pass http://$codex_upstream;
+            proxy_http_version 1.1;
+            proxy_pass_request_headers off;
+            proxy_set_header Host $proxy_host;
+            proxy_set_header Authorization $http_authorization;
+            proxy_set_header Content-Type application/json;
+            proxy_set_header Accept text/event-stream;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $codex_connection;
+            proxy_set_header Sec-WebSocket-Key $http_sec_websocket_key;
+            proxy_set_header Sec-WebSocket-Version $http_sec_websocket_version;
+            proxy_set_header OpenAI-Beta $http_openai_beta;
+            proxy_set_header session-id $http_session_id;
+            proxy_set_header thread-id $http_thread_id;
+            proxy_set_header X-DifySF-Require-Incremental $http_x_difysf_require_incremental;
+            proxy_buffering off;
+            proxy_request_buffering off;
+            proxy_ignore_client_abort off;
+            proxy_read_timeout 10800s;
+            proxy_send_timeout 60s;
+        }
+        location / { return 403; }
+    }
+}

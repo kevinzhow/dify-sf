@@ -81,10 +81,113 @@ const codexOptOutNotifications = [
 const codexRequestMaxRetries = 2;
 const codexStreamMaxRetries = 2;
 
+/// How long Codex waits for a Responses WebSocket handshake (its default,
+/// written into `config.toml` so the run's startup check agrees with it).
+const codexWebsocketConnectTimeoutMs = 15000;
+
+/// The app-server's log settings with `model.transport: websocket`: JSON
+/// lines on stderr (merged into the job's output), Codex's default level
+/// (errors) plus the lines that tell the WebSocket's state
+/// ([codexWebsocketLogEvent]). The commands Codex runs do not inherit them.
+const codexWebsocketLogEnv = {
+  'RUST_LOG':
+      'error,codex_core::client=warn,'
+      'codex_api::endpoint::responses_websocket=info',
+  'LOG_FORMAT': 'json',
+};
+
+/// The provider header of `model.transport: websocket` (`http_headers`, so
+/// Codex sends it on the WebSocket upgrade and on every HTTP POST): the
+/// gateway refuses a model call that carries it over plain HTTP (a Codex
+/// fallback) before billing it, with `400` and [codexIncrementalRequired]
+/// (Codex does not retry a 400; the turn fails).
+const codexIncrementalHeader = 'X-DifySF-Require-Incremental';
+const codexIncrementalHeaderValue = 'v1';
+
+/// The `error.code` of the gateway's refusal of such an HTTP call; Codex
+/// puts the answer's body into the turn's error message.
+const codexIncrementalRequired = 'incremental_required';
+
+/// The start of Codex's `warning` notification when it gives up the
+/// Responses WebSocket after its stream retries (`responses_retry.rs`); the
+/// error follows.
+const codexWebsocketFallbackWarning =
+    'Falling back from WebSockets to HTTPS transport.';
+
+/// What a line of the app-server's JSON log says about the Responses
+/// WebSocket (Codex 0.163.0, `RUST_LOG` of [codexWebsocketLogEnv]).
+enum CodexWebsocketLog {
+  /// `successfully connected to websocket: <url>` (a handshake answered 101).
+  connected,
+
+  /// `failed to connect to websocket: <error>, url: <url>` (the handshake
+  /// failed: an HTTP status such as 426, a refused connection, TLS).
+  connectFailed,
+
+  /// `falling back to HTTP` (`codex_core::client`): Codex switched the
+  /// session to HTTP for good. Logged for every fallback, also the silent
+  /// one after a 426 answer to the upgrade, which sends no notification.
+  fallback,
+}
+
+/// The WebSocket event of one app-server log [line] and its detail (the URL
+/// or the error), or null for any other line.
+({CodexWebsocketLog kind, String detail})? codexWebsocketLogEvent(String line) {
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(line);
+  } on FormatException {
+    return null;
+  }
+  if (decoded is! Map) return null;
+  final target = decoded['target'];
+  final message = (decoded['fields'] as Map?)?['message'];
+  if (target is! String || message is! String) return null;
+  if (target == 'codex_core::client' && message == 'falling back to HTTP') {
+    return (kind: CodexWebsocketLog.fallback, detail: '');
+  }
+  if (!target.startsWith('codex_api::endpoint::responses_websocket')) {
+    return null;
+  }
+  const connected = 'successfully connected to websocket: ';
+  const failed = 'failed to connect to websocket: ';
+  if (message.startsWith(connected)) {
+    return (
+      kind: CodexWebsocketLog.connected,
+      detail: message.substring(connected.length),
+    );
+  }
+  if (message.startsWith(failed)) {
+    final rest = message.substring(failed.length);
+    final url = rest.lastIndexOf(', url: ');
+    return (
+      kind: CodexWebsocketLog.connectFailed,
+      detail: url < 0 ? rest : rest.substring(0, url),
+    );
+  }
+  return null;
+}
+
+/// What the commands Codex runs get for the app-server's log variables
+/// ([codexWebsocketLogEnv], excluded from what they inherit): the run's own
+/// value ([jobEnv]: `env` and the profile's), else the sandbox's
+/// ([sandboxEnv], from its environment); a variable set in neither stays
+/// unset.
+Map<String, String> codexCommandLogEnv(
+  Map<String, String> jobEnv,
+  Map<String, String> sandboxEnv,
+) => {
+  for (final k in codexWebsocketLogEnv.keys) k: ?(jobEnv[k] ?? sandboxEnv[k]),
+};
+
 /// A TOML basic string (JSON's escapes are a subset of TOML's).
 String tomlString(String s) => jsonEncode(s);
 
 /// `config.toml` of one run (docs/agent-v2.md, "Codex runtime").
+/// [websocket]: Codex talks to the gateway over the Responses WebSocket
+/// (`model.transport: websocket`); the app-server then runs with
+/// [codexWebsocketLogEnv], which the commands do not inherit (give their own
+/// values in [commandEnv]).
 String codexConfigToml({
   required String model,
   required String baseUrl,
@@ -95,6 +198,7 @@ String codexConfigToml({
   required bool viewImage,
   required bool updatePlan,
   bool skills = false,
+  bool websocket = false,
   Map<String, String> commandEnv = const {},
 }) {
   final b = StringBuffer()
@@ -115,16 +219,34 @@ String codexConfigToml({
     ..writeln('base_url = ${tomlString(baseUrl)}')
     ..writeln('wire_api = "responses"')
     ..writeln('env_key = "$codexTokenEnv"')
-    ..writeln('supports_websockets = false')
+    // The provider flag alone decides (0.163.0's `responses_websockets*`
+    // features are removed, the catalog's `prefer_websockets` is not read).
+    ..writeln('supports_websockets = $websocket');
+  if (websocket) {
+    b
+      ..writeln(
+        'websocket_connect_timeout_ms = $codexWebsocketConnectTimeoutMs',
+      )
+      ..writeln(
+        'http_headers = { ${tomlString(codexIncrementalHeader)} = '
+        '${tomlString(codexIncrementalHeaderValue)} }',
+      );
+  }
+  final exclude = [
+    codexTokenEnv,
+    'SHELLCTL_*',
+    if (websocket) ...codexWebsocketLogEnv.keys,
+  ];
+  b
     ..writeln('request_max_retries = $codexRequestMaxRetries')
     ..writeln('stream_max_retries = $codexStreamMaxRetries')
     ..writeln()
     // The commands get the node's environment as the other styles do
-    // (Codex's default KEY/SECRET/TOKEN filter off), never the run token or
-    // shellctl's own variables.
+    // (Codex's default KEY/SECRET/TOKEN filter off), never the run token,
+    // shellctl's own variables or the app-server's log settings.
     ..writeln('[shell_environment_policy]')
     ..writeln('ignore_default_excludes = true')
-    ..writeln('exclude = ["$codexTokenEnv", "SHELLCTL_*"]')
+    ..writeln('exclude = [${exclude.map((e) => '"$e"').join(', ')}]')
     ..writeln();
   if (commandEnv.isNotEmpty) {
     b.writeln('[shell_environment_policy.set]');
@@ -296,7 +418,8 @@ String codexContextWindowSource(
 ///   operation when given;
 /// - Direct tools (no code mode: the code-mode host is not installed), no
 ///   Responses-lite request shape and no WebSocket preference (both
-///   ChatGPT-backend features), no service tiers;
+///   ChatGPT-backend features; 0.163.0 does not read `prefer_websockets`:
+///   the provider's `supports_websockets` decides), no service tiers;
 /// - `apply_patch` as Codex's freeform tool (the only custom tool DeepSeek
 ///   accepts), none without the shell.
 Map<String, Object?> codexCatalogEntry({
@@ -517,7 +640,9 @@ class CodexAppServer {
       _send({'method': method, 'params': ?params});
 
   void _onFrame(Object? frame) {
-    if (frame is! String) return;
+    // Frames still arriving after [close] (Codex goes on talking while the
+    // close handshake runs) are dropped: the notification stream is closed.
+    if (frame is! String || isClosed) return;
     final Object? decoded;
     try {
       decoded = jsonDecode(frame);

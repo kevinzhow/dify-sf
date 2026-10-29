@@ -205,6 +205,8 @@ class _OfficialCodexRun {
   /// CODEX_HOME stays when the run retains its session: the session copy
   /// reads the rollout from it. Never throws.
   Future<void> _cleanup() async {
+    _stopLog();
+    _logTransport();
     try {
       await _server?.close();
     } catch (e) {
@@ -791,6 +793,203 @@ class _OfficialCodexRun {
     return {'saved': true, 'thread_id': thread, 'turns': record.turns};
   }
 
+  // ---- model.transport: websocket -----------------------------------------
+
+  /// Values masked in what the run log quotes from Codex's log.
+  List<String?> _logSecrets = const [];
+
+  /// The follower of the app-server job's output ([_followLog]) and where
+  /// it is.
+  Future<void>? _logTask;
+  ShellctlClient? _logClient;
+  bool _logStopped = false;
+  String? _logJob;
+  int _logOffset = 0;
+  String _logPartial = '';
+
+  /// Responses WebSocket handshakes Codex logged: answered and failed; the
+  /// error of the last one when it failed.
+  int _wsConnects = 0;
+  int _wsFailures = 0;
+  String? _wsLastError;
+
+  /// Completes when Codex's first handshake (the preconnect it makes when
+  /// the thread starts) is decided, or when it fell back to HTTP.
+  final Completer<void> _wsStartup = Completer();
+
+  /// The turn as it ended, once the run reads the rest of Codex's log.
+  Map<String, Object?>? _turnEnd;
+
+  /// Whether `turn/start` was sent: before it, Codex sends no model request.
+  bool _turnStarting = false;
+  bool _fellBack = false;
+  bool _transportLogged = false;
+
+  /// Reads the app-server job's output (its stderr log, JSON lines with
+  /// [codexWebsocketLogEnv]) as it grows, until the run ends.
+  Future<void> _followLog(ExecutionSandbox sandbox, String jobId) =>
+      _logTask ??= () async {
+        _logJob = jobId;
+        final c = _logClient = sandbox.client();
+        try {
+          while (!_logStopped) {
+            // Answers once new output has been idle for shellctl's idle
+            // flush (0.5 s), or after the timeout.
+            final r = await c.wait(jobId, offset: _logOffset, timeout: 10);
+            _consumeLog(r);
+            if (r.done && !r.truncated) break;
+          }
+        } catch (e) {
+          if (!_logStopped) {
+            run.log?.call(
+              'run ${run.runId}: reading the codex app-server log stopped: $e',
+            );
+          }
+        } finally {
+          c.close();
+        }
+      }();
+
+  void _consumeLog(JobResult r) {
+    _logOffset = r.offset;
+    final lines = '$_logPartial${r.output}'.split('\n');
+    _logPartial = lines.removeLast();
+    for (final l in lines) {
+      _onLogLine(l);
+    }
+  }
+
+  /// Stops the follower and reads the rest of the log once: a fallback
+  /// logged during a turn that then completed still ends the run.
+  Future<void> _drainLog() async {
+    final sandbox = _sandbox;
+    final job = _logJob;
+    _stopLog();
+    await _logTask;
+    if (sandbox == null || job == null) return;
+    final c = sandbox.client();
+    try {
+      for (var i = 0; i < 64; i++) {
+        final r = await c.wait(job, offset: _logOffset, timeout: 0);
+        _consumeLog(r);
+        if (!r.truncated) break;
+      }
+    } catch (e) {
+      run.log?.call(
+        'run ${run.runId}: reading the rest of the codex app-server log: $e',
+      );
+    } finally {
+      c.close();
+    }
+  }
+
+  void _stopLog() {
+    if (_logTask == null || _logStopped) return;
+    _logStopped = true;
+    _logClient?.close();
+  }
+
+  /// The run log's account of the WebSocket (once, when the run ends).
+  void _logTransport() {
+    if (_logTask == null || _transportLogged) return;
+    _transportLogged = true;
+    run.log?.call(
+      'run ${run.runId}: codex transport websocket: $_wsConnects connection(s), '
+      '$_wsFailures failed handshake(s)'
+      '${_fellBack ? ', fell back to HTTP' : ''}',
+    );
+  }
+
+  void _onLogLine(String line) {
+    final e = codexWebsocketLogEvent(line);
+    if (e == null) return;
+    final detail = codexDiagnosticTail(e.detail, _logSecrets);
+    switch (e.kind) {
+      case CodexWebsocketLog.connected:
+        _wsConnects++;
+        _wsLastError = null;
+        run.log?.call(
+          'run ${run.runId}: codex WebSocket connected to $detail '
+          '(connection $_wsConnects)',
+        );
+        if (!_wsStartup.isCompleted) _wsStartup.complete();
+      case CodexWebsocketLog.connectFailed:
+        _wsFailures++;
+        _wsLastError = detail;
+        run.log?.call(
+          'run ${run.runId}: codex WebSocket handshake failed: $detail',
+        );
+        // After a 426 Codex logs its switch to HTTP at once: the turn waits
+        // a moment for it. Other failures Codex retries in the turn.
+        if (!_wsStartup.isCompleted) {
+          Timer(const Duration(seconds: 1), () {
+            if (!_wsStartup.isCompleted) _wsStartup.complete();
+          });
+        }
+      case CodexWebsocketLog.fallback:
+        final last = _wsLastError;
+        _onWebsocketFallback(
+          last == null
+              ? 'the model request kept failing on the WebSocket'
+              : 'the WebSocket handshake failed ($last)',
+        );
+    }
+  }
+
+  /// Codex switched to HTTP for good (session-wide, sub-agents included):
+  /// the turn is interrupted and the run ends `model_error`.
+  void _onWebsocketFallback(String why) {
+    if (_fellBack) return;
+    _fellBack = true;
+    // The turn's end, when it ended before the switch was seen (a log line
+    // read after the turn).
+    final ended = _turnEnd;
+    final refused = '${(ended?['error'] as Map?)?['message']}'.contains(
+      codexIncrementalRequired,
+    );
+    final sent = !_turnStarting
+        ? 'the run ended before its turn started: no request went over HTTP'
+        : ended == null
+        ? 'Codex sends the model request it was making over HTTP right '
+              'after switching (the whole conversation, marked '
+              '$codexIncrementalHeader for the gateway to refuse); the turn '
+              'was interrupted'
+        : refused
+        ? 'Codex sent the model request it was making over HTTP (the whole '
+              'conversation, marked $codexIncrementalHeader) and the gateway '
+              'refused it ($codexIncrementalRequired); the turn ended'
+        : 'Codex sent the model request it was making over HTTP (the whole '
+              'conversation, marked $codexIncrementalHeader for the gateway '
+              'to refuse); the turn ended';
+    final message = 'Codex fell back from WebSockets to HTTP: $why; $sent';
+    run.log?.call('run ${run.runId}: $message');
+    if (!_wsStartup.isCompleted) _wsStartup.complete();
+    _abort('model_error', message);
+  }
+
+  /// With the WebSocket: waits until Codex's startup handshake is decided,
+  /// so that a fallback found there ends the run before any model request.
+  /// Answered or failed (Codex tries again in the turn), the turn starts;
+  /// without a word in Codex's log within its connect timeout and 5 s too
+  /// (logged).
+  Future<void> _awaitWebsocketStartup() async {
+    const limit = Duration(milliseconds: codexWebsocketConnectTimeoutMs + 5000);
+    final decided = await Future.any<bool>([
+      _wsStartup.future
+          .then((_) => true)
+          .timeout(limit, onTimeout: () => false),
+      _abortSignal.future.then((_) => true),
+      run._cancel.token.whenCancelled.then((_) => true),
+      _server!.closed.then((_) => true),
+    ]);
+    if (!decided) {
+      run.log?.call(
+        'run ${run.runId}: Codex logged no WebSocket handshake within '
+        '${limit.inSeconds} s of the thread\'s start; the turn starts',
+      );
+    }
+  }
+
   Future<Future<void> Function()> _run() async {
     if (r.continuation != null) verifyOfficialCodexContinuation(r);
     final session = await run._shellSession();
@@ -814,13 +1013,18 @@ class _OfficialCodexRun {
     await _checkBinary(sandbox);
     final bundled = await _bundled(sandbox);
     // Codex reaches the gateway directly (NO_PROXY=*); the commands it runs
-    // keep the sandbox's own NO_PROXY.
-    final noProxy = const LineSplitter().convert(
+    // keep the sandbox's own NO_PROXY, and its log variables (set or not:
+    // `=value` or an empty line), which the app-server's own replace with
+    // the WebSocket.
+    final sandboxEnv = const LineSplitter().convert(
       await _controlOk(
         sandbox,
-        r'printf "%s\n%s\n" "${NO_PROXY-}" "${no_proxy-}"',
+        r'printf "%s\n%s\n%s\n%s\n" "${NO_PROXY-}" "${no_proxy-}" '
+        r'"${RUST_LOG+=$RUST_LOG}" "${LOG_FORMAT+=$LOG_FORMAT}"',
       ),
     );
+    String line(int i) => i < sandboxEnv.length ? sandboxEnv[i] : '';
+    final websocket = r.model.websocket;
     _checkStopped();
 
     final skillsDirs = await _skillsDirs(sandbox);
@@ -840,9 +1044,15 @@ class _OfficialCodexRun {
         viewImage: r.viewImage,
         updatePlan: r.updatePlan,
         skills: skillsDirs.isNotEmpty,
+        websocket: websocket,
         commandEnv: {
-          'NO_PROXY': noProxy.isEmpty ? '' : noProxy[0],
-          'no_proxy': noProxy.length < 2 ? '' : noProxy[1],
+          'NO_PROXY': line(0),
+          'no_proxy': line(1),
+          if (websocket)
+            ...codexCommandLogEnv(session.env, {
+              for (final (i, k) in [(2, 'RUST_LOG'), (3, 'LOG_FORMAT')])
+                if (line(i).startsWith('=')) k: line(i).substring(1),
+            }),
         },
       ),
     );
@@ -911,6 +1121,7 @@ class _OfficialCodexRun {
           codexTokenEnv: token,
           'NO_PROXY': '*',
           'no_proxy': '*',
+          if (websocket) ...codexWebsocketLogEnv,
         },
         timeout: 1,
         mode: 'stdio',
@@ -919,6 +1130,10 @@ class _OfficialCodexRun {
       client.close();
     }
     session.trackJob(job.jobId, 0, done: job.done);
+    if (websocket) {
+      _logSecrets = [token, wsToken, run.runToken, run.serviceKey];
+      unawaited(_followLog(sandbox, job.jobId));
+    }
     Future<String?> whyNot() async {
       final c = sandbox.client();
       try {
@@ -1054,7 +1269,10 @@ class _OfficialCodexRun {
       });
     }
     run._runStarted();
+    if (websocket) await _awaitWebsocketStartup();
+    _checkStopped();
     _checkAborted();
+    _turnStarting = true;
     final turn = await server.request('turn/start', {
       'threadId': _threadId,
       'input': input,
@@ -1062,6 +1280,8 @@ class _OfficialCodexRun {
         'outputSchema': strictOutputSchema(modelFacingSchema(schema)),
     });
     _turnId = (turn['turn'] as Map)['id'] as String;
+    // A failure seen while turn/start was on its way: interrupt it now.
+    if (_aborted != null) _interrupt();
     run._onCallStart(1);
     _checkStopped();
 
@@ -1080,6 +1300,11 @@ class _OfficialCodexRun {
     }
     _checkStopped();
     _checkAborted();
+    if (websocket && _turnDone.isCompleted) {
+      _turnEnd = await _turnDone.future;
+      await _drainLog();
+      _checkAborted();
+    }
     if (!_turnDone.isCompleted) {
       // Codex went away mid-turn: the process's exit status and output once
       // the job is seen ended (a moment after the connection).
@@ -1143,6 +1368,16 @@ class _OfficialCodexRun {
             'the model call was refused for a usage, quota or billing limit '
                 'that is not the gateway\'s call limit (max_turns '
                 '${r.maxTurns}, $seen): Codex: $message',
+          );
+        }
+        // The gateway refused a model call over HTTP (a fallback this run's
+        // log did not show): the same failure as a fallback seen here.
+        if (r.model.websocket && message.contains(codexIncrementalRequired)) {
+          _failWith(
+            'model_error',
+            'Codex fell back from WebSockets to HTTP: the gateway refused its '
+                'HTTP model request ($codexIncrementalHeader, '
+                '$codexIncrementalRequired); Codex: $message',
           );
         }
         if (info == 'contextWindowExceeded') {
@@ -1525,6 +1760,18 @@ class _OfficialCodexRun {
           'run ${run.runId}: codex rerouted thread ${p['threadId']} from '
           '${jsonEncode(p['fromModel'])} to ${jsonEncode(p['toModel'])} '
           '(${p['reason']})',
+        );
+      case 'warning'
+          when r.model.websocket &&
+              '${p['message']}'.startsWith(codexWebsocketFallbackWarning):
+        run.log?.call('run ${run.runId}: codex warning: ${jsonEncode(p)}');
+        final why = '${p['message']}'
+            .substring(codexWebsocketFallbackWarning.length)
+            .trim();
+        _onWebsocketFallback(
+          'the model request kept failing on the WebSocket and Codex\'s '
+          'stream retries ($codexStreamMaxRetries) were used up'
+          '${why.isEmpty ? '' : ': $why'}',
         );
       case 'warning' || 'configWarning' || 'deprecationNotice':
         run.log?.call('run ${run.runId}: codex ${n.method}: ${jsonEncode(p)}');
