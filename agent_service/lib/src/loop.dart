@@ -75,10 +75,6 @@ class BudgetExhausted implements Exception {
 /// outputs), plus one to write declared file outputs into the workspace
 /// first when the schema declares any (they must exist when `final_output`
 /// names them). Derived from what finishing needs; not a tuned margin.
-/// [text] cut to 2000 characters for a log line.
-String _clip(String text) =>
-    text.length > 2000 ? '${text.substring(0, 2000)}…' : text;
-
 int callsToFinish(OperationRequest r) {
   final schema = r.outputSchema;
   return schema != null && r.shell && declaresFileOutputs(schema) ? 2 : 1;
@@ -452,10 +448,28 @@ class AgentRun {
     // The run record goes once the Swift server has read it, so the service
     // log is where the reason of a failed run stays.
     final type = data['error_type'];
-    final message = data['message'];
+    var message = data['message']?.toString();
+    if (message != null) {
+      // Mask before clipping so even a credential crossing the limit is hidden.
+      final secrets =
+          [
+              serviceKey,
+              runToken,
+              request.codexRunToken,
+            ].whereType<String>().where((s) => s.isNotEmpty).toList()
+            ..sort((a, b) => b.length.compareTo(a.length));
+      for (final secret in secrets) {
+        message = message!.replaceAll(secret, '[redacted]');
+      }
+      final chars = message!.runes;
+      message = jsonEncode(
+        String.fromCharCodes(chars.take(2000)) +
+            (chars.length > 2000 ? '…' : ''),
+      );
+    }
     log?.call(
       'run $runId ended $event${type == null ? '' : ' ($type)'}'
-      '${message == null ? '' : ': ${_clip('$message')}'}',
+      '${message == null ? '' : ': $message'}',
     );
     _events.add(e);
     unawaited(_events.close());
