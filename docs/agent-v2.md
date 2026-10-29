@@ -1341,8 +1341,12 @@ operational mount paths and per-run measurements belong in the deployment's priv
 - Progress and budgets: `tools.report_progress` is pinned for new executions with the shell enabled; completed
   upload receipts are normalized to scoped preview files in live `agent_log` events. The node's `limits.max_turns`
   is checked against the environment and used by the gateway. Partial submissions are labeled explicitly.
-- The model gateway allows at most 8192 messages, 20 MiB of decoded files and 32 MiB after normalization per request;
+- Model requests allow at most 8192 input items. The official Codex Responses route and its dedicated proxy accept
+  up to 128 MiB per request, with at most 96 MiB of decoded files (base64 expands files by 4/3). The gateway forwards
+  image bytes unchanged. The plugin/ported routes keep their 20 MiB file and 32 MiB request budgets; their
   `view_image` retains at most 16 MiB per conversation. Missing cache-hit statistics remain unknown.
+- The dedicated Codex proxy logs only request length, Content-Length, elapsed seconds and HTTP status. These
+  measurements do not include request bodies, paths, credentials or image data.
 
 ## Tests that must stay
 

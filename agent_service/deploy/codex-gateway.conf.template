@@ -5,13 +5,14 @@ pid /tmp/nginx.pid;
 error_log /dev/stderr warn;
 events { worker_connections 128; }
 http {
-    access_log off;
+    log_format codex_size 'length=$request_length content_length=$http_content_length seconds=$request_time status=$status upstream=$upstream_status';
+    access_log /dev/stdout codex_size;
     client_body_temp_path /tmp/client_body;
     proxy_temp_path /tmp/proxy;
     fastcgi_temp_path /tmp/fastcgi;
     uwsgi_temp_path /tmp/uwsgi;
     scgi_temp_path /tmp/scgi;
-    client_max_body_size 32m;
+    client_max_body_size 128m;
     server {
         listen 3128;
         location = /inner/agent/codex/v1/responses {
