@@ -78,6 +78,19 @@ extension PostgresStore {
         }
     }
 
+    public func pinAgentRetention(session: StoredAgentSession, enabled: Bool) async throws -> Bool {
+        try await bounded {
+            for try await value in try await self.client.query("""
+                UPDATE agent_node_sessions SET usage = jsonb_set(usage, '{retain_session}',
+                    coalesce(usage->'retain_session', to_jsonb(\(enabled)::boolean)))
+                WHERE execution_id = \(session.executionID) AND generation = \(session.generation)
+                  AND owner_id = \(session.ownerID) AND lease_until > now()
+                  AND status IN ('prepared', 'paused', 'retry') RETURNING (usage->>'retain_session')::boolean
+                """, logger: self.logger).decode(Bool.self) { return value }
+            throw StoreError.notCommitted("Agent capability ownership changed")
+        }
+    }
+
     public func pinAgentViewImage(session: StoredAgentSession, enabled: Bool) async throws -> Bool {
         try await bounded {
             for try await value in try await self.client.query("""

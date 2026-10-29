@@ -60,6 +60,8 @@ enum AgentExecutionSchema {
             created_at timestamptz NOT NULL DEFAULT now()
         )
         """,
+        "ALTER TABLE agent_runtime_outbox DROP CONSTRAINT IF EXISTS agent_runtime_outbox_kind_check",
+        "ALTER TABLE agent_runtime_outbox ADD CONSTRAINT agent_runtime_outbox_kind_check CHECK(kind IN ('ack', 'cancel', 'cleanup', 'workflow_cleanup'))",
         "CREATE INDEX IF NOT EXISTS agent_runtime_outbox_pending ON agent_runtime_outbox(next_at) WHERE done_at IS NULL",
         // Ordinary human-input forms keep the empty question identity and the same external SSE/API fields.
         "ALTER TABLE human_input_forms ADD COLUMN IF NOT EXISTS question_id text NOT NULL DEFAULT ''",

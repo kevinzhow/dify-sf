@@ -411,5 +411,8 @@
     "roster.usageStatus.draft": "Draft",
     "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} file upload failed.",
     "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} file uploads failed.",
-    "skillManagement.title": "Skills"
+    "skillManagement.title": "Skills",
+    "inline.sessionCarry": "Retain session and workspace",
+    "inline.sessionHelp": "Later rounds of this node continue the same Codex conversation and files. Files remain while the workflow is running or paused, and are cleaned up when it ends. Requires Codex and a disk execution environment.",
+    "inline.sessionSaveFailed": "Result kept; session not saved. Later rounds cannot resume."
 }

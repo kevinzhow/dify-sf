@@ -250,6 +250,12 @@ struct AgentServiceClient: Sendable {
         guard status == 200 else { throw Self.invalidResponse() }
     }
 
+    func releaseWorkspaces(tenant: String, app: String, workflowRun: String) async throws {
+        let (status, _) = try await request(.POST, path: "/v1/workspaces/release", body: [
+            "tenant_id": .string(tenant), "app_id": .string(app), "workflow_run_id": .string(workflowRun)])
+        guard [200, 202, 204].contains(status) else { throw Self.invalidResponse() }
+    }
+
     func cleanup(execution: String, generation: Int) async throws {
         let id = try Self.pathID(execution)
         let (status, _) = try await request(.DELETE, path: "/v1/executions/\(id)", body: ["generation": .int(generation)])
