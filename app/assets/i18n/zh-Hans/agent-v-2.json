@@ -411,5 +411,8 @@
     "roster.usageStatus.draft": "草稿",
     "skillManagement.detail.uploadFilesFailedStatus_one": "{{count}} 个文件上传失败。",
     "skillManagement.detail.uploadFilesFailedStatus_other": "{{count}} 个文件上传失败。",
-    "skillManagement.title": "Skills"
+    "skillManagement.title": "Skills",
+    "inline.sessionCarry": "保留会话与工作区",
+    "inline.sessionHelp": "此节点后续轮次接着原 Codex 会话和文件继续。工作流运行或暂停时保留，结束后清理。需要 Codex 和可保留文件的执行环境。",
+    "inline.sessionSaveFailed": "本轮结果已保留，但会话未保存，后续轮次无法续接。"
 }

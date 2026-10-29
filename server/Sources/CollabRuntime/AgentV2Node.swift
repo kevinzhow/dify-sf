@@ -8,6 +8,7 @@ public struct AgentNodeData: Sendable {
     public var snapshotID: String
     public var task: String
     public var declarations: [AgentDeclaredOutput]
+    public var retainSession: Bool
     public var modelInputs: AgentModelInputs
     public var raw: JSONObject
 
@@ -29,6 +30,13 @@ public struct AgentNodeData: Sendable {
         task = data["agent_task"]?.string ?? ""
         guard task.utf8.count <= 256 << 10 else { throw NodeDataError("agent_task is too large") }
         declarations = try AgentDeclaredOutput.parse(data["agent_declared_outputs"]?.array ?? [])
+        if let value = data["agent_session"], value != .null {
+            guard let object = value.object, Set(object.keys).isSubset(of: ["enabled"]),
+                  object["enabled"] == nil || object["enabled"]?.bool != nil else {
+                throw NodeDataError("agent_session supports only an enabled boolean")
+            }
+            retainSession = object["enabled"]?.bool ?? false
+        } else { retainSession = false }
         modelInputs = try AgentModelInputs(data["agent_model"])
         raw = data
     }

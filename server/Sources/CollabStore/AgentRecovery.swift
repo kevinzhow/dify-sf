@@ -5,6 +5,15 @@ extension PostgresStore {
     /// Run lock is acquired before the session lock everywhere, including stop, pause and result persistence.
     /// Uncommitted remote results are cancelled and cleaned, never acknowledged as successful work.
     func terminateAgentSessions(run: String, tx: PostgresConnection) async throws {
+        // Per-round cleanup parks files. Only a terminal workflow may purge them.
+        for try await _ in try await tx.query("""
+            SELECT 1 FROM agent_node_sessions s JOIN workflow_runs r ON r.id = s.workflow_run_id
+            WHERE r.id = \(run) AND r.status IN ('succeeded', 'partial-succeeded', 'failed', 'stopped')
+              AND s.usage->>'retain_session' = 'true' LIMIT 1
+            """, logger: logger) {
+            try await agentOutbox(tx: tx, id: "workflow-cleanup:" + run, execution: run,
+                workflowRun: run, generation: 1, kind: "workflow_cleanup")
+        }
         for try await (execution, generation, remote) in try await tx.query("""
             UPDATE agent_node_sessions SET status = 'cancelled', updated_at = now()
             WHERE workflow_run_id = \(run) AND status IN ('prepared', 'running', 'result_ready', 'paused', 'retry')
@@ -141,8 +150,10 @@ extension PostgresStore {
             var runs: [String] = []
             for try await id in try await self.client.query("""
                 SELECT DISTINCT s.workflow_run_id FROM agent_node_sessions s JOIN workflow_runs r ON r.id = s.workflow_run_id
-                WHERE s.status IN ('prepared', 'running', 'result_ready', 'paused', 'retry')
-                  AND r.status IN ('succeeded', 'partial-succeeded', 'failed', 'stopped') LIMIT 100
+                WHERE r.status IN ('succeeded', 'partial-succeeded', 'failed', 'stopped') AND (
+                  s.status IN ('prepared', 'running', 'result_ready', 'paused', 'retry') OR
+                  (s.usage->>'retain_session' = 'true' AND NOT EXISTS (
+                    SELECT 1 FROM agent_runtime_outbox j WHERE j.id = 'workflow-cleanup:' || r.id))) LIMIT 100
                 """, logger: self.logger).decode(String.self) { runs.append(id) }
             return runs
         }
@@ -176,5 +187,19 @@ extension PostgresStore {
             try await self.agentOutbox(tx: tx, id: "cleanup:" + execution + ":" + String(generation), execution: execution,
                 workflowRun: workflow, generation: generation, kind: "cleanup")
         } }
+    }
+}
+
+
+extension PostgresStore {
+    public func retainedAgentRunApp(run: String) async throws -> String? {
+        try await bounded {
+            for try await doc in try await self.client.query("""
+                SELECT DISTINCT s.doc_id FROM agent_node_sessions s JOIN workflow_runs r ON r.id = s.workflow_run_id
+                WHERE s.workflow_run_id = \(run) AND s.usage->>'retain_session' = 'true'
+                  AND r.status IN ('succeeded', 'partial-succeeded', 'failed', 'stopped') LIMIT 1
+                """, logger: self.logger).decode(String.self) { return doc }
+            return nil
+        }
     }
 }

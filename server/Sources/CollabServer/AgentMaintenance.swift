@@ -81,6 +81,9 @@ extension Routes {
                 case "cancel":
                     if let run = job.agentRunID { try await service.cancel(run: run, generation: job.generation) }
                 case "cleanup": try await service.cleanup(execution: job.executionID, generation: job.generation)
+                case "workflow_cleanup":
+                    guard let app = try await store.retainedAgentRunApp(run: job.workflowRunID) else { continue }
+                    try await service.releaseWorkspaces(tenant: config.pluginDaemonTenant, app: app, workflowRun: job.workflowRunID)
                 default: continue
                 }
                 try await store.finishAgentJob(id: job.id, succeeded: true)

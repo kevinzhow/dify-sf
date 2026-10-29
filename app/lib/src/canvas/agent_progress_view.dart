@@ -134,6 +134,17 @@ class AgentProgressView {
         view = advance(view, log.cast<String, Object?>());
       }
     }
+    if (map(metadata['agent_session'])['saved'] == false) {
+      return AgentProgressView(
+        run: view?.run ?? '',
+        cursor: view?.cursor ?? 0,
+        calls: view?.calls ?? 0,
+        maximum: view?.maximum ?? 50,
+        summary: view?.summary ?? '',
+        imageJson: view?.imageJson,
+        partialReason: 'session_save_failed',
+      );
+    }
     final reason = map(metadata['agent_partial'])['reason'];
     if (!const {'max_turns', 'timeout'}.contains(reason)) return view;
     return AgentProgressView(

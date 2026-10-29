@@ -71,10 +71,15 @@ void main() {
     var view = AgentProgressView.advance(null, log(1, 'model_call', {'call_index': 7}));
     view = AgentProgressView.advance(view, log(2, 'commentary', {'text': 'Checking the render'}));
     expect(view?.summary, 'Checking the render');
-    view = AgentProgressView.advance(view, log(3, 'plan', {'plan': [
-      {'step': 'Prepare', 'status': 'completed'},
-      {'step': 'Render', 'status': 'in_progress'},
-    ]}));
+    view = AgentProgressView.advance(
+      view,
+      log(3, 'plan', {
+        'plan': [
+          {'step': 'Prepare', 'status': 'completed'},
+          {'step': 'Render', 'status': 'in_progress'},
+        ],
+      }),
+    );
     expect(view?.summary, 'Render');
     view = AgentProgressView.advance(view, log(4, 'model_retry', {'message': 'The model stream was interrupted'}));
     expect(view?.summary, 'The model stream was interrupted');
@@ -219,5 +224,22 @@ void main() {
     expect(find.byType(DifyDialogSurface), findsOneWidget);
     expect(find.text('Fixture preview'), findsOneWidget);
     expect(t.takeException(), isNull);
+  });
+  test('session save warning keeps the completed result preview', () {
+    final view = AgentProgressView.finished(
+      const AgentProgressView(run: 'r', cursor: 4, calls: 2, imageJson: '{"url":"fixture"}'),
+      {
+        'agent_session': {'saved': false, 'error': 'session_save_failed'},
+      },
+    );
+    expect(view?.partialReason, 'session_save_failed');
+    expect(view?.calls, 2);
+    expect(view?.imageJson, '{"url":"fixture"}');
+    expect(
+      AgentProgressView.finished(null, {
+        'agent_session': {'saved': true},
+      }),
+      isNull,
+    );
   });
 }

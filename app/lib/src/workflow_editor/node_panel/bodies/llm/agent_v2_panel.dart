@@ -17,6 +17,7 @@ import '../../../prompt_editor/prompt_editor.dart';
 import '../../node_panel_bodies.dart';
 import 'agent_v2_logic.dart';
 import 'agent_model_inputs.dart';
+import 'agent_session_retention.dart';
 import 'agent_v2_outputs.dart';
 import 'agent_v2_roster.dart';
 import 'group_host.dart';
@@ -407,6 +408,15 @@ class _AgentV2PanelState extends State<AgentV2Panel> {
             child: AgentModelInputFields(
               value: jsMap(data['agent_model']), scope: vars.scope, readOnly: readOnly,
               onChange: (value) => _write({..._inputs, 'agent_model': value.isEmpty ? null : value}),
+            ),
+          ),
+        if (ready)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: AgentSessionRetentionField(
+              enabled: jsGet(data['agent_session'], 'enabled') == true,
+              readOnly: readOnly,
+              onChange: (enabled) => _write({..._inputs, 'agent_session': {'enabled': enabled}}),
             ),
           ),
         Container(

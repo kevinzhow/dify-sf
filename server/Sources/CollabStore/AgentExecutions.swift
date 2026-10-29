@@ -294,6 +294,8 @@ extension PostgresStore {
                 FROM agent_runtime_outbox j WHERE done_at IS NULL AND next_at <= now()
                   AND (kind <> 'cleanup' OR NOT EXISTS(SELECT 1 FROM agent_runtime_outbox a
                     WHERE a.execution_id = j.execution_id AND a.generation = j.generation AND a.kind = 'ack' AND a.done_at IS NULL))
+                  AND (kind <> 'workflow_cleanup' OR NOT EXISTS(SELECT 1 FROM agent_runtime_outbox a
+                    WHERE a.workflow_run_id = j.workflow_run_id AND a.kind IN ('ack', 'cancel', 'cleanup') AND a.done_at IS NULL))
                 ORDER BY created_at, id LIMIT 100
                 """, logger: self.logger).decode((String, String, String, Int, String, String?, Int?, Int).self) {
                 jobs.append(.init(id: id, executionID: execution, workflowRunID: workflow, generation: generation,

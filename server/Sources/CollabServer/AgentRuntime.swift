@@ -112,6 +112,7 @@ struct ServerAgentRuntime: AgentRuntime {
         guard try JSONValue.parse(pinnedModel) == .object(selectedModel) else {
             throw NodeError("AgentConfigChanged", "The agent execution already has a different model selection")
         }
+        let retainSession = try await routes.store.pinAgentRetention(session: session, enabled: data.retainSession)
         let startedData = try await pending.agentCommits.startedData(execution)
         let shellAvailable: Bool
         if let pinned = try JSONValue.parse(session.usage)["shell_enabled"]?.bool { shellAvailable = pinned }
@@ -148,15 +149,20 @@ struct ServerAgentRuntime: AgentRuntime {
             json["view_image"] = .bool(viewImage)
             json["report_progress"] = .bool(reportProgress)
             json["model_selection"] = .object(selectedModel)
+            json["retain_session"] = .bool(retainSession)
             return JSONValue.object(json).compactJSON()
         }
         let modelEnvelope = try await modelEnvelope(soul)
         let wire = modelEnvelope["wire"]?.string ?? "plugin"
+        if retainSession && !(shellAvailable && soul.harnessStyle == "codex" && wire == "responses") {
+            throw NodeError("AgentSessionUnsupported", "Retaining a session requires Codex, Responses and a disk execution environment")
+        }
         var inputs = JSONObject(); inputs["task"] = .string(data.task)
         // Public values only: keep private credential references in the session, not in workflow trace inputs.
         let resolvedModel: JSONObject = ["provider": .string(soul.provider!), "model": .string(soul.model!),
             "parameters": .object(soul.modelParameters)]
         inputs["model"] = .object(resolvedModel)
+        inputs["retain_session"] = .bool(retainSession)
         while true {
             try Task.checkCancellation()
             if context.isAborted() { throw CancellationError() }
@@ -188,6 +194,7 @@ struct ServerAgentRuntime: AgentRuntime {
                 tools["update_plan"] = .bool(soul.updatePlan)
                 body["tools"] = .object(tools)
             }
+            if retainSession { body["codex_session"] = ["retain": true] }
             // Identities are fixed across uncertain transport retries. Secrets are never persisted in the operation ledger.
             let scope = AgentModelScope(operationID: operation, generation: session.generation, execution: identity,
                 provider: soul.provider!, model: soul.model!, maxCalls: maxTurns, expiresAt: deadline, inputFileIDs: prompt.inputFileIDs,
@@ -263,9 +270,16 @@ struct ServerAgentRuntime: AgentRuntime {
                         continue
                     }
                     let succeeded = decision.action == .succeeded
+                    var processData: JSONObject = ["agent_id": .string(data.agentID), "agent_config_snapshot_id": .string(data.snapshotID), "workflow_agent_binding_id": data.bindingID.map(JSONValue.string) ?? .null, "agent_output_checks": .array(decision.checks.map(\.json))]
+                    var metadata: JSONObject = ["agent_config_snapshot_id": .string(data.snapshotID), "total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_partial": partial ?? .null, "agent_log": try await routes.agentLogPreview(session)]
+                    if retainSession {
+                        let state = try AgentRetainedSessionStatus.normalize(result["session"])
+                        processData["agent_session"] = .object(state)
+                        metadata["agent_session"] = .object(state)
+                    }
                     var value = NodeRunResult(status: succeeded ? .succeeded : .failed, inputs: inputs,
-                        processData: ["agent_id": .string(data.agentID), "agent_config_snapshot_id": .string(data.snapshotID), "workflow_agent_binding_id": data.bindingID.map(JSONValue.string) ?? .null, "agent_output_checks": .array(decision.checks.map(\.json))], outputs: decision.outputs,
-                        metadata: ["agent_config_snapshot_id": .string(data.snapshotID), "total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_partial": partial ?? .null, "agent_log": try await routes.agentLogPreview(session)], llmUsage: roundUsage,
+                        processData: processData, outputs: decision.outputs,
+                        metadata: metadata, llmUsage: roundUsage,
                         error: succeeded ? "" : "Declared agent outputs failed validation",
                         errorType: succeeded ? "" : (decision.action == .failBranch ? "output_type_check_failed_fail_branch" : "output_type_check_failed"))
                     value.edgeSourceHandle = "source"
@@ -275,7 +289,7 @@ struct ServerAgentRuntime: AgentRuntime {
                     return .completed(value)
                 case "failed", "cancelled":
                     let errorType = result["error_type"]?.string ?? "cancel_lost"
-                    let known: Set<String> = ["model_error", "model_quota", "max_turns", "timeout", "ask_human_invalid", "sandbox_unavailable", "sandbox_error", "file_error", "cancel_lost", "internal"]
+                    let known: Set<String> = ["model_error", "model_quota", "max_turns", "timeout", "ask_human_invalid", "sandbox_unavailable", "sandbox_error", "file_error", "session_restore_failed", "session_save_failed", "cancel_lost", "internal"]
                     pending.addAgentOutcome(.init(session: session, status: "failed", usage: usageJSON()))
                     let value = NodeRunResult(status: .failed, inputs: inputs, metadata: ["total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_partial": partial ?? .null, "agent_log": try await routes.agentLogPreview(session)], llmUsage: roundUsage,
                         error: "The agent operation did not complete", errorType: known.contains(errorType) ? errorType : "internal")

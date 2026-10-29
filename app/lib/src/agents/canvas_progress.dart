@@ -32,7 +32,9 @@ class AgentCanvasProgress extends StatelessWidget {
           SizedBox(
             height: 36,
             child: DifyTextLine(
-              progress.partialReason != null
+              progress.partialReason == 'session_save_failed'
+                  ? DifyI18n.tr('agent-v-2', 'inline.sessionSaveFailed')
+                  : progress.partialReason != null
                   ? DifyI18n.tr('agent-v-2', 'inline.partialResult')
                   : progress.summary.isEmpty
                   ? DifyI18n.tr('agent-v-2', 'inline.progressStarted')
