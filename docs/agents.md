@@ -255,7 +255,10 @@ waiting forms, `workflow_paused`); use it after every reconnect. A run that alre
 
 `human_input_required` gives `form_token`, `inputs` (each with `output_variable_name` and `type`; a select's options
 are in `option_source.value`) and `actions` (each with `id` and `title`). `GET /v1/form/human_input/<form_token>`
-reads the same form.
+reads the same form, but names the action list **`user_actions`** (Dify's FormDefinition: `form_content`, `inputs`,
+`user_actions`, `rendered_content`, `expiration_time`, `default_values`, `node_title`, `display_in_ui`). Read
+`actions` from the event and `user_actions` from the GET; the action ids are the same
+(`RunStreamEncoder+HumanInput.swift`, `HumanInputRoutes.formDefinitionJSON`).
 
 ```http
 POST /v1/form/human_input/<form_token>
