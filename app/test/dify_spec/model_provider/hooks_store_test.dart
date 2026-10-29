@@ -258,6 +258,23 @@ void main() {
         expect(api.callsOf('providerModels'), isEmpty);
       });
 
+      test('adding the first model uses refreshed configuration rather than the stale unconfigured form', () async {
+        api.summaryData = [createMockProvider()];
+        api.providerModelsData['openai'] = [modelJson('new-model', fetchFrom: 'customizable-model')];
+        await store.refreshModel(createMockProvider(status: 'no-configure'), refreshModelList: true);
+        expect(store.isExpanded('openai'), isTrue);
+        expect(store.providerModels('openai')?.single.model, 'new-model');
+      });
+
+      test('removing the last model clears the visible list even after the provider becomes unconfigured', () async {
+        api.providerModelsData['openai'] = [modelJson('old-model', fetchFrom: 'customizable-model')];
+        await store.fetchProviderModels('openai');
+        api.summaryData = [createMockProvider(status: 'no-configure')];
+        api.providerModelsData['openai'] = [];
+        await store.refreshModel(createMockProvider(), refreshModelList: true);
+        expect(store.providerModels('openai'), isEmpty);
+      });
+
       test('should refetch active model provider list when custom refresh callback is absent', () async {
         await store.refreshModel(createMockProvider(), refreshModelList: true);
         expect(api.callsOf('providerModels'), [

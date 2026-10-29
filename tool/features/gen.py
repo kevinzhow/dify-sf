@@ -62,6 +62,13 @@ def load_cases():
 
 def validate(data, dify_root=None):
     errors = []
+    # Component-level deferrals must not silently exclude a retained action.
+    sys.path.insert(0, str(REPO / 'tool/dify_spec'))
+    import ledger
+    try:
+        ledger.retained_actions.load(REPO, ledger.cases)
+    except (ValueError, KeyError, OSError) as error:
+        errors.append(str(error))
     areas = data.get('areas') or []
     area_ids = [a.get('id') for a in areas]
     if len(set(area_ids)) != len(area_ids):

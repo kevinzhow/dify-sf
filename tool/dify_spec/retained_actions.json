@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "upstream_commit": "8387590ace4a094de812b7847fc6a4c3a27cd52b",
+  "actions": [
+    {
+      "id": "model.remove",
+      "upstream_case": "web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/model-load-balancing-modal.spec.tsx :: ModelLoadBalancingModal > should confirm model deletion and close modal",
+      "test_file": "app/test/dify_spec/model_provider/provider_added_card/model_list_item_test.dart",
+      "test_name": "ModelListItem > confirmed removal targets the selected model and type while retaining credentials",
+      "difference": "The basic removal action now lives on the model row, outside the deferred load-balancing modal."
+    },
+    {
+      "id": "model.switch-credential",
+      "upstream_case": "web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/switch-credential-in-load-balancing.spec.tsx :: SwitchCredentialInLoadBalancing > should call setCustomModelCredential when an item is selected in Authorized",
+      "test_file": "app/test/dify_spec/model_provider/provider_added_card/model_credentials_action_test.dart",
+      "test_name": "model row configuration reaches credential selection independently of load balancing",
+      "difference": "The model row reuses Authorized; selecting a credential persists immediately rather than staging a load-balancing draft."
+    },
+    {
+      "id": "model.configure-lazy-detail",
+      "upstream_case": "web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/model-list.spec.tsx :: ModelList > should load provider detail before opening load balancing from a summary card",
+      "test_file": "app/test/dify_spec/model_provider/provider_added_card/model_credentials_action_test.dart",
+      "test_name": "model row configuration reaches credential selection independently of load balancing",
+      "difference": "The retained configuration menu loads provider detail and model credentials before opening."
+    },
+    {
+      "id": "model.configure-loading",
+      "upstream_case": "web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/model-list.spec.tsx :: ModelList > should disable load balancing while provider detail is loading",
+      "test_file": "app/test/dify_spec/model_provider/provider_added_card/model_credentials_action_test.dart",
+      "test_name": "model row keeps configuration disabled during loading and permits a failed read to retry",
+      "difference": "The basic configuration trigger, rather than the deferred balancing trigger, is disabled during a read."
+    },
+    {
+      "id": "model.configure-error-retry",
+      "upstream_case": "web/app/components/header/account-setting/model-provider-page/provider-added-card/__tests__/model-list.spec.tsx :: ModelList > should show an error when provider detail cannot be loaded",
+      "test_file": "app/test/dify_spec/model_provider/provider_added_card/model_credentials_action_test.dart",
+      "test_name": "model row keeps configuration disabled during loading and permits a failed read to retry",
+      "difference": "Failed detail loading is visible and retryable from the retained configuration trigger."
+    }
+  ]
+}

@@ -1,13 +1,15 @@
 /// model-auth: the credential operations (hooks/use-auth.ts, use-auth-service.ts, use-credential-data.ts,
 /// use-model-form-schemas.ts) and the credential widgets: CredentialItem and AuthorizedItem (authorized/), Authorized
 /// (the credential popover), AddCustomModel, ManageCustomModelCredentials and CredentialSelector. Load balancing
-/// (AddCredentialInLoadBalancing, SwitchCredentialInLoadBalancing, ConfigModel) is not part of dify-sf.
+/// pools and cooldowns are deferred; the basic authorization operations are also
+/// exposed by the model row independently of balancing.
 library;
 
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart' show ModelDiscoveryApi;
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart' show KeyDownEvent, LogicalKeyboardKey;
 
 import '../../cards/model_chip.dart' show ModelIcon;
 import '../../design/css_metrics.dart';
@@ -117,12 +119,14 @@ class ModelAuth {
     Credential? credential,
     CustomModel? model,
     String? confirmLabel,
+    String description = '',
     bool lockCancelWhileBusy = false,
   }) async {
     openConfirmDelete(credential: credential, model: model);
     final ok = await showSettingsAlert(
       context,
       title: _t('modelProvider.confirmDelete'),
+      description: description,
       confirmLabel: confirmLabel,
       lockCancelWhileBusy: lockCancelWhileBusy,
       onConfirm: () async {
@@ -376,6 +380,7 @@ class CredentialItem extends StatefulWidget {
 
 class _CredentialItemState extends State<CredentialItem> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
@@ -460,7 +465,10 @@ class _CredentialItemState extends State<CredentialItem> {
                         ),
                       ),
                     ),
-                  if (showAction && !c.fromEnterprise && !unavailable && _hovered) ...[
+                  if (showAction &&
+                      !c.fromEnterprise &&
+                      !unavailable &&
+                      (_hovered || _focused || MediaQuery.sizeOf(context).width < 640)) ...[
                     const SizedBox(width: 8),
                     if (!w.disableEdit)
                       DifyTooltip(
@@ -498,7 +506,21 @@ class _CredentialItemState extends State<CredentialItem> {
     if (unavailable) {
       item = DifyTooltip(content: DifyTextLine(DifyI18n.tr('plugin', 'auth.customCredentialUnavailable')), child: item);
     }
-    return item;
+    return Focus(
+      key: ValueKey('credential-focus-${c.credentialId}'),
+      canRequestFocus: !w.disabled && !unavailable && (clickable || showAction),
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onKeyEvent: (node, event) {
+        if (clickable &&
+            event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+          w.onItemClick!(c);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: item,
+    );
   }
 }
 
