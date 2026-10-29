@@ -94,18 +94,20 @@ struct AgentCodexWebSocketTests {
                     }
                     if let bearer { headers.add(name: "Authorization", value: "Bearer " + bearer) }
                     if identity { headers.add(name: "session-id", value: "rejection-fixture") }
-                    let request = try HTTPClient.Request(url: "http://127.0.0.1:\(port)" + path, method: .GET, headers: headers)
+                    var request = HTTPClientRequest(url: "http://127.0.0.1:\(port)" + path)
+                    request.method = .GET; request.headers = headers
                     return Int(try await HTTPClient.shared.execute(request, timeout: .seconds(3)).status.code)
                 }
                 #expect(try await rejected(AgentCodexWebSocketService.path, bearer: nil) == 401)
-                #expect(try await rejected(AgentCodexWebSocketService.path, bearer: "invalid-fixture-token") == 401)
+                #expect(try await rejected(AgentCodexWebSocketService.path, bearer: "short") == 401)
+                #expect(try await rejected(AgentCodexWebSocketService.path, bearer: "invalid-fixture-token") == 403)
                 #expect(try await rejected(AgentCodexWebSocketService.path, bearer: token, identity: false) == 400)
                 #expect(try await rejected("/unrelated", bearer: token) == 403)
                 #expect(try await rejected(AgentCodexWebSocketService.path, bearer: nil, upgrade: false) == 400)
                 let first = try await routes.agentModelScopes.claimCodex(token: token)
                 #expect(first.index == 1)
                 _ = await routes.agentModelScopes.revoke(token: token)
-                #expect(try await rejected(AgentCodexWebSocketService.path, bearer: token) == 401)
+                #expect(try await rejected(AgentCodexWebSocketService.path, bearer: token) == 403)
             }
         }
     }
