@@ -26,7 +26,9 @@
 ///  "files": {"<file_id>": {"mime_type": "image/png", "size": 3, "content": "…"}},
 ///                // or "content_base64": "…" for binary content
 ///  "codex_run_token": "…",          // the official Codex runtime's entry
-///  "codex_call_limit": 6}           // (see below)
+///  "codex_call_limit": 6,           // (see below)
+///  "codex_websocket": "accept",     // or "upgrade_required"; absent: none
+///  "codex_websocket_accepts": 1}    // accepted upgrades, then 426
 /// ```
 ///
 /// `POST /inner/agent/codex/v1/responses` stands in for the gateway's Codex
@@ -35,9 +37,30 @@
 /// `response.completed` without `id` gets one), and beyond
 /// `codex_call_limit` a 429 with `error.type: usage_limit_reached` and the
 /// header `x-codex-promo-message: dify-sf-agent-call-limit` (the gateway's
-/// mark of its own call limit, docs/agent-v2.md "Codex runtime"). A scripted
+/// mark of its own call limit, docs/agent-v2.md "Codex runtime"). A POST
+/// with `X-DifySF-Require-Incremental` (a run on the WebSocket that fell
+/// back to HTTP) gets `400` with `error.code: incremental_required`, not
+/// counted. A scripted
 /// `http_status` call answers its `http_body` without that header.
-/// `GET /debug/codex-requests` lists what Codex sent (headers and bodies).
+/// `GET /debug/codex-requests` lists what Codex sent (headers and bodies;
+/// `websocket`: the upgrades and the WebSocket requests).
+///
+/// A WebSocket upgrade of the same path (Codex's Responses WebSocket,
+/// `model.transport: websocket`) is answered by [CodexWebsocketMode]:
+/// `404` without one (a gateway without the WebSocket entry), `426` for
+/// `upgrade_required`; with `accept` an upgrade with the run token and
+/// `OpenAI-Beta: responses_websockets=2026-02-06` opens a socket on which
+/// each `response.create` (text frames, one JSON event each) is answered in
+/// order: `generate: false` (Codex's warm-up) with `response.created` and
+/// `response.completed`, every other with `response.created` and the next
+/// call's `responses_events` (counted as a Codex call; no call limit),
+/// `response.completed` carrying `resp_<n>` (a call with `drop` closes the
+/// socket instead). Beyond `codex_websocket_accepts` accepted upgrades the
+/// next ones get `426`. A `previous_response_id` must
+/// name a response completed on the same socket (else an `error` event,
+/// `previous_response_not_found`); the request then stands for that
+/// response's input and output items followed by its own input
+/// ([CodexWebsocketRequest.conversation]).
 ///
 /// ```jsonc
 /// ```
@@ -109,6 +132,7 @@ class ScriptedCall {
     this.error,
     this.hang = false,
     this.responseEvents,
+    this.drop = false,
   });
 
   final List<ScriptedChunk> chunks;
@@ -123,6 +147,10 @@ class ScriptedCall {
 
   /// The Responses events of a `responses` call.
   final List<Map<String, Object?>>? responseEvents;
+
+  /// On the Codex entry's WebSocket: close the socket after
+  /// `response.created`, before the response completes.
+  final bool drop;
 
   /// A `responses` call answering [output] items, then
   /// `response.completed` with [usage] (Responses shape).
@@ -201,6 +229,7 @@ class ScriptedCall {
     responseEvents: (j['responses_events'] as List?)
         ?.map((e) => (e as Map).cast<String, Object?>())
         .toList(),
+    drop: j['drop'] as bool? ?? false,
   );
 }
 
@@ -277,6 +306,67 @@ class CallObservation {
 /// The gateway's Codex Responses entry (official Codex runtime).
 const codexResponsesPath = '/inner/agent/codex/v1/responses';
 
+/// The `OpenAI-Beta` header of Codex 0.163.0's Responses WebSocket.
+const codexWebsocketBeta = 'responses_websockets=2026-02-06';
+
+/// How the Codex entry answers a WebSocket upgrade.
+enum CodexWebsocketMode {
+  /// No WebSocket entry: `404`.
+  none,
+
+  /// The upgrade is accepted (see [ScriptedGateway]).
+  accept,
+
+  /// `426 Upgrade Required`: Codex switches to HTTP for good.
+  upgradeRequired,
+}
+
+/// A WebSocket upgrade of the Codex entry.
+class CodexWebsocketUpgrade {
+  CodexWebsocketUpgrade(this.headers, this.status, this.connection);
+
+  /// Request headers (lower-case names).
+  final Map<String, String> headers;
+
+  /// `101`, or the status of the refusal.
+  final int status;
+
+  /// The socket's number from 1, or 0 when refused.
+  final int connection;
+}
+
+/// A `response.create` received on a Codex entry WebSocket.
+class CodexWebsocketRequest {
+  CodexWebsocketRequest(
+    this.connection,
+    this.body,
+    this.frameBytes,
+    this.conversation,
+  );
+
+  /// The socket's number (see [CodexWebsocketUpgrade.connection]).
+  final int connection;
+
+  /// The event as sent.
+  final Map<String, Object?> body;
+
+  /// The UTF-8 size of its frame.
+  final int frameBytes;
+
+  /// The input the request stands for: with `previous_response_id`, that
+  /// response's conversation (its input and output items) followed by this
+  /// input; without, this input. Null when the id was unknown.
+  final List<Object?>? conversation;
+
+  /// The response ID answered, or the error code sent.
+  String? responseId;
+  String? error;
+
+  bool get warmup => body['generate'] == false;
+  String? get previousResponseId => body['previous_response_id'] as String?;
+  List<Object?> get input => (body['input'] as List?) ?? const [];
+}
+
 class ScriptedGateway {
   ScriptedGateway({
     List<ScriptedCall> calls = const [],
@@ -285,6 +375,8 @@ class ScriptedGateway {
     this.log,
     this.codexRunToken,
     this.codexCallLimit,
+    this.codexWebsocket = CodexWebsocketMode.none,
+    this.codexWebsocketAccepts,
   }) : _calls = List.of(calls),
        files = Map.of(files);
 
@@ -305,6 +397,13 @@ class ScriptedGateway {
     log: log,
     codexRunToken: script['codex_run_token'] as String?,
     codexCallLimit: script['codex_call_limit'] as int?,
+    codexWebsocket: switch (script['codex_websocket']) {
+      null || 'none' => CodexWebsocketMode.none,
+      'accept' => CodexWebsocketMode.accept,
+      'upgrade_required' => CodexWebsocketMode.upgradeRequired,
+      final v => throw FormatException('codex_websocket: $v'),
+    },
+    codexWebsocketAccepts: script['codex_websocket_accepts'] as int?,
   );
 
   final List<ScriptedCall> _calls;
@@ -315,6 +414,19 @@ class ScriptedGateway {
   /// POSTs the Codex entry answers before `usage_limit_reached`.
   final int? codexCallLimit;
   int codexCalls = 0;
+
+  /// The Codex entry's answer to a WebSocket upgrade.
+  CodexWebsocketMode codexWebsocket;
+
+  /// With [CodexWebsocketMode.accept]: the upgrades accepted before the
+  /// next ones get `426` (null: all).
+  int? codexWebsocketAccepts;
+
+  /// Upgrades of the Codex entry and the requests on its sockets, in
+  /// arrival order.
+  final List<CodexWebsocketUpgrade> codexWebsocketUpgrades = [];
+  final List<CodexWebsocketRequest> codexWebsocketRequests = [];
+  final List<WebSocket> _sockets = [];
   final Map<String, Map<String, Object?>> files;
   final String? serviceKey;
   final void Function(String)? log;
@@ -368,7 +480,12 @@ class ScriptedGateway {
     return url;
   }
 
-  Future<void> close() async => _server?.close(force: true);
+  Future<void> close() async {
+    for (final ws in _sockets) {
+      unawaited(ws.close().then((_) {}, onError: (_) {}));
+    }
+    await _server?.close(force: true);
+  }
 
   Future<void> _handle(HttpRequest request) async {
     final res = request.response;
@@ -376,6 +493,10 @@ class ScriptedGateway {
     request.headers.forEach((k, v) => headers[k] = v.join(','));
     try {
       final path = request.uri.path;
+      if (path == codexResponsesPath &&
+          WebSocketTransformer.isUpgradeRequest(request)) {
+        return await _codexWebsocket(request, headers);
+      }
       if (request.method == 'GET' && path.startsWith('/files/')) {
         final file = files[path.substring('/files/'.length)];
         final content = file?['content'];
@@ -430,6 +551,26 @@ class ScriptedGateway {
                   'closed_by_client': e.closedByClient,
                 },
           ],
+          'websocket': {
+            'upgrades': [
+              for (final u in codexWebsocketUpgrades)
+                {
+                  'headers': u.headers,
+                  'status': u.status,
+                  'connection': u.connection,
+                },
+            ],
+            'requests': [
+              for (final r in codexWebsocketRequests)
+                {
+                  'connection': r.connection,
+                  'frame_bytes': r.frameBytes,
+                  'body': r.body,
+                  'response_id': r.responseId,
+                  'error': r.error,
+                },
+            ],
+          },
         });
       }
       final text = await utf8.decodeStream(request);
@@ -687,6 +828,19 @@ class ScriptedGateway {
         },
       }, exchange);
     }
+    // A model call over HTTP of a run that must stay on the WebSocket (a
+    // Codex fallback): refused before it counts.
+    if (exchange.headers['x-difysf-require-incremental'] != null) {
+      return _jsonResponse(res, 400, {
+        'error': {
+          'type': 'invalid_request_error',
+          'code': 'incremental_required',
+          'message':
+              'this run must use the Responses WebSocket '
+              '(X-DifySF-Require-Incremental); HTTP model calls are refused',
+        },
+      }, exchange);
+    }
     final index = ++codexCalls;
     final limit = codexCallLimit;
     if (limit != null && index > limit) {
@@ -745,6 +899,155 @@ class ScriptedGateway {
           e,
     ];
     return _sse(res, obs, call, '', exchange, responseEvents: events);
+  }
+
+  /// A WebSocket upgrade of the Codex entry (see the library comment).
+  Future<void> _codexWebsocket(
+    HttpRequest request,
+    Map<String, String> headers,
+  ) async {
+    Future<void> refuse(int status, String code, String message) async {
+      codexWebsocketUpgrades.add(CodexWebsocketUpgrade(headers, status, 0));
+      log?.call('GET $codexResponsesPath (WebSocket upgrade): $status');
+      await _jsonResponse(request.response, status, {
+        'error': {
+          'type': 'invalid_request_error',
+          'code': code,
+          'message': message,
+        },
+      });
+    }
+
+    final token = codexRunToken;
+    final auth = headers['authorization'] ?? '';
+    final accepted = codexWebsocketUpgrades.where((u) => u.status == 101);
+    final accepts = codexWebsocketAccepts;
+    switch (codexWebsocket) {
+      case CodexWebsocketMode.none:
+        return refuse(404, 'not_found', 'no WebSocket entry');
+      case _
+          when !auth.startsWith('Bearer ') ||
+              (token != null && auth != 'Bearer $token'):
+        return refuse(401, 'invalid_run_token', 'unknown run token');
+      case CodexWebsocketMode.upgradeRequired:
+        return refuse(426, 'upgrade_required', 'use HTTP');
+      case _ when accepts != null && accepted.length >= accepts:
+        return refuse(426, 'upgrade_required', 'use HTTP');
+      case _ when headers['openai-beta'] != codexWebsocketBeta:
+        return refuse(
+          400,
+          'invalid_beta_header',
+          'OpenAI-Beta must be $codexWebsocketBeta',
+        );
+      case CodexWebsocketMode.accept:
+        break;
+    }
+    final connection = accepted.length + 1;
+    codexWebsocketUpgrades.add(CodexWebsocketUpgrade(headers, 101, connection));
+    log?.call('GET $codexResponsesPath (WebSocket $connection)');
+    final ws = await WebSocketTransformer.upgrade(
+      request,
+      compression: CompressionOptions.compressionOff,
+    );
+    _sockets.add(ws);
+    // Conversations of the responses completed on this socket, by ID.
+    final completed = <String, List<Object?>>{};
+    void send(Map<String, Object?> event) => ws.add(jsonEncode(event));
+    try {
+      await for (final frame in ws) {
+        if (frame is! String) continue;
+        final Map<String, Object?> body;
+        try {
+          body = (jsonDecode(frame) as Map).cast<String, Object?>();
+        } on Object {
+          continue;
+        }
+        if (body['type'] != 'response.create') continue;
+        final previous = body['previous_response_id'];
+        final input = (body['input'] as List?) ?? const [];
+        final List<Object?>? conversation = previous == null
+            ? input
+            : completed[previous] == null
+            ? null
+            : [...completed[previous]!, ...input];
+        final r = CodexWebsocketRequest(
+          connection,
+          body,
+          utf8.encode(frame).length,
+          conversation,
+        );
+        codexWebsocketRequests.add(r);
+        if (conversation == null) {
+          r.error = 'previous_response_not_found';
+          send({
+            'type': 'error',
+            'status': 400,
+            'error': {
+              'type': 'invalid_request_error',
+              'code': 'previous_response_not_found',
+              'message': 'no response $previous on this connection',
+            },
+          });
+          continue;
+        }
+        if (r.warmup) {
+          final id = r.responseId = 'resp_warmup_$connection';
+          send({
+            'type': 'response.created',
+            'response': {'id': id},
+          });
+          send({
+            'type': 'response.completed',
+            'response': {
+              'id': id,
+              'status': 'completed',
+              'output': <Object?>[],
+            },
+          });
+          completed[id] = conversation;
+          continue;
+        }
+        final index = ++codexCalls;
+        final id = r.responseId = 'resp_$index';
+        final call = _calls.isEmpty ? null : _calls.removeAt(0);
+        send({
+          'type': 'response.created',
+          'response': {'id': id},
+        });
+        if (call?.drop ?? false) {
+          r.error = 'dropped';
+          await ws.close(WebSocketStatus.internalServerError, 'scripted drop');
+          break;
+        }
+        final output = <Object?>[];
+        for (final e
+            in call?.responseEvents ??
+                [
+                  {
+                    'type': 'response.failed',
+                    'response': {
+                      'error': {
+                        'code': 'server_error',
+                        'message': 'script exhausted',
+                      },
+                    },
+                  },
+                ]) {
+          if (e['type'] == 'response.output_item.done') output.add(e['item']);
+          send(
+            e['response'] is Map
+                ? {
+                    ...e,
+                    'response': {...e['response'] as Map, 'id': id},
+                  }
+                : e,
+          );
+        }
+        completed[id] = [...conversation, ...output];
+      }
+    } finally {
+      _sockets.remove(ws);
+    }
   }
 
   Future<void> _sse(

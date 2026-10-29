@@ -35,6 +35,7 @@ let package = Package(
         .package(path: "Vendor/swift-smtp"),
         // Already in the graph through Vapor (same version as Package.resolved): the tests' stub SMTP server.
         .package(url: "https://github.com/apple/swift-nio.git", exact: "2.104.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", exact: "2.37.5"),
     ],
     targets: [
         // Pure protocol logic: document model, ops, wire format, sequencer, client state machine. No I/O.
@@ -77,6 +78,10 @@ let package = Package(
             .product(name: "Crypto", package: "swift-crypto"),
             .product(name: "CryptoExtras", package: "swift-crypto"),
             .product(name: "_NIOFileSystem", package: "swift-nio"),
+            .product(name: "NIOHTTP1", package: "swift-nio"),
+            .product(name: "NIOPosix", package: "swift-nio"),
+            .product(name: "NIOWebSocket", package: "swift-nio"),
+            .product(name: "NIOSSL", package: "swift-nio-ssl"),
             .product(name: "MultipartKit", package: "multipart-kit"),
             .product(name: "SwiftSMTP", package: "swift-smtp"),
         ]),

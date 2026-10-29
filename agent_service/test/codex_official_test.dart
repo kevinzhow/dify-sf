@@ -2,7 +2,9 @@
 // operation fields, config.toml, the catalog entry and the output schema.
 // The runtime itself is covered end to end by tool/codex_e2e.sh (a real
 // sandbox, the real binary and the scripted gateway's Codex entry).
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:agent_service/agent_service.dart';
 import 'package:agent_service/src/harness/codex/official.dart';
@@ -13,6 +15,39 @@ import 'package:test/test.dart';
 import 'support.dart';
 
 void main() {
+  test('the app-server client drops frames that arrive after close', () async {
+    // An app-server that keeps notifying while the client closes.
+    final server = await HttpServer.bind('127.0.0.1', 0);
+    addTearDown(() => server.close(force: true));
+    server.listen((req) async {
+      final ws = await WebSocketTransformer.upgrade(req);
+      var open = true;
+      ws.listen((_) {}, onDone: () => open = false);
+      while (open) {
+        try {
+          ws.add(
+            jsonEncode({'method': 'warning', 'params': <String, Object?>{}}),
+          );
+        } on Object {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 1));
+      }
+    });
+    for (var i = 0; i < 5; i++) {
+      final client = await CodexAppServer.connect(
+        Uri.parse('ws://127.0.0.1:${server.port}'),
+        'token',
+        onServerRequest: (_, _) async => null,
+      );
+      await client.notifications.first;
+      await client.close();
+      expect(client.isClosed, isTrue);
+      // Frames in flight arrive now; none may reach the closed stream.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  });
+
   test('diagnostic tail redacts before cutting across a credential', () {
     final secret = 'fixture-secret-capability';
     final raw = '${'x' * 100}$secret${'y' * 3990}';
@@ -62,6 +97,99 @@ void main() {
         ),
         throwsA(isA<ApiError>().having((e) => e.status, 'status', 422)),
       );
+    });
+
+    group('model.transport', () {
+      Map<String, Object?> withTransport(
+        Object? transport, {
+        String style = 'codex',
+      }) {
+        final o = codexOp();
+        return {
+          ...o,
+          'harness_style': style,
+          'model': {
+            ...o['model'] as Map<String, Object?>,
+            'transport': ?transport,
+          },
+        };
+      }
+
+      Matcher refused(String message) => throwsA(
+        isA<ApiError>()
+            .having((e) => e.status, 'status', 400)
+            .having((e) => e.code, 'code', 'invalid_request')
+            .having((e) => e.message, 'message', contains(message)),
+      );
+
+      test('absent and "http" are the HTTP transport, "websocket" the '
+          'Responses WebSocket', () {
+        final none = OperationRequest.parse(
+          withTransport(null),
+          officialCodex: true,
+        );
+        expect(none.model.transport, isNull);
+        expect(none.model.websocket, isFalse);
+        final http = OperationRequest.parse(
+          withTransport('http'),
+          officialCodex: true,
+        );
+        expect(http.model.websocket, isFalse);
+        final ws = OperationRequest.parse(
+          withTransport('websocket'),
+          officialCodex: true,
+        );
+        expect(ws.model.transport, 'websocket');
+        expect(ws.model.websocket, isTrue);
+        // "http" is today's behaviour for every style and runtime.
+        OperationRequest.parse(withTransport('http', style: 'dify'));
+        OperationRequest.parse(withTransport('http'));
+      });
+
+      test('other values are refused', () {
+        for (final bad in [
+          'ws',
+          'WebSocket',
+          'sse',
+          '',
+          1,
+          true,
+          <Object?>[],
+        ]) {
+          expect(
+            () =>
+                OperationRequest.parse(withTransport(bad), officialCodex: true),
+            refused('model.transport'),
+            reason: jsonEncode(bad),
+          );
+        }
+      });
+
+      test('websocket needs the codex style and the official runtime', () {
+        expect(
+          () => OperationRequest.parse(
+            withTransport('websocket', style: 'dify'),
+            officialCodex: true,
+          ),
+          refused('model.transport "websocket" needs harness_style "codex"'),
+        );
+        expect(
+          () => OperationRequest.parse(withTransport('websocket')),
+          refused(
+            'model.transport "websocket" needs the official Codex runtime',
+          ),
+        );
+      });
+
+      test('part of the request digest', () {
+        String digest(Object? t) => OperationRequest.parse(
+          withTransport(t),
+          officialCodex: true,
+        ).digest;
+        expect(digest('websocket'), isNot(digest(null)));
+        expect(digest('websocket'), isNot(digest('http')));
+        expect(digest('http'), isNot(digest(null)));
+      });
     });
   });
 
@@ -133,6 +261,134 @@ void main() {
       );
       expect('[projects.'.allMatches(t), hasLength(1));
     }
+    // Without websocket the app-server's log variables are not touched.
+    expect(toml, isNot(contains('websocket_connect_timeout_ms')));
+    expect(toml, isNot(contains('RUST_LOG')));
+  });
+
+  group('transport websocket', () {
+    String config({Map<String, String> commandEnv = const {}}) =>
+        codexConfigToml(
+          model: 'deepseek-v4.1-flash',
+          baseUrl: 'http://gw/inner/agent/codex/v1',
+          catalogPath: '/home/dify/agent/.codex-runs/r/models.json',
+          workspace: '/workspace',
+          shell: true,
+          viewImage: false,
+          updatePlan: false,
+          websocket: true,
+          commandEnv: commandEnv,
+        );
+
+    test('config.toml: the provider supports WebSockets, the rest as for '
+        'HTTP', () {
+      final toml = config(commandEnv: {'NO_PROXY': 'localhost'});
+      final http = codexConfigToml(
+        model: 'deepseek-v4.1-flash',
+        baseUrl: 'http://gw/inner/agent/codex/v1',
+        catalogPath: '/home/dify/agent/.codex-runs/r/models.json',
+        workspace: '/workspace',
+        shell: true,
+        viewImage: false,
+        updatePlan: false,
+        commandEnv: {'NO_PROXY': 'localhost'},
+      );
+      expect(
+        toml,
+        contains(
+          '[model_providers.difysf]\nname = "dify-sf"\n'
+          'base_url = "http://gw/inner/agent/codex/v1"\n'
+          'wire_api = "responses"\nenv_key = "DIFYSF_RUN_TOKEN"\n'
+          'supports_websockets = true\n'
+          'websocket_connect_timeout_ms = 15000\n'
+          'http_headers = { "X-DifySF-Require-Incremental" = "v1" }\n'
+          'request_max_retries = 2\nstream_max_retries = 2\n',
+        ),
+      );
+      // The app-server's log settings never reach the commands.
+      expect(
+        toml,
+        contains(
+          'exclude = ["DIFYSF_RUN_TOKEN", "SHELLCTL_*", "RUST_LOG", '
+          '"LOG_FORMAT"]',
+        ),
+      );
+      // Nothing else differs from the HTTP transport's file.
+      String rest(String t) => t
+          .replaceAll('supports_websockets = true\n', '')
+          .replaceAll('supports_websockets = false\n', '')
+          .replaceAll('websocket_connect_timeout_ms = 15000\n', '')
+          .replaceAll(
+            'http_headers = { "X-DifySF-Require-Incremental" = "v1" }\n',
+            '',
+          )
+          .replaceAll(', "RUST_LOG", "LOG_FORMAT"]', ']');
+      expect(rest(toml), rest(http));
+      // No feature or table of ours turns the WebSocket path off: 0.163.0
+      // removed the responses_websockets features.
+      expect(toml, isNot(contains('responses_websockets')));
+    });
+
+    test('the commands keep their own log variables', () {
+      expect(codexCommandLogEnv({}, {}), isEmpty);
+      expect(
+        codexCommandLogEnv(
+          {'RUST_LOG': 'debug', 'OTHER': 'x'},
+          {'RUST_LOG': 'info', 'LOG_FORMAT': 'pretty'},
+        ),
+        {'RUST_LOG': 'debug', 'LOG_FORMAT': 'pretty'},
+      );
+      final toml = config(commandEnv: {'RUST_LOG': 'debug'});
+      expect(
+        toml,
+        contains('[shell_environment_policy.set]\nRUST_LOG = "debug"\n'),
+      );
+    });
+
+    test('the app-server log lines that tell the WebSocket\'s state', () {
+      String line(String target, String message) => jsonEncode({
+        'timestamp': '2026-10-29T03:00:00.000000Z',
+        'level': 'INFO',
+        'fields': {'message': message},
+        'target': target,
+      });
+      const ws = 'codex_api::endpoint::responses_websocket';
+      expect(
+        codexWebsocketLogEvent(
+          line(ws, 'successfully connected to websocket: ws://gw/v1/responses'),
+        ),
+        (kind: CodexWebsocketLog.connected, detail: 'ws://gw/v1/responses'),
+      );
+      expect(
+        codexWebsocketLogEvent(
+          line(
+            ws,
+            'failed to connect to websocket: HTTP error: 426 Upgrade '
+            'Required, url: ws://gw/v1/responses',
+          ),
+        ),
+        (
+          kind: CodexWebsocketLog.connectFailed,
+          detail: 'HTTP error: 426 Upgrade Required',
+        ),
+      );
+      expect(
+        codexWebsocketLogEvent(
+          line('codex_core::client', 'falling back to HTTP'),
+        ),
+        (kind: CodexWebsocketLog.fallback, detail: ''),
+      );
+      for (final other in [
+        line(ws, 'connecting to websocket: ws://gw/v1/responses'),
+        line('codex_core::session', 'falling back to HTTP'),
+        line('other', 'successfully connected to websocket: x'),
+        'falling back to HTTP',
+        '{"fields": {}}',
+        '',
+      ]) {
+        expect(codexWebsocketLogEvent(other), isNull, reason: other);
+      }
+    });
   });
 
   test('skills: the profile directories\' enabled skills by name, every '
@@ -429,6 +685,133 @@ void main() {
         ((jsonDecode(limited.body) as Map)['error'] as Map)['type'],
         'usage_limit_reached',
       );
+    } finally {
+      await gw.close();
+    }
+  });
+
+  _websocketGatewayTests();
+}
+
+void _websocketGatewayTests() {
+  test('scripted gateway: the Codex entry\'s Responses WebSocket', () async {
+    final gw = ScriptedGateway(
+      calls: [
+        ScriptedCall.responses([
+          {
+            'type': 'function_call',
+            'id': 'fc_1',
+            'call_id': 'c1',
+            'name': 'exec_command',
+            'arguments': '{}',
+          },
+        ]),
+        ScriptedCall(drop: true),
+      ],
+      codexRunToken: 'tok',
+    );
+    final base = await gw.start();
+    final ws = base
+        .resolve(codexResponsesPath)
+        .replace(scheme: 'ws')
+        .toString();
+    Future<int> refused(Map<String, String> headers) async {
+      try {
+        await WebSocket.connect(ws, headers: headers);
+        return 101;
+      } on WebSocketException {
+        return gw.codexWebsocketUpgrades.last.status;
+      }
+    }
+
+    final good = {
+      'Authorization': 'Bearer tok',
+      'OpenAI-Beta': codexWebsocketBeta,
+    };
+    try {
+      // No WebSocket entry by default.
+      expect(await refused(good), 404);
+      gw.codexWebsocket = CodexWebsocketMode.upgradeRequired;
+      expect(await refused(good), 426);
+      gw.codexWebsocket = CodexWebsocketMode.accept;
+      expect(await refused({...good, 'Authorization': 'Bearer x'}), 401);
+      expect(await refused({'Authorization': 'Bearer tok'}), 400);
+
+      final socket = await WebSocket.connect(ws, headers: good);
+      final frames = <Map<String, Object?>>[];
+      final it = StreamIterator(
+        socket.map(
+          (f) => (jsonDecode(f as String) as Map).cast<String, Object?>(),
+        ),
+      );
+      void create(Map<String, Object?> body) =>
+          socket.add(jsonEncode({'type': 'response.create', ...body}));
+      Future<Map<String, Object?>> next() async {
+        await it.moveNext();
+        frames.add(it.current);
+        return it.current;
+      }
+
+      create({
+        'generate': false,
+        'input': [
+          {'type': 'message', 'role': 'developer'},
+        ],
+      });
+      expect((await next())['type'], 'response.created');
+      expect(((await next())['response'] as Map)['id'], 'resp_warmup_1');
+      create({
+        'previous_response_id': 'resp_warmup_1',
+        'input': [
+          {'type': 'message', 'role': 'user'},
+        ],
+      });
+      expect((await next())['type'], 'response.created');
+      expect((await next())['type'], 'response.output_item.done');
+      expect(((await next())['response'] as Map)['id'], 'resp_1');
+      create({'previous_response_id': 'resp_nope', 'input': <Object?>[]});
+      final error = await next();
+      expect(error['type'], 'error');
+      expect((error['error'] as Map)['code'], 'previous_response_not_found');
+      create({
+        'previous_response_id': 'resp_1',
+        'input': [
+          {'type': 'function_call_output', 'call_id': 'c1'},
+        ],
+      });
+      expect((await next())['type'], 'response.created');
+      // A dropped call: the socket closes before the response completes.
+      expect(await it.moveNext(), isFalse);
+
+      final reqs = gw.codexWebsocketRequests;
+      expect(
+        [for (final r in reqs) r.responseId ?? r.error],
+        ['resp_warmup_1', 'resp_1', 'previous_response_not_found', 'resp_2'],
+      );
+      expect(reqs[1].conversation, [
+        {'type': 'message', 'role': 'developer'},
+        {'type': 'message', 'role': 'user'},
+      ]);
+      // The last one stands for the whole conversation: the earlier input,
+      // the function call answered, and its output.
+      expect(
+        [for (final i in reqs[3].conversation!) (i as Map)['type']],
+        ['message', 'message', 'function_call', 'function_call_output'],
+      );
+      expect(gw.codexCalls, 2, reason: 'the warm-up is not a model call');
+
+      // A model call over HTTP of a WebSocket run is refused, not counted.
+      final post = await http.post(
+        base.resolve(codexResponsesPath),
+        headers: {
+          'Authorization': 'Bearer tok',
+          codexIncrementalHeader: codexIncrementalHeaderValue,
+        },
+        body: '{}',
+      );
+      expect(post.statusCode, 400);
+      expect(post.body, contains(codexIncrementalRequired));
+      expect(gw.codexCalls, 2);
     } finally {
       await gw.close();
     }

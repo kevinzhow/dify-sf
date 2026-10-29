@@ -329,6 +329,8 @@ void main() {
       expect(runtime['model'], 'test-model');
       expect(runtime['reasoning_effort'], 'high');
       expect(runtime.containsKey('request_reasoning_effort'), isFalse);
+      // No model.transport: Codex's HTTP path, as before.
+      expect(runtime['transport'], 'http');
     });
 
     test(

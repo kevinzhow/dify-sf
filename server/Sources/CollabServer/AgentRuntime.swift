@@ -332,6 +332,10 @@ struct ServerAgentRuntime: AgentRuntime {
         let credentials = try await routes.agentCredentials(provider: soul.provider!, model: soul.model!, reference: soul.json["model"]?["credential_ref"])
         result["wire"] = .string(AgentModelWire.select(style: soul.harnessStyle, provider: soul.provider!, credentials: credentials))
         if let apiType = credentials["api_type"]?.string { result["api_type"] = .string(apiType) }
+        if routes.config.agentService.codexWebsocketPort > 0, result["wire"] == "responses",
+           try AgentResponsesConnection(provider: soul.provider!, model: soul.model!, credentials: credentials).isOfficialOpenAI {
+            result["transport"] = "websocket"
+        }
         if let models = routes.runtimeServices(appId: appID, userId: userID).models,
            let schema = try await models.modelSchema(provider: soul.provider!, model: soul.model!, modelType: "llm", credentials: credentials) {
             if let context = schema.json["model_properties"]?["context_size"]?.int, context > 0 { result["context_window"] = .int(context) }

@@ -25,6 +25,7 @@ http {
             proxy_set_header Authorization $http_authorization;
             proxy_set_header Content-Type application/json;
             proxy_set_header Accept text/event-stream;
+            proxy_set_header X-DifySF-Require-Incremental $http_x_difysf_require_incremental;
             proxy_buffering off;
             proxy_request_buffering off;
             proxy_ignore_client_abort off;
