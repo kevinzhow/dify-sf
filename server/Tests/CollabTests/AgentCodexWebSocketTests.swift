@@ -167,7 +167,27 @@ struct AgentCodexWebSocketTests {
         }
     }
 
-    @Test(arguments: [false, true]) func pairedSocketPreservesDeltaOpaqueEventsWarmupAndQuota(largeInitialFrame: Bool) async throws {
+    @Test(arguments: [true, false]) func aGenerationCannotRestartFullAfterCompletionOrFailure(completed: Bool) async throws {
+        try await withFakeDaemon { daemon, _ in
+            try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                let (scope, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: "http://127.0.0.1:1")
+                let connection = try AgentResponsesConnection(provider: AgentModelWire.compatible, model: scope.model,
+                    credentials: ["api_type": "responses", "endpoint_url": "http://127.0.0.1:1", "api_key": "fixture-key"])
+                let idle = Task<Void, Never> { try? await Task.sleep(for: .seconds(100)) }; defer { idle.cancel() }
+                try await routes.agentModelScopes.openCodexSocket(token: token, lane: "root", id: "socket", task: idle)
+                let session = AgentCodexSocketSession(routes: routes, token: token, lane: "root", connection: connection)
+                var body = AgentResponsesTests.body(scope).object!; body["type"] = "response.create"
+                _ = try await session.prepare(bodyJSON(body))
+                _ = try await session.observe(bodyJSON(["type": completed ? "response.completed" : "response.failed", "response": ["id": "resp_first"]]))
+                do { _ = try await session.prepare(bodyJSON(body)); Issue.record("A later generation replayed the full input") }
+                catch let error as AgentCodexSocketError { #expect(error.code == "incremental_required") }
+                let usage = await routes.agentModelScopes.revoke(token: token)
+                #expect(usage.totalTokens == 0)
+            }
+        }
+    }
+
+    @Test(arguments: [false, true], [false, true]) func pairedSocketPreservesDeltaOpaqueEventsWarmupAndQuota(largeInitialFrame: Bool, fullFirstGeneration: Bool) async throws {
         let provider = try await CodexWSProvider.start()
         defer { provider.process.terminate(); provider.process.waitUntilExit() }
         try await withFakeDaemon { daemon, _ in
@@ -208,7 +228,7 @@ struct AgentCodexWebSocketTests {
                         if value["type"] == "response.completed" { warm = value; break }
                     }
                     #expect(warm?["response"]?["id"] == "resp_ws_warm")
-                    body["generate"] = nil; body["previous_response_id"] = "resp_ws_warm"
+                    body["generate"] = nil; body["previous_response_id"] = fullFirstGeneration ? nil : "resp_ws_warm"
                     body["input"] = [["type": "message", "role": "user", "content": "First delta"]]
                     try await create(body)
                     var opaque: JSONValue?
@@ -242,7 +262,7 @@ struct AgentCodexWebSocketTests {
                 let calls = records.filter { $0["call"] != nil }
                 #expect(calls.count == 3)
                 if largeInitialFrame { #expect((calls[0]["bytes"]?.int ?? 0) > 32 << 20 && (calls[1]["bytes"]?.int ?? Int.max) < 1024) }
-                #expect(calls[0]["warmup"] == true && calls[1]["previous"] == "resp_ws_warm" && calls[2]["previous"] == "resp_ws_1")
+                #expect(calls[0]["warmup"] == true && (fullFirstGeneration ? calls[1]["previous"] == .null : calls[1]["previous"] == "resp_ws_warm") && calls[2]["previous"] == "resp_ws_1")
                 #expect(calls.allSatisfy { $0["store"] == false && $0["effort"] == "max" && $0["max_output_tokens"] == 32768 })
                 #expect(calls[2]["inputs"] == 1 && calls[2]["types"] == ["function_call_output"])
             }

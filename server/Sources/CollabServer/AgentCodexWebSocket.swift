@@ -111,6 +111,7 @@ actor AgentCodexSocketSession {
     let connection: AgentResponsesConnection
     private var busy = false
     private var warmed = false
+    private var generationStarted = false
     private var completedID: String?
     private var parameters: String?
     private var claim: AgentModelScopes.Claim?
@@ -143,11 +144,11 @@ actor AgentCodexSocketSession {
             guard previous == completedID, digest == parameters else {
                 throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
             }
-        } else if completedID != nil {
+        } else if generationStarted {
             throw AgentCodexSocketError(status: 400, code: "incremental_required")
         }
         if request.body["generate"] == false {
-            guard !warmed, previous == nil else { throw AgentCodexSocketError(status: 400, code: "invalid_warmup") }
+            guard !warmed, !generationStarted, previous == nil else { throw AgentCodexSocketError(status: 400, code: "invalid_warmup") }
             warmed = true
         }
         request.body["model"] = .string(connection.model)
@@ -161,6 +162,10 @@ actor AgentCodexSocketSession {
         try await routes.agentModelScopes.startCodexSocket(token: token, lane: lane)
         parameters = digest
         if body["generate"] != false {
+            // Prewarm is connection setup. Codex may legitimately send a full
+            // first generation when its tools or input changed since prewarm.
+            // Every later generation must still continue the same response.
+            generationStarted = true
             let accepted = try await routes.agentModelScopes.claimCodex(token: token)
             claim = accepted
             try await routes.recordCodexModelCall(scope: scope, claim: accepted, phase: "started", body: body,
