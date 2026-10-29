@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "origin": "https://api.openai.com/v1",
+  "models": {
+    "gpt-6.1-terra": {
+      "reference": "https://developers.openai.com/api/docs/models/gpt-6.1-terra",
+      "checked_at": "2026-10-29",
+      "tool_api_type": "responses",
+      "fields": {
+        "api_type": "responses",
+        "context_capacity": 1050000,
+        "output_capacity": 128000,
+        "vision": true,
+        "reasoning": true,
+        "tools": true,
+        "json_schema": true,
+        "streaming": true,
+        "reasoning_levels": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ]
+      }
+    },
+    "gpt-6.1-sol": {
+      "reference": "https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+      "checked_at": "2026-10-29",
+      "tool_api_type": "responses",
+      "fields": {
+        "api_type": "responses",
+        "context_capacity": 1050000,
+        "output_capacity": 128000,
+        "vision": true,
+        "reasoning": true,
+        "tools": true,
+        "json_schema": true,
+        "streaming": true,
+        "reasoning_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ]
+      }
+    }
+  }
+}

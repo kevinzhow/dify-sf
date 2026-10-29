@@ -78,14 +78,26 @@ class _ModelAutofillDialogState extends State<ModelAutofillDialog> {
       _discoveryId != null || map(map(_probe?['fields'])['api_type'])['source'] == 'observed';
   Json get _listed => _models.where((m) => m['id'] == _effectiveModel).firstOrNull ?? const {};
   Json map(Object? v) => v is Map ? {for (final e in v.entries) '${e.key}': e.value} : const {};
-  Json get _declaredFields => map(_listed['fields']);
+  Json get _declaredFields {
+    final fields = map(_listed['fields']);
+    if (_listed['tool_api_type'] != null &&
+        _listed['tool_api_type'] != _protocol &&
+        map(fields['tools'])['source'] == 'reference') {
+      return {
+        ...fields,
+        'tools': {'value': null, 'source': 'unknown'},
+      };
+    }
+    return fields;
+  }
+
   Json? get _probe {
     final p = _probes[_selected];
     return p?['protocol'] == _protocol && p?['id'] == _effectiveModel ? p : null;
   }
 
   String get _protocol =>
-      (_overrides[_selected]?['api_type'] ?? map(_declaredFields['api_type'])['value'] ?? 'chat_completions') as String;
+      (_overrides[_selected]?['api_type'] ?? map(map(_listed['fields'])['api_type'])['value'] ?? 'chat_completions') as String;
   Json get _fields => {
     ..._declaredFields,
     for (final entry in map(_probe?['fields']).entries)
@@ -106,6 +118,10 @@ class _ModelAutofillDialogState extends State<ModelAutofillDialog> {
       'vision_support': val('vision') == true ? 'support' : 'no_support',
       'function_calling_type': val('tools') == true ? 'tool_call' : 'no_call',
       'structured_output_support': val('json_schema') == true ? 'supported' : 'not_supported',
+      'agent_thought_support':
+          val('reasoning') == true || (val('reasoning_levels') is List && (val('reasoning_levels') as List).isNotEmpty)
+          ? 'only_thinking_supported'
+          : 'not_supported',
       ...?_overrides[_selected],
     };
   }
@@ -113,8 +129,31 @@ class _ModelAutofillDialogState extends State<ModelAutofillDialog> {
   String source(String name) => switch (map(_fields[name])['source']) {
     'provider' => t('服务商提供', 'Provider declared'),
     'observed' => t('实际检测', 'Observed'),
+    'reference' => t('官方说明', 'Official documentation'),
+    'catalog' => t('内置模型目录', 'Bundled model catalog'),
     _ => t('未知', 'Unknown'),
   };
+  String diagnostic(String name) {
+    final d = map(map(_probe?['diagnostics'])[name]);
+    if (d.isEmpty) return '';
+    final reason = switch (d['reason']) {
+      'http_error' => t('接口拒绝请求', 'The endpoint rejected the request'),
+      'output_budget_exhausted' => t(
+        '生成预算已用尽，未得到完整结果',
+        'The generation budget ended before a complete result',
+      ),
+      'transport_error' => t('连接失败或超时', 'Connection failed or timed out'),
+      'invalid_response' => t(
+        '接口返回格式无法识别',
+        'The response format could not be read',
+      ),
+      _ => t('返回结果未能证明此能力', 'The result did not establish this capability'),
+    };
+    final status = d['http_status'] is int ? ' · HTTP ${d['http_status']}' : '';
+    final code = d['code'] is String ? ' · ${d['code']}' : '';
+    return '$reason$status$code';
+  }
+
   bool get _validConnection {
     final uri = Uri.tryParse(_url.trim());
     return uri != null &&
@@ -481,13 +520,38 @@ class _ModelAutofillDialogState extends State<ModelAutofillDialog> {
           ])
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: text(
-                '${item.$2} · ${value(item.$1) == true
-                    ? t('支持', 'Supported')
-                    : value(item.$1) == false
-                    ? t('声明不支持', 'Declared unsupported')
-                    : t('待检测', 'Unknown')} · ${source(item.$1)}',
-                muted: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  text(
+                    '${item.$2} · ${value(item.$1) == true
+                        ? t('支持', 'Supported')
+                        : value(item.$1) == false
+                        ? t('声明不支持', 'Declared unsupported')
+                        : t('未确认', 'Unknown')} · ${source(item.$1)}',
+                    muted: true,
+                  ),
+                  if (diagnostic(item.$1).isNotEmpty) text(diagnostic(item.$1), muted: true),
+                ],
+              ),
+            ),
+          if (_listed['tool_api_type'] != null && _listed['tool_api_type'] != _protocol)
+            notice(
+              t(
+                '此模型的工具调用需要 Responses API，请在高级设置中切换接口。',
+                'Tool calls for this model require the Responses API. Change the API type in advanced settings.',
+              ),
+            ),
+          if ([
+            'vision',
+            'tools',
+            'json_schema',
+            'reasoning',
+          ].any((name) => value(name) == null))
+            notice(
+              t(
+                '未确认不代表不支持。未确认的能力暂不开启，可继续检测或在高级设置中手动设置。',
+                'Unknown does not mean unsupported. Unconfirmed capabilities stay off until verified or set manually in advanced settings.',
               ),
             ),
           const SizedBox(height: 8),
@@ -527,8 +591,8 @@ class _ModelAutofillDialogState extends State<ModelAutofillDialog> {
                 children: [
                   notice(
                     t(
-                      '最多发送 7 次短请求，检测看图、工具往返、JSON、流式输出和上限行为，可能产生费用。不能据此测出最大容量；未知结果仍显示未知。',
-                      'Sends up to 7 short requests for vision, tool round trips, JSON, streaming and output-limit behavior. Provider charges may apply. It cannot measure maximum capacity. Ambiguous results stay unknown.',
+                      '最多发送 7 次请求，每次请求的生成上限设为 1,024 token，检测看图、工具往返、JSON、流式输出和上限行为，可能产生费用。不能据此测出最大容量；未知结果仍显示未知。',
+                      'Sends up to 7 requests, requesting up to 1,024 generated tokens each, for vision, tool round trips, JSON, streaming and output-limit behavior. Provider charges may apply. It cannot measure maximum capacity. Ambiguous results stay unknown.',
                     ),
                   ),
                   const SizedBox(height: 8),

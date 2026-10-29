@@ -53,6 +53,7 @@ Json get provider => {
 class DiscoveryApi extends RecordingModelsApi implements ModelDiscoveryApi {
   int discoveries = 0, probes = 0;
   bool fails = false;
+  Json? discoveryData;
   Completer<Json>? pendingDiscovery, pendingProbe;
   Json? saved;
   @override
@@ -60,11 +61,11 @@ class DiscoveryApi extends RecordingModelsApi implements ModelDiscoveryApi {
     discoveries++;
     if (fails) throw const TransportException('Check the address and key');
     return pendingDiscovery?.future ??
-        Future.value({
+        (discoveryData != null ? Future.value(discoveryData!) : Future.value({
           'discovery_id': 'receipt',
           'models': [model('listed/m')],
           'incomplete': false,
-        });
+        }));
   }
 
   @override
@@ -177,7 +178,7 @@ void main() {
     expect(api.probes, 0);
     await press(t, 'Probe common capabilities');
     expect(api.probes, 0);
-    expect(find.textContaining('Sends up to 7 short requests'), findsOneWidget);
+    expect(find.textContaining('Sends up to 7 requests'), findsOneWidget);
     await press(t, 'Confirm probe; charges may apply');
     expect(api.probes, 1);
     expect(find.textContaining('did not enforce'), findsOneWidget);
@@ -188,6 +189,93 @@ void main() {
     expect(credentials['function_calling_type'], 'tool_call');
     expect(api.saved!['probe_id'], 'probe');
   });
+  testWidgets(
+    'official reference fills reasoning and preserves source without a paid probe',
+    (t) async {
+      final api = DiscoveryApi()
+        ..discoveryData = {
+          'discovery_id': 'official-receipt',
+          'models': [
+            {
+              'id': 'gpt-6.1-terra',
+              'tool_api_type': 'responses',
+              'fields': {
+                for (final entry in {
+                  'api_type': 'responses',
+                  'context_capacity': 1050000,
+                  'output_capacity': 128000,
+                  'reasoning': true,
+                  'reasoning_levels': [
+                    'none',
+                    'low',
+                    'medium',
+                    'high',
+                    'xhigh',
+                    'max',
+                  ],
+                  'tools': true,
+                  'json_schema': true,
+                  'vision': true,
+                  'streaming': true,
+                }.entries)
+                  entry.key: field(entry.value, 'reference'),
+              },
+            },
+          ],
+        };
+      await render(t, api);
+      await connect(t);
+      expect(
+        find.textContaining('Reasoning · Supported · Official documentation'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Tool calls · Supported · Official documentation'),
+        findsOneWidget,
+      );
+      await press(t, 'Add model');
+      final credentials = api.saved!['credentials'] as Map;
+      expect(credentials['api_type'], 'responses');
+      expect(credentials['agent_thought_support'], 'only_thinking_supported');
+      expect(credentials['function_calling_type'], 'tool_call');
+      expect(credentials['structured_output_support'], 'supported');
+      expect(credentials['context_size'], '1050000');
+      expect(api.probes, 0);
+    },
+  );
+  testWidgets(
+    'unknown capability keeps its state and shows safe probe diagnostics',
+    (t) async {
+      final api = DiscoveryApi()..pendingProbe = Completer<Json>();
+      await render(t, api);
+      await connect(t);
+      await press(t, 'Probe common capabilities');
+      await press(t, 'Confirm probe; charges may apply');
+      api.pendingProbe!.complete({
+        'probe_id': 'failed-proof',
+        'id': 'listed/m',
+        'protocol': 'responses',
+        'fields': {'tools': field(null)},
+        'diagnostics': {
+          'tools': {
+            'reason': 'http_error',
+            'http_status': 400,
+            'code': 'unsupported_parameter',
+          },
+        },
+      });
+      await settle(t);
+      expect(
+        find.textContaining('Unknown does not mean unsupported.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('HTTP 400 · unsupported_parameter'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Tool calls · Unknown'), findsOneWidget);
+    },
+  );
   testWidgets('connection failure preserves values and allows retry', (t) async {
     final api = DiscoveryApi()..fails = true;
     await render(t, api);

@@ -49,15 +49,30 @@ enum ModelReasoning {
         schema.parameterRules = rules(schema.parameterRules, provider: provider, credentials: credentials)
     }
 
+    static func referenced(_ credentials: [String: JSON]) -> [String]? {
+        guard let connection = try? ModelDiscovery.Connection(credentials), ModelDiscoveryReference.isOfficial(connection),
+              let model = credentials[ModelDiscovery.metadataKey]?["model"], let id = model["id"]?.string,
+              model["fields"]?["reasoning_levels"]?["source"] == "reference",
+              let reference = ModelDiscoveryReference.model(id, connection: connection, catalog: nil),
+              model["fields"]?["reasoning_levels"]?["value"] == reference["fields"]?["reasoning_levels"]?["value"] else { return nil }
+        let mapped = credentials["endpoint_model_name"]?.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard mapped.isEmpty || mapped == id else { return nil }
+        return validLevels(reference["fields"]?["reasoning_levels"]?["value"])
+    }
+
     static func rules(_ input: [JSON], provider: String, credentials: [String: JSON]) -> [JSON] {
         guard provider == ModelDiscovery.provider else { return input }
-        let values = declared(credentials)
+        let declared = declared(credentials), referenced = referenced(credentials)
+        let values = declared ?? referenced
         return input.map { raw in
             guard raw["name"] == "reasoning_effort", var rule = raw.object else { return raw }
             if let values { rule["options"] = .array(values.map(JSON.string)) }
-            rule["allow_custom_value"] = .bool(values == nil)
-            rule["options_source"] = values == nil ? "plugin" : "provider"
-            rule["help"] = values == nil
+            rule["allow_custom_value"] = .bool(declared == nil)
+            rule["options_source"] = declared != nil ? "provider" : referenced != nil ? "reference" : "plugin"
+            rule["help"] = referenced != nil && declared == nil
+                ? ["en_US": "Suggested values come from the official model documentation. Other values are validated by the service.",
+                   "zh_Hans": "推荐档位来自官方模型说明；其他档位由服务校验。"]
+                : values == nil
                 ? ["en_US": "Suggested values come from the plugin. Enter another value if your service supports it; the service validates it.",
                    "zh_Hans": "推荐值来自插件。可填写服务支持的其他档位，由服务校验。"]
                 : ["en_US": "Supported values declared by the model service.", "zh_Hans": "这些档位由模型服务声明支持。"]
