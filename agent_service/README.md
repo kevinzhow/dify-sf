@@ -37,8 +37,8 @@ The contract it implements is [`docs/agent-v2.md`](../docs/agent-v2.md) (protoco
   by the service and the supervisor; `executor_profile` in operations, `GET /v1/profiles`, `profiles` in health.
   Images are built from `sandbox-images/<name>/` with `tool/build_sandbox_image.sh`.
 - `view_image` (with `tools.view_image`, a dify-sf extension): the model looks at a workspace image; it stays in the
-  conversation (append-only history for the provider's prompt cache), at most 3 MiB of viewed images per
-  conversation.
+  conversation (append-only history for the provider's prompt cache), at most 16 MiB of viewed images per
+  conversation (`viewImageConversationBytes`).
 - `report_progress` (with `tools.report_progress`, a dify-sf extension): a preview image and caption for the people
   following the run, uploaded and announced by a `progress` event; never in the model's context.
 - Near-budget submit (a dify-sf extension): when the model calls or the time left are only what finishing needs, the
@@ -47,13 +47,17 @@ The contract it implements is [`docs/agent-v2.md`](../docs/agent-v2.md) (protoco
   cache hit and miss tokens in `usage` when reported. `tool/cache_probe.dart` measures them (a logging proxy for the
   provider endpoint, and a direct probe).
 
-- `harness_style: "codex"` (`lib/src/harness/codex/`): a port of the OpenAI Codex CLI harness (rust-v0.163.0,
-  Apache-2.0, see `../third_party/codex/`): Codex's base prompt per model family, AGENTS.md block and environment
-  context; `exec_command`/`write_stdin` over shellctl jobs, `apply_patch` (Dart port, Codex's fixtures pass) and
-  `view_image` with Codex's schemas and output truncation; parallel tool calls, Codex's retries and end-of-turn rule;
-  the native Responses wire (`POST /inner/agent/responses`, encrypted reasoning round trip) when the provider speaks
-  it, else the plugin wire. `dart run tool/gen_codex_vendor.dart` regenerates the vendored texts. Contract:
-  docs/agent-v2.md, "Harness styles".
+- `harness_style: "codex"` (`lib/src/harness/codex/`). By default (`AGENT_CODEX_RUNTIME=official`) the official
+  Codex CLI runs it (`official.dart`, `official_run.dart`): the released binary (rust-v0.163.0, pinned SHA-256,
+  mounted read-only at `/opt/codex` by the executor profile) runs as `codex app-server` in the run's sandbox, calls the
+  model through the Swift server's Codex Responses entry with the run token (HTTP, or the Responses WebSocket with
+  `model.transport: "websocket"`), and is driven over its app-server JSON-RPC protocol; one operation is one Codex
+  turn. With `codex_session.retain` the workspace and the Codex thread are kept for the next round of the same node
+  in the same workflow run (`retained_session.dart`). Contract: docs/agent-v2.md, "Codex runtime".
+  The Dart port of the Codex harness (Apache-2.0, see `../third_party/codex/`: Codex's prompts, `exec_command`,
+  `write_stdin`, `apply_patch`, `view_image`, retries; the native Responses wire or the plugin wire) runs only with
+  `AGENT_CODEX_RUNTIME=port` and is no longer extended. `dart run tool/gen_codex_vendor.dart` regenerates its
+  vendored texts. Contract: docs/agent-v2.md, "Harness styles".
 
 Without `AGENT_SANDBOX_SUPERVISOR_URL`, `tools.shell: true` fails with `sandbox_unavailable` and health reports
 `"sandbox": "disabled"`.
@@ -70,6 +74,8 @@ Without `AGENT_SANDBOX_SUPERVISOR_URL`, `tools.shell: true` fails with `sandbox_
 | `AGENT_SANDBOX_SUPERVISOR_URL` | none | The sandbox supervisor; without it the shell is disabled |
 | `AGENT_SANDBOX_SUPERVISOR_KEY` | required with the URL | The supervisor's bearer key |
 | `AGENT_EXECUTOR_PROFILES` | `/etc/dify-sf/executor-profiles.json` | The executor profile file (docs/agent-v2.md, "Executor profiles"); without a file at the default path only the implicit `default`. A file that does not validate stops the process (exit 64) |
+| `AGENT_CODEX_RUNTIME` | `official` | What runs `harness_style: codex`: `official` (the Codex binary in the sandbox) or `port` (the Dart port) |
+| `AGENT_CODEX_GATEWAY_URL` | none | The Codex Responses entry as sandboxes reach it, used when the supervisor's grant has none (local tests) |
 
 The supervisor (`sandbox_supervisor`) reads:
 

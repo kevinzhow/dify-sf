@@ -459,8 +459,9 @@ a caption (1 to 200 characters), for the people following the run.
 
 The Swift server checks that `file.upload_id` is a received upload of this execution and turns it into a file the
 client can preview (no separate download URL in the event). To show it in the run log, it must project `progress`
-into an `agent_log` entry (today only `thought`, `tool_call`, `model_call` and `error` are projected; other events
-are recorded but not published). A client of the public run stream (`GET /v1/workflow/{run_id}/events`, with
+into an `agent_log` entry (projected: `run_started`, `thought`, `tool_call`, `model_call`, `progress`, `budget_notice`,
+`commentary`, `plan`, `model_retry`, `compaction` and `error`, `AgentTrace.swift`; other events are recorded but not
+published). A client of the public run stream (`GET /v1/workflow/{run_id}/events`, with
 `include_state_snapshot=true` and `continue_on_pause=true` for a driver that follows the whole run) then reads
 `event: agent_log` frames whose `data.metadata.event` is `progress`; once the run has ended, that stream answers only
 `workflow_finished`, and the previews are in the node's `metadata.agent_log`.
@@ -973,7 +974,9 @@ here, the Swift server reports what it forwarded, the provider echoes it and rep
 A `codex` run uses one of two wires, chosen when the operation starts and recorded in `run_started` as
 `"model_wire": {"wire": "responses" | "plugin", "reason", "reduced_fidelity"}`:
 
-- `model.wire`, when the Swift server sends it, decides. Otherwise:
+- `model.wire`, when the Swift server sends it, decides. For `harness_style: codex` the Swift server always sends it
+  (`AgentRuntime.modelEnvelope`, `AgentModelWire.select` in `AgentResponses.swift`) and chooses `responses` also for
+  `langgenius/deepseek/deepseek`. Otherwise (no `model.wire`, agent_service's own fallback):
 - **`responses`** (native): when the provider speaks the OpenAI Responses API: `model.provider` is
   `…/openai_api_compatible/openai_api_compatible` with `model.api_type: "responses"`, or `langgenius/openai/openai`.
   `model.api_type` is an optional operation field the Swift server sets from the credential's API mode (no secret);

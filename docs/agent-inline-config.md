@@ -1,7 +1,10 @@
 # Inline Agent v2 configuration
 
 The workflow composer uses the Dify 1.17.1 inline `agent_soul` / `node_job` shapes. It supports private workflow-only
-agents rather than a workspace roster. Agent execution remains disabled until the runtime and client layers are wired.
+agents rather than a workspace roster. Agent nodes run on the server ([Agent v2](agent-v2.md),
+[workflow persistence](agent-runtime-durability.md)). Execution is opt-in: the server needs
+`COLLAB_AGENT_INLINE_ENABLED=true` and a configured agent service (`COLLAB_AGENT_SERVICE_URL`,
+`COLLAB_AGENT_SERVICE_KEY`); `GET /v1/system-features` then reports `inline_agent: true`.
 
 `GET /v1/apps/{app}/workflows/draft/nodes/{node}/agent-composer` reads the exact snapshot named by that graph. An optional
 `snapshot_id` can inspect another immutable snapshot belonging to that same app, node and agent. It cannot read a resource
