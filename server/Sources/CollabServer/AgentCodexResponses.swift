@@ -7,6 +7,13 @@ import Vapor
 
 struct AgentCodexCallLimit: Error {}
 
+/// Native Codex resends inline image history. Raw files expand by 4/3 in
+/// base64, so the aggregate file budget fits within the total JSON budget.
+enum AgentCodexGatewayLimits {
+    static let requestBytes = 128 << 20
+    static let fileBytes = 96 << 20
+}
+
 extension AgentResponsesRequest {
     init(codexBody value: JSONValue, scope: AgentModelScope) throws {
         guard scope.harnessStyle == "codex", scope.modelWire == "responses",

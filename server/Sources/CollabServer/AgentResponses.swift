@@ -203,7 +203,8 @@ extension Routes {
             throw ServerError.forbidden(code: "agent_run_inactive", message: "The workflow run is not active")
         }
         _ = try await liveApp(scope.appID, viewer: scope.userID)
-        let bytes = try await req.body.collect(max: .specified(ByteCount(value: AgentModelGatewayLimits.requestBytes))) ?? Data()
+        let requestBytes = codex ? AgentCodexGatewayLimits.requestBytes : AgentModelGatewayLimits.requestBytes
+        let bytes = try await req.body.collect(max: .specified(ByteCount(value: requestBytes))) ?? Data()
         guard let payload = try? JSONValue.parse(bytes) else { throw AgentModelGatewayRequest.invalid() }
         var request = codex ? try AgentResponsesRequest(codexBody: payload, scope: scope)
             : try AgentResponsesRequest(body: payload, index: req.headers[HTTPField.Name("X-Agent-Call-Index")!],
@@ -213,7 +214,7 @@ extension Routes {
         let connection = try AgentResponsesConnection(provider: scope.provider, model: scope.model, credentials: credentials)
         request.body["model"] = .string(connection.model)
         let encoded = JSONValue.object(request.body).compactJSON()
-        guard encoded.utf8.count <= AgentModelGatewayLimits.requestBytes else { throw ServerError.payloadTooLarge }
+        guard encoded.utf8.count <= requestBytes else { throw ServerError.payloadTooLarge }
         let claim = codex ? try await agentModelScopes.claimCodex(token: token)
             : try await agentModelScopes.claim(token: token, caller: scope.caller.merging(["invocation_id": .string(request.invocationID)]),
                 provider: scope.provider, model: scope.model, parameters: scope.modelParameters ?? [:],
@@ -340,6 +341,7 @@ extension Routes {
     }
 
     func normalizeAgentResponsesFiles(_ input: JSONValue, scope: AgentModelScope, allowInline: Bool = false) async throws -> JSONValue {
+        let fileLimit = allowInline ? AgentCodexGatewayLimits.fileBytes : AgentModelGatewayLimits.fileBytes
         var bytes = 0, nodes = 0
         func walk(_ value: JSONValue, depth: Int) async throws -> JSONValue {
             nodes += 1
@@ -360,10 +362,10 @@ extension Routes {
                     let mimes = image ? ["image/png", "image/jpeg", "image/webp", "image/gif"]
                         : ["application/pdf", "text/plain", "application/octet-stream"]
                     guard mimes.contains(where: { prefix == "data:\($0);base64" }),
-                          raw.utf8.count <= ((AgentModelGatewayLimits.fileBytes + 2) / 3) * 4,
+                          raw.utf8.count <= ((fileLimit + 2) / 3) * 4,
                           let content = Data(base64Encoded: raw), !content.isEmpty else { throw AgentModelFileError() }
                     bytes += content.count
-                    guard bytes <= AgentModelGatewayLimits.fileBytes else { throw ServerError.payloadTooLarge }
+                    guard bytes <= fileLimit else { throw ServerError.payloadTooLarge }
                     return value
                 }
                 guard fields["file_data"] == nil, fields["file_url"] == nil,
@@ -377,7 +379,7 @@ extension Routes {
                 do {
                     let file = try await files.resolve(mapping, config: nil)
                     bytes += file.size
-                    guard bytes <= AgentModelGatewayLimits.fileBytes else { throw ServerError.payloadTooLarge }
+                    guard bytes <= fileLimit else { throw ServerError.payloadTooLarge }
                     guard !image || file.mimeType.hasPrefix("image/") else { throw AgentModelFileError() }
                     let content = try await files.bytes(mapping)
                     guard content.count == file.size else { throw AgentModelFileError() }

@@ -611,6 +611,34 @@ struct AgentCodexResponsesRouteTests {
         }
     }
 
+    @Test func nativeImageHistoryBeyondTheOldRequestAndFileLimitsIsForwardedUnchanged() async throws {
+        let imageURL = "data:image/png;base64," + Data(repeating: 42, count: 11 << 20).base64EncodedString()
+        let seen = Mutex(0)
+        try await withResponsesProvider({ req in
+            let wire = try await req.body.collect(max: .specified(ByteCount(value: AgentCodexGatewayLimits.requestBytes))) ?? Data()
+            #expect(wire.count > AgentModelGatewayLimits.requestBytes)
+            let value = try JSONValue.parse(wire)
+            let parts = try #require(value["input"]?.array?.first?["content"]?.array)
+            #expect(parts.count == 3 && parts.allSatisfy { $0["image_url"] == .string(imageURL) })
+            #expect(value["reasoning"]?["effort"] == "max" && value["store"] == false)
+            seen.withLock { $0 += 1 }
+            return Response(status: .ok, headers: [.contentType: "text/event-stream"], body: .init(string: AgentResponsesTests.stream))
+        }) { endpoint in
+            try await withFakeDaemon { daemon, _ in
+                try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                    let (scope, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: endpoint)
+                    var body = try #require(AgentResponsesTests.body(scope).object)
+                    body["input"] = [["role": "user", "content": .array(Array(repeating:
+                        ["type": "input_image", "image_url": .string(imageURL)], count: 3))]]
+                    let response = try await api.post(Self.path, JSONValue.object(body).compactJSON(), token: token)
+                    #expect(response.status == 200 && response.text == AgentResponsesTests.stream)
+                    #expect(seen.withLock { $0 } == 1)
+                    _ = await routes.agentModelScopes.revoke(token: token)
+                }
+            }
+        }
+    }
+
     @Test func localCodexImagesAreBoundedAndExternalOrUnscopedFilesAreRefused() async throws {
         try await withFakeDaemon { daemon, _ in
             try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
@@ -626,7 +654,9 @@ struct AgentCodexResponsesRouteTests {
                 }
                 let huge = Data(repeating: 42, count: 11 << 20).base64EncodedString()
                 let repeated: JSONValue = ["type": "input_image", "image_url": .string("data:image/png;base64," + huge)]
-                do { _ = try await routes.normalizeAgentResponsesFiles([repeated, repeated], scope: scope, allowInline: true); Issue.record("File budget bypassed") }
+                let history: JSONValue = .array(Array(repeating: repeated, count: 3))
+                #expect(try await routes.normalizeAgentResponsesFiles(history, scope: scope, allowInline: true) == history)
+                do { _ = try await routes.normalizeAgentResponsesFiles(.array(Array(repeating: repeated, count: 9)), scope: scope, allowInline: true); Issue.record("File budget bypassed") }
                 catch CollabServer.ServerError.payloadTooLarge { }
                 _ = await routes.agentModelScopes.revoke(token: token)
             }
