@@ -366,6 +366,16 @@ struct AppRouteTests {
         }
     }
 
+    @Test func importingSecretsWithoutASecretsKeyRemainsAServiceError() async throws {
+        try await withServer(secretsKey: false) { api, _, _ in
+            let owner = try await api.setupOwner()
+            let response = try await api.post("/v1/apps/imports",
+                json(["mode": "yaml-content", "yaml_content": .string(secretFile)]), token: owner)
+            #expect(response.status == 503 && response.errorCode == "secrets_key_missing", "\(response.text)")
+            #expect(try await api.get("/v1/apps", token: owner).total == 0)
+        }
+    }
+
     @Test func deleteMakesTheDocumentGoneAndEndsItsStreams() async throws {
         try await withServer { api, store, registry in
             let owner = try await api.setupOwner()

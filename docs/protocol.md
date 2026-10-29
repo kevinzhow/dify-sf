@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.17 (files storage and human-input runtime)
+# dify-sf collaboration protocol, version 1.21
 
 Status: additive extensions to the collaboration, console and draft-runtime APIs. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -9,6 +9,19 @@ section 9 describes the same algorithm in prose.
 
 ## Changes
 
+The entries below describe when each capability was introduced. Current runtime discovery reports
+`workflow_runtime.protocol_version: "1.21"` when the model runtime or human-input web forms are enabled;
+individual flags and per-request validation still determine availability. Inline Agent v2 execution is a separately
+gated extension: use `inline_agent` / `inline_agent_shell` and the [Agent v2 contract](agent-v2.md), rather than
+inferring Agent support from the protocol version or the ordinary `draft_run` node list.
+
+* 1.21 (additive): model-backed generation and TTS helpers, semantic annotation indexing, and bounded URL DSL imports
+  through the configured SSRF proxy ("Helper services and semantic annotations (1.21)").
+* 1.20 (additive): published workflow and Chatflow execution through the Web and service APIs, app-scoped end users,
+  passports/API keys, public file ownership and human-input resume ("Published Web and service API (1.20)").
+* 1.19 (additive): installed builtin and published workflow tools ("Tool runtime").
+* 1.18 (additive): durable console Chatflow conversations and replayable message history
+  ("Durable console Chatflow (1.18)").
 * 1.17 (additive): **local file storage and image settings** ("Files storage and image settings (1.17, M2a)").
   Configured servers advertise `enable_file_upload`; original uploads have workspace/account authorization,
   expiring signed previews/downloads, and persisted app icons/account avatars. Runtime file values and vision
@@ -2243,8 +2256,8 @@ This slice supports credential-free and API-key tools; OAuth, custom API/MCP pro
 
 ## Published Web and service API (1.20)
 
-Discovery advertises `enable_published_apps: true`, `workflow_runtime.published_run: true` and
-`workflow_runtime.protocol_version: "1.20"`. Tools remain available as described in 1.19. A workflow or Chatflow must
+Discovery advertises `enable_published_apps: true` and `workflow_runtime.published_run: true`.
+This surface was introduced in protocol 1.20; the current runtime version is 1.21. Tools remain available as described in 1.19. A workflow or Chatflow must
 have a published version; public execution never reads the current draft. Each run persists the selected version,
 `triggered_from=app-run`, its end user, API-key source (when present), and execution account. The same graph engine,
 run channels, typed files, node history, retries and human-input resume machinery serve console and public runs.
@@ -2300,7 +2313,12 @@ elapsed time, message/conversation totals and feedback feed the existing charts/
 account timezone. Cost is exposed only when a stored usage price/currency exists. Console monitoring explicitly
 projects an end-user identity; it does not borrow a public visitor's authority or expose its bearer token.
 
-This is the workflow/Chatflow public runtime, not the complete Dify chat product. Agent v2, knowledge retrieval,
+Published workflow apps can execute inline Agent v2 nodes when `inline_agent` is enabled and the node has a valid,
+pinned private configuration. The same Agent configuration, executor policy, output validation and run-file ownership
+apply to console and published workflow runs; see [agent-v2.md](agent-v2.md). Agent v1, roster bindings and Agent v2 in
+Chatflows are not supported.
+
+This is the workflow/Chatflow public runtime, not the complete Dify chat product. Knowledge retrieval,
 public registration/SSO, enterprise environments, the Chrome extension itself and paid hosted services remain out of
 scope. The minimal public page reuses established controls; no claim of whole-page pixel parity is implied. Email
 human-input delivery remains a separately gated feature and is not enabled by public web delivery.

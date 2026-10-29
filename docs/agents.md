@@ -733,8 +733,9 @@ curl -sN "$HOST/v1/workflows/run" -H "Authorization: Bearer $PASS" -H 'Content-T
   stay within the profile's `max_turns_max`.
 - **Codex has no question tool**, needs a Responses-wire model and a profile with the Codex binary (6.7).
 - **A retained session needs Codex, Responses, the shell and a disk-workspace profile** (6.9).
-- **An invalid Agent package fails the import with `503 unavailable`**, not with a `400` Import object. Read the
-  message and fix the file; a retry fails the same way.
+- **An invalid Agent package fails the import with `400` and `status: failed`**, including after version confirmation.
+  Read the Import object's `error` and fix the file before retrying. Service/configuration failures, such as a missing
+  server secrets key, remain `503` errors.
 - **Edit both task copies in an exported file.** An export writes `agent_job` next to `agent_task` and
   `agent_declared_outputs`. On import, `agent_job.workflow_prompt` and `agent_job.declared_outputs` win. Edit them
   together, or remove `agent_job`.
