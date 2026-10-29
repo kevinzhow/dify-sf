@@ -12,3 +12,6 @@ if hook.exists():
 with hook.open('a') as target:
     target.write("\n# dify-sf host reasoning compatibility\nexec(compile(open('/opt/dify-sf/model-compat/sitecustomize.py', 'rb').read(), '/opt/dify-sf/model-compat/sitecustomize.py', 'exec'))\n")
 PY
+
+# COPY --chmod also affects directories it creates; workers need traversal.
+RUN chmod 0555 /opt/dify-sf /opt/dify-sf/model-compat

@@ -42,5 +42,64 @@ class ReasoningCompatibilityTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.model._validate_and_filter_model_parameters('arbitrary-service-alias', invalid, self.credentials)
 
+    def test_official_reasoning_removes_sampling_for_default_and_selected_efforts(self):
+        credentials = self.credentials | {'endpoint_url': 'https://api.openai.com/v1'}
+        for effort in [None, 'low', 'high', 'xhigh', 'max']:
+            with self.subTest(effort=effort):
+                params = {'temperature': 0.7, 'top_p': 0.9, 'max_tokens': 128}
+                if effort is not None:
+                    params['reasoning_effort'] = effort
+                before = dict(params)
+                actual = self.model._validate_and_filter_model_parameters('gpt-6.1-terra', params, credentials)
+                self.assertNotIn('temperature', actual)
+                self.assertNotIn('top_p', actual)
+                self.assertEqual(actual['max_tokens'], 128)
+                self.assertEqual(actual.get('reasoning_effort'), effort)
+                self.assertEqual(params, before)
+
+    def test_none_preserves_sampling(self):
+        credentials = self.credentials | {'endpoint_url': 'https://api.openai.com/v1/'}
+        params = {'temperature': 0.7, 'top_p': 0.9, 'reasoning_effort': 'none'}
+        self.assertEqual(self.model._validate_and_filter_model_parameters('gpt-6.1-terra', params, credentials), params)
+
+    def test_actual_endpoint_and_effective_alias_control_policy(self):
+        params = {'temperature': 0.7, 'reasoning_effort': 'max'}
+        for endpoint in ['https://other.invalid/v1', 'https://api.openai.com.attacker.invalid/v1',
+                         'http://api.openai.com/v1', 'https://api.openai.com/v1?proxy=1',
+                         'https://user@api.openai.com/v1', 'https://api.openai.com:444/v1']:
+            with self.subTest(endpoint=endpoint):
+                credentials = self.credentials | {'endpoint_url': endpoint}
+                self.assertEqual(self.model._validate_and_filter_model_parameters('gpt-6.1-terra', params, credentials), params)
+        credentials = self.credentials | {'endpoint_url': 'https://api.openai.com/v1'}
+        for name in ['gpt-4o', 'unknown-future-model']:
+            self.assertEqual(self.model._validate_and_filter_model_parameters(name, params, credentials), params)
+        aliased = credentials | {'endpoint_model_name': 'gpt-6.1-terra'}
+        self.assertNotIn('temperature', self.model._validate_and_filter_model_parameters('display-alias', params, aliased))
+        ordinary = credentials | {'endpoint_model_name': 'gpt-4o'}
+        self.assertEqual(self.model._validate_and_filter_model_parameters('gpt-6.1-terra', params, ordinary), params)
+
+    def test_real_responses_wire_excludes_sampling_without_contacting_a_provider(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from dify_plugin.entities.model.message import UserPromptMessage
+        class Captured(Exception):
+            pass
+        calls = []
+        def create(**kwargs):
+            calls.append(kwargs)
+            raise Captured()
+        client = SimpleNamespace(responses=SimpleNamespace(create=create))
+        credentials = self.credentials | {'endpoint_url': 'https://api.openai.com/v1', 'api_key': 'fixture-only'}
+        params = self.model._validate_and_filter_model_parameters('gpt-6.1-terra',
+                    {'temperature': 0.7, 'top_p': 0.9, 'reasoning_effort': 'max', 'max_tokens': 128}, credentials)
+        with patch.object(self.model, '_create_openai_client', return_value=client):
+            with self.assertRaises(Captured):
+                self.model._invoke('gpt-6.1-terra', credentials, [UserPromptMessage(content='hello')], params, stream=False)
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn('temperature', calls[0])
+        self.assertNotIn('top_p', calls[0])
+        self.assertEqual(calls[0]['reasoning'], {'effort': 'max'})
+        self.assertEqual(calls[0]['max_output_tokens'], 128)
+
 if __name__ == '__main__':
     unittest.main()
