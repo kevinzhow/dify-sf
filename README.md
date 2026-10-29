@@ -10,6 +10,8 @@ use the configured sandbox and SSRF proxy. Human-input web forms and email deliv
 rollout flags. Runtime files/vision and durable console Chatflow conversations reuse the same workflow engine and
 storage. Built-in and published workflow tools, durable Chatflow and published workflow/Chatflow Web/API execution are available. Public end users and operational logs remain separate from console debug state. The sections below describe configuration and supported boundaries.
 
+* [`docs/agents.md`](docs/agents.md) - **for AI agents**: how an agent uses Dify SF (sign in, import, MCP checklist,
+  publish, run as an end user) and how the Agent node is defined and configured. Summary below.
 * `docs/protocol.md` - the wire protocol (HTTP `POST` for ops, SSE for updates). Clients are written from this.
 * `docs/architecture.md` - how the server works and why.
 * [`docs/migration-plan.md`](docs/migration-plan.md) - remaining delivery sequence, dependencies and acceptance criteria.
@@ -19,6 +21,24 @@ storage. Built-in and published workflow tools, durable Chatflow and published w
 * `docs/step1-report.md` - what was built, results, failures found, known limits.
 * `server/` - the SwiftPM package (`CollabCore`, `CollabServer`, `CollabStore`, simulator, harness).
 * `bench/` - chaos and storm runners.
+
+## For AI agents
+
+Dify SF has no command-line tool. An agent uses the console HTTP API and the native client's read-only MCP server.
+[`docs/agents.md`](docs/agents.md) gives every request with its shape, a minimal working example and the known
+pitfalls. In short:
+
+1. Sign in: `POST /v1/auth/login` gives a console access token.
+2. Deliver a DSL file: `POST /v1/apps/imports` (a new app) or `POST /v1/docs/{app}/replace` (the draft of an app).
+3. Check that same draft with the MCP tool `check_workflow` ([`tool/mcp/README.md`](tool/mcp/README.md)). Deliver only
+   when the answer has `complete: true` and `gate_passed: true` (0 warnings).
+4. Publish: `POST /v1/apps/{app}/workflows/publish`.
+5. Run as an end user: `GET /v1/passport` with `X-App-Code: <web code>`, `POST /v1/files/upload`,
+   `POST /v1/workflows/run` (streaming), `GET /v1/workflow/{run}/events?continue_on_pause=true`, and
+   `POST /v1/form/human_input/{token}` for human-input forms.
+6. Agent node: a graph node with `type: agent`, `version: '2'` and an inline binding to a top-level `agent_packages`
+   entry (system prompt, model, harness style `dify` or `codex`, executor profile, limits). See
+   [the Agent node](docs/agents.md#6-the-agent-node-agent-v2).
 
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
