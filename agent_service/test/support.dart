@@ -35,6 +35,9 @@ class Harness {
   final Directory dataDir;
   final TestClock clock;
   late AgentService service;
+
+  /// The service's log lines.
+  final List<String> logs = [];
   final http.Client client = http.Client();
   String _supervisorKey = testSupervisorKey;
   ExecutorProfiles? _profiles;
@@ -87,6 +90,7 @@ class Harness {
       innerUrl: gateway.url,
       clock: clock.now,
       logLevel: LogLevel.error,
+      logSink: logs.add,
       supervisor: supervisorUrl == null
           ? null
           : SupervisorClient(

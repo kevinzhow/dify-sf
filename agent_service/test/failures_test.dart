@@ -47,6 +47,25 @@ void main() {
     expect(r['message'], contains('Insufficient quota'));
   });
 
+  test('a failed run logs its error type and message when it ends', () async {
+    final h = await Harness.start(
+      calls: [
+        ScriptedCall(
+          error: {'code': -500, 'error_type': 'ValueError', 'message': 'boom'},
+        ),
+      ],
+    );
+    addTearDown(h.close);
+    final runId = await h.startOperation(operation());
+    await h.waitEnded(runId);
+    expect(
+      h.logs.where(
+        (l) => l.contains('run $runId ended failed (model_error): '),
+      ),
+      [contains('boom')],
+    );
+  });
+
   test('gateway -500 mid-stream maps to model_error', () async {
     final r = await failedResult([
       ScriptedCall(

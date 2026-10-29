@@ -75,6 +75,10 @@ class BudgetExhausted implements Exception {
 /// outputs), plus one to write declared file outputs into the workspace
 /// first when the schema declares any (they must exist when `final_output`
 /// names them). Derived from what finishing needs; not a tuned margin.
+/// [text] cut to 2000 characters for a log line.
+String _clip(String text) =>
+    text.length > 2000 ? '${text.substring(0, 2000)}…' : text;
+
 int callsToFinish(OperationRequest r) {
   final schema = r.outputSchema;
   return schema != null && r.shell && declaresFileOutputs(schema) ? 2 : 1;
@@ -445,6 +449,14 @@ class AgentRun {
     if (record.isEnded) return;
     _runStarted();
     final e = store.finish(record, event, data);
+    // The run record goes once the Swift server has read it, so the service
+    // log is where the reason of a failed run stays.
+    final type = data['error_type'];
+    final message = data['message'];
+    log?.call(
+      'run $runId ended $event${type == null ? '' : ' ($type)'}'
+      '${message == null ? '' : ': ${_clip('$message')}'}',
+    );
     _events.add(e);
     unawaited(_events.close());
     _done.complete(e);
