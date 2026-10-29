@@ -95,9 +95,11 @@ struct AgentPromptTests {
 
     @Test func codexResponsesStillResolvesFilesAndBoundsTaskContext() async throws {
         let config = try AgentInlineConfig(["harness_style": "codex"])
+        var largeContext = VariablePool()
+        try largeContext.add(["previous", "evidence"], .string(String(repeating: "x", count: (2 << 20) + 1)))
         do {
-            _ = try await AgentPromptBuilder.build(node: Self.node(task: String(repeating: "x", count: (2 << 20) + 1)),
-                config: config, pool: VariablePool(), files: nil, modelWire: "responses")
+            _ = try await AgentPromptBuilder.build(node: Self.node(task: "Review {{#previous.evidence#}}"),
+                config: config, pool: largeContext, files: nil, modelWire: "responses")
             Issue.record("Codex task text must remain bounded")
         } catch let error as NodeError { #expect(error.errorTypeName == "AgentInputTooLarge") }
         let id = UUID().uuidString.lowercased()
