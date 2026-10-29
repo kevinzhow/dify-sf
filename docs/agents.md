@@ -736,6 +736,9 @@ curl -sN "$HOST/v1/workflows/run" -H "Authorization: Bearer $PASS" -H 'Content-T
 - **An invalid Agent package fails the import with `400` and `status: failed`**, including after version confirmation.
   Read the Import object's `error` and fix the file before retrying. Service/configuration failures, such as a missing
   server secrets key, remain `503` errors.
+  Servers built before [the import-error fix](https://github.com/kevinzhow/dify-sf/commit/09c99ca203301adf994b42ca98b1855a3ae00e18)
+  may instead return `503 unavailable` with the original `400 invalid_param` in the message. Correct the file before
+  retrying that validation failure.
 - **Edit both task copies in an exported file.** An export writes `agent_job` next to `agent_task` and
   `agent_declared_outputs`. On import, `agent_job.workflow_prompt` and `agent_job.declared_outputs` win. Edit them
   together, or remove `agent_job`.
