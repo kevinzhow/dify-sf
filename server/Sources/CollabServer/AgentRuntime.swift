@@ -75,8 +75,10 @@ struct ServerAgentRuntime: AgentRuntime {
                 catch StoreError.agentCapacityFull { try await Task.sleep(for: .milliseconds(250)) }
             }
         }
+        let modelEnvelope = try await modelEnvelope(soul)
+        let wire = modelEnvelope["wire"]?.string ?? "plugin"
         let prompt = try await AgentPromptBuilder.build(node: data, config: soul, pool: context.pool, files: files,
-            nodeJob: try JSONValue.parse(stored.nodeJob).object ?? [:])
+            nodeJob: try JSONValue.parse(stored.nodeJob).object ?? [:], modelWire: wire)
         var session: StoredAgentSession
         var continuation: JSONValue = .null
         if let existing {
@@ -152,8 +154,6 @@ struct ServerAgentRuntime: AgentRuntime {
             json["retain_session"] = .bool(retainSession)
             return JSONValue.object(json).compactJSON()
         }
-        let modelEnvelope = try await modelEnvelope(soul)
-        let wire = modelEnvelope["wire"]?.string ?? "plugin"
         if retainSession && !(shellAvailable && soul.harnessStyle == "codex" && wire == "responses") {
             throw NodeError("AgentSessionUnsupported", "Retaining a session requires Codex, Responses and a disk execution environment")
         }

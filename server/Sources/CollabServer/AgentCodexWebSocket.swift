@@ -111,6 +111,7 @@ actor AgentCodexSocketSession {
     let connection: AgentResponsesConnection
     private var busy = false
     private var warmed = false
+    private var generationStarted = false
     private var completedID: String?
     private var parameters: String?
     private var claim: AgentModelScopes.Claim?
@@ -143,11 +144,11 @@ actor AgentCodexSocketSession {
             guard previous == completedID, digest == parameters else {
                 throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
             }
-        } else if completedID != nil {
+        } else if generationStarted {
             throw AgentCodexSocketError(status: 400, code: "incremental_required")
         }
         if request.body["generate"] == false {
-            guard !warmed, previous == nil else { throw AgentCodexSocketError(status: 400, code: "invalid_warmup") }
+            guard !warmed, !generationStarted, previous == nil else { throw AgentCodexSocketError(status: 400, code: "invalid_warmup") }
             warmed = true
         }
         request.body["model"] = .string(connection.model)
@@ -161,6 +162,10 @@ actor AgentCodexSocketSession {
         try await routes.agentModelScopes.startCodexSocket(token: token, lane: lane)
         parameters = digest
         if body["generate"] != false {
+            // Prewarm is connection setup. Codex may legitimately send a full
+            // first generation when its tools or input changed since prewarm.
+            // Every later generation must still continue the same response.
+            generationStarted = true
             let accepted = try await routes.agentModelScopes.claimCodex(token: token)
             claim = accepted
             try await routes.recordCodexModelCall(scope: scope, claim: accepted, phase: "started", body: body,
@@ -189,6 +194,12 @@ actor AgentCodexSocketSession {
             if let object = item.object { for (k, v) in object { try check(.string(k), depth: depth + 1); try check(v, depth: depth + 1) } }
         }
         try check(value)
+        if ["response.created", "response.in_progress", "response.completed", "response.incomplete", "response.failed", "error"].contains(type) {
+            let raw = value["error"]?["code"]?.string ?? value["response"]?["error"]?["code"]?.string ?? "none"
+            let code = raw.utf8.count <= 128 && raw.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_") }) ? raw : "unknown"
+            let status = value["status"]?.int ?? value["status_code"]?.int ?? 0
+            routes.logger.info("codex websocket event type=\(type) bytes=\(bytes.count) status=\(status) code=\(code) warmup=\(body["generate"] == false)")
+        }
         if let raw = value["response"]?["usage"], raw.object != nil { usage = LLMUsage(json: raw) }
         if ["response.completed", "response.incomplete", "response.failed", "error"].contains(type) {
             guard busy else { throw AgentCodexSocketError(status: 502, code: "agent_model_protocol") }
@@ -353,6 +364,7 @@ struct AgentCodexWebSocketService: Service {
                 let session = AgentCodexSocketSession(routes: routes, token: token, lane: lane, connection: connection)
                 do {
                     let upstream = try await AgentCodexUpstream.connect(connection)
+                    routes.logger.info("codex websocket upstream connected")
                     try await withTaskCancellationHandler {
                         try await upstream.executeThenClose { events, requests in
                             try await withThrowingTaskGroup(of: Void.self) { group in
@@ -364,7 +376,9 @@ struct AgentCodexWebSocketService: Service {
                                         case .text:
                                             let body = try await session.prepare(Data(frame.unmaskedData.readableBytesView))
                                             try await requests.write(AgentCodexUpstream.text(body))
-                                        case .connectionClose: return
+                                        case .connectionClose:
+                                            routes.logger.info("codex websocket downstream closed")
+                                            return
                                         default: throw AgentCodexSocketError(status: 400, code: "invalid_websocket_frame")
                                         }
                                     }
@@ -377,7 +391,13 @@ struct AgentCodexWebSocketService: Service {
                                         case .text:
                                             let bytes = try await session.observe(Data(frame.unmaskedData.readableBytesView))
                                             try await output.write(.init(fin: true, opcode: .text, data: ByteBuffer(bytes: bytes)))
-                                        default: throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
+                                        case .connectionClose:
+                                            let closeCode = frame.unmaskedData.getInteger(at: frame.unmaskedData.readerIndex, as: UInt16.self) ?? 0
+                                            routes.logger.warning("codex websocket upstream closed code=\(closeCode) bytes=\(frame.unmaskedData.readableBytes)")
+                                            throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
+                                        default:
+                                            routes.logger.warning("codex websocket unexpected upstream opcode=\(frame.opcode) bytes=\(frame.unmaskedData.readableBytes)")
+                                            throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
                                         }
                                     }
                                     throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
@@ -399,6 +419,8 @@ struct AgentCodexWebSocketService: Service {
                         }
                     } onCancel: { upstream.channel.close(promise: nil); downstream.channel.close(promise: nil) }
                 } catch {
+                    let safe = AgentCodexSocketError.safe(error)
+                    routes.logger.warning("codex websocket operation failed status=\(safe.status) code=\(safe.code) error_type=\(String(reflecting: type(of: error)))")
                     await session.finish()
                     throw error
                 }

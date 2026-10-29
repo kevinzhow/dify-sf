@@ -73,4 +73,43 @@ struct AgentPromptTests {
             Issue.record("Oversized initial images must reject preparation")
         } catch let error as NodeError { #expect(error.errorTypeName == "AgentFileBudgetExceeded") }
     }
+
+    @Test(arguments: [("codex", "responses", true), ("codex", "plugin", false), ("dify", "responses", false)])
+    func largeReviewImagesUseTheSelectedRuntimeBudget(style: String, wire: String, accepted: Bool) async throws {
+        let id = UUID().uuidString.lowercased()
+        let image = RuntimeFile(recordId: id, type: "image", filename: "review.png", extensionName: "png",
+            mimeType: "image/png", size: 12 << 20, url: "")
+        var pool = VariablePool()
+        try pool.add(["sys", "files"], .array([image.json, image.json]))
+        let config = try AgentInlineConfig(["harness_style": .string(style)])
+        do {
+            let prompt = try await AgentPromptBuilder.build(node: Self.node(task: "Compare the review evidence"),
+                config: config, pool: pool, files: AgentPromptFiles(files: [id: image]), modelWire: wire)
+            #expect(accepted)
+            #expect(prompt.inputFileIDs == [id])
+            #expect(prompt.files.count == 1 && prompt.task.filter { $0["type"] == "file" }.count == 1)
+        } catch let error as NodeError {
+            #expect(!accepted && error.errorTypeName == "AgentFileBudgetExceeded")
+        }
+    }
+
+    @Test func codexResponsesStillResolvesFilesAndBoundsTaskContext() async throws {
+        let config = try AgentInlineConfig(["harness_style": "codex"])
+        var largeContext = VariablePool()
+        try largeContext.add(["previous", "evidence"], .string(String(repeating: "x", count: (2 << 20) + 1)))
+        do {
+            _ = try await AgentPromptBuilder.build(node: Self.node(task: "Review {{#previous.evidence#}}"),
+                config: config, pool: largeContext, files: nil, modelWire: "responses")
+            Issue.record("Codex task text must remain bounded")
+        } catch let error as NodeError { #expect(error.errorTypeName == "AgentInputTooLarge") }
+        let id = UUID().uuidString.lowercased()
+        let inaccessible: JSONValue = ["transfer_method": "local_file", "upload_file_id": .string(id)]
+        var pool = VariablePool()
+        try pool.add(["sys", "files"], .array([inaccessible]))
+        do {
+            _ = try await AgentPromptBuilder.build(node: Self.node(task: "Read review evidence"), config: config,
+                pool: pool, files: AgentPromptFiles(files: [:]), modelWire: "responses")
+            Issue.record("Codex files must still resolve through authorized storage")
+        } catch is RuntimeFileError {}
+    }
 }

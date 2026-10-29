@@ -445,6 +445,32 @@ class AgentRun {
     if (record.isEnded) return;
     _runStarted();
     final e = store.finish(record, event, data);
+    // The run record goes once the Swift server has read it, so the service
+    // log is where the reason of a failed run stays.
+    final type = data['error_type'];
+    var message = data['message']?.toString();
+    if (message != null) {
+      // Mask before clipping so even a credential crossing the limit is hidden.
+      final secrets =
+          [
+              serviceKey,
+              runToken,
+              request.codexRunToken,
+            ].whereType<String>().where((s) => s.isNotEmpty).toList()
+            ..sort((a, b) => b.length.compareTo(a.length));
+      for (final secret in secrets) {
+        message = message!.replaceAll(secret, '[redacted]');
+      }
+      final chars = message!.runes;
+      message = jsonEncode(
+        String.fromCharCodes(chars.take(2000)) +
+            (chars.length > 2000 ? '…' : ''),
+      );
+    }
+    log?.call(
+      'run $runId ended $event${type == null ? '' : ' ($type)'}'
+      '${message == null ? '' : ': $message'}',
+    );
     _events.add(e);
     unawaited(_events.close());
     _done.complete(e);

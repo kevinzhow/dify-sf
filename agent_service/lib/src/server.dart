@@ -37,6 +37,7 @@ class AgentService {
     SandboxLayout sandboxLayout = const SandboxLayout(),
     http.Client Function()? shellctlHttpClient,
     this.codexRuntime = CodexRuntime.official,
+    this.logSink,
     this.codexGatewayUrl,
   }) : store = RunStore(dataDir, clock: clock, eventRetention: eventRetention),
        profiles = profiles ?? ExecutorProfiles.implicit() {
@@ -67,6 +68,9 @@ class AgentService {
   /// The executor profiles (`AGENT_EXECUTOR_PROFILES`).
   final ExecutorProfiles profiles;
   final LogLevel logLevel;
+
+  /// Where log lines go instead of stderr (tests).
+  final void Function(String line)? logSink;
   final Duration sweepInterval;
   final Duration keepAliveInterval;
   late final LeaseManager leases;
@@ -84,9 +88,10 @@ class AgentService {
 
   void _log(LogLevel level, String message) {
     if (level.index < logLevel.index) return;
-    stderr.writeln(
-      '${DateTime.now().toUtc().toIso8601String()} ${level.name} $message',
-    );
+    final line =
+        '${DateTime.now().toUtc().toIso8601String()} ${level.name} $message';
+    final sink = logSink;
+    sink == null ? stderr.writeln(line) : sink(line);
   }
 
   Future<int> start({Object address = '0.0.0.0', int port = 5050}) async {

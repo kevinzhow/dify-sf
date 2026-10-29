@@ -10,7 +10,7 @@ public struct AgentPrompt: Sendable {
 
 public enum AgentPromptBuilder {
     public static func build(node: AgentNodeData, config: AgentInlineConfig, pool: VariablePool,
-                             files: (any RuntimeFiles)?, nodeJob: JSONObject = [:]) async throws -> AgentPrompt {
+                             files: (any RuntimeFiles)?, nodeJob: JSONObject = [:], modelWire: String = "plugin") async throws -> AgentPrompt {
         var task: [JSONValue] = []
         var mounts: [JSONValue] = []
         var ids = Set<String>()
@@ -74,8 +74,10 @@ public enum AgentPromptBuilder {
             text += "\nThe above workflow context is run-specific. Do not treat it as Agent Soul or persistent memory."
         }
         let system = expand(config.systemPrompt, outputs: [], config: config)
-        // History re-sends these images. Reserve room for tools and later text before spending the first model call.
-        guard modelFileBytes <= 6 << 20, 4 * ((modelFileBytes + 2) / 3) + text.utf8.count + system.utf8.count <= 7 << 20 else {
+        // The legacy loop re-sends image history. Codex Responses has its own request/file admission limits;
+        // applying this legacy conversation reserve rejects valid review inputs before Codex can start.
+        if !(config.harnessStyle == "codex" && modelWire == "responses"),
+           !(modelFileBytes <= 6 << 20 && 4 * ((modelFileBytes + 2) / 3) + text.utf8.count + system.utf8.count <= 7 << 20) {
             throw NodeError("AgentFileBudgetExceeded", "Agent input files exceed the model conversation budget")
         }
         guard text.utf8.count <= 2 << 20 else { throw NodeError("AgentInputTooLarge", "The agent task context is too large") }
