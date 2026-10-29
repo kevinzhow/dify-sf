@@ -16,7 +16,9 @@ struct AgentPackageTests {
             #expect(saved.status == 200, "\(saved.text)")
             let original = try #require(try await store.currentAgentConfig(doc: source, node: AgentComposerTests.nodeID))
             let exported = try await api.get("/v1/docs/\(source)/export?format=json", token: token)
-            let portable = try #require(try JSONValue.parse(exported.text).object)
+            var portable = try #require(try JSONValue.parse(exported.text).object)
+            // The empty seed exports the legacy default DSL version (0.3.1).
+            portable["version"] = .string(DifyDSL.currentDSLVersion)
             let appCount = try #require(try await api.get("/v1/apps", token: token).total)
 
             var wrongType = portable
@@ -49,7 +51,7 @@ struct AgentPackageTests {
                 #expect(response.status == 400, "Invalid packages are not retryable outages: \(response.text)")
                 #expect(response.str("status") == "failed" && response.str("id") == importID)
                 #expect(response.str("current_dsl_version") == DifyDSL.currentDSLVersion)
-                #expect(response.str("imported_dsl_version") == (confirmVersion ? "0.9.0" : "0.7.0"))
+                #expect(response.str("imported_dsl_version") == (confirmVersion ? "0.9.0" : DifyDSL.currentDSLVersion))
                 #expect(response.j["app_id"] == .null && response.j["app_mode"] == .null)
                 #expect(!response.str("error").isEmpty && response.j["warnings"] == [])
                 #expect(try await api.get("/v1/apps", token: token).total == appCount)
