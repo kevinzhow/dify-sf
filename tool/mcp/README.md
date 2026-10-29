@@ -134,11 +134,19 @@ normally; a catalog failure prevents `gate_passed` even when partial rules retur
 zero items. Incomplete results have `warning_count:null` and an explicit
 `partial_warning_count`; they never advertise a clean zero total. No catalogs or provider credential values are returned to the caller.
 
-The first read-only bridge does not yet wire every context required by the editor ports.
-API/MCP tool provider catalogs, legacy/inline Agent backend checks, knowledge
+Inline Agent v2 checks load the node's private composer configuration, model
+features and compatibility labels, and executor profiles through the signed-in
+console API. They use the editor's inline Agent validator. Missing configuration
+produces checklist items; failed configuration/catalog/profile reads make the
+check incomplete (for example `agent_model_features` or
+`agent_executor_profiles`). Shell-off profiles are handled by the same editor
+rules, rather than requiring an unused sandbox environment.
+
+The read-only bridge does not yet wire every context required by the editor ports.
+API/MCP tool provider catalogs, legacy/non-inline Agent backend checks, knowledge
 retrieval dataset context, trigger plugin and data-source catalogs are explicitly
 reported as `unsupported_context` / `tool_catalog` when applicable, and make the
-check incomplete. This first slice does not claim full upstream Dify validation
+check incomplete. This bridge does not claim full upstream Dify validation
 for such workflows. Plain graph/code/HTTP/iteration/loop/human-input workflows
 can be complete without unrelated catalogs. The existing editor validator's
 upstream scope and limitations still apply.

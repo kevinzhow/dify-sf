@@ -489,6 +489,12 @@ extension Routes {
         let id = UUID().uuidString.lowercased()
         do {
             _ = try await createAgentAwareDocument(id: id, imported: imported, app: app, user: account)
+        } catch ServerError.http(400, _, let message) {
+            // Portable Agent validation runs before the document transaction. A
+            // bad file is a failed Import, not a transient service outage.
+            return try importAnswer(importId, status: "failed", imported: checked.version, error: message)
+        } catch ServerError.badRequest(let message) {
+            return try importAnswer(importId, status: "failed", imported: checked.version, error: message)
         } catch is SecretsKeyMissing { throw Self.secretsKeyMissing } catch { throw ServerError.unavailable("\(error)") }
         // A confirmed pending import is completed (Dify's `confirm_import`).
         let status = checked.status == .pending ? DifyDSL.VersionStatus.completed : checked.status

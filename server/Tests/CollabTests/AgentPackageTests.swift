@@ -8,6 +8,64 @@ import Testing
 
 @Suite("Portable inline Agent packages", .enabled(if: testDbHost != nil))
 struct AgentPackageTests {
+    @Test(arguments: [false, true])
+    func appImportsReturnFailedImportForInvalidPackages(confirmVersion: Bool) async throws {
+        try await withServer { api, store, _ in
+            let (token, _, source) = try await AgentComposerTests.seed(api, store)
+            let saved = try await api.put(AgentComposerTests.path(source), AgentComposerTests.payload().compactJSON(), token: token)
+            #expect(saved.status == 200, "\(saved.text)")
+            let original = try #require(try await store.currentAgentConfig(doc: source, node: AgentComposerTests.nodeID))
+            let exported = try await api.get("/v1/docs/\(source)/export?format=json", token: token)
+            let portable = try #require(try JSONValue.parse(exported.text).object)
+            let appCount = try #require(try await api.get("/v1/apps", token: token).total)
+
+            var wrongType = portable
+            wrongType["agent_packages"] = "not an object"
+            var missingPackage = portable
+            missingPackage["agent_packages"] = [:]
+            var wrongSoul = portable
+            var packages = try #require(wrongSoul["agent_packages"]?.object)
+            var package = try #require(packages["agent_1"]?.object)
+            var soul = try #require(package["soul"]?.object)
+            soul["config_files"] = "not an array"
+            package["soul"] = .object(soul)
+            packages["agent_1"] = .object(package)
+            wrongSoul["agent_packages"] = .object(packages)
+
+            for var root in [wrongType, missingPackage, wrongSoul] {
+                if confirmVersion { root["version"] = "0.9.0" }
+                // JSON is valid YAML and exercises the same DSL import route.
+                let body: JSONValue = ["mode": "yaml-content", "yaml_content": .string(JSONValue.object(root).compactJSON())]
+                let initial = try await api.post("/v1/apps/imports", body.compactJSON(), token: token)
+                let response: API.Answer
+                let importID = initial.str("id")
+                if confirmVersion {
+                    #expect(initial.status == 202 && initial.str("status") == "pending", "\(initial.text)")
+                    response = try await api.post("/v1/apps/imports/\(importID)/confirm", token: token)
+                    #expect(try await api.post("/v1/apps/imports/\(importID)/confirm", token: token).status == 404)
+                } else {
+                    response = initial
+                }
+                #expect(response.status == 400, "Invalid packages are not retryable outages: \(response.text)")
+                #expect(response.str("status") == "failed" && response.str("id") == importID)
+                #expect(response.str("current_dsl_version") == DifyDSL.currentDSLVersion)
+                #expect(response.str("imported_dsl_version") == (confirmVersion ? "0.9.0" : "0.7.0"))
+                #expect(response.j["app_id"] == .null && response.j["app_mode"] == .null)
+                #expect(!response.str("error").isEmpty && response.j["warnings"] == [])
+                #expect(try await api.get("/v1/apps", token: token).total == appCount)
+                #expect(try await store.currentAgentConfig(doc: source, node: AgentComposerTests.nodeID)?.id == original.id)
+            }
+
+            // Correcting the file succeeds and creates fresh, app-owned resources.
+            let valid: JSONValue = ["mode": "yaml-content", "yaml_content": .string(JSONValue.object(portable).compactJSON())]
+            let accepted = try await api.post("/v1/apps/imports", valid.compactJSON(), token: token)
+            #expect(accepted.status == 200 && accepted.str("status") == "completed", "\(accepted.text)")
+            let imported = try #require(try await store.currentAgentConfig(doc: accepted.str("app_id"), node: AgentComposerTests.nodeID))
+            #expect(imported.id != original.id && imported.agentId != original.agentId)
+            #expect(try await api.get("/v1/apps", token: token).total == appCount + 1)
+        }
+    }
+
     @Test func exportsAndAppCopiesMaterializePrivateBindingsWithoutSecretsOrFileLocators() async throws {
         try await withServer { api, store, registry in
             let (token, _, app) = try await AgentComposerTests.seed(api, store)
