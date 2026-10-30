@@ -336,6 +336,7 @@ struct ServerAgentRuntime: AgentRuntime {
         result["transport"] = "http"
         if let apiType = credentials["api_type"]?.string { result["api_type"] = .string(apiType) }
         if routes.config.agentService.codexWebsocketPort > 0, result["wire"] == "responses",
+           [AgentModelWire.openAI, AgentModelWire.compatible].contains(soul.provider!),
            try AgentResponsesConnection(provider: soul.provider!, model: soul.model!, credentials: credentials).isOfficialOpenAI {
             result["transport"] = "websocket"
         }

@@ -38,7 +38,9 @@ struct AgentModelSelectionTests {
                     let (token, owner, app) = try await AgentComposerTests.seed(api, store)
                     for provider in [AgentModelWire.openAI, AgentModelWire.deepSeek] {
                         let credentials: JSONObject = provider == AgentModelWire.deepSeek
-                            ? ["api_key": "fixture-deepseek-only"] : ["openai_api_key": "fixture-openai-only"]
+                            // Even a misconfigured DeepSeek endpoint must never select the OpenAI-only WS transport.
+                            ? ["api_key": "fixture-deepseek-only", "endpoint_url": "https://api.openai.com/v1"]
+                            : ["openai_api_key": "fixture-openai-only"]
                         _ = try await store.createModelCredential(.init(provider: provider, model: "fixture-model", modelType: "llm"),
                             name: nil, config: JSONValue.object(credentials).compactJSON(), createdBy: owner)
                     }
