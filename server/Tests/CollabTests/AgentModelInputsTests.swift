@@ -115,7 +115,7 @@ struct AgentModelInputsTests {
         let input = try AgentModelInputs(["selection": "{{#start.choice#}}"])
         for text in ["model-only", "::model", "vendor/plugin/provider::", "vendor/plugin::model", "vendor/plugin/provider/extra::model",
                      "https://example.com::model", "vendor/plugin/provider::   "] {
-            var pool = VariablePool(); try pool.add(["start", "choice"], text)
+            var pool = VariablePool(); try pool.add(["start", "choice"], JSONValue.string(text))
             #expect(throws: NodeError.self) { try input.resolve(Self.config(), pool: pool) }
         }
         var pool = VariablePool(); try pool.add(["start", "choice"], Segment(.secret, "vendor/plugin/provider::model"))

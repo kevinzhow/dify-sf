@@ -51,7 +51,7 @@ struct AgentModelSelectionTests {
                         "model_settings": ["temperature": 0.7, "max_tokens": 123]]
                     let saved = try await api.send(.put, AgentComposerTests.path(app),
                         AgentComposerTests.payload(soul: original).compactJSON(), token: token)
-                    #expect(saved.status == 200, saved.text)
+                    #expect(saved.status == 200, "\(saved.text)")
                     let binding = try #require(try JSONValue.parse(saved.text)["binding"])
                     let data = try AgentNodeData(["type": "agent", "version": "2", "agent_node_kind": "dify_agent",
                         "agent_task": "Fixture only", "agent_binding": binding,
