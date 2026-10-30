@@ -1339,6 +1339,7 @@ void main() {
     late FakeLoop loop;
     late String root;
     var boot = 'boot-1';
+    final logs = <String>[];
 
     final profiles = ExecutorProfiles.parse({
       'version': 1,
@@ -1354,18 +1355,24 @@ void main() {
       },
     });
 
-    DiskWorkspaceConfig diskConfig({int budgetMb = 4096}) =>
-        DiskWorkspaceConfig(
-          root: root,
-          hostRoot: '/srv/dify-sf/workspaces',
-          toolImage: tool,
-          devices: ['/dev/loop13'],
-          budgetMb: budgetMb,
-          minFreeMb: 1024,
-        );
+    DiskWorkspaceConfig diskConfig({
+      int budgetMb = 4096,
+      List<String> devices = const ['/dev/loop13'],
+    }) => DiskWorkspaceConfig(
+      root: root,
+      hostRoot: '/srv/dify-sf/workspaces',
+      toolImage: tool,
+      devices: devices,
+      budgetMb: budgetMb,
+      minFreeMb: 1024,
+    );
 
-    Future<void> start({int budgetMb = 4096, String? statePath}) async {
-      final d = diskConfig(budgetMb: budgetMb);
+    Future<void> start({
+      int budgetMb = 4096,
+      String? statePath,
+      List<String> devices = const ['/dev/loop13'],
+    }) async {
+      final d = diskConfig(budgetMb: budgetMb, devices: devices);
       await startSupervisor(
         statePath: statePath,
         profiles: profiles,
@@ -1379,9 +1386,17 @@ void main() {
           namePrefix: 'dify-sf-sandbox-',
           freeBytes: (_) async => 1 << 40,
           bootId: () => boot,
+          log: logs.add,
         ),
       );
     }
+
+    /// The workspace directories under the disk root (not the placeholders).
+    List<String> leaseDirs() => [
+      for (final e in Directory(root).listSync())
+        if (e.uri.pathSegments.where((p) => p.isNotEmpty).last != 'hold')
+          e.path,
+    ];
 
     Future<(int, Map<String, Object?>)> acquireDisk(String key) => call(
       'POST',
@@ -1392,6 +1407,7 @@ void main() {
     setUp(() {
       docker.images.addAll([image, tool]);
       loop = FakeLoop();
+      logs.clear();
       root = (Directory('${dir.path}/ws')..createSync()).path;
       expect(Process.runSync('chmod', ['700', root]).exitCode, 0);
       boot = 'boot-1';
@@ -1493,7 +1509,13 @@ void main() {
         'o': 'rw,nosuid,nodev',
       });
       expect((v['Labels'] as Map)['dify-sf.sandbox.workspace'], hasLength(64));
-      expect(loop.ops, ['prepare /dev/loop13']);
+      // At start the idle pool device was created (if gone) and held.
+      expect(loop.ops, [
+        'create /dev/loop13',
+        'hold /dev/loop13',
+        'prepare /dev/loop13',
+      ]);
+      expect(loop.held, isEmpty);
       expect(loop.args.single, [
         '${1536 * 1024 * 1024}',
         '${1024 * 1024 * 1024}',
@@ -1520,7 +1542,8 @@ void main() {
       expect(docker.volumes, isEmpty);
       expect(loop.ops.last, 'detach /dev/loop13');
       expect(loop.bound, isEmpty);
-      expect(Directory(root).listSync(), isEmpty);
+      expect(loop.held, {'/dev/loop13'});
+      expect(leaseDirs(), isEmpty);
     });
 
     test(
@@ -1534,7 +1557,7 @@ void main() {
         final (s2, j2) = await acquireDisk('E2');
         expect((s2, j2['error']), (503, 'disk_budget_exceeded'));
         expect(docker.networks, hasLength(networks));
-        expect(Directory(root).listSync(), hasLength(1));
+        expect(leaseDirs(), hasLength(1));
 
         expect(
           (await call('DELETE', '/v1/sandboxes/${a['sandbox_id']}')).$1,
@@ -1544,7 +1567,7 @@ void main() {
         final (s3, j3) = await acquireDisk('E3');
         expect((s3, j3['error']), (503, 'disk_pool_busy'));
         expect(loop.bound, {'/dev/loop13': (dev: 1, ino: 2)});
-        expect(Directory(root).listSync(), isEmpty);
+        expect(leaseDirs(), isEmpty);
         expect(docker.volumes, isEmpty);
         expect(docker.containers.keys, unorderedEquals([agent, proxy]));
       },
@@ -1560,6 +1583,7 @@ void main() {
 
       // A reboot dropped the binding: re-attached, the files are kept.
       loop.bound.clear();
+      loop.held.clear();
       boot = 'boot-2';
       final (s1, b) = await acquireDisk('E1');
       expect(s1, 201);
@@ -1573,7 +1597,7 @@ void main() {
       expect((s2, j['error']), (503, 'disk_workspace_conflict'));
       expect(loop.bound['/dev/loop13'], (dev: 9, ino: 9));
       expect(supervisor.disks!.leases().single.state, 'conflict');
-      expect(Directory(root).listSync(), hasLength(1));
+      expect(leaseDirs(), hasLength(1));
     });
 
     test('restart: an interrupted creation is released, a paused workspace '
@@ -1618,6 +1642,133 @@ void main() {
       expect(b['workspace_kept_from'], [a['sandbox_id']]);
     });
 
+    test('idle pool devices stay bound to their placeholders; a device '
+        'taken while swapping makes the next one be tried', () async {
+      await start(devices: ['/dev/loop200', '/dev/loop201']);
+      expect(loop.held, {'/dev/loop200', '/dev/loop201'});
+      final holds = Directory('$root/hold').listSync().map((e) => e.path);
+      expect(
+        holds.map((p) => p.split('/').last),
+        unorderedEquals(['loop200.img', 'loop201.img']),
+      );
+      expect(File('$root/hold/loop200.img').lengthSync(), 4096);
+      expect(
+        Process.runSync('stat', ['-c', '%a', '$root/hold']).stdout,
+        '700\n',
+      );
+      expect(
+        Process.runSync('stat', ['-c', '%a', '$root/hold/loop200.img']).stdout,
+        '644\n',
+      );
+
+      // snapd binds loop200 in the moment between clear and bind.
+      loop.onSwap = (d) {
+        if (d == '/dev/loop200') {
+          loop.foreign[d] = '/var/lib/snapd/snaps/example_1.snap';
+        }
+      };
+      final (s1, a) = await acquireDisk('E1');
+      expect(s1, 201, reason: '$a');
+      expect(loop.bound.keys, ['/dev/loop201']);
+      // The image was written on loop200: loop201 attaches it.
+      expect(
+        loop.ops.where(
+          (o) => o.startsWith('prepare') || o.startsWith('attach'),
+        ),
+        ['prepare /dev/loop200', 'attach /dev/loop201'],
+      );
+      expect(loop.held, isEmpty);
+      expect(
+        logs,
+        contains(
+          'pool device /dev/loop200 was taken while swapping its placeholder '
+          '(/var/lib/snapd/snaps/example_1.snap)',
+        ),
+      );
+      expect(
+        (await call('DELETE', '/v1/sandboxes/${a['sandbox_id']}')).$1,
+        200,
+      );
+      expect(loop.held, {'/dev/loop201'});
+    });
+
+    test('after a reboot the pool devices are created before any lease is '
+        'released or resumed', () async {
+      final state = '${dir.path}/state.json';
+      await start(statePath: state);
+      final (_, a) = await acquireDisk('E1');
+      docker.containers.remove(a['sandbox_id']);
+      final paused = supervisor.disks!.leases().single.hash;
+      // An interrupted creation on the second device.
+      final hash = 'b' * 64;
+      Directory('$root/$hash').createSync();
+      File('$root/$hash/workspace.img').writeAsStringSync('x');
+      final id = (await DiskWorkspaces.statIdentity(
+        '$root/$hash/workspace.img',
+      ))!;
+      File('$root/$hash/lease.json').writeAsStringSync(
+        jsonEncode(
+          DiskLease(
+            hash: hash,
+            state: 'preparing',
+            sizeMb: 64,
+            device: '/dev/loop14',
+            volume: 'v',
+            bootId: boot,
+            dev: id.dev,
+            ino: id.ino,
+          ).toJson(),
+        ),
+      );
+      await supervisor.stop();
+
+      // Reboot: no bindings, no device nodes above the preallocated ones.
+      loop.bound.clear();
+      loop.held.clear();
+      loop.missing.addAll(['/dev/loop13', '/dev/loop14']);
+      boot = 'boot-2';
+      loop.ops.clear();
+      await start(statePath: state, devices: ['/dev/loop13', '/dev/loop14']);
+      expect(loop.ops.take(2), ['create /dev/loop13', 'create /dev/loop14']);
+      expect(loop.missing, isEmpty);
+      expect(Directory('$root/$hash').existsSync(), isFalse);
+      expect(logs.where((l) => l.contains('not released')), isEmpty);
+      // loop13 belongs to the paused execution's lease: not held.
+      expect(loop.held, {'/dev/loop14'});
+      // The paused execution resumes on its workspace.
+      expect(supervisor.disks!.leases().single.hash, paused);
+      final (s, b) = await acquireDisk('E1');
+      expect(s, 201, reason: '$b');
+      expect(b['workspace_kept_from'], [a['sandbox_id']]);
+    });
+
+    test('a pool device bound by something else at start is logged, never '
+        'cleared, and its holder is named in disk_pool_busy', () async {
+      loop.foreign['/dev/loop13'] = '/var/lib/snapd/snaps/example_1.snap';
+      await start();
+      expect(loop.held, isEmpty);
+      expect(
+        logs,
+        contains(
+          'pool device /dev/loop13 is not held: bound to '
+          '/var/lib/snapd/snaps/example_1.snap (other)',
+        ),
+      );
+      final (s, j) = await acquireDisk('E1');
+      expect((s, j['error']), (503, 'disk_pool_busy'));
+      expect(j['message'], contains('/var/lib/snapd/snaps/example_1.snap'));
+      expect(leaseDirs(), isEmpty);
+
+      // Freed again: the next start holds it; unholdPool gives it back.
+      loop.foreign.clear();
+      await supervisor.stop();
+      await start();
+      expect(loop.held, {'/dev/loop13'});
+      await supervisor.disks!.unholdPool();
+      expect(loop.held, isEmpty);
+      expect(loop.ops.last, 'unhold /dev/loop13');
+    });
+
     Future<(int, Map<String, Object?>)> retained(
       String execution,
       String workspace,
@@ -1656,6 +1807,7 @@ void main() {
       expect(released.$2['workspace'], 'parked');
       expect(supervisor.disks!.read(hash)!.state, 'parked');
       expect(loop.bound, isEmpty);
+      expect(loop.held, {'/dev/loop13'});
       expect(docker.volumes, isEmpty);
       final (_, other) = await acquireDisk('other-workflow');
       // Final cleanup of a parked workspace must not detach another owner.
@@ -1677,6 +1829,7 @@ void main() {
         'id': hash,
       });
       expect(file.readAsStringSync(), 'retained payload');
+      expect(loop.held, isEmpty);
       final attached = Map.of(loop.bound);
       await call('DELETE', '/v1/sandboxes/${first['sandbox_id']}');
       expect(loop.bound, attached);
@@ -1835,36 +1988,109 @@ void main() {
 
 /// Loop devices in memory: device → bound image identity.
 class FakeLoop implements LoopHelper {
+  /// Workspace bindings; placeholder bindings are in [held].
   final Map<String, ({int dev, int ino})> bound = {};
+  final Set<String> held = {};
+
+  /// Devices bound by someone else (snapd): neither ours nor free.
+  final Map<String, String> foreign = {};
+
+  /// Images the helper wrote (`prepare` refuses them, `attach` needs them).
+  final Set<({int dev, int ino})> formatted = {};
+
+  /// Device nodes that do not exist (after a reboot) until `create`.
+  final Set<String> missing = {};
   final List<String> ops = [];
   final List<List<String>> args = [];
+
+  /// Called between clearing the placeholder and binding the image.
+  void Function(String device)? onSwap;
 
   @override
   Future<LoopResult> run(
     String hash,
     String op,
     String device,
-    ({int dev, int ino}) identity, [
+    ({int dev, int ino})? identity, {
     List<String> args = const [],
-  ]) async {
+    ({int dev, int ino})? hold,
+  }) async {
     ops.add('$op $device');
     if (op == 'prepare') this.args.add(args);
+    if (op == 'create') {
+      missing.remove(device);
+    } else if (missing.contains(device)) {
+      // Docker refuses a helper whose device does not exist.
+      throw SupervisorError(503, 'disk_workspace_failed', 'no $device');
+    }
     final cur = bound[device];
-    LoopResult r(int code, String state) => (
+    LoopResult r(
+      int code,
+      String state, [
+      Map<String, Object?> more = const {},
+    ]) => (
       exitCode: code,
-      out: {'state': state, 'dev': identity.dev, 'ino': identity.ino},
+      out: {
+        'state': state,
+        if (identity != null) 'dev': identity.dev,
+        if (identity != null) 'ino': identity.ino,
+        ...more,
+      },
     );
+    final other = foreign[device];
+    if (other != null && op != 'create') {
+      return switch (op) {
+        'detach' => r(5, 'other'),
+        'unhold' => r(0, 'other'),
+        _ => r(3, op == 'hold' ? 'other' : 'busy', {'holder': other}),
+      };
+    }
     switch (op) {
+      case 'create':
+        return r(0, 'exists');
+      case 'hold':
+        if (cur != null) return r(3, 'other', {'holder': ''});
+        held.add(device);
+        return r(0, 'held');
+      case 'unhold':
+        if (cur != null) return r(0, 'other');
+        held.remove(device);
+        return r(0, 'free');
       case 'prepare' || 'attach':
         if (cur == identity && op == 'attach') return r(0, 'attached');
-        if (cur != null) return r(3, 'busy');
-        bound[device] = identity;
+        if (cur != null || (held.contains(device) && hold == null)) {
+          return r(3, 'busy');
+        }
+        if (op == 'prepare' && formatted.contains(identity)) {
+          return r(5, 'not_empty');
+        }
+        if (op == 'attach' && !formatted.contains(identity)) {
+          return r(6, 'not_formatted');
+        }
+        if (op == 'prepare') formatted.add(identity!);
+        final swapped = held.remove(device);
+        if (swapped) {
+          onSwap?.call(device);
+          final thief = foreign[device];
+          if (thief != null) {
+            return r(3, 'busy', {
+              'holder': thief,
+              'lost_hold': true,
+              'formatted': op == 'prepare',
+            });
+          }
+        }
+        bound[device] = identity!;
         return r(0, 'attached');
       case 'detach':
-        if (cur == null) return r(0, 'free');
+        if (cur == null) {
+          if (hold != null) held.add(device);
+          return r(0, 'free', {'held': hold != null});
+        }
         if (cur != identity) return r(5, 'other');
         bound.remove(device);
-        return r(0, 'detached');
+        if (hold != null) held.add(device);
+        return r(0, 'detached', {'held': hold != null});
     }
     return r(2, 'unknown_op');
   }
