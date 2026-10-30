@@ -62,7 +62,7 @@ struct AgentModelSelectionTests {
                     try await runtime.prepare(nodeID: AgentComposerTests.nodeID, data: data)
                     for provider in [AgentModelWire.openAI, AgentModelWire.deepSeek] {
                         var pool = VariablePool()
-                        try pool.add(["start", "model"], "\(provider)::fixture-model")
+                        try pool.add(["start", "model"], JSONValue.string("\(provider)::fixture-model"))
                         try pool.add(["start", "effort"], "high")
                         let soul = try data.modelInputs.resolve(AgentInlineConfig(original), pool: pool)
                         let envelope = try await runtime.modelEnvelope(soul)
