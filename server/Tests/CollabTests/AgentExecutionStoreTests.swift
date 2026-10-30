@@ -11,8 +11,8 @@ struct AgentExecutionStoreTests {
     @Test func resolvedModelIsImmutableAndUsesTheExistingOwnershipLease() async throws {
         try await withServer { api, store, _ in
             let session = try await Self.seed(api, store)
-            let first = #"{"model":"model-a","model_settings":{"reasoning_effort":"high"}}"#
-            let second = #"{"model":"model-b","model_settings":{"reasoning_effort":"max"}}"#
+            let first = #"{"plugin_id":"langgenius/openai","model_provider":"openai","model":"model-a","model_settings":{"reasoning_effort":"high"}}"#
+            let second = #"{"plugin_id":"langgenius/deepseek","model_provider":"deepseek","model":"model-b","model_settings":{"reasoning_effort":"max"}}"#
             #expect(try JSONValue.parse(try await store.pinAgentModel(session: session, selection: first)) == JSONValue.parse(first))
             #expect(try JSONValue.parse(try await store.pinAgentModel(session: session, selection: second)) == JSONValue.parse(first))
             let stored = try #require(try await store.agentSession(execution: session.executionID))

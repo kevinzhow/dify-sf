@@ -1,4 +1,4 @@
-/// Workflow-owned model overrides. The inline agent still owns the fixed provider and model defaults.
+/// Workflow-owned model overrides. Full selections include the provider; legacy model names keep the fixed provider.
 List<String>? agentModelInputSelector(Object? value) {
   if (value is! String || !value.startsWith('{{#') || !value.endsWith('#}}')) {
     return null;
@@ -12,7 +12,10 @@ List<String>? agentModelInputSelector(Object? value) {
 bool validAgentModelInputs(Object? value) {
   if (value == null) return true;
   if (value is! Map ||
-      value.keys.any((k) => !const {'model', 'reasoning_effort'}.contains(k))) {
+      value.keys.any(
+        (k) => !const {'selection', 'model', 'reasoning_effort'}.contains(k),
+      ) ||
+      (value.containsKey('selection') && value.containsKey('model'))) {
     return false;
   }
   return value.values.every(

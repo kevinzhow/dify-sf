@@ -57,6 +57,7 @@
     "inline.event.commentary": "Agent update",
     "inline.event.plan": "Plan",
     "inline.event.model_retry": "Retrying model call",
+    "inline.runtimeSelection": "Model input (provider and model)",
     "inline.runtimeModel": "Model input",
     "inline.runtimeReasoning": "Reasoning effort input",
     "inline.fromConfiguration": "Use the agent configuration"

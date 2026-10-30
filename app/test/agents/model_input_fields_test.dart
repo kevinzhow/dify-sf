@@ -2,6 +2,7 @@ import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/agent_mode
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import '../dify_spec/dify_test_i18n.dart';
 
 void main() {
@@ -91,4 +92,46 @@ void main() {
     expect(changed, false);
     expect(find.byType(VarReferencePicker), findsNothing);
   });
+
+  testWidgets(
+    'new model binding selects the complete provider and model through one variable',
+    (t) async {
+      var value = <String, Object?>{};
+      await t.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              child: StatefulBuilder(
+                builder: (context, setState) => AgentModelInputFields(
+                  value: value,
+                  scope: scope,
+                  onChange: (next) => setState(() => value = next),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      await t.tap(
+        find
+            .bySemanticsLabel('workflow.nodes.common.typeSwitch.variable')
+            .first,
+      );
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const ValueKey('agent-model-selection')));
+      await t.pumpAndSettle();
+      expect(find.text('count'), findsNothing);
+      expect(find.text('token'), findsNothing);
+      await t.tap(find.text('model').last);
+      await t.pumpAndSettle();
+      expect(value, {'selection': '{{#start.model#}}'});
+      await t.tap(
+        find.bySemanticsLabel('workflow.nodes.common.typeSwitch.input').first,
+      );
+      await t.pumpAndSettle();
+      expect(value, isEmpty);
+    },
+  );
 }

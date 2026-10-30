@@ -61,6 +61,7 @@
     "inline.event.commentary": "Agent 回報",
     "inline.event.plan": "計畫",
     "inline.event.model_retry": "重試模型呼叫",
+    "inline.runtimeSelection": "模型參數（服務商及模型）",
     "inline.runtimeModel": "模型參數",
     "inline.runtimeReasoning": "推理強度參數",
     "inline.fromConfiguration": "使用 Agent 設定中的值"
