@@ -57,6 +57,7 @@
     "inline.event.commentary": "Agent 汇报",
     "inline.event.plan": "计划",
     "inline.event.model_retry": "重试模型调用",
+    "inline.runtimeSelection": "模型参数（服务商及模型）",
     "inline.runtimeModel": "模型参数",
     "inline.runtimeReasoning": "推理强度参数",
     "inline.fromConfiguration": "使用 Agent 配置中的值"

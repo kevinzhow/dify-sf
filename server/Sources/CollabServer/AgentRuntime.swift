@@ -27,7 +27,9 @@ struct ServerAgentRuntime: AgentRuntime {
         let (_, soul) = try await configuration(nodeID, data)
         let profile = try await executorProfile(soul)
         _ = try AgentExecutionPolicy.turns(node: soul.maxTurns, profile: profile?.maxTurnsMax)
-        try await validateModel(soul)
+        // Full runtime selections can use a different provider. Validate that selected model in run(),
+        // rather than requiring the inline default's provider to remain configured as well.
+        if !data.modelInputs.selectsProvider { try await validateModel(soul) }
         for item in soul.files {
             guard let id = item["file_id"]?.string, let files else { throw NodeError("AgentFileUnavailable", "An agent configuration file is missing") }
             _ = try await files.resolve(["transfer_method": "local_file", "upload_file_id": .string(id)], config: nil)
@@ -325,14 +327,16 @@ struct ServerAgentRuntime: AgentRuntime {
         return profile
     }
 
-    private func modelEnvelope(_ soul: AgentInlineConfig) async throws -> JSONObject {
+    func modelEnvelope(_ soul: AgentInlineConfig) async throws -> JSONObject {
         var result: JSONObject = ["provider": .string(soul.provider!), "name": .string(soul.model!), "parameters": .object(soul.modelParameters)]
         // Preserve the original dify envelope, including the absence of new keys.
         guard soul.harnessStyle == "codex" else { return result }
         let credentials = try await routes.agentCredentials(provider: soul.provider!, model: soul.model!, reference: soul.json["model"]?["credential_ref"])
         result["wire"] = .string(AgentModelWire.select(style: soul.harnessStyle, provider: soul.provider!, credentials: credentials))
+        result["transport"] = "http"
         if let apiType = credentials["api_type"]?.string { result["api_type"] = .string(apiType) }
         if routes.config.agentService.codexWebsocketPort > 0, result["wire"] == "responses",
+           [AgentModelWire.openAI, AgentModelWire.compatible].contains(soul.provider!),
            try AgentResponsesConnection(provider: soul.provider!, model: soul.model!, credentials: credentials).isOfficialOpenAI {
             result["transport"] = "websocket"
         }

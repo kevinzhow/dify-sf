@@ -26,9 +26,17 @@ class AgentModelInputFields extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     spacing: 16,
     children: [
-      for (final key in const ['model', 'reasoning_effort'])
+      // Existing bindings remain model-name inputs; newly enabled model inputs select a complete model.
+      for (final key in [
+        value.containsKey('model') ? 'model' : 'selection',
+        'reasoning_effort',
+      ])
         Field(
-          title: _t(key == 'model' ? 'runtimeModel' : 'runtimeReasoning'),
+          title: _t(switch (key) {
+            'selection' => 'runtimeSelection',
+            'model' => 'runtimeModel',
+            _ => 'runtimeReasoning',
+          }),
           operations: FormInputTypeSwitch(
             value: value.containsKey(key)
                 ? VarKindType.variable

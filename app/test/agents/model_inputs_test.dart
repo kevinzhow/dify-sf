@@ -45,6 +45,13 @@ void main() {
   test('only exact model references are valid; fixed settings stay in inline configuration', () {
     expect(validAgentModelInputs(null), true);
     expect(
+      validAgentModelInputs({
+        'selection': '{{#start.model#}}',
+        'reasoning_effort': '{{#start.effort#}}',
+      }),
+      true,
+    );
+    expect(
       validAgentModelInputs({'reasoning_effort': '{{#start-node.effort#}}'}),
       true,
     );
@@ -55,9 +62,23 @@ void main() {
       {'model': '{{#start.#}}'},
       {'model': 'prefix {{#start.model#}}'},
       {'provider': '{{#start.provider#}}'},
+      {'selection': '{{#start.choice#}}', 'model': '{{#start.model#}}'},
     ]) {
       expect(validAgentModelInputs(invalid), false, reason: '$invalid');
     }
+  });
+
+  test('full selection references track and rename without being confused with legacy model names', () {
+    final node = agent({'selection': '{{#start.model#}}'});
+    expect(getNodeUsedVars(node), contains(equals(['start', 'model'])));
+    final changed = updateNodeVars(
+      node,
+      ['start', 'model'],
+      ['start', 'selected_model'],
+    );
+    expect(difyDataOf(changed)['agent_model'], {
+      'selection': '{{#start.selected_model#}}',
+    });
   });
 
   test('checklist accepts a start dropdown binding and rejects a deleted or wrong-type input', () {
@@ -91,7 +112,7 @@ void main() {
                 config: {
                   ...n.config,
                   'agent_model': Value.of({
-                    'reasoning_effort': '{{#start.$selected#}}',
+                    'selection': '{{#start.$selected#}}',
                   }),
                 },
               )

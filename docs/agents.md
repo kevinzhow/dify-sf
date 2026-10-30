@@ -332,7 +332,7 @@ Only inline Agent v2 nodes in workflow apps run. Agent v1 nodes, roster bindings
       Image: {{#start.image#}}
     agent_declared_outputs: [...]    # 6.5
     agent_model:                     # optional, 6.6
-      model: '{{#start.model#}}'
+      selection: '{{#start.model#}}'
       reasoning_effort: '{{#start.effort#}}'
     agent_session: {enabled: true}   # optional, 6.9
     error_strategy: fail-branch      # optional, 6.5
@@ -428,10 +428,13 @@ agent_declared_outputs:
 
 ### 6.6 Model and reasoning effort at run time
 
-`agent_model` binds the model name and the reasoning effort to workflow variables, usually two required `select`
-inputs of the Start node. Each value must be one complete reference to a string variable. The provider, credentials
-and other parameters still come from the Soul. The model name must be an enabled, configured, tool-capable model of
-that provider. The server resolves the values when the node starts and pins them for resumes and retries. Details:
+`agent_model.selection` binds a complete `organization/plugin/provider::model-name` value, so one Start dropdown can
+include models from different configured providers. `reasoning_effort` binds the effort separately. Each binding is
+one complete reference to a string variable. The selected model must be enabled, configured and tool-capable; its
+connection and capabilities come from workspace settings. Changing the selection clears foreign credentials and
+model-specific tuning parameters before applying an explicit effort binding. Legacy `agent_model.model` retains
+its same-provider model-name behavior and cannot be combined with `selection`. The server pins the resolved
+selection for resumes and retries. Details:
 [`agent-model-inputs.md`](agent-model-inputs.md).
 
 ### 6.7 Harness styles

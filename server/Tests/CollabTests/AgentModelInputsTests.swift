@@ -72,8 +72,53 @@ struct AgentModelInputsTests {
     @Test func rejectsPartialReferencesAndUnknownOverrideFields() {
         for value in [1, ["provider": "{{#start.provider#}}"], ["model": ""], ["model": "prefix {{#start.model#}}"],
                       ["reasoning_effort": "{{#start.#}}"], ["reasoning_effort": "{{#start.effort#}}suffix"],
-                      ["reasoning_effort": ["start", "effort"]]] as [JSONValue] {
+                      ["reasoning_effort": ["start", "effort"]],
+                      ["selection": "{{#start.choice#}}", "model": "{{#start.model#}}"]] as [JSONValue] {
             #expect(throws: NodeDataError.self) { try AgentModelInputs(value) }
         }
+    }
+
+    @Test(arguments: ["provider", "provider_credential", "model", "model_credential"])
+    func oneSelectionSwitchesProviderAndClearsForeignCredentialsAndSettings(credentialType: String) throws {
+        var original = try Self.config().json
+        var selection = original["model"]!.object!
+        selection["credential_ref"] = ["type": .string(credentialType), "id": "old-secret", "provider": "vendor/plugin/provider"]
+        original["model"] = .object(selection)
+        var pool = VariablePool()
+        try pool.add(["start", "choice"], "langgenius/deepseek/deepseek::deepseek-flash")
+        try pool.add(["start", "effort"], "high")
+        let input = try AgentModelInputs(["selection": "{{#start.choice#}}", "reasoning_effort": "{{#start.effort#}}"])
+        let selected = try input.resolve(AgentInlineConfig(original), pool: pool)
+        #expect(selected.provider == "langgenius/deepseek/deepseek" && selected.model == "deepseek-flash")
+        #expect(selected.modelParameters == ["reasoning_effort": "high"])
+        #expect(selected.json["model"]?["credential_ref"] == nil)
+        #expect(input.selectsProvider && input.selectors.count == 2)
+        // Resume/retry must not resolve a changed or missing input into a different provider.
+        let pinned = selected.json["model"]!.object!
+        try pool.add(["start", "choice"], "langgenius/openai/openai::other")
+        #expect(try input.resolve(Self.config(), pool: pool, pinned: pinned).json == selected.json)
+        #expect(try input.resolve(Self.config(), pool: VariablePool(), pinned: pinned).json == selected.json)
+    }
+
+    @Test func fullSelectionKeepsUnchangedDefaultsAndAllowsSlashesInsideTheModelName() throws {
+        let original = try Self.config()
+        let input = try AgentModelInputs(["selection": "{{#start.choice#}}"])
+        var pool = VariablePool(); try pool.add(["start", "choice"], "vendor/plugin/provider::model-a")
+        #expect(try input.resolve(original, pool: pool).json == original.json)
+        try pool.add(["start", "choice"], "vendor/plugin/provider::org/model::revision")
+        let selected = try input.resolve(original, pool: pool)
+        #expect(selected.model == "org/model::revision" && selected.modelParameters.isEmpty)
+        #expect(selected.json["model"]?["credential_ref"] == nil)
+    }
+
+    @Test func invalidFullSelectionsAndSecretVariablesNeverBecomeConnections() throws {
+        let input = try AgentModelInputs(["selection": "{{#start.choice#}}"])
+        for text in ["model-only", "::model", "vendor/plugin/provider::", "vendor/plugin::model", "vendor/plugin/provider/extra::model",
+                     "https://example.com::model", "vendor/plugin/provider::   "] {
+            var pool = VariablePool(); try pool.add(["start", "choice"], JSONValue.string(text))
+            #expect(throws: NodeError.self) { try input.resolve(Self.config(), pool: pool) }
+        }
+        var pool = VariablePool(); try pool.add(["start", "choice"], Segment(.secret, "vendor/plugin/provider::model"))
+        #expect(throws: NodeError.self) { try input.resolve(Self.config(), pool: pool) }
     }
 }

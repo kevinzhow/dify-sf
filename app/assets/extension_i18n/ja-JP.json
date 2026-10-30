@@ -61,6 +61,7 @@
     "inline.event.commentary": "Agent の報告",
     "inline.event.plan": "計画",
     "inline.event.model_retry": "モデル呼び出しを再試行",
+    "inline.runtimeSelection": "モデル入力（プロバイダーとモデル）",
     "inline.runtimeModel": "モデル入力",
     "inline.runtimeReasoning": "推論強度の入力",
     "inline.fromConfiguration": "エージェント設定の値を使用"
