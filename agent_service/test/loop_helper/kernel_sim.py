@@ -12,7 +12,9 @@ bytes); other_opener (sleeps until another opener closes; -1 never);
 udev_after_clear (it opens the device during the run-down for that many
 sleeps); open_in_rundown (open is allowed while running down);
 steal_before_bind; steal_after_clear (another binder takes the device as
-soon as the cleared binding is gone)."""
+soon as the cleared binding is gone); enxio_opens (that many opens after the
+clear answer ENXIO first). Time is simulated: each sleep advances the
+monotonic clock; `elapsed` reports it."""
 import contextlib, errno, fcntl, io, json, os, stat, struct, subprocess, sys, time, types
 from unittest.mock import patch
 
@@ -30,6 +32,8 @@ class Kernel:
         self.fds, self.next, self.openers = {}, 100, 0
         self.other = sc.get('other_opener', 0)
         self.formats = self.sleeps = 0
+        self.now = 1000.0
+        self.enxio = sc.get('enxio_opens', 0)
 
     def settle(self):
         if self.pending and self.openers == 0 and self.other == 0:
@@ -39,6 +43,9 @@ class Kernel:
     def open(self, p, flags):
         if p.startswith('/dev/'):
             if self.rundown and not sc.get('open_in_rundown'):
+                raise OSError(errno.ENXIO, 'running down')
+            if self.pending and self.enxio > 0:
+                self.enxio -= 1
                 raise OSError(errno.ENXIO, 'running down')
             self.openers += 1
         self.next += 1
@@ -55,6 +62,7 @@ class Kernel:
 
     def sleep(self, s):
         self.sleeps += 1
+        self.now += s
         if self.other > 0:
             self.other -= 1
         self.settle()
@@ -108,11 +116,13 @@ with contextlib.redirect_stdout(out), \
         patch.object(os, 'fstat', k.fstat), patch.object(os, 'posix_fallocate', k.allocate), \
         patch.object(os, 'statvfs', lambda p: types.SimpleNamespace(f_bavail=10 ** 9, f_frsize=4096)), \
         patch.object(fcntl, 'ioctl', k.ioctl), patch.object(subprocess, 'run', k.command), \
-        patch.object(time, 'sleep', k.sleep), patch.object(sys, 'argv', argv), \
+        patch.object(time, 'sleep', k.sleep), patch.object(time, 'monotonic', lambda: k.now), \
+        patch.object(sys, 'argv', argv), \
         patch.dict(os.environ, {'HOLD': '%d:%d' % HOLD}):
     try:
         exec(compile(code, 'loop-helper', 'exec'), {'__name__': '__main__'})
     except SystemExit as e:
         code_ = e.code
 print(json.dumps({'exit': code_, 'answer': json.loads(out.getvalue()), 'binding': NAMES[k.binding],
-                  'formats': k.formats, 'sleeps': k.sleeps, 'open': k.openers}))
+                  'formats': k.formats, 'sleeps': k.sleeps, 'open': k.openers,
+                  'elapsed': round(k.now - 1000.0, 3)}))

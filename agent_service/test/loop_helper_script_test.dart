@@ -109,7 +109,28 @@ void main() {
     });
     expect(r['exit'], 7);
     expect(r['answer'], {'state': 'clear_timeout'});
+    expect(r['elapsed'] as num, inInclusiveRange(4.9, 5.05));
   });
+
+  test(
+    're-opens refused and then the old binding again share one 5 s '
+    'budget',
+    skip: skip,
+    () {
+      for (final op in ['attach', 'detach']) {
+        final r = run({
+          'op': op,
+          'start': op == 'attach' ? 'hold' : 'image',
+          'size': 1,
+          'other_opener': -1,
+          'enxio_opens': 120,
+        });
+        expect(r['exit'], 7, reason: op);
+        expect(r['answer'], {'state': 'clear_timeout'});
+        expect(r['elapsed'] as num, inInclusiveRange(4.9, 5.05), reason: op);
+      }
+    },
+  );
 
   test(
     'detach binds the placeholder again unless another binder was '

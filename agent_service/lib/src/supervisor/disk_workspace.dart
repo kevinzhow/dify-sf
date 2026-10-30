@@ -166,7 +166,7 @@ abstract interface class LoopHelper {
 /// The helper's program (python3 -I -c). Exit codes: 0 done, 3 the device is
 /// bound to another file, 4 not enough free space, 5 identity refused, 6
 /// not a regular image file or not a loop device, 7 a cleared binding did
-/// not go away within 5 s.
+/// not go away (one 5 s monotonic budget for all waiting in a run).
 ///
 /// `LOOP_CLR_FD` only marks a binding: it goes with the device's last close
 /// (another opener, e.g. udev probing, delays it; this helper must not keep
@@ -239,33 +239,43 @@ def reopen():
         if e.errno == errno.ENXIO:
             return False
         raise
+until = None
+def expired():
+    # One 5 s budget (monotonic) for all waiting on the device in this run.
+    global until
+    now = time.monotonic()
+    if until is None:
+        until = now + 5
+    return now >= until
 def wait(pause=True):
     # Lets a binding that is going away go: this helper must not hold the
     # device open meanwhile (its own open would be the last one).
     global d
     os.close(d)
-    for _ in range(250):
+    while True:
         if pause:
+            if expired():
+                done(7, 'clear_timeout')
             time.sleep(0.02)
         pause = True
         if reopen():
             return
-    done(7, 'clear_timeout')
 def clear():
     # True once the device is free; False when another binder holds it.
     old = bound()
     fcntl.ioctl(d, CLR_FD, 0)
-    for i in range(250):
-        wait(pause=i > 0)  # usually our close was the last: no pause
+    pause = False  # usually our close was the last one
+    while True:
+        wait(pause)
+        pause = True
         now = bound()
         if now is None:
             return True
         if now != old:
             return False
-    done(7, 'clear_timeout')
 def bind(f, want):
     # True when f is bound and verified; False when another binder holds it.
-    for _ in range(250):
+    while True:
         try:
             fcntl.ioctl(d, SET_FD, f)
             break
@@ -275,8 +285,6 @@ def bind(f, want):
         if bound() is not None:
             return False
         wait()  # still running down
-    else:
-        done(7, 'clear_timeout')
     if bound() != want:
         clear()  # bound by this call: releasing it is safe
         if f is not hold:
