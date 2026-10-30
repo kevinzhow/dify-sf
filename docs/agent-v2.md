@@ -1245,8 +1245,9 @@ the supervisor:
    device and inode;
 3. runs a short-lived helper container from `SANDBOX_DISK_TOOL_IMAGE` (pinned): root, `CapDrop ALL` + `CapAdd
    SYS_ADMIN`, `no-new-privileges`, read-only root, no network, no Docker socket, no host PID namespace; it sees only
-   this image (single-file bind from `SANDBOX_DISK_HOST_ROOT`) and one pool device. It refuses a file whose device and
-   inode differ from the recorded ones and a device that is already bound (`LOOP_SET_FD` is atomic; no pre-emption),
+   this image (single-file bind from `SANDBOX_DISK_HOST_ROOT`), the device's placeholder (read-only) and one pool
+   device. It refuses a file whose device and inode differ from the recorded ones and a device that is bound to
+   anything but its placeholder (`LOOP_SET_FD` is atomic; no pre-emption),
    checks the free space, `posix_fallocate`s the size, runs `mke2fs -t ext4 -m 0 -E nodiscard,root_owner=1000:1000`,
    removes `lost+found`, sets the root to 0700, binds the device and checks the binding with `LOOP_GET_STATUS64`
    (device and inode, never the backing file name: it shows `/` with single-file bind mounts);
@@ -1262,18 +1263,39 @@ found there (no `sandbox_error`) and does not materialize `files[]` again.
 
 Release (`DELETE /v1/sandboxes/{id}`; the agent service calls it only after artifact collection and the result
 acknowledgement): remove the sandbox and its network, check that no container uses the volume and remove it, detach
-the device only when `LOOP_GET_STATUS64` shows this image's device and inode, delete the image, the lease, the
-directory. A repeated or late `DELETE` of an earlier sandbox ID re-inspects that immutable ID under the execution
+the device only when `LOOP_GET_STATUS64` shows this image's device and inode (and bind its placeholder again), delete
+the image, the lease, the directory. A repeated or late `DELETE` of an earlier sandbox ID re-inspects that immutable ID under the execution
 lock: if a concurrent acquire has replaced it, the replacement's network is left alone and the workspace is released
 only when no sandbox of the execution exists. At start the sweep removes leftover helpers, finishes leases in `preparing` or `releasing`, releases
-the workspaces of the unknown sandboxes it removed and own volumes without a lease; a `ready` lease without a sandbox
-(a paused execution) stays. A device that holds another file while the lease says it was bound in this boot, or an
+the workspaces of the unknown sandboxes it removed and own volumes without a lease, and holds the idle pool devices
+(below); a `ready` lease without a sandbox (a paused execution) stays. A device that holds another file while the lease says it was bound in this boot, or an
 image that was replaced, puts the lease in `conflict`: nothing is detached, deleted or reused, the execution answers
 `503 disk_workspace_conflict` and an operator resolves it (leases in `conflict` still count against the budget). If
 an image is missing but has a recorded device/inode, or its identity is incomplete, release keeps the lease and volume in
-`conflict`: unlinking an image does not detach an open loop device. With
-one pool device (K17: `/dev/loop13`) at most one disk execution is active at a time. A disk profile's status is
+`conflict`: unlinking an image does not detach an open loop device. A disk profile's status is
 `image_missing` also when the tool image is absent.
+
+**The pool stays bound.** Loop devices are one host-wide pool numbered by the kernel; names cannot reserve them. A
+free device is handed to the next `losetup -f` user (snapd, udisks, `mount -o loop`; the kernel gives the lowest-
+numbered existing free device). A pool device left free between executions can thus be taken by a snap refresh, and
+then every disk execution answers `disk_pool_busy`. So a pool device that holds no workspace stays bound
+to its placeholder `<SANDBOX_DISK_ROOT>/hold/loopN.img` (4 KiB of zeros, 0644, bound read-only):
+
+- at start (the sweep) each idle pool device is created through `/dev/loop-control` (`LOOP_CTL_ADD`; device nodes
+  above the kernel's preallocated ones are gone after a reboot; only this helper run sees `/dev/loop-control`) and
+  bound to its placeholder. A device bound to something else is logged with its backing file and left alone;
+- `prepare` and `attach` treat a device bound to its own placeholder as free and swap it for the image;
+  `detach` (release, park) binds the placeholder again;
+- `LOOP_CLR_FD` only marks a binding: it goes with the device's last close, so a swap clears, closes, re-opens and
+  binds. For that moment (about 2 ms in our measurement) the device is free; a binder that is faster makes the swap answer
+  `busy` (`lost_hold`, logged) and the next pool device is tried;
+- `disk_pool_busy` names the backing file of a device bound by someone else, and the agent service keeps the last
+  answer in its timeout message;
+- `DiskWorkspaces.poolStatus()` reads each device (`held`, `free`, `other` with its holder) and `unholdPool()` clears
+  the placeholder bindings of idle devices (removing devices from the pool; tests).
+
+Deployment: list more than one pool device and pick numbers well above the devices the host's other loop users
+need; spare devices created below the pool lower the chance of a lost swap further.
 
 ## Executor profiles
 

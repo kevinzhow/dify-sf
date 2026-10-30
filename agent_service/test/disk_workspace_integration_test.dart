@@ -8,10 +8,11 @@
 //   AGENT_DISK_IT_TOOL_IMAGE=<name>@sha256:<64 hex> \
 //     dart test -j 1 test/disk_workspace_integration_test.dart
 //
-// The device must be unbound (checked first; the helper also refuses a bound
-// one atomically). Everything created is labelled `dify-sf.test=<random>`;
-// tearDownAll removes it and releases only this test's binding (by device
-// and inode).
+// The device must be unbound or not exist yet (checked first; the helper
+// also refuses a bound one atomically; the supervisor creates a missing one
+// and binds it to its placeholder while idle). Everything created is
+// labelled `dify-sf.test=<random>`; tearDownAll removes it and releases only
+// this test's bindings (by device and inode).
 @Timeout(Duration(minutes: 6))
 library;
 
@@ -47,6 +48,16 @@ void main() {
 
   bool deviceBound() =>
       Directory('/sys/block/${device.split('/').last}/loop').existsSync();
+
+  /// The pool device's binding as the helper reads it (`held`: bound to
+  /// the supervisor's placeholder, idle but not free for others).
+  Future<String?> poolState() async =>
+      (await supervisor!.disks!.poolStatus())[device]?['state'] as String?;
+
+  Future<bool> deviceHeld() async => await poolState() == 'held';
+
+  Future<bool> workspaceBound() async =>
+      deviceBound() && await poolState() == 'other';
 
   SupervisorConfig config() => SupervisorConfig(
     key: 'k',
@@ -135,6 +146,8 @@ void main() {
     final cleaner = SandboxSupervisor(config(), docker: d, log: log);
     File('${scratch.path}/state.json').writeAsStringSync('{"sandboxes":{}}');
     await cleaner.sweep();
+    await cleaner.disks!.unholdPool();
+    if (deviceBound()) log('$device is still bound after the cleanup');
     for (final c in await d.listContainers(['dify-sf.test=$label'])) {
       await d.removeContainer(c['Id'] as String);
     }
@@ -147,6 +160,8 @@ void main() {
     d.close();
     scratch.deleteSync(recursive: true);
     final dir = Directory(root);
+    final hold = Directory('$root/hold');
+    if (hold.existsSync()) hold.deleteSync(recursive: true);
     if (dir.existsSync() && dir.listSync().isEmpty) dir.deleteSync();
   });
 
@@ -156,6 +171,8 @@ void main() {
     skip: enabled ? false : 'set AGENT_DISK_IT=1',
     () async {
       supervisor = await startSupervisor();
+      // Idle: the device exists and is bound to the placeholder.
+      expect(await deviceHeld(), isTrue);
       final a = await supervisor!.acquire('exec-1', profileName: 'modelling');
       log('acquired ${a['sandbox_id']} (${a['workspace']})');
       expect(a['workspace'], 'disk');
@@ -164,7 +181,7 @@ void main() {
       final lease = supervisor!.disks!.leases().single;
       expect(lease.state, 'ready');
       expect(lease.device, device);
-      expect(deviceBound(), isTrue);
+      expect(await workspaceBound(), isTrue);
 
       final inspect = (await docker.inspectContainer(first))!;
       final host = inspect['HostConfig'] as Map;
@@ -219,12 +236,15 @@ void main() {
       expect(c['created'], isFalse);
       expect(c['workspace_kept_from'], [first]);
 
-      // Release: sandbox, volume, own loop binding and directory are gone.
+      // Release: sandbox, volume, own loop binding and directory are gone;
+      // the device holds the placeholder again.
       expect(await supervisor!.remove(second), isTrue);
       expect(await docker.inspectContainer(second), isNull);
       expect(await docker.inspectVolume(lease.volume), isNull);
-      expect(deviceBound(), isFalse);
-      expect(Directory(root).listSync(), isEmpty);
+      expect(await deviceHeld(), isTrue);
+      expect(Directory(root).listSync().map((e) => e.path.split('/').last), [
+        'hold',
+      ]);
       // Idempotent: a repeated removal of either sandbox finds nothing.
       expect(await supervisor!.remove(second), isFalse);
       expect(await supervisor!.remove(first), isFalse);
@@ -251,16 +271,16 @@ void main() {
       );
       expect(result.$1, 0);
       await supervisor!.remove(first);
-      expect(deviceBound(), isFalse);
+      expect(await deviceHeld(), isTrue);
       expect(supervisor!.disks!.read(hash)!.state, 'parked');
       expect(file.existsSync(), isTrue);
       final b = await supervisor!.acquire(
         'another-workflow',
         profileName: 'modelling',
       );
-      expect(deviceBound(), isTrue);
+      expect(await workspaceBound(), isTrue);
       await supervisor!.remove(first); // late duplicate from the old round
-      expect(deviceBound(), isTrue);
+      expect(await workspaceBound(), isTrue);
       expect(
         (await sh(
           b['sandbox_id'] as String,
@@ -291,7 +311,7 @@ void main() {
       expect(result.$1, 0);
       expect(result.$2.trim(), 'original-model\nhistory');
       await supervisor!.remove(first);
-      expect(deviceBound(), isTrue);
+      expect(await workspaceBound(), isTrue);
       await supervisor!.remove(second['sandbox_id'] as String);
       final c = await supervisor!.acquire(
         'other-round',
@@ -299,7 +319,7 @@ void main() {
       );
       expect(await supervisor!.releaseWorkspace(hash), isTrue);
       expect(file.existsSync(), isFalse);
-      expect(deviceBound(), isTrue);
+      expect(await workspaceBound(), isTrue);
       expect(
         (await sh(
           c['sandbox_id'] as String,
@@ -308,7 +328,7 @@ void main() {
         0,
       );
       await supervisor!.remove(c['sandbox_id'] as String);
-      expect(deviceBound(), isFalse);
+      expect(await deviceHeld(), isTrue);
       expect(supervisor!.disks!.leases(), isEmpty);
       log(
         'retained workflow round trip, isolation, restart and final purge passed',
@@ -444,7 +464,7 @@ PY
       expect(await s.remove(granted.sandboxId), isTrue);
       expect(await s.list(), isEmpty);
       expect(s.disks!.leases(), isEmpty);
-      expect(deviceBound(), isFalse);
+      expect(await deviceHeld(), isTrue);
       log(
         'single-slot handoff and concurrent lightweight image reviewer passed',
       );
