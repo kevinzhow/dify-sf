@@ -166,12 +166,15 @@ abstract interface class LoopHelper {
 /// The helper's program (python3 -I -c). Exit codes: 0 done, 3 the device is
 /// bound to another file, 4 not enough free space, 5 identity refused, 6
 /// not a regular image file or not a loop device, 7 a cleared binding did
-/// not go away.
+/// not go away within 5 s.
 ///
-/// `LOOP_CLR_FD` only marks a binding: it goes with the device's last close.
-/// A swap therefore clears, closes, re-opens and binds; for that moment
-/// (about 2 ms in our measurement) the device is free, and a `losetup -f` user that
-/// binds it first makes the swap answer `busy` (`lost_hold`).
+/// `LOOP_CLR_FD` only marks a binding: it goes with the device's last close
+/// (another opener, e.g. udev probing, delays it; this helper must not keep
+/// the device open meanwhile). A swap therefore clears, closes and re-opens
+/// until the old binding is gone, then binds; for that moment (about 2 ms
+/// in our measurement) the device is free. A new binding by someone else
+/// makes the swap answer `busy` with `lost_hold` (and `formatted` when
+/// `prepare` already wrote the image: the next device needs `attach`).
 const loopHelperScript = r'''
 import errno, fcntl, json, os, stat, struct, subprocess, sys, time
 SET_FD, CLR_FD, GET_STATUS64, CTL_ADD = 0x4C00, 0x4C01, 0x4C05, 0x4C80
@@ -226,40 +229,68 @@ def bound():
 def holder():
     b = status()
     return '' if b is None else bytes(b[56:120]).split(b'\0')[0].decode('utf-8', 'replace')
-def clear():
+def reopen():
+    # False while the device runs down (its last opener has not closed).
     global d
-    fcntl.ioctl(d, CLR_FD, 0)
-    os.close(d)
-    for _ in range(100):
-        d = os.open(device, os.O_RDWR)
-        if bound() is None:
-            return
-        os.close(d)  # another opener (udev probing) still has it
-        time.sleep(0.02)
-    done(7, 'clear_timeout')
-def rehold():
-    return hold is not None and bind(hold, held)
-def bind(f, want):
     try:
-        fcntl.ioctl(d, SET_FD, f)
+        d = os.open(device, os.O_RDWR)
+        return True
     except OSError as e:
-        if e.errno == errno.EBUSY:
+        if e.errno == errno.ENXIO:
             return False
         raise
+def wait(pause=True):
+    # Lets a binding that is going away go: this helper must not hold the
+    # device open meanwhile (its own open would be the last one).
+    global d
+    os.close(d)
+    for _ in range(250):
+        if pause:
+            time.sleep(0.02)
+        pause = True
+        if reopen():
+            return
+    done(7, 'clear_timeout')
+def clear():
+    # True once the device is free; False when another binder holds it.
+    old = bound()
+    fcntl.ioctl(d, CLR_FD, 0)
+    for i in range(250):
+        wait(pause=i > 0)  # usually our close was the last: no pause
+        now = bound()
+        if now is None:
+            return True
+        if now != old:
+            return False
+    done(7, 'clear_timeout')
+def bind(f, want):
+    # True when f is bound and verified; False when another binder holds it.
+    for _ in range(250):
+        try:
+            fcntl.ioctl(d, SET_FD, f)
+            break
+        except OSError as e:
+            if e.errno != errno.EBUSY:
+                raise
+        if bound() is not None:
+            return False
+        wait()  # still running down
+    else:
+        done(7, 'clear_timeout')
     if bound() != want:
         clear()  # bound by this call: releasing it is safe
         if f is not hold:
             rehold()
         done(5, 'identity_mismatch')
     return True
+def rehold():
+    return hold is not None and bind(hold, held)
 def take():
     cur = bound()
     if cur is not None and cur != held:
-        done(3, 'busy', holder=holder())
-    if cur is not None:
-        clear()
-    if not bind(img, mine):
-        done(3, 'busy', holder=holder(), lost_hold=cur is not None)
+        done(3, 'busy', holder=holder(), formatted=op == 'prepare')
+    if (cur is not None and not clear()) or not bind(img, mine):
+        done(3, 'busy', holder=holder(), lost_hold=cur is not None, formatted=op == 'prepare')
     done(0, 'attached', dev=mine[0], ino=mine[1])
 cur = bound()
 free = cur is None or (held is not None and cur == held)
@@ -272,16 +303,15 @@ if op == 'hold':
         done(0, 'held')
     done(3, 'other', holder=holder())
 if op == 'unhold':
-    if cur == held:
-        clear()
+    if cur == held and not clear():
+        done(0, 'other', holder=holder())
     done(0, 'free' if cur is None or cur == held else 'other')
 if op == 'detach':
     if free:
         done(0, 'free', held=cur is not None or rehold())
     if cur != mine:
         done(5, 'other')
-    clear()
-    done(0, 'detached', held=rehold())
+    done(0, 'detached', held=clear() and rehold())
 if op == 'attach':
     if cur == mine:
         done(0, 'attached', dev=mine[0], ino=mine[1])
@@ -679,6 +709,37 @@ class DiskWorkspaces {
     return id;
   }
 
+  /// Pool devices created (or found) by this process: a held device cannot
+  /// be removed, so once is enough until the next start.
+  final Set<String> _created = {};
+
+  /// Makes sure [device] exists (its node is gone after a reboot) and
+  /// returns its placeholder's identity. A failed creation is logged; the
+  /// helper run that needs the device then fails on its own.
+  Future<({int dev, int ino})> _device(String device) async {
+    if (!_created.contains(device)) {
+      try {
+        final c = await helper.run(_poolKey(device), 'create', device, null);
+        if (c.exitCode == 0) {
+          _created.add(device);
+        } else {
+          log?.call(
+            'pool device $device could not be created: ${jsonEncode(c.out)}',
+          );
+        }
+      } catch (e) {
+        log?.call('pool device $device could not be created: $e');
+      }
+    }
+    return _hold(device);
+  }
+
+  /// ` (<backing file>)` of another binder, when the kernel has its name.
+  static String _holder(LoopResult r) {
+    final h = r.out['holder'];
+    return h is String && h.isNotEmpty ? ' ($h)' : '';
+  }
+
   /// Logs a detach that could not bind the placeholder again.
   void _logHold(String device, LoopResult r) {
     if (r.out['held'] == false) {
@@ -699,20 +760,9 @@ class DiskWorkspaces {
     for (final d in config.devices) {
       if (taken.contains(d)) continue;
       try {
-        final c = await helper.run(_poolKey(d), 'create', d, null);
-        if (c.exitCode != 0) {
-          log?.call(
-            'pool device $d could not be created: ${jsonEncode(c.out)}',
-          );
-          continue;
-        }
-        final r = await helper.run(
-          _poolKey(d),
-          'hold',
-          d,
-          null,
-          hold: await _hold(d),
-        );
+        final hold = await _device(d);
+        if (!_created.contains(d)) continue;
+        final r = await helper.run(_poolKey(d), 'hold', d, null, hold: hold);
         if (r.exitCode == 0 && r.out['state'] == 'held') continue;
         log?.call(
           'pool device $d is not held: bound to '
@@ -741,7 +791,7 @@ class DiskWorkspaces {
               'check',
               d,
               null,
-              hold: await _hold(d),
+              hold: await _device(d),
             );
             return {...r.out, 'lease': ?leases[d]};
           } catch (e) {
@@ -765,7 +815,7 @@ class DiskWorkspaces {
         'unhold',
         d,
         null,
-        hold: await _hold(d),
+        hold: await _device(d),
       );
       if (r.out['state'] != 'free') {
         log?.call('pool device $d left alone: ${jsonEncode(r.out)}');
@@ -994,26 +1044,32 @@ class DiskWorkspaces {
         ..dev = id.dev
         ..ino = id.ino;
       _write(lease);
+      // Once the helper wrote the image (and then lost the device in its
+      // swap), the next device attaches it instead of preparing again.
+      var formatted = false;
       for (var i = 0; ; i++) {
         final r = await helper.run(
           hash,
-          'prepare',
+          formatted ? 'attach' : 'prepare',
           lease.device,
           id,
           args: [
-            '${sizeMb * _mib}',
-            '${config.minFreeMb * _mib}',
-            '$uid',
-            '$gid',
+            if (!formatted) ...[
+              '${sizeMb * _mib}',
+              '${config.minFreeMb * _mib}',
+              '$uid',
+              '$gid',
+            ],
           ],
-          hold: await _hold(lease.device),
+          hold: await _device(lease.device),
         );
         final state = r.out['state'];
         if (r.exitCode == 0 && state == 'attached') break;
+        if (r.out['formatted'] == true) formatted = true;
         if (r.out['lost_hold'] == true) {
           log?.call(
             'pool device ${lease.device} was taken while swapping its '
-            'placeholder (${r.out['holder']})',
+            'placeholder${_holder(r)}',
           );
         }
         if (state == 'busy' && i + 1 < candidates.length) {
@@ -1025,7 +1081,7 @@ class DiskWorkspaces {
           'busy' => _error(
             'disk_pool_busy',
             'loop device ${lease.device} is in use by something else'
-                '${r.out['holder'] is String && r.out['holder'] != '' ? ' (${r.out['holder']})' : ''}',
+                '${_holder(r)}',
           ),
           'no_space' => _error(
             'disk_space_low',
@@ -1089,7 +1145,7 @@ class DiskWorkspaces {
       'attach',
       lease.device,
       id,
-      hold: await _hold(lease.device),
+      hold: await _device(lease.device),
     );
     if (r.out['state'] == 'busy') {
       if (lease.bootId == boot && lease.attached) {
@@ -1109,7 +1165,7 @@ class DiskWorkspaces {
       };
       for (final d in config.devices) {
         if (taken.contains(d)) continue;
-        r = await helper.run(hash, 'attach', d, id, hold: await _hold(d));
+        r = await helper.run(hash, 'attach', d, id, hold: await _device(d));
         if (r.out['state'] != 'busy') {
           lease.device = d;
           break;
@@ -1237,7 +1293,7 @@ class DiskWorkspaces {
       'detach',
       lease.device,
       id,
-      hold: await _hold(lease.device),
+      hold: await _device(lease.device),
     );
     _logHold(lease.device, r);
     final state = r.out['state'];
@@ -1307,7 +1363,7 @@ class DiskWorkspaces {
         'detach',
         lease.device,
         id,
-        hold: await _hold(lease.device),
+        hold: await _device(lease.device),
       );
       _logHold(lease.device, r);
       final state = r.out['state'];
@@ -1346,7 +1402,8 @@ class DiskWorkspaces {
   /// At start: removes leftover helpers, finishes interrupted creations
   /// and releases, releases the workspaces of the sandboxes the sweep
   /// removed ([removedHashes]), removes own volumes without a lease and
-  /// holds the idle pool devices ([holdPool]). Ready workspaces without a
+  /// holds the idle pool devices ([holdPool]). The pool devices are created
+  /// first, before any lease needs one. Ready workspaces without a
   /// sandbox stay (a paused execution).
   Future<void> sweep(Set<String> removedHashes) => _serial(() async {
     for (final c in await docker.listContainers([
@@ -1355,6 +1412,14 @@ class DiskWorkspaces {
     ])) {
       await docker.removeContainer(c['Id'] as String);
       log?.call('sweep removed workspace helper ${c['Id']}');
+    }
+    // Before any lease is released, parked or reused: after a reboot the
+    // pool's device nodes may not exist yet.
+    for (final d in config.devices) {
+      await _device(d).catchError((Object e) {
+        log?.call('pool device $d: $e');
+        return (dev: 0, ino: 0);
+      });
     }
     final leased = <String>{};
     for (final lease in _all()) {

@@ -1670,6 +1670,13 @@ void main() {
       final (s1, a) = await acquireDisk('E1');
       expect(s1, 201, reason: '$a');
       expect(loop.bound.keys, ['/dev/loop201']);
+      // The image was written on loop200: loop201 attaches it.
+      expect(
+        loop.ops.where(
+          (o) => o.startsWith('prepare') || o.startsWith('attach'),
+        ),
+        ['prepare /dev/loop200', 'attach /dev/loop201'],
+      );
       expect(loop.held, isEmpty);
       expect(
         logs,
@@ -1683,6 +1690,56 @@ void main() {
         200,
       );
       expect(loop.held, {'/dev/loop201'});
+    });
+
+    test('after a reboot the pool devices are created before any lease is '
+        'released or resumed', () async {
+      final state = '${dir.path}/state.json';
+      await start(statePath: state);
+      final (_, a) = await acquireDisk('E1');
+      docker.containers.remove(a['sandbox_id']);
+      final paused = supervisor.disks!.leases().single.hash;
+      // An interrupted creation on the second device.
+      final hash = 'b' * 64;
+      Directory('$root/$hash').createSync();
+      File('$root/$hash/workspace.img').writeAsStringSync('x');
+      final id = (await DiskWorkspaces.statIdentity(
+        '$root/$hash/workspace.img',
+      ))!;
+      File('$root/$hash/lease.json').writeAsStringSync(
+        jsonEncode(
+          DiskLease(
+            hash: hash,
+            state: 'preparing',
+            sizeMb: 64,
+            device: '/dev/loop14',
+            volume: 'v',
+            bootId: boot,
+            dev: id.dev,
+            ino: id.ino,
+          ).toJson(),
+        ),
+      );
+      await supervisor.stop();
+
+      // Reboot: no bindings, no device nodes above the preallocated ones.
+      loop.bound.clear();
+      loop.held.clear();
+      loop.missing.addAll(['/dev/loop13', '/dev/loop14']);
+      boot = 'boot-2';
+      loop.ops.clear();
+      await start(statePath: state, devices: ['/dev/loop13', '/dev/loop14']);
+      expect(loop.ops.take(2), ['create /dev/loop13', 'create /dev/loop14']);
+      expect(loop.missing, isEmpty);
+      expect(Directory('$root/$hash').existsSync(), isFalse);
+      expect(logs.where((l) => l.contains('not released')), isEmpty);
+      // loop13 belongs to the paused execution's lease: not held.
+      expect(loop.held, {'/dev/loop14'});
+      // The paused execution resumes on its workspace.
+      expect(supervisor.disks!.leases().single.hash, paused);
+      final (s, b) = await acquireDisk('E1');
+      expect(s, 201, reason: '$b');
+      expect(b['workspace_kept_from'], [a['sandbox_id']]);
     });
 
     test('a pool device bound by something else at start is logged, never '
@@ -1937,6 +1994,12 @@ class FakeLoop implements LoopHelper {
 
   /// Devices bound by someone else (snapd): neither ours nor free.
   final Map<String, String> foreign = {};
+
+  /// Images the helper wrote (`prepare` refuses them, `attach` needs them).
+  final Set<({int dev, int ino})> formatted = {};
+
+  /// Device nodes that do not exist (after a reboot) until `create`.
+  final Set<String> missing = {};
   final List<String> ops = [];
   final List<List<String>> args = [];
 
@@ -1954,6 +2017,12 @@ class FakeLoop implements LoopHelper {
   }) async {
     ops.add('$op $device');
     if (op == 'prepare') this.args.add(args);
+    if (op == 'create') {
+      missing.remove(device);
+    } else if (missing.contains(device)) {
+      // Docker refuses a helper whose device does not exist.
+      throw SupervisorError(503, 'disk_workspace_failed', 'no $device');
+    }
     final cur = bound[device];
     LoopResult r(
       int code,
@@ -1992,12 +2061,23 @@ class FakeLoop implements LoopHelper {
         if (cur != null || (held.contains(device) && hold == null)) {
           return r(3, 'busy');
         }
+        if (op == 'prepare' && formatted.contains(identity)) {
+          return r(5, 'not_empty');
+        }
+        if (op == 'attach' && !formatted.contains(identity)) {
+          return r(6, 'not_formatted');
+        }
+        if (op == 'prepare') formatted.add(identity!);
         final swapped = held.remove(device);
         if (swapped) {
           onSwap?.call(device);
           final thief = foreign[device];
           if (thief != null) {
-            return r(3, 'busy', {'holder': thief, 'lost_hold': true});
+            return r(3, 'busy', {
+              'holder': thief,
+              'lost_hold': true,
+              'formatted': op == 'prepare',
+            });
           }
         }
         bound[device] = identity!;

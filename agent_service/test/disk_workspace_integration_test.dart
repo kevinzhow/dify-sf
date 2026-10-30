@@ -4,7 +4,7 @@
 // pulled here).
 //
 //   AGENT_DISK_IT=1 AGENT_DISK_IT_ROOT=/var/tmp/<you>/diskws-test \
-//   AGENT_DISK_IT_DEVICE=/dev/loop13 \
+//   AGENT_DISK_IT_DEVICE=/dev/loop13 [AGENT_DISK_IT_SPARE_DEVICE=/dev/loop14] \
 //   AGENT_DISK_IT_TOOL_IMAGE=<name>@sha256:<64 hex> \
 //     dart test -j 1 test/disk_workspace_integration_test.dart
 //
@@ -38,6 +38,9 @@ void main() {
     (_) => random.nextInt(16).toRadixString(16),
   ).join();
   final device = env['AGENT_DISK_IT_DEVICE'] ?? '/dev/loop13';
+  // With a spare device: another process clearing or taking the device
+  // while the helper swaps its placeholder (real kernel).
+  final spare = env['AGENT_DISK_IT_SPARE_DEVICE'];
   final root = '${env['AGENT_DISK_IT_ROOT'] ?? '/var/tmp/diskws-test'}/$label';
   late DockerClient docker;
   late String peer;
@@ -468,6 +471,179 @@ PY
       log(
         'single-slot handoff and concurrent lightweight image reviewer passed',
       );
+    },
+  );
+
+  // A process that keeps [device] open until the helper has cleared the
+  // placeholder (LO_FLAGS_AUTOCLEAR set on a binding it still sees), then
+  // closes it: `steal` binds its own file at once (it wins against the
+  // helper's 20 ms re-checks), otherwise it just lets the binding go.
+  const otherOpener = r"""
+import errno, fcntl, os, struct, sys, time
+dev, steal = sys.argv[1], sys.argv[2] == 'steal'
+d = os.open(dev, os.O_RDONLY)
+print('open', flush=True)
+for _ in range(3000):
+    b = bytearray(232)
+    fcntl.ioctl(d, 0x4C05, b)
+    if struct.unpack_from('=I', b, 52)[0] & 4:
+        break
+    time.sleep(0.01)
+else:
+    sys.exit('the helper never cleared the placeholder')
+os.close(d)
+if not steal:
+    print('released', flush=True)
+    sys.exit(0)
+f = os.open('/other.img', os.O_RDONLY)
+for _ in range(100000):
+    try:
+        d = os.open(dev, os.O_RDONLY)
+    except OSError as e:
+        if e.errno != errno.ENXIO:
+            raise
+        continue  # running down
+    try:
+        fcntl.ioctl(d, 0x4C00, f)
+        break
+    except OSError as e:
+        if e.errno != errno.EBUSY:
+            raise
+    os.close(d)
+print('stolen', flush=True)
+while not os.path.exists('/sig/end'):
+    time.sleep(0.05)
+fcntl.ioctl(d, 0x4C01, 0)
+""";
+
+  Future<String> startOtherOpener(String mode, Directory sig) async {
+    File('${sig.path}/other.img').writeAsBytesSync(List.filled(4096, 0));
+    final id = await docker.createContainer('dify-sf-dit-$label-other', {
+      'Image': env['AGENT_DISK_IT_TOOL_IMAGE']!,
+      'User': '0:0',
+      'Entrypoint': ['python3', '-I', '-c', otherOpener],
+      'Cmd': [device, mode],
+      'Labels': {'dify-sf.test': label},
+      'NetworkDisabled': true,
+      'HostConfig': {
+        'NetworkMode': 'none',
+        'CapDrop': ['ALL'],
+        'CapAdd': ['SYS_ADMIN'],
+        'SecurityOpt': ['no-new-privileges:true'],
+        'ReadonlyRootfs': true,
+        'Devices': [
+          {
+            'PathOnHost': device,
+            'PathInContainer': device,
+            'CgroupPermissions': 'rw',
+          },
+        ],
+        'Mounts': [
+          {
+            'Type': 'bind',
+            'Source': '${sig.path}/other.img',
+            'Target': '/other.img',
+            'ReadOnly': true,
+          },
+          {'Type': 'bind', 'Source': sig.path, 'Target': '/sig'},
+        ],
+      },
+    });
+    await docker.startContainer(id!);
+    // Its open must come before the helper's clear.
+    for (var i = 0; i < 100; i++) {
+      if ((await docker.logs(id)).contains('open')) return id;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    throw StateError(
+      'the other opener did not start: ${await docker.logs(id)}',
+    );
+  }
+
+  test(
+    'real kernel: a cleared placeholder that another opener keeps is waited '
+    'for; a device taken in the swap moves the written image to the spare',
+    skip: enabled && spare != null
+        ? false
+        : 'set AGENT_DISK_IT=1 and AGENT_DISK_IT_SPARE_DEVICE',
+    () async {
+      final logs = <String>[];
+      final disk = DiskWorkspaceConfig(
+        root: root,
+        hostRoot: root,
+        toolImage: env['AGENT_DISK_IT_TOOL_IMAGE']!,
+        devices: [device, spare!],
+        budgetMb: 1024,
+        minFreeMb: 1024,
+      );
+      final disks = DiskWorkspaces(
+        disk,
+        docker: docker,
+        helper: DockerLoopHelper(
+          docker,
+          disk,
+          labelKey: 'dify-sf.test',
+          labelValue: label,
+          namePrefix: 'dify-sf-dit-$label-',
+        ),
+        labelKey: 'dify-sf.test',
+        labelValue: label,
+        namePrefix: 'dify-sf-dit-$label-',
+        log: (m) {
+          logs.add(m);
+          log(m);
+        },
+      );
+      final sig = Directory('$root/sig')..createSync();
+      try {
+        await disks.sweep(const {});
+        var status = await disks.poolStatus();
+        expect(status[device]!['state'], 'held');
+        expect(status[spare]!['state'], 'held');
+
+        // 1. Another opener delays the clear: the helper waits for it.
+        var other = await startOtherOpener('release', sig);
+        final a = 'a' * 64;
+        await disks.ensure(a, 64);
+        expect(disks.read(a)!.device, device);
+        expect(await docker.logs(other), contains('released'));
+        await docker.removeContainer(other);
+        expect(await disks.release(a), isTrue);
+        expect((await disks.poolStatus())[device]!['state'], 'held');
+
+        // 2. Another binder takes the device in the swap: prepare already
+        // wrote the image, so the spare attaches it.
+        other = await startOtherOpener('steal', sig);
+        final b = 'b' * 64;
+        await disks.ensure(b, 64);
+        expect(await docker.logs(other), contains('stolen'));
+        expect(disks.read(b)!.device, spare);
+        expect(
+          logs,
+          contains(startsWith('pool device $device was taken while swapping')),
+        );
+        status = await disks.poolStatus();
+        expect(status[device]!['state'], 'other');
+        expect(status[spare]!['state'], 'other'); // the workspace
+        expect(status[spare]!['lease'], b);
+        File('${sig.path}/end').writeAsStringSync('');
+        for (var i = 0; i < 100; i++) {
+          final st = (await docker.inspectContainer(other))?['State'] as Map?;
+          if (st?['Running'] != true) break;
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
+        await docker.removeContainer(other);
+        expect(await disks.release(b), isTrue);
+        status = await disks.poolStatus();
+        expect(status[device]!['state'], 'free');
+        expect(status[spare]!['state'], 'held');
+      } finally {
+        File('${sig.path}/end').writeAsStringSync('');
+        await disks.unholdPool();
+        sig.deleteSync(recursive: true);
+        final hold = Directory('$root/hold');
+        if (hold.existsSync()) hold.deleteSync(recursive: true);
+      }
     },
   );
 }

@@ -1281,14 +1281,19 @@ numbered existing free device). A pool device left free between executions can t
 then every disk execution answers `disk_pool_busy`. So a pool device that holds no workspace stays bound
 to its placeholder `<SANDBOX_DISK_ROOT>/hold/loopN.img` (4 KiB of zeros, 0644, bound read-only):
 
-- at start (the sweep) each idle pool device is created through `/dev/loop-control` (`LOOP_CTL_ADD`; device nodes
-  above the kernel's preallocated ones are gone after a reboot; only this helper run sees `/dev/loop-control`) and
-  bound to its placeholder. A device bound to something else is logged with its backing file and left alone;
+- at start the sweep first creates every pool device through `/dev/loop-control` (`LOOP_CTL_ADD`; device nodes above
+  the kernel's preallocated ones are gone after a reboot; only this helper run sees `/dev/loop-control`), before it
+  releases, parks or resumes any lease, and finally binds each idle one to its placeholder. A device bound to
+  something else is logged with its backing file and left alone. Later uses create a device first if this process
+  has not;
 - `prepare` and `attach` treat a device bound to its own placeholder as free and swap it for the image;
   `detach` (release, park) binds the placeholder again;
-- `LOOP_CLR_FD` only marks a binding: it goes with the device's last close, so a swap clears, closes, re-opens and
-  binds. For that moment (about 2 ms in our measurement) the device is free; a binder that is faster makes the swap answer
-  `busy` (`lost_hold`, logged) and the next pool device is tried;
+- `LOOP_CLR_FD` only marks a binding: it goes with the device's last close (another opener, e.g. udev probing, keeps
+  it; a device cleared by its only opener runs down and refuses opens). A swap therefore clears, closes and re-opens
+  until the old binding is gone (bounded: `clear_timeout` after 5 s), never holding the device open while it waits,
+  then binds. For that moment (about 2 ms in our measurement) the device is free; a new binding by someone else makes
+  the swap answer `busy` with `lost_hold` (logged) and the next pool device is tried. When `prepare` had already
+  written the image (`formatted`), the next device `attach`es it;
 - `disk_pool_busy` names the backing file of a device bound by someone else, and the agent service keeps the last
   answer in its timeout message;
 - `DiskWorkspaces.poolStatus()` reads each device (`held`, `free`, `other` with its holder) and `unholdPool()` clears
