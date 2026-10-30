@@ -99,7 +99,11 @@ void main() {
       throwsA(
         isA<SandboxFailure>()
             .having((e) => e.supervisorCode, 'code', 'disk_pool_busy')
-            .having((e) => e.message, 'message', contains('within 80 ms')),
+            .having(
+              (e) => e.message,
+              'message',
+              allOf(contains('within 80 ms'), contains('all slots occupied')),
+            ),
       ),
     );
     expect(clock.elapsedMilliseconds, inInclusiveRange(70, 1500));

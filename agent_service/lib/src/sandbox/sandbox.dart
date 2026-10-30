@@ -222,7 +222,8 @@ class SupervisorClient {
                     '${diskSlotWaitTimeout.inMilliseconds} ms (supervisor: '
                     '409 workspace_in_use): ${e.message}'
               : 'no sandbox disk slot became available within '
-                    '${diskSlotWaitTimeout.inMilliseconds} ms',
+                    '${diskSlotWaitTimeout.inMilliseconds} ms (supervisor: '
+                    '503 disk_pool_busy): ${e.message}',
           supervisorCode: e.supervisorCode,
           httpStatus: e.httpStatus,
         );
