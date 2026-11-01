@@ -15,6 +15,72 @@ cd "$(dirname "$0")"
 
 fail() { echo "$*" >&2; exit 2; }
 
+# A dotted-quad IPv4 address: four numbers from 0 to 255, without leading zeros.
+ipv4() {
+  printf '%s\n' "$1" | awk -F. 'NF != 4 { exit 1 }
+    { for (i = 1; i <= 4; i++) if ($i !~ /^(0|[1-9][0-9]?[0-9]?)$/ || $i + 0 > 255) exit 1 }'
+}
+
+# Prints the IPv6 address $1 (without brackets) as browsers write it in an origin: lowercase hex without leading
+# zeros, the first longest run of two or more zero groups as ::, an IPv4 tail as two hex groups. Fails for anything
+# that is not an IPv6 address.
+ipv6() {
+  printf '%s\n' "$1" | awk '
+    function hex(s,   i, v, c) {
+      if (s == "" || length(s) > 4) return -1
+      v = 0
+      for (i = 1; i <= length(s); i++) {
+        c = index("0123456789abcdef", substr(s, i, 1))
+        if (!c) return -1
+        v = v * 16 + c - 1
+      }
+      return v
+    }
+    # Appends the groups of s to g (an IPv4 address is allowed as the last group of the address); -1 if invalid.
+    function groups(s, last,   n, p, i, q, j, v) {
+      if (s == "") return 0
+      n = split(s, p, ":")
+      for (i = 1; i <= n; i++) {
+        if (last && i == n && index(p[i], ".")) {
+          if (split(p[i], q, ".") != 4) return -1
+          for (j = 1; j <= 4; j++) if (q[j] !~ /^(0|[1-9][0-9]?[0-9]?)$/ || q[j] + 0 > 255) return -1
+          g[++k] = q[1] * 256 + q[2]; g[++k] = q[3] * 256 + q[4]
+        } else {
+          if ((v = hex(p[i])) < 0) return -1
+          g[++k] = v
+        }
+      }
+      return 0
+    }
+    {
+      s = $0; k = 0
+      if (s ~ /[^0-9a-f:.]/) exit 1
+      d = index(s, "::")
+      if (d) {
+        tail = substr(s, d + 2)
+        if (index(tail, "::") || groups(substr(s, 1, d - 1), 0) < 0) exit 1
+        nh = k
+        if (groups(tail, 1) < 0 || k > 7) exit 1
+        nt = k - nh
+        for (i = 1; i <= nt; i++) t[i] = g[nh + i]
+        for (i = nh + 1; i <= 8 - nt; i++) g[i] = 0
+        for (i = 1; i <= nt; i++) g[8 - nt + i] = t[i]
+      } else if (groups(s, 1) < 0 || k != 8) exit 1
+      bs = 0; bl = 1
+      for (i = 1; i <= 8; i++) if (g[i] == 0) {
+        for (j = i; j <= 8 && g[j] == 0; j++) ;
+        if (j - i > bl) { bs = i; bl = j - i }
+        i = j
+      }
+      out = ""
+      for (i = 1; i <= 8; i++) {
+        if (i == bs) { out = out (i == 1 ? "::" : ":"); i += bl - 1; continue }
+        out = out sprintf("%x", g[i]) (i < 8 ? ":" : "")
+      }
+      print out
+    }'
+}
+
 url=${1:-}
 [ -n "$url" ] || { sed -n '2,13p' "$0"; exit 2; }
 shift
@@ -56,9 +122,18 @@ case "$origin" in
 esac
 host=$(printf '%s' "$host" | tr 'A-Z' 'a-z')
 case "$host" in
-  \[*\]) echo "$host" | grep -Eq '^\[[0-9a-f:.]+\]$' || fail "not an IPv6 address: $host" ;;
-  *) echo "$host" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$' \
-       || fail "not a host name or IP address: $host" ;;
+  \[*\])
+    v6=${host#?}
+    v6=$(ipv6 "${v6%?}") || fail "not an IPv6 address: $host"
+    host="[$v6]" ;;
+  *)
+    { echo "$host" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$' \
+        && [ "${#host}" -le 253 ] && ! echo "$host" | grep -Eq '[^.]{64}'; } \
+      || fail "not a host name or IP address: $host"
+    # A name whose last label is a number is an IPv4 address to browsers (they would rewrite 1.2.3 or 123).
+    if echo "${host##*.}" | grep -Eq '^([0-9]+|0x[0-9a-f]*)$'; then
+      ipv4 "$host" || fail "not an IPv4 address (four numbers from 0 to 255): $host"
+    fi ;;
 esac
 if [ -n "$port" ] || [ "${origin%:}" != "$origin" ]; then
   case "$port" in

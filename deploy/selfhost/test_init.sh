@@ -62,6 +62,28 @@ refuse http://dify..lan
 refuse http://::1
 refuse "http://[::1"
 refuse http://[zz]:80
+refuse "http://[1]"
+refuse "http://[::::]"
+refuse "http://[1:2:3:4:5:6:7:8:9]"
+refuse "http://[1:2:3:4:5:6:7:8::]"
+refuse "http://[1::2::3]"
+refuse "http://[12345::]"
+refuse "http://[g::1]"
+refuse "http://[:1]"
+refuse "http://[1:]"
+refuse "http://[::1.2.3]"
+refuse "http://[::1.2.3.256]"
+refuse "http://[1.2.3.4::]"
+refuse "http://[::1%eth0]"
+refuse "http://[]"
+refuse "http://192.168.1.999"
+refuse "http://1.2.3"
+refuse "http://123"
+refuse "http://010.0.0.1"
+refuse "http://0x7f.0.0.1"
+refuse "http://dify.0x7f"
+refuse "http://1.2.3.4.5"
+refuse "http://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.lan"
 refuse ftp://dify.lan
 refuse dify.lan
 refuse https://192.168.1.20
@@ -81,6 +103,16 @@ accept http://Dify.LAN:8080/ -- PUBLIC_URL=http://dify.lan:8080 DIFYSF_SITE=:80 
 accept http://dify.lan:80 -- PUBLIC_URL=http://dify.lan HTTP_PORT=80
 accept http://localhost:65535 -- PUBLIC_URL=http://localhost:65535 HTTP_PORT=65535
 accept "http://[::1]:8080" -- "PUBLIC_URL=http://[::1]:8080" HTTP_PORT=8080
+accept "http://10.0.0.1" -- "PUBLIC_URL=http://10.0.0.1"
+accept "http://node1.lan" -- "PUBLIC_URL=http://node1.lan"
+accept "http://1.lan" -- "PUBLIC_URL=http://1.lan"
+accept "http://[0:0:0:0:0:0:0:1]:8080" -- "PUBLIC_URL=http://[::1]:8080"
+accept "http://[2001:DB8::0001]" -- "PUBLIC_URL=http://[2001:db8::1]"
+accept "http://[::ffff:192.168.1.1]" -- "PUBLIC_URL=http://[::ffff:c0a8:101]"
+accept "http://[1:0:0:2:0:0:0:3]" -- "PUBLIC_URL=http://[1:0:0:2::3]"
+accept "http://[1:0:0:2:3:0:0:4]" -- "PUBLIC_URL=http://[1::2:3:0:0:4]"
+accept "http://[1:2:3:4:5:6:7::]" -- "PUBLIC_URL=http://[1:2:3:4:5:6:7:0]"
+accept "http://[::]" -- "PUBLIC_URL=http://[::]"
 accept https://Dify.Example.com you@example.com -- PUBLIC_URL=https://dify.example.com DIFYSF_SITE=dify.example.com \
   ACME_EMAIL=you@example.com HTTP_PORT=80 COMPOSE_FILE=docker-compose.yml:https.yml
 accept https://dify.example.com:443 -- PUBLIC_URL=https://dify.example.com DIFYSF_SITE=dify.example.com ACME_EMAIL=
