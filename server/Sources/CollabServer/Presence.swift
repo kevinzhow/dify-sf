@@ -34,7 +34,8 @@ actor PresenceRoom {
     private let grace: Duration
     /// nil: no timer, `flush()` sends (tests).
     private let flushEvery: Duration?
-    private let clock = ContinuousClock()
+    /// The time (tests pass their own, so expiry does not depend on how fast the machine runs them).
+    private let now: @Sendable () -> ContinuousClock.Instant
     private var entries: [String: Entry] = [:]
     /// What the streams were last told, per account.
     private var sent: [String: PresenceUser] = [:]
@@ -47,18 +48,24 @@ actor PresenceRoom {
     private var loop: Task<Void, Never>?
 
     init(ttl: Duration = PresenceRoom.ttl, streamGrace: Duration = PresenceRoom.streamGrace,
-         flushEvery: Duration? = PresenceRoom.flushEvery, announce: @escaping @Sendable (String) async -> Void) {
+         flushEvery: Duration? = PresenceRoom.flushEvery,
+         now: @escaping @Sendable () -> ContinuousClock.Instant = { ContinuousClock.now },
+         announce: @escaping @Sendable (String) async -> Void) {
         self.ttl = ttl
         self.grace = streamGrace
         self.flushEvery = flushEvery
+        self.now = now
         self.announce = announce
     }
+
+    /// Whether the streams have been told that [account] is here (tests wait for it instead of sleeping).
+    func announced(_ account: String) -> Bool { sent[account] != nil }
 
     /// A client's report. `cursor` / `drag` / `panel`: `nil` = unchanged, `.some(nil)` = cleared. Ignored from a client
     /// that said goodbye, until it opens a new stream: a report it sent just before closing may arrive after the goodbye.
     func update(client: String, account: String, name: String, avatar: String?, cursor: PresencePoint??,
                 drag: PresenceDrag?? = nil, panel: String??) {
-        let now = clock.now
+        let now = self.now()
         if let at = gone[client] {
             if now - at < ttl { return }
             gone[client] = nil
@@ -87,7 +94,7 @@ actor PresenceRoom {
 
     /// The client said it is gone (`DELETE .../presence`).
     func remove(client: String) {
-        gone[client] = clock.now
+        gone[client] = now()
         if entries.removeValue(forKey: client) != nil { dirty = true }
         // Also when the goodbye came first: the record of it is dropped after `ttl` by the loop.
         startLoop()
@@ -108,7 +115,7 @@ actor PresenceRoom {
         guard streams[client] == token else { return }
         streams[client] = nil
         guard var e = entries[client] else { return }
-        e.expires = min(e.expires, clock.now + grace)
+        e.expires = min(e.expires, now() + grace)
         entries[client] = e
     }
 
@@ -155,7 +162,7 @@ actor PresenceRoom {
 
     /// Expires silent clients and tells the streams what changed. False (and the loop ends) once nobody is left to tell.
     private func tick() async -> Bool {
-        let now = clock.now
+        let now = self.now()
         for (client, e) in entries where e.expires <= now {
             entries[client] = nil
             dirty = true

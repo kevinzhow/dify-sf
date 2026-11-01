@@ -7,6 +7,20 @@ import Testing
 
 /// Protocol 1.22 presence: the in-memory room (merging per account, deltas, expiry) and the routes.
 @Suite struct PresenceTests {
+    /// Time the test moves by hand: expiry must not depend on how fast the machine runs the suite.
+    final class ManualClock: @unchecked Sendable {
+        private let lock = NSLock()
+        private var t = ContinuousClock.now
+        var now: ContinuousClock.Instant { lock.withLock { t } }
+        func advance(_ d: Duration) { lock.withLock { t += d } }
+    }
+
+    /// Waits (real time, generously) until [condition] holds; the room's own loop does the work.
+    static func eventually(_ condition: () async -> Bool) async throws {
+        let clock = ContinuousClock()
+        let end = clock.now + .seconds(120)
+        while clock.now < end, !(await condition()) { try await Task.sleep(for: .milliseconds(10)) }
+    }
     /// Collects the frames a room announces.
     actor Frames {
         var all: [PresenceEvent] = []
@@ -102,20 +116,24 @@ import Testing
 
     @Test func aGoodbyeBeforeAnyReportIsForgottenAfterTheTtl() async throws {
         let frames = Frames()
-        let room = PresenceRoom(ttl: .milliseconds(200), flushEvery: .milliseconds(20)) { await frames.add($0) }
+        let clock = ManualClock()
+        let room = PresenceRoom(ttl: .seconds(30), flushEvery: .milliseconds(20), now: { clock.now }) { await frames.add($0) }
         await room.remove(client: "x1")
         await room.update(client: "x1", account: "xu", name: "Xu", avatar: nil, cursor: nil, panel: "llm")
         #expect(await room.clientCount == 0)
-        let clock = ContinuousClock()
-        let end = clock.now + .seconds(3)
-        while clock.now < end, await room.goneCount > 0 { try await Task.sleep(for: .milliseconds(20)) }
+        // The room's own loop (started by the goodbye) forgets it once the ttl has passed.
+        clock.advance(.seconds(31))
+        try await Self.eventually { await room.goneCount == 0 }
         #expect(await room.goneCount == 0)
         #expect(await frames.all.isEmpty)
     }
 
     @Test func silentClientsExpireAndAnEndedStreamOnlyHasAGracePeriod() async throws {
         let frames = Frames()
-        let room = PresenceRoom(ttl: .seconds(2), streamGrace: .milliseconds(100), flushEvery: nil) { await frames.add($0) }
+        let clock = ManualClock()
+        let room = PresenceRoom(ttl: .seconds(30), streamGrace: .seconds(5), flushEvery: nil, now: { clock.now }) {
+            await frames.add($0)
+        }
         var streams: [String: Int] = [:]
         for (client, account) in [("a", "ann"), ("b", "ben"), ("c", "cy"), ("d", "dee")] {
             streams[client] = await room.streamStarted(client: client)
@@ -131,11 +149,11 @@ import Testing
         _ = await room.streamStarted(client: "d")
         await room.update(client: "d", account: "dee", name: "dee", avatar: nil, cursor: nil, panel: nil)
         await room.streamEnded(client: "d", stream: streams["d"]!)
-        try await Task.sleep(for: .milliseconds(300))
+        clock.advance(.seconds(6))
         await room.flush()
         #expect(await frames.all.flatMap(\.left) == ["ben"])
         // Nobody reports any more: Ann, Cy and Dee expire after the ttl.
-        try await Task.sleep(for: .milliseconds(2100))
+        clock.advance(.seconds(30))
         await room.flush()
         #expect(Set(await frames.all.flatMap(\.left)) == ["ann", "ben", "cy", "dee"])
         #expect(await room.clientCount == 0)
@@ -154,12 +172,30 @@ import Testing
         try await withServer { api, store, registry in
             let olivia = try await api.setupOwner()
             let oliviaId = try await api.get("/v1/account", token: olivia).str("id")
-            let (_, bob) = try await api.member("bob@example.com", role: "editor", name: "Bob", inviter: olivia)
+            let (bobId, bob) = try await api.member("bob@example.com", role: "editor", name: "Bob", inviter: olivia)
             let (_, nora) = try await api.member("nora@example.com", role: "normal", name: "Nora", inviter: olivia)
             let doc = try await Self.freshDoc(store)
             let path = "/v1/docs/\(doc)/presence"
             let seqr = await registry.sequencer(doc)
             let sub = try await seqr.subscribe(lastEventId: 0, maxReplay: 100)
+            let room = await registry.presence(doc)
+            // The stream's presence events, until Bob's leaving arrives (or a generous deadline ends the stream).
+            let collector = Task { () -> [PresenceEvent] in
+                var events: [PresenceEvent] = []
+                for await f in sub.live {
+                    #expect(!f.contains("id: "))
+                    if let d = f.split(separator: "\n").first(where: { $0.hasPrefix("data: ") })?.dropFirst(6),
+                       let e = try? WireJSON.decode(PresenceEvent.self, from: String(d)) {
+                        events.append(e)
+                        if e.left.contains(bobId) { break }
+                    }
+                }
+                return events
+            }
+            let deadline = Task {
+                try? await Task.sleep(for: .seconds(120))
+                await seqr.unsubscribe(sub.id)
+            }
 
             let put = try await api.put(
                 path, #"{"client":"c-olivia","cursor":{"x":12.5,"y":-3},"drag":{"node":"llm","x":40,"y":8},"panel":"llm"}"#,
@@ -174,19 +210,14 @@ import Testing
             #expect(try await api.put(path, #"{"client":"c-bob","drag":{"node":"llm","x":1}}"#, token: bob).status == 400)
             #expect(try await api.put("/v1/docs/t-nope-\(UUID().uuidString.prefix(8))/presence", #"{"client":"c-x"}"#, token: bob).status == 404)
             #expect(try await api.put(path, #"{"client":"c-bob","cursor":{"x":1,"y":1}}"#, token: bob).status == 204)
-            try await Task.sleep(for: .milliseconds(300))  // announced before he leaves
+            try await PresenceTests.eventually { await room.announced(bobId) }  // announced before he leaves
             #expect(try await api.delete("\(path)?client=c-bob", token: olivia).status == 403)
             #expect(try await api.delete("\(path)?client=c-bob", token: bob).status == 204)
 
             // The stream got a delta with Olivia (and Bob), then Bob left; nothing with an id.
-            try await Task.sleep(for: .milliseconds(300))
+            let events = await collector.value
+            deadline.cancel()
             await seqr.unsubscribe(sub.id)
-            var events: [PresenceEvent] = []
-            for await f in sub.live {
-                #expect(!f.contains("id: "))
-                if let d = f.split(separator: "\n").first(where: { $0.hasPrefix("data: ") })?.dropFirst(6),
-                   let e = try? WireJSON.decode(PresenceEvent.self, from: String(d)) { events.append(e) }
-            }
             let olive = events.flatMap(\.users).first { $0.account == oliviaId }
             #expect(olive?.name == "Olivia" && olive?.cursor == PresencePoint(x: 12.5, y: -3) && olive?.panels == ["llm"])
             #expect(olive?.drag == PresenceDrag(node: "llm", x: 40, y: 8))
