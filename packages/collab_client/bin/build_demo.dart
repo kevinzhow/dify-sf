@@ -84,8 +84,9 @@ Future<void> main(List<String> argv) async {
     final known = file.existsSync()
         ? [for (final a in jsonDecode(file.readAsStringSync()) as List<Object?>) (a! as Map<String, Object?>)]
         : <Map<String, Object?>>[];
+    refuseLink(file.path);
     // A file written by an older version may still be readable by others: owner only from now on.
-    if (file.existsSync() && (Platform.isLinux || Platform.isMacOS)) await Process.run('chmod', ['600', file.path]);
+    if (file.existsSync()) await ownerOnly(file.path);
     final rng = Random.secure();
     for (var i = known.length; i < clients.length; i++) {
       final name = clients[i]['name']! as String;
@@ -172,16 +173,30 @@ Future<void> main(List<String> argv) async {
   exit(report.ok ? 0 : 1);
 }
 
-/// Writes [text] to [file] readable by the owner only (it holds passwords): a 0600 temporary file, then renamed over
-/// [file], as the token store does.
+/// Refuses to read or write the accounts (passwords) through a symbolic link: it could point anywhere.
+void refuseLink(String path) {
+  if (FileSystemEntity.typeSync(path, followLinks: false) == FileSystemEntityType.link) {
+    throw FileSystemException('refusing a symbolic link for the accounts file', path);
+  }
+}
+
+/// Makes [path] readable and writable by the owner only (Linux and macOS), or fails.
+Future<void> ownerOnly(String path) async {
+  if (!(Platform.isLinux || Platform.isMacOS)) return;
+  final r = await Process.run('chmod', ['600', path]);
+  if (r.exitCode != 0) throw FileSystemException('chmod 600 failed: ${r.stderr}', path);
+}
+
+/// Writes [text] to [file] readable by the owner only (it holds passwords): a new 0600 temporary file, then renamed
+/// over [file], as the token store does. Neither may be a symbolic link.
 Future<void> writePrivate(File file, String text) async {
   final tmp = File('${file.path}.tmp');
+  refuseLink(file.path);
+  refuseLink(tmp.path);
+  if (tmp.existsSync()) await tmp.delete(); // a leftover from an interrupted run (a regular file: checked above)
   await tmp.parent.create(recursive: true);
-  await tmp.writeAsString('');
-  if (Platform.isLinux || Platform.isMacOS) {
-    final r = await Process.run('chmod', ['600', tmp.path]);
-    if (r.exitCode != 0) throw FileSystemException('chmod 600 failed: ${r.stderr}', tmp.path);
-  }
+  await tmp.create(exclusive: true);
+  await ownerOnly(tmp.path);
   await tmp.writeAsString(text, flush: true);
   await tmp.rename(file.path);
 }
