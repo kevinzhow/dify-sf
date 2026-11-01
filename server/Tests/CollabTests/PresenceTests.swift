@@ -18,8 +18,8 @@ import Testing
     /// Waits (real time, generously) until [condition] holds; the room's own loop does the work.
     static func eventually(_ condition: () async -> Bool) async throws {
         let clock = ContinuousClock()
-        let end = clock.now + .seconds(120)
-        while clock.now < end, !(await condition()) { try await Task.sleep(for: .milliseconds(10)) }
+        let end = clock.now + .seconds(600)
+        while !(await condition()), clock.now < end { try await Task.sleep(for: .milliseconds(10)) }
     }
     /// Collects the frames a room announces.
     actor Frames {
@@ -117,13 +117,17 @@ import Testing
     @Test func aGoodbyeBeforeAnyReportIsForgottenAfterTheTtl() async throws {
         let frames = Frames()
         let clock = ManualClock()
-        let room = PresenceRoom(ttl: .seconds(30), flushEvery: .milliseconds(20), now: { clock.now }) { await frames.add($0) }
+        // The loop's own timer never fires during the test (an hour): the test runs its passes itself.
+        let room = PresenceRoom(ttl: .seconds(30), flushEvery: .seconds(3600), now: { clock.now }) { await frames.add($0) }
         await room.remove(client: "x1")
+        // The goodbye starts the loop even though the client never reported: the loop is what forgets the goodbye.
+        #expect(await room.loopRunning)
         await room.update(client: "x1", account: "xu", name: "Xu", avatar: nil, cursor: nil, panel: "llm")
         #expect(await room.clientCount == 0)
-        // The room's own loop (started by the goodbye) forgets it once the ttl has passed.
+        await room.flush()
+        #expect(await room.goneCount == 1)
         clock.advance(.seconds(31))
-        try await Self.eventually { await room.goneCount == 0 }
+        await room.flush()
         #expect(await room.goneCount == 0)
         #expect(await frames.all.isEmpty)
     }

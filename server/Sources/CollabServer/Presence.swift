@@ -126,6 +126,8 @@ actor PresenceRoom {
 
     var clientCount: Int { entries.count }
     var goneCount: Int { gone.count }
+    /// Whether the room's loop is running (it sends the deltas and forgets expired clients and goodbyes).
+    var loopRunning: Bool { loop != nil }
 
     private func merged() -> [String: PresenceUser] {
         var groups: [String: [Entry]] = [:]
