@@ -175,7 +175,10 @@ def lanes(g, s, base):
             "marks": d1, "names": c3, "summary": m2, "chars": l1}
 
 
-def build(clients: int, seed: int):
+def build(clients: int, seed: int, converge: dict | None = None):
+    """converge (the convergence runs): {"contest_end_ms", "final_ms"}: reviews and nudges of other people's nodes are
+    contested edits that are dropped after contest_end_ms; at final_ms every owner writes the final position and
+    description of its nodes (marked final: re-applied until confirmed), which make_target() expects exactly."""
     rnd = random.Random(seed)
     g = Graph()
     a = lanes(g, "a", 0)
@@ -200,7 +203,8 @@ def build(clients: int, seed: int):
     # Topological order (nodes are added after their sources already).
     order = g.order
     n_nodes = len(order)
-    names = NAMES[:clients]
+    # Past the list, the same names again with an initial ("Ava B."): every client is its own person.
+    names = [NAMES[k % len(NAMES)] + ('' if k < len(NAMES) else f' {chr(65 + k // len(NAMES) - 1)}.') for k in range(clients)]
     # Join times: one by one at first, then the room fills up faster and faster.
     span = 42000
     join = [int(span * (i / clients) ** 0.6) for i in range(clients)]
@@ -255,12 +259,58 @@ def build(clients: int, seed: int):
             tn = g.nodes[target]
             steps.append(cursor(tn["x"] + rnd.randint(-20, 120), int(tn["y"]) + rnd.randint(-10, 30)))
             steps.append({"presence": {"panel": target}})
-            steps.append({"op": {"t": "setField", "node": target, "field": {"k": "config", "path": ["desc"]},
-                                 "value": f"Reviewed by {names[i]}"}})
+            review = {"op": {"t": "setField", "node": target, "field": {"k": "config", "path": ["desc"]},
+                             "value": f"Reviewed by {names[i]}"}}
+            if converge:
+                review["deadline_ms"] = converge["contest_end_ms"]
+            steps.append(review)
+            if converge:
+                # And nudge it a little, as someone tidying the layout would: the owner puts it back at the end.
+                steps.append({"op": {"t": "moveNode", "node": target, "x": int(tn["x"]) + rnd.randint(-60, 60),
+                                     "y": int(tn["y"]) + rnd.randint(-40, 40)},
+                              "deadline_ms": converge["contest_end_ms"]})
             steps.append({"sleep_ms": rnd.randint(800, 1800)})
             steps.append({"presence": {"panel": None}})
+        if converge:
+            # Bursts: everyone writes the description of the same node at the same moment (the later writers are
+            # refused, each one told), three times; then the owners put the final values in.
+            for j, hot in enumerate(converge["hot"]):
+                steps.append({"at_ms": converge["contest_end_ms"] - 9000 + j * 3000 + rnd.randint(0, 120)})
+                steps.append({"op": {"t": "setField", "node": hot, "field": {"k": "config", "path": ["desc"]},
+                                     "value": f"{names[i]} was here ({j + 1})"}, "deadline_ms": converge["contest_end_ms"]})
+        if converge and mine:
+            steps.append({"at_ms": converge["final_ms"] + rnd.randint(0, 1500)})
+            for nid in mine:
+                tn = g.nodes[nid]
+                steps.append({"op": {"t": "moveNode", "node": nid, "x": tn["x"], "y": int(tn["y"])}, "final": True})
+                steps.append({"op": {"t": "setField", "node": nid, "field": {"k": "config", "path": ["desc"]},
+                                     "value": final_desc(tn, names[i])}, "final": True})
         plan_clients.append({"index": i, "name": names[i], "join_ms": join[i], "steps": steps})
     return g, plan_clients
+
+
+def final_desc(node, owner: str) -> str:
+    return f"{node['title']}: built and kept by {owner}"
+
+
+def make_target(g, clients) -> dict:
+    """The document a convergence run must end with: every node where its owner put it, with the owner's final
+    description, and exactly the planned connections (plus the report's link to End)."""
+    owner = {}
+    for c in clients:
+        for st in c["steps"]:
+            op = st.get("op") or {}
+            if op.get("t") == "addNode":
+                owner[op["node"]["id"]] = c["name"]
+    dsl = start_dsl()["workflow"]["graph"]["nodes"]
+    nodes = {n["id"]: {"type": n["data"]["type"], "title": n["data"]["title"], "x": n["position"]["x"],
+                       "y": n["position"]["y"], "desc": ""} for n in dsl}
+    for nid, n in g.nodes.items():
+        nodes[nid] = {"type": n["type"], "title": n["title"], "x": n["x"], "y": int(n["y"]),
+                      "desc": final_desc(n, owner[nid])}
+    edges = {e["id"]: {k: e[k] for k in ("source", "sourceHandle", "target", "targetHandle")} for e in g.edges}
+    edges["e-report-end"] = {"source": "report", "sourceHandle": "source", "target": "end", "targetHandle": "target"}
+    return {"nodes": nodes, "edges": edges}
 
 
 def start_dsl():
@@ -284,10 +334,17 @@ def main() -> None:
     ap.add_argument("--clients", type=int, default=100)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--out-dir", required=True)
+    ap.add_argument("--converge", type=int, metavar="FINAL_MS",
+                    help="convergence run: contested edits until FINAL_MS - 15000, final values at FINAL_MS; writes "
+                         "target.json")
     a = ap.parse_args()
     out = Path(a.out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    g, clients = build(a.clients, a.seed)
+    converge = {"final_ms": a.converge, "contest_end_ms": a.converge - 15000,
+                "hot": ["x1", "x4", "report"]} if a.converge else None
+    g, clients = build(a.clients, a.seed, converge)
+    if converge:
+        (out / "target.json").write_text(json.dumps(make_target(g, clients), indent=1))
     (out / "plan.json").write_text(json.dumps({"nodes": len(g.nodes), "edges": len(g.edges) + 1, "clients": clients}))
     (out / "start.yml").write_text(json.dumps(start_dsl(), ensure_ascii=False, indent=1))
     print(f"{len(g.nodes)} nodes, {len(g.edges) + 1} edges, {len(clients)} clients")

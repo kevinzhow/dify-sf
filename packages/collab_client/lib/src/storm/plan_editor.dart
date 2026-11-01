@@ -11,10 +11,23 @@ import '../wire/messages.dart';
 /// * `{"presence": {"cursor": [x, y] | null, "drag": {"node", "x", "y"} | null, "panel": "<node id>" | null}}`: report
 ///   the pointer, the node it drags and/or the open panel (protocol 1.22) through [onPresence]; a missing key is
 ///   unchanged.
+/// * `{"at_ms": n}`: no edit until n milliseconds after [epoch] (the convergence runs' "everyone writes the final
+///   values now");
+///
+/// and an `op` step may also say `"deadline_ms": n` (skipped when it comes after n ms past [epoch]: a contested edit
+/// that would be too late) and `"final": true` (one of the values the document must end with: [finals]).
 ///
 /// After the last step the client makes no more edits.
 class PlanEditor {
-  PlanEditor(this.steps, {DateTime Function()? clock, this.onPresence}) : _clock = clock ?? DateTime.now;
+  PlanEditor(this.steps, {DateTime Function()? clock, this.onPresence, DateTime? epoch})
+    : _clock = clock ?? DateTime.now,
+      epoch = epoch ?? (clock ?? DateTime.now)();
+
+  /// When the run started: `at_ms` and `deadline_ms` count from here.
+  final DateTime epoch;
+
+  /// The `final` ops this editor has sent: the runner re-applies them until they are confirmed.
+  final Set<Op> finals = {};
 
   final List<Map<String, Object?>> steps;
 
@@ -59,6 +72,12 @@ class PlanEditor {
         _next++;
         continue;
       }
+      final at = step['at_ms'];
+      if (at is int) {
+        if (_clock().isBefore(epoch.add(Duration(milliseconds: at)))) return null;
+        _next++;
+        continue;
+      }
       final wait = step['wait'];
       if (wait is List) {
         if (!wait.every((id) => view.nodes.containsKey(id))) return null;
@@ -66,7 +85,11 @@ class PlanEditor {
         continue;
       }
       _next++;
-      return Op.fromJson(step['op']);
+      final deadline = step['deadline_ms'];
+      if (deadline is int && _clock().isAfter(epoch.add(Duration(milliseconds: deadline)))) continue;
+      final op = Op.fromJson(step['op']);
+      if (step['final'] == true) finals.add(op);
+      return op;
     }
     return null;
   }

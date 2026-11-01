@@ -40,6 +40,17 @@ Future<void> main(List<String> argv) async {
     )
     ..addFlag('presence', help: 'Report pointers and open panels (protocol 1.22).', defaultsTo: true)
     ..addOption('linger', help: 'Seconds the clients stay connected after the checks.', defaultsTo: '0')
+    ..addOption(
+      'latency',
+      help:
+          'Each client\'s network: none, or mix (fibre, home wifi, mobile with stalls, a train with stalls and drops).',
+      allowed: ['none', 'mix'],
+      defaultsTo: 'none',
+    )
+    ..addOption(
+      'target',
+      help: 'target.json from make_plan.py --converge: after the checks, the server\'s workflow must be exactly this.',
+    )
     ..addFlag('help', abbr: 'h', negatable: false);
 
   final ArgResults args;
@@ -91,7 +102,7 @@ Future<void> main(List<String> argv) async {
     final rng = Random.secure();
     for (var i = known.length; i < clients.length; i++) {
       final name = clients[i]['name']! as String;
-      final email = '${name.toLowerCase()}.${i + 1}@people.demo.example';
+      final email = '${name.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '')}.${i + 1}@people.demo.example';
       final invited = await auth.invite(emails: [email], role: 'editor');
       final link = invited.single.url;
       if (link == null) {
@@ -121,6 +132,9 @@ Future<void> main(List<String> argv) async {
   }
 
   late final StormRunner runner;
+  final epoch = DateTime.now();
+  final editors = <int, PlanEditor>{};
+  final latency = args['latency'] as String;
   final config = StormConfig(
     url: url,
     doc: args['doc'] as String,
@@ -136,8 +150,14 @@ Future<void> main(List<String> argv) async {
     authFor: people.isEmpty ? null : (i) => people[i],
     presence: args['presence'] as bool,
     linger: Duration(seconds: int.parse(args['linger'] as String)),
-    editorFor: (i, id, rng) => PlanEditor(
+    wrapTransport: latency == 'none'
+        ? null
+        : (i, t) =>
+              LatencyTransport(t, LatencyProfile.forIndex(i), random: Random(int.parse(args['seed'] as String) + i)),
+    mustLand: (i, op) => editors[i]?.finals.contains(op) ?? false,
+    editorFor: (i, id, rng) => (editors[i] = PlanEditor(
       [for (final s in clients[i]['steps']! as List<Object?>) (s! as Map<String, Object?>)],
+      epoch: epoch,
       onPresence: ({setsCursor = false, cursor, setsDrag = false, drag, setsPanel = false, panel}) =>
           runner.reportPresence(
             i,
@@ -148,19 +168,42 @@ Future<void> main(List<String> argv) async {
             setsPanel: setsPanel,
             panel: panel,
           ),
-    ).next,
+    )).next,
   );
   runner = StormRunner(config, log: (m) => stderr.writeln(m), onProgress: writeProgress);
   final report = await runner.run();
   final summary = report.toJson()['summary']! as Map<String, Object?>;
+  // The convergence runs: the server's workflow is exactly the planned one.
+  final targetPath = args['target'] as String?;
+  final targetProblems = <String>[];
+  if (targetPath != null) {
+    final api = DocsApi(url, auth: auth);
+    final snap = await api.snapshot(args['doc'] as String);
+    api.close();
+    targetProblems.addAll(
+      targetMismatches(snap.doc.toJson(), jsonDecode(File(targetPath).readAsStringSync()) as Map<String, Object?>),
+    );
+    summary['target'] = targetProblems.isEmpty ? 'matched' : targetProblems;
+    stderr.writeln(
+      targetProblems.isEmpty
+          ? 'target matched: the server\'s workflow is exactly the planned one'
+          : 'target NOT matched (${targetProblems.length}): ${targetProblems.take(10).join('; ')}',
+    );
+  }
+  if (latency != 'none') {
+    summary['latency'] = {
+      for (final p in LatencyProfile.mix)
+        p.name: [for (var i = 0; i < clients.length; i++) i].where((i) => LatencyProfile.forIndex(i) == p).length,
+    };
+  }
   writeProgress({
     'phase': 'verified',
     'clients': clients.length,
     'online': clients.length,
     'intended': report.ledger.length,
     ...report.counts,
-    'ok': report.ok,
-    'violations': report.violations.length,
+    'ok': report.ok && targetProblems.isEmpty,
+    'violations': report.violations.length + targetProblems.length,
   });
 
   final ledgerPath = args['ledger'] as String?;
@@ -171,7 +214,7 @@ Future<void> main(List<String> argv) async {
     stderr.writeln('ledger written to $ledgerPath');
   }
   stdout.writeln(const JsonEncoder.withIndent('  ').convert(summary));
-  exit(report.ok ? 0 : 1);
+  exit(report.ok && targetProblems.isEmpty ? 0 : 1);
 }
 
 /// Refuses to read or write the accounts (passwords) through a symbolic link: it could point anywhere.

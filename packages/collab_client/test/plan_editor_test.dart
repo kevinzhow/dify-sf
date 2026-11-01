@@ -68,4 +68,26 @@ void main() {
     expect(editor.next(withA), const MoveNode('a', 1, 0));
     expect(calls, ['cursor=(10.0, 20.0) drag=drag(a, 40.0, 22.0)', 'drag=null panel=a']);
   });
+
+  test('waits until an absolute time, drops a contested edit past its deadline, records final ops', () {
+    final epoch = DateTime.utc(2026);
+    var now = epoch;
+    final editor = PlanEditor(
+      [
+        {'at_ms': 1000},
+        {...move('a', 1), 'deadline_ms': 1500},
+        {...move('a', 2), 'deadline_ms': 1500},
+        {...move('a', 3), 'final': true},
+      ],
+      clock: () => now,
+      epoch: epoch,
+    );
+    expect(editor.next(withA), isNull);
+    now = epoch.add(const Duration(milliseconds: 1000));
+    expect(editor.next(withA), const MoveNode('a', 1, 0));
+    now = epoch.add(const Duration(milliseconds: 1600)); // too late for the second contested edit
+    expect(editor.next(withA), const MoveNode('a', 3, 0));
+    expect(editor.finals, {const MoveNode('a', 3, 0)});
+    expect(editor.done, isTrue);
+  });
 }

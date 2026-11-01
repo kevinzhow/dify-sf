@@ -7,6 +7,7 @@ import '../client/events.dart';
 import '../client/machine.dart';
 import '../client/session.dart';
 import '../client/store.dart';
+import '../client/transport.dart';
 import '../model/document.dart';
 import '../model/ops.dart';
 import '../store/file_store.dart';
@@ -41,10 +42,20 @@ class StormConfig {
     this.authFor,
     this.presence = false,
     this.linger = Duration.zero,
+    this.wrapTransport,
+    this.mustLand,
   });
 
   /// How long the clients stay connected (and present) after the run was verified, before they stop.
   final Duration linger;
+
+  /// Client number `index`'s transport as the run uses it (e.g. a [LatencyTransport] for that client's network).
+  /// null = the plain HTTP transport.
+  final CollabTransport Function(int index, CollabTransport transport)? wrapTransport;
+
+  /// Whether client number `index` keeps re-applying [op] after it loses a conflict, until it is confirmed (a person
+  /// who must get this value in: the convergence runs' final writes). Other refused edits follow [reapplyRate].
+  final bool Function(int index, Op op)? mustLand;
 
   /// The account client number `index` signs in with; null = [auth] for everyone.
   final TokenProvider? Function(int index)? authFor;
@@ -503,13 +514,14 @@ class _StormClient {
     if (_booting) return;
     _booting = true;
     incarnation++;
+    final http = HttpTransport(
+      baseUrl: runner.config.url,
+      docId: runner.config.doc,
+      auth: runner.config.authFor?.call(index) ?? runner.config.auth,
+      presenceEvents: false, // storm clients show nobody
+    );
     final s = CollabSession(
-      transport: HttpTransport(
-        baseUrl: runner.config.url,
-        docId: runner.config.doc,
-        auth: runner.config.authFor?.call(index) ?? runner.config.auth,
-        presenceEvents: false, // storm clients show nobody
-      ),
+      transport: runner.config.wrapTransport?.call(index, http) ?? http,
       store: store,
       journaled: journaled,
       config: runner.config.clientConfig,
@@ -613,7 +625,10 @@ class _StormClient {
             ..reason = reason
             ..outcomeMs = now;
         }
-        if (reason is Conflict && rng.nextDouble() < runner.config.reapplyRate) _edit(op, cseq);
+        if (reason is Conflict &&
+            ((runner.config.mustLand?.call(index, op) ?? false) || rng.nextDouble() < runner.config.reapplyRate)) {
+          _edit(op, cseq);
+        }
       case OpLost(:final cseq):
         final entry = _byCseq[cseq];
         if (entry == null) return;
