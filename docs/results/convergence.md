@@ -39,15 +39,15 @@ and back, stream events arrive that late too, in order.
 
 | edits sent | confirmed | refused as conflicts (author told) | lost | pending at the end |
 |---|---|---|---|---|
-| 2015 | 1638 | 377 (322 of them in the three bursts) | 0 | 0 |
+| 2015 | 1639 | 376 (323 of them in the three bursts) | 0 | 0 |
 
 * Every client ended with exactly the server's document, and every confirmed edit is in the server's log (the storm
   checks).
 * **The server's workflow is exactly `target.json`**: all 83 nodes (the 81 built plus Start and End) with their type,
-  title, position and description, the 81 built nodes with their whole configuration (code, inputs, outputs), all 121
-  connections with both ends, nothing missing and nothing extra.
+  title, position, description and whole configuration (the built nodes' code, inputs and outputs, Start's inputs, the
+  output the plan adds to End), all 121 connections with both ends, nothing missing and nothing extra.
 * The final values of all 81 nodes were confirmed (162 writes: position and description).
-* Time from an edit to its outcome, all clients: median 209 ms, 95th percentile 3.4 s, 99th 5.4 s, longest 9.0 s (the
+* Time from an edit to its outcome, all clients: median 205 ms, 95th percentile 3.5 s, 99th 5.7 s, longest 8.6 s (the
   slow numbers are the mobile and train clients during stalls).
 
 ## Run it
