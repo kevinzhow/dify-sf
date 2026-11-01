@@ -261,8 +261,15 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
     if (mounted && gen == _generation) setState(() => _meta = meta);
   }
 
+  /// What the page itself shows of the controller: whether the document arrived and whether editing is forbidden.
+  (bool, bool)? _shown;
+
   void _rebuild() {
-    if (mounted) setState(() {});
+    // The editor follows every other change itself; rebuilding it here for each of many collaborators' edits (dozens a
+    // second) rebuilt the whole editor every frame and made the canvas stutter.
+    final c = _controller;
+    final shown = c == null ? null : (c.ready, c.editingForbidden);
+    if (mounted && shown != _shown) setState(() => _shown = shown);
     // A failing connection may mean the app is gone (its document answers 404 `app_deleted`): ask the apps API.
     final status = _controller?.status;
     if (status != null && status.lastError != null && status.link != LinkState.live) unawaited(_checkDeleted());
