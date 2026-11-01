@@ -100,6 +100,19 @@ import Testing
         #expect(await frames.all.last?.users.first?.panels == ["code"])
     }
 
+    @Test func aGoodbyeBeforeAnyReportIsForgottenAfterTheTtl() async throws {
+        let frames = Frames()
+        let room = PresenceRoom(ttl: .milliseconds(200), flushEvery: .milliseconds(20)) { await frames.add($0) }
+        await room.remove(client: "x1")
+        await room.update(client: "x1", account: "xu", name: "Xu", avatar: nil, cursor: nil, panel: "llm")
+        #expect(await room.clientCount == 0)
+        let clock = ContinuousClock()
+        let end = clock.now + .seconds(3)
+        while clock.now < end, await room.goneCount > 0 { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(await room.goneCount == 0)
+        #expect(await frames.all.isEmpty)
+    }
+
     @Test func silentClientsExpireAndAnEndedStreamOnlyHasAGracePeriod() async throws {
         let frames = Frames()
         let room = PresenceRoom(ttl: .seconds(2), streamGrace: .milliseconds(100), flushEvery: nil) { await frames.add($0) }

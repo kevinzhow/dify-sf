@@ -88,8 +88,8 @@ actor PresenceRoom {
     /// The client said it is gone (`DELETE .../presence`).
     func remove(client: String) {
         gone[client] = clock.now
-        guard entries.removeValue(forKey: client) != nil else { return }
-        dirty = true
+        if entries.removeValue(forKey: client) != nil { dirty = true }
+        // Also when the goodbye came first: the record of it is dropped after `ttl` by the loop.
         startLoop()
     }
 
@@ -118,6 +118,7 @@ actor PresenceRoom {
     }
 
     var clientCount: Int { entries.count }
+    var goneCount: Int { gone.count }
 
     private func merged() -> [String: PresenceUser] {
         var groups: [String: [Entry]] = [:]
