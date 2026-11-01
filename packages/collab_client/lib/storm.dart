@@ -2,4 +2,5 @@
 library;
 
 export 'src/storm/ledger.dart';
+export 'src/storm/plan_editor.dart';
 export 'src/storm/storm_runner.dart';

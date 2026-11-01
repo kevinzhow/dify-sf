@@ -6,6 +6,7 @@ publish_to: none
 executables:
   login_profile:
   storm:
+  build_demo:
 
 environment:
   sdk: ^3.13.0

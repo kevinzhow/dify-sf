@@ -7,6 +7,7 @@ import '../client/events.dart';
 import '../client/machine.dart';
 import '../client/session.dart';
 import '../client/store.dart';
+import '../model/document.dart';
 import '../model/ops.dart';
 import '../store/file_store.dart';
 import '../testing/random_edits.dart';
@@ -35,7 +36,28 @@ class StormConfig {
     this.clientConfig = const ClientConfig(),
     this.postTimeout = const Duration(seconds: 10),
     this.auth,
+    this.editorFor,
+    this.joinAfter,
+    this.authFor,
+    this.presence = false,
+    this.linger = Duration.zero,
   });
+
+  /// How long the clients stay connected (and present) after the run was verified, before they stop.
+  final Duration linger;
+
+  /// The account client number `index` signs in with; null = [auth] for everyone.
+  final TokenProvider? Function(int index)? authFor;
+
+  /// Whether the clients report presence (protocol 1.22; see [StormRunner.reportPresence]).
+  final bool presence;
+
+  /// When client number `index` joins, from the start of the run; null = every client at the start.
+  final Duration Function(int index)? joinAfter;
+
+  /// The edits of client number `index` (its id is `clientId`): given what the client sees, the next edit or null.
+  /// null = [RandomEditor] (the benchmark's random edits).
+  final Op? Function(Document view) Function(int index, String clientId, Random rng)? editorFor;
 
   /// The signed-in account every client uses (protocol 1.8; each client has its own client id). null = no token (a
   /// server without accounts, e.g. the self-hosted in-memory one).
@@ -144,7 +166,32 @@ class StormReport {
 /// editor. Every intended edit goes into a ledger together with its eventual outcome, then the final state
 /// is verified against the server (and, when possible, against its full log).
 class StormRunner {
-  StormRunner(this.config, {void Function(String)? log, this.onEditingDone}) : _log = log ?? ((_) {});
+  StormRunner(this.config, {void Function(String)? log, this.onEditingDone, this.onProgress}) : _log = log ?? ((_) {});
+
+  /// Called about every 500 ms from the start of editing until the run is verified, with the ledger counts so far
+  /// (`intended` and one count per [LedgerStatus] name), `clients` and `phase` (`storm`, `settling`, `verified`).
+  final void Function(Map<String, Object?> progress)? onProgress;
+
+  int _lastProgress = -1000;
+
+  void _progress(String phase, {bool force = false, Map<String, Object?> extra = const {}}) {
+    final cb = onProgress;
+    if (cb == null || (!force && _now - _lastProgress < 500)) return;
+    _lastProgress = _now;
+    cb({
+      'phase': phase,
+      'tMs': _now,
+      'clients': _clients.length,
+      'online': _clients.where((c) => c.session != null).length,
+      if (_clients.map((c) => c.session).nonNulls.firstOrNull case final s?) ...{
+        'nodes': s.view.nodes.length,
+        'edges': s.view.edges.length,
+      },
+      'intended': _ledger.length,
+      for (final s in LedgerStatus.values) s.name: _count(s),
+      ...extra,
+    });
+  }
 
   /// Called when editing stops, before the run waits for everything to settle (e.g. to end fault injection).
   final void Function()? onEditingDone;
@@ -174,19 +221,31 @@ class StormRunner {
       _clients.add(
         _StormClient(
           runner: this,
+          index: i,
           id: id,
           journaled: rng.nextDouble() >= config.volatileFraction,
           store: FileStore('$dir/$id.json'),
-          editor: RandomEditor(Random(rng.nextInt(1 << 31)), idPrefix: id),
+          editor:
+              config.editorFor?.call(i, id, Random(rng.nextInt(1 << 31))) ??
+              RandomEditor(Random(rng.nextInt(1 << 31)), idPrefix: id).next,
           rng: Random(rng.nextInt(1 << 31)),
         ),
       );
     }
-    for (final c in _clients) {
-      await c.boot();
+    for (final (i, c) in _clients.indexed) {
+      final later = config.joinAfter?.call(i) ?? Duration.zero;
+      if (later > Duration.zero) {
+        c._downUntil = later.inMilliseconds; // step() boots it then
+      } else {
+        await c.boot();
+      }
     }
-    await Future.wait(_clients.map((c) => c.session!.settled().timeout(config.settleTimeout)));
-    _log('${_clients.length} clients synced, storming for ${config.duration.inSeconds}s');
+    await Future.wait(
+      _clients.where((c) => c.session != null).map((c) => c.session!.settled().timeout(config.settleTimeout)),
+    );
+    _log(
+      '${_clients.where((c) => c.session != null).length} clients synced, storming for ${config.duration.inSeconds}s',
+    );
 
     const dt = Duration(milliseconds: 20);
     final end = _now + config.duration.inMilliseconds;
@@ -196,6 +255,7 @@ class StormRunner {
       for (final c in _clients) {
         c.step(dt.inMilliseconds / 1000);
       }
+      _progress('storm');
       if (_now - lastReport >= 5000) {
         lastReport = _now;
         _log(
@@ -212,6 +272,10 @@ class StormRunner {
     }
     final violations = <String>[];
     final notes = <String>[];
+    _progress('settling', force: true);
+    final ticker = onProgress == null
+        ? null
+        : Timer.periodic(const Duration(milliseconds: 500), (_) => _progress('settling'));
     try {
       await Future.wait(_clients.map((c) => c.session!.settled())).timeout(config.settleTimeout);
     } on TimeoutException {
@@ -221,9 +285,12 @@ class StormRunner {
       );
     }
     await Future<void>.delayed(const Duration(milliseconds: 300)); // let the last events drain
+    ticker?.cancel();
 
     await _verify(api, auditor, violations, notes);
+    _progress('verified', force: true, extra: {'ok': violations.isEmpty, 'violations': violations.length});
     final head = _clients.map((c) => c.session!.lastSeq).fold(0, max);
+    if (config.linger > Duration.zero) await Future<void>.delayed(config.linger);
     for (final c in _clients) {
       await c.stop();
     }
@@ -242,6 +309,25 @@ class StormRunner {
   }
 
   int _count(LedgerStatus s) => _ledger.where((e) => e.status == s).length;
+
+  /// Client number [index] moved its pointer to [cursor] (when [setsCursor]; null = off the canvas), began or ended a
+  /// drag (when [setsDrag]) and/or opened the panel of [panel] (when [setsPanel]; null = closed it). Ignored while that
+  /// client is offline or [StormConfig.presence] is off.
+  void reportPresence(
+    int index, {
+    bool setsCursor = false,
+    PresencePoint? cursor,
+    bool setsDrag = false,
+    PresenceDrag? drag,
+    bool setsPanel = false,
+    String? panel,
+  }) {
+    final p = _clients.elementAtOrNull(index)?.session?.presence;
+    if (p == null || !config.presence) return;
+    if (setsCursor) p.moveCursor(cursor);
+    if (setsDrag) p.setDrag(drag);
+    if (setsPanel) p.openPanel(panel);
+  }
 
   // ---- verification ------------------------------------------------------------------------------
 
@@ -383,6 +469,7 @@ class _LogAuditor {
 class _StormClient {
   _StormClient({
     required this.runner,
+    required this.index,
     required this.id,
     required this.journaled,
     required this.store,
@@ -391,10 +478,11 @@ class _StormClient {
   });
 
   final StormRunner runner;
+  final int index;
   final String id;
   final bool journaled;
   final DurableStore store;
-  final RandomEditor editor;
+  final Op? Function(Document view) editor;
   final Random rng;
 
   CollabSession? session;
@@ -416,7 +504,12 @@ class _StormClient {
     _booting = true;
     incarnation++;
     final s = CollabSession(
-      transport: HttpTransport(baseUrl: runner.config.url, docId: runner.config.doc, auth: runner.config.auth),
+      transport: HttpTransport(
+        baseUrl: runner.config.url,
+        docId: runner.config.doc,
+        auth: runner.config.authFor?.call(index) ?? runner.config.auth,
+        presenceEvents: false, // storm clients show nobody
+      ),
       store: store,
       journaled: journaled,
       config: runner.config.clientConfig,
@@ -425,6 +518,7 @@ class _StormClient {
     );
     s.events.listen(_onEvent);
     await s.start();
+    if (runner.config.presence) s.presence.enable();
     wireIds.add(s.clientId);
     session = s;
     _booting = false;
@@ -454,7 +548,7 @@ class _StormClient {
       return;
     }
     if (!session!.hasState) return;
-    if (rng.nextDouble() < cfg.ratePerClient * dtSeconds) _edit(editor.next(session!.view), null);
+    if (rng.nextDouble() < cfg.ratePerClient * dtSeconds) _edit(editor(session!.view), null);
   }
 
   void _crash(int now) {
