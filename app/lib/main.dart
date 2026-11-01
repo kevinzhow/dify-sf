@@ -14,17 +14,20 @@ import 'src/i18n/dify_i18n.dart';
 import 'src/home_page.dart';
 import 'src/app_root.dart' show defaultAuthApiFor;
 import 'src/auth/auth_controller.dart';
+import 'src/auth/origin_token_store.dart';
 import 'src/mcp/host.dart';
 import 'src/auth/auth_api.dart' show TokenStore;
 import 'src/i18n/app_locale.dart';
 import 'src/launch_options.dart';
 import 'src/settings.dart';
+import 'src/server_address.dart';
+import 'src/platform_http.dart';
 
 /// Command line (desktop): `--server URL --doc ID [--volatile] [--demo] [--invite LINK]`. The app starts at the server's
 /// install, sign-in or invitation page (protocol 1.8 accounts) unless a stored session still works; with `--doc` the
 /// editor opens once signed in, `--demo` opens the in-memory demo without a server. Several windows on one document
 /// are fine: each claims its own journal slot.
-Future<void> main(List<String> args) async {
+Future<void> main(List<String> args) => withPlatformHttp(() async {
   try {
     await _startApp(args);
   } on Object {
@@ -33,12 +36,16 @@ Future<void> main(List<String> args) async {
     if (!kIsWeb && args.contains('--mcp-port')) failReadonlyMcpStartup();
     rethrow;
   }
-}
+});
 
 Future<void> _startApp(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDifyPlatformInput();
-  final settings = await AppSettings.load(defaultServerUrl: kIsWeb ? Uri.base.origin : null);
+  final settings = await AppSettings.load(
+    defaultServerUrl: kIsWeb
+        ? Uri.base.origin
+        : nativeDefaultServer(android: defaultTargetPlatform == TargetPlatform.android),
+  );
   final options =
       (kIsWeb
             ? LaunchOptions.fromQuery(Uri.base.queryParameters, path: Uri.base.path, fragment: Uri.base.fragment)
@@ -64,9 +71,12 @@ Future<void> _startApp(List<String> args) async {
   CanvasDefaults.reportRect = kIsWeb && Uri.base.queryParameters['visual'] == '1';
   if (CanvasDefaults.reportRect) CanvasDefaults.select = Uri.base.queryParameters['select'];
   // The signed-in sessions (protocol 1.8): files (0600) under the app support directory, localStorage on the web.
-  final tokens = TokenStore.platform(
+  final platformTokens = TokenStore.platform(
     directory: kIsWeb ? null : options.mcpProfile ?? '${(await getApplicationSupportDirectory()).path}/auth',
   );
+  final tokens = !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+      ? OriginTokenStore(platformTokens)
+      : platformTokens;
   AuthController? mcpAuth;
   if (options.mcpPort case final port?) {
     final tokenFile = options.mcpTokenFile;

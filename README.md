@@ -18,6 +18,7 @@ storage. Built-in and published workflow tools, durable Chatflow and published w
 * [`docs/five-step-delivery-20261024.md`](docs/five-step-delivery-20261024.md) - delivered HTTPS/tools/public runtime/helpers, clean-install and upgrade checks, complete 450-case visual results and remaining gaps.
 * [`docs/agent-v2.md`](docs/agent-v2.md) - Agent v2 inline agents: scope, agent service protocol, sandbox isolation.
 * [`agent_service/README.md`](agent_service/README.md) - the Agent v2 agent service (Dart, Genkit): running, configuration and tests.
+* [`app/android/README.md`](app/android/README.md) - native Android client: connect to your server, switch servers, build and sign an APK.
 * `server/` - the SwiftPM package (`CollabCore`, `CollabServer`, `CollabStore`, simulator, harness).
 * `bench/` - chaos and storm runners.
 
@@ -50,7 +51,8 @@ rounds and no broken guarantee ([storm results](docs/results/storm-100c-sweeps.m
 tab or a crash and are sent again when the client reconnects, at most once.
 
 **The same editor in the browser, on the desktop and on a phone.** The Flutter studio runs in the browser (Dart Wasm) and
-as a Linux desktop app. In Android browsers it has touch gestures and compact layouts for phones
+as a Linux desktop app and a [native Android app](app/android/README.md). Android users enter their own server's
+HTTP or HTTPS address on first launch and can switch servers from the account menu. In Android browsers it has touch gestures and compact layouts for phones
 ([mobile support](docs/mobile-support.md)). Light and dark themes follow Dify's design tokens.
 
 ![The workflow editor with a node panel open](docs/media/editor.webp)
@@ -119,6 +121,9 @@ client dependencies in `third_party/`. See the [client guide](docs/client.md),
 [control typography regression](docs/control-typography-testing.md),
 [design rules](tool/design/README.md) and [Android Web support](docs/mobile-support.md).
 Run resource-intensive commands inside the host's normal build/test limits.
+
+For Android, install JDK 21 and the Android SDK, then run `flutter build apk --debug --split-per-abi` from `app/`.
+See the [Android guide](app/android/README.md) for SDK setup, server connections and publisher-controlled release signing.
 
 ## Server requirements
 

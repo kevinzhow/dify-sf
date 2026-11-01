@@ -4,6 +4,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 
 import '../account/account_page.dart';
 import '../design/dify_icon.dart';
@@ -16,6 +17,8 @@ import '../settings/account_setting.dart';
 import '../settings/workspace_members.dart';
 import 'auth_api.dart';
 import 'auth_controller.dart';
+import '../server_connection.dart';
+import 'server_address_form.dart';
 
 String _tc(BuildContext context, String key) {
   AppLocaleScope.of(context);
@@ -178,6 +181,22 @@ class MainNavMenuContent extends StatelessWidget {
               child: _label(context, 'settings.preferences'),
             ),
             if (AppThemeScope.of(context) case final theme?) AppearanceSubmenu(theme: theme),
+            if (!kIsWeb && (ServerConnectionScope.maybeOf(context)?.canChange ?? false))
+              DifyMenuItem(
+                key: const ValueKey('account-switch-server'),
+                marginX: 0,
+                paddingX: 12,
+                semanticLabel: serverText(context, 'switch'),
+                onSelect: () => unawaited(showServerAddressDialog(context, ServerConnectionScope.maybeOf(context)!)),
+                leading: RemixIcon('global-line', size: 16, color: DifyColors.textTertiary),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: DifyTextLine(
+                    serverText(context, 'switch'),
+                    style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textSecondary),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

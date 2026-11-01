@@ -65,5 +65,18 @@
     "inline.runtimeModel": "モデル入力",
     "inline.runtimeReasoning": "推論強度の入力",
     "inline.fromConfiguration": "エージェント設定の値を使用"
+  },
+  "server-connection": {
+    "title": "サーバーに接続",
+    "server": "サーバー",
+    "address": "サーバーアドレス",
+    "connect": "接続",
+    "retry": "再試行",
+    "switch": "サーバーを切り替え",
+    "originHint": "サーバーのアドレスを入力します（例：http://192.168.1.10:8080 または https://dify.example.com）。/v1 は付けません。",
+    "switchHint": "切り替えると、このサーバーで開いているワークフローを閉じます。ログイン状態はサーバーごとに保存されます。",
+    "empty": "サーバーアドレスを入力してください。",
+    "invalidOrigin": "パス、認証情報、クエリ、フラグメントを含まない http:// または https:// のアドレスを入力してください。",
+    "saveFailed": "接続を保存できませんでした。再試行してください。"
   }
 }

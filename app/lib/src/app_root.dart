@@ -1,8 +1,10 @@
 import 'web/startup_ready.dart';
+
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart' show WorkflowRunApi;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import 'public_app/public_app_page.dart';
 import 'auth/activate_page.dart';
@@ -15,6 +17,9 @@ import 'human_input/human_input_form_page.dart';
 import 'auth/signin_page.dart';
 import 'auth/unreachable_page.dart';
 import 'auth/widgets/auth_widgets.dart';
+import 'auth/server_address_form.dart';
+import 'server_connection.dart';
+import 'server_address.dart';
 import 'launch_options.dart';
 import 'settings.dart';
 import 'design/widgets/widgets.dart';
@@ -35,6 +40,7 @@ class AppRoot extends StatefulWidget {
     this.tokenStore,
     this.authRelay,
     this.humanInputApiFor,
+    this.connection,
   });
 
   final AppSettings settings;
@@ -59,6 +65,7 @@ class AppRoot extends StatefulWidget {
 
   /// The API a mailed form link reads and submits with (tests pass one; the page builds an unauthenticated one).
   final WorkflowRunApi Function(Uri server)? humanInputApiFor;
+  final ServerConnectionController? connection;
 
   @override
   State<AppRoot> createState() => _AppRootState();
@@ -68,10 +75,18 @@ class _AppRootState extends State<AppRoot> {
   AuthController? _own;
   AuthController get _auth => widget.auth ?? _own!;
   AuthRoute? _shown;
+  bool _needsAddress = false;
+  late final _connection =
+      widget.connection ??
+      ServerConnectionController(
+        server: widget.settings.serverUrl,
+        enabled: widget.auth == null,
+      );
 
   @override
   void initState() {
     super.initState();
+    _connection.bind(_changeServer);
     if (widget.auth == null) {
       _connect(
         widget.settings.serverUrl,
@@ -95,22 +110,55 @@ class _AppRootState extends State<AppRoot> {
 
   /// A controller for [server] (a new one when the server changes), started.
   void _connect(String server, {String? activate, String? reset}) {
-    _own?.removeListener(_routeChanged);
-    _own?.dispose();
-    final api = (widget.authApiFor ?? defaultAuthApiFor)(Uri.parse(server));
+    _releaseConnection();
+    final uri = Uri.tryParse(server);
+    _needsAddress = server.isEmpty || uri == null;
+    if (!kIsWeb) {
+      try {
+        normalizeServerAddress(server);
+      } on ServerAddressException {
+        _needsAddress = true;
+      }
+    }
+    final api = _needsAddress ? const OfflineAuthApi() : (widget.authApiFor ?? defaultAuthApiFor)(uri!);
     _own = AuthController.on(
       server: server,
       api: api,
       store: widget.tokenStore ?? TokenStore.platform(),
     )..addListener(_routeChanged);
-    unawaited(_own!.start(activateToken: activate, resetToken: reset));
+    if (!_needsAddress) unawaited(_own!.start(activateToken: activate, resetToken: reset));
     if (mounted) _publish();
   }
 
+  void _releaseConnection() {
+    final previous = _own;
+    if (previous == null) return;
+    previous.removeListener(_routeChanged);
+    previous.dispose();
+    unawaited(previous.session.dispose());
+    // Default HTTP APIs belong to this connection. Injected APIs retain their caller's lifetime.
+    if (widget.authApiFor == null) {
+      final api = previous.api;
+      if (api is HttpAuthApi) api.close();
+    }
+    _own = null;
+  }
+
   Future<void> _changeServer(String server) async {
+    final previousServer = widget.settings.serverUrl, previousDoc = widget.settings.lastDoc;
     widget.settings.serverUrl = server;
-    await widget.settings.save();
+    // A document id and a launch link belong to the old server. The old write-ahead journal and per-server tokens
+    // remain in their own stores, but none of that server's screens or cached models is reused on the new one.
+    widget.settings.lastDoc = '';
+    try {
+      await widget.settings.save();
+    } on Object {
+      widget.settings.serverUrl = previousServer;
+      widget.settings.lastDoc = previousDoc;
+      rethrow;
+    }
     if (!mounted) return;
+    widget.navigatorKey.currentState?.popUntil((r) => r.isFirst);
     setState(() => _connect(server));
   }
 
@@ -127,32 +175,41 @@ class _AppRootState extends State<AppRoot> {
   @override
   void dispose() {
     _auth.removeListener(_routeChanged);
-    _own?.dispose();
+    _releaseConnection();
+    _connection.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_needsAddress) {
+      markStartupReadyAfterFrame();
+      return ServerConnectionScope(
+        controller: _connection,
+        child: ServerAddressPage(connection: _connection),
+      );
+    }
+    final launch = _connection.generation == 0 ? widget.launch : null;
     // Dify's mailed link (`/form/{token}`) is a page of its own, outside the account: a recipient has none.
-    if (widget.launch?.formToken case final token?) {
+    if (launch?.formToken case final token?) {
       return HumanInputFormPage(
         token: token,
         server: Uri.parse(_auth.server),
         apiFor: widget.humanInputApiFor,
       );
     }
-    if (widget.launch?.publicAppCode case final code?) {
-      return PublicAppPage(code: code, server: Uri.parse(_auth.server), parameters: widget.launch!.publicParameters);
+    if (launch?.publicAppCode case final code?) {
+      return PublicAppPage(code: code, server: Uri.parse(_auth.server), parameters: launch!.publicParameters);
     }
     final route = _auth.route;
-    final Widget page = switch (route) {
+    Widget page = switch (route) {
       StartingRoute() => const AuthPageFrame(
         child: Center(child: DifyLoading()),
       ),
       UnreachableRoute(:final error) => UnreachablePage(
         server: _auth.server,
         error: error,
-        onRetry: (server) => server == _auth.server ? unawaited(_auth.start()) : unawaited(_changeServer(server)),
+        onRetry: (server) => server == _auth.server ? _auth.start() : _connection.select(server),
       ),
       InstallRoute() => const InstallPage(),
       SignInRoute() => SignInPage(key: ValueKey(route), route: route),
@@ -174,8 +231,29 @@ class _AppRootState extends State<AppRoot> {
       ),
       HomeRoute() => Builder(builder: widget.home),
     };
+    // A server change recreates the home subtree as well as the auth controller, so model/member/app caches cannot
+    // survive a change to another server, even when it signs in with an identically named account.
+    page = KeyedSubtree(key: ValueKey(_auth.server), child: page);
+    if (!kIsWeb && route is! HomeRoute && _connection.canChange) {
+      page = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+              child: NativeServerButton(connection: _connection),
+            ),
+          ),
+          Expanded(child: page),
+        ],
+      );
+    }
     if (route is! StartingRoute) markStartupReadyAfterFrame();
-    return AuthScope(controller: _auth, child: page);
+    return ServerConnectionScope(
+      controller: _connection,
+      child: AuthScope(controller: _auth, child: page),
+    );
   }
 }
 

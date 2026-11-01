@@ -65,5 +65,18 @@
     "inline.runtimeModel": "模型參數",
     "inline.runtimeReasoning": "推理強度參數",
     "inline.fromConfiguration": "使用 Agent 設定中的值"
+  },
+  "server-connection": {
+    "title": "連線到你的伺服器",
+    "server": "伺服器",
+    "address": "伺服器位址",
+    "connect": "連線",
+    "retry": "重試",
+    "switch": "切換伺服器",
+    "originHint": "填寫伺服器位址，例如 http://192.168.1.10:8080 或 https://dify.example.com，不要加 /v1。",
+    "switchHint": "切換會關閉目前伺服器上開啟的工作流程。各伺服器分別保留登入狀態。",
+    "empty": "請填寫伺服器位址。",
+    "invalidOrigin": "請填寫 http:// 或 https:// 伺服器位址，不要包含路徑、帳號密碼、查詢參數或片段。",
+    "saveFailed": "無法儲存連線，請重試。"
   }
 }
