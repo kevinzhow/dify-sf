@@ -33,6 +33,7 @@ import 'i18n/dify_i18n.dart';
 import 'launch_options.dart';
 import 'session_factory.dart';
 import 'settings.dart';
+import 'server_connection.dart';
 import 'settings/integrations_page.dart';
 import 'settings/model_provider/model_provider_env.dart';
 import 'settings/workspace_card.dart';
@@ -688,6 +689,10 @@ Widget buildApp(
   final navigatorKey = GlobalKey<NavigatorState>();
   // The session for every page, also those pushed over the home page (AppRoot publishes its controller here).
   final authRelay = ValueNotifier<AuthController?>(session);
+  final connection = ServerConnectionController(
+    server: settings.serverUrl,
+    enabled: session == null,
+  );
   return ListenableBuilder(
     listenable: Listenable.merge([appTheme, appLocale]),
     builder: (context, _) => DifyApplication(
@@ -708,10 +713,11 @@ Widget buildApp(
         authApiFor: authApiFor,
         tokenStore: tokenStore,
         authRelay: authRelay,
+        connection: connection,
         home: (_) => HomePage(
           settings: settings,
           backendFor: backendFor,
-          launch: launch,
+          launch: connection.generation == 0 ? launch : null,
           appsApiFor: appsApiFor,
           studioPollInterval: studioPollInterval,
           appDetailServicesFor: appDetailServicesFor,
@@ -725,7 +731,10 @@ Widget buildApp(
           locale: appLocale,
           child: ValueListenableBuilder<AuthController?>(
             valueListenable: authRelay,
-            builder: (context, auth, page) => auth == null ? page! : AuthScope(controller: auth, child: page!),
+            builder: (context, auth, page) => ServerConnectionScope(
+              controller: connection,
+              child: auth == null ? page! : AuthScope(controller: auth, child: page!),
+            ),
             child: Stack(
               fit: StackFit.expand,
               children: [

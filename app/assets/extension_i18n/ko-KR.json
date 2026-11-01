@@ -65,5 +65,18 @@
     "inline.runtimeModel": "모델 입력",
     "inline.runtimeReasoning": "추론 강도 입력",
     "inline.fromConfiguration": "에이전트 설정 값 사용"
+  },
+  "server-connection": {
+    "title": "서버에 연결",
+    "server": "서버",
+    "address": "서버 주소",
+    "connect": "연결",
+    "retry": "다시 시도",
+    "switch": "서버 전환",
+    "originHint": "서버 주소를 입력하세요. 예: http://192.168.1.10:8080 또는 https://dify.example.com. /v1은 붙이지 마세요.",
+    "switchHint": "전환하면 현재 서버에서 열린 워크플로가 닫힙니다. 로그인은 서버별로 유지됩니다.",
+    "empty": "서버 주소를 입력하세요.",
+    "invalidOrigin": "경로, 인증 정보, 쿼리 또는 프래그먼트 없이 http:// 또는 https:// 서버 주소를 입력하세요.",
+    "saveFailed": "연결을 저장하지 못했습니다. 다시 시도하세요."
   }
 }

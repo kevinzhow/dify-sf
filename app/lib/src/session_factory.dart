@@ -1,8 +1,9 @@
 import 'package:collab_client/collab_client.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:path_provider/path_provider.dart';
 
 import 'auth/auth_controller.dart';
+import 'server_address.dart';
 
 /// Where an editor session comes from. The real one talks HTTP/SSE to a server and keeps its journal on
 /// disk; the demo one (lib/src/demo) runs against an in-memory server.
@@ -148,7 +149,10 @@ class HttpBackend implements Backend {
     // set per account (protocol 1.8 binds a client id to the account that got it: another account signing in on this
     // device must not reuse it, or its ops are refused with 403).
     final who = journalKeyOf(auth?.account?.id);
-    final dir = kIsWeb ? null : '${(await getApplicationSupportDirectory()).path}/journals/$who';
+    final namespace = !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+        ? androidJournalNamespace(baseUrl.origin, who)
+        : who;
+    final dir = kIsWeb ? null : '${(await getApplicationSupportDirectory()).path}/journals/$namespace';
     final slot = await acquirePlatformJournal(kIsWeb ? '$who/$docId' : docId, directory: dir);
     return OpenedSession(
       CollabSession(

@@ -5,6 +5,7 @@ analyzer:
     - build/**
     - web/**
     - linux/**
+    - android/**
 
 formatter:
   page_width: 120

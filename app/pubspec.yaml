@@ -31,6 +31,9 @@ dependencies:
   desktop_drop: ^0.8.4
   # Import DSL from a URL: the client fetches the file (the server takes file content only).
   http: ^1.2.0
+  # Native Android trust/proxy settings, including roots installed by the device owner.
+  cronet_http: ^1.10.1
+  crypto: ^3.0.7
   image: ^4.12.0
   # The Access Point's Web App QR code (base/qrcode: qrcode.react's QRCodeCanvas, level L, no margin), downloadable as PNG.
   qr_flutter: ^4.1.0

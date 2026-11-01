@@ -335,11 +335,12 @@ class DifyDocumentTitle extends StatelessWidget {
 /// 20 px, hover `bg-state-base-hover`) and the radio menu (`bottom-end`, 8 px below, `w-50`, items `px-3 py-2 text-sm
 /// text-text-secondary`).
 class LocaleMenu extends StatefulWidget {
-  const LocaleMenu({super.key, required this.items, required this.value, this.onChange});
+  const LocaleMenu({super.key, required this.items, required this.value, this.onChange, this.compact = false});
 
   final List<({String value, String name})> items;
   final String value;
   final ValueChanged<String>? onChange;
+  final bool compact;
 
   @override
   State<LocaleMenu> createState() => _LocaleMenuState();
@@ -353,7 +354,7 @@ class _LocaleMenuState extends State<LocaleMenu> {
     final selected = widget.items.where((i) => i.value == widget.value).firstOrNull;
     // `w-56 text-right` around an inline-block trigger, which may be wider than the box.
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 224),
+      constraints: BoxConstraints(minWidth: widget.compact ? 0 : 224),
       child: Align(
         alignment: AlignmentDirectional.centerEnd,
         widthFactor: 1,
@@ -384,14 +385,15 @@ class _LocaleMenuState extends State<LocaleMenu> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Padding(
-                        padding: EdgeInsetsDirectional.only(end: 4),
+                        padding: EdgeInsetsDirectional.only(end: widget.compact ? 0 : 4),
                         child: HeroIcon('globe-alt', size: 20, color: DifyColors.textPrimary),
                       ),
-                      DifyTextLine(
-                        selected?.name ?? '',
-                        // `text-[13px] font-medium` (the row: the size-5 icon's 20 px)
-                        style: difyTextStyle(DifyTw.text13MediumLeading20, DifyColors.textPrimary),
-                      ),
+                      if (!widget.compact)
+                        DifyTextLine(
+                          selected?.name ?? '',
+                          // `text-[13px] font-medium` (the row: the size-5 icon's 20 px)
+                          style: difyTextStyle(DifyTw.text13MediumLeading20, DifyColors.textPrimary),
+                        ),
                     ],
                   ),
                 ),
@@ -440,6 +442,7 @@ class SignInHeader extends StatelessWidget {
             const DifyLogo(alt: 'Dify', size: DifyLogoSize.large),
             const Spacer(),
             LocaleMenu(
+              compact: !_md(context),
               items: AppLocale.supported,
               value: AppLocaleScope.of(context),
               onChange: locale == null ? null : (v) => locale.set(v),

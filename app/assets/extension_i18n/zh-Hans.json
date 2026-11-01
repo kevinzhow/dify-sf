@@ -97,5 +97,18 @@
     "modelProvider.plugins.missingTip": "请在集成页面打开“管理模型插件”安装该供应商。已有配置会保留。",
     "modelProvider.metadataMissing": "模型未识别",
     "modelProvider.metadataMissingTip": "当前供应商插件不识别该模型，请核对模型名称和插件版本。"
+  },
+  "server-connection": {
+    "title": "连接到你的服务器",
+    "server": "服务器",
+    "address": "服务器地址",
+    "connect": "连接",
+    "retry": "重试",
+    "switch": "切换服务器",
+    "originHint": "填写服务器地址，例如 http://192.168.1.10:8080 或 https://dify.example.com，不要加 /v1。",
+    "switchHint": "切换会关闭当前服务器上打开的工作流。各个服务器分别保留登录状态。",
+    "empty": "请填写服务器地址。",
+    "invalidOrigin": "请填写 http:// 或 https:// 服务器地址，不要包含路径、账号密码、查询参数或片段。",
+    "saveFailed": "无法保存连接，请重试。"
   }
 }

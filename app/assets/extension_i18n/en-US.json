@@ -97,5 +97,18 @@
     "modelProvider.plugins.missingTip": "Open Integrations and Manage model plugins to install this provider. Your saved configuration is kept.",
     "modelProvider.metadataMissing": "Model not recognized",
     "modelProvider.metadataMissingTip": "This provider plugin does not recognize the model. Check the model name and plugin version."
+  },
+  "server-connection": {
+    "title": "Connect to your server",
+    "server": "Server",
+    "address": "Server address",
+    "connect": "Connect",
+    "retry": "Retry",
+    "switch": "Switch server",
+    "originHint": "Enter your server origin, for example http://192.168.1.10:8080 or https://dify.example.com. Do not add /v1.",
+    "switchHint": "Switching closes the workflows currently open on this server. Each server keeps its own sign-in.",
+    "empty": "Enter your server address.",
+    "invalidOrigin": "Enter an http:// or https:// server origin without a path, credentials, query or fragment.",
+    "saveFailed": "The connection could not be saved. Retry."
   }
 }
