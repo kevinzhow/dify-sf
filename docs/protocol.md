@@ -787,6 +787,9 @@ state; the server merges an account's clients: the cursor and `drag` are those o
   10 s. A client not heard from for 30 s is gone. When a stream opened with `client=` ends, its client is gone 5 s later
   unless it reports again, so a reconnecting client that re-announces after `ready` never appears to leave.
 * `DELETE`: the client is gone now (a closing tab). Any member may remove its own client; another account's id is `403`.
+  Reports from that client that arrive afterwards (sent just before the goodbye) are ignored until it opens a new
+  stream. Clients send the goodbye after any report still in flight. A report that fails for another reason (a `503`,
+  a timeout) is sent again with the next report or heartbeat, under anything reported since.
 
 The stream (section 5) carries `event: presence`, without an `id:`:
 

@@ -39,6 +39,11 @@ actor PresenceRoom {
     /// What the streams were last told, per account.
     private var sent: [String: PresenceUser] = [:]
     private var dirty = false
+    /// The latest stream of each client that has one open (`streamStarted`).
+    private var streams: [String: Int] = [:]
+    private var nextStream = 0
+    /// Clients that said goodbye, and when (forgotten after `ttl`, or when the client opens a new stream).
+    private var gone: [String: ContinuousClock.Instant] = [:]
     private var loop: Task<Void, Never>?
 
     init(ttl: Duration = PresenceRoom.ttl, streamGrace: Duration = PresenceRoom.streamGrace,
@@ -49,10 +54,15 @@ actor PresenceRoom {
         self.announce = announce
     }
 
-    /// A client's report. `cursor` / `drag` / `panel`: `nil` = unchanged, `.some(nil)` = cleared.
+    /// A client's report. `cursor` / `drag` / `panel`: `nil` = unchanged, `.some(nil)` = cleared. Ignored from a client
+    /// that said goodbye, until it opens a new stream: a report it sent just before closing may arrive after the goodbye.
     func update(client: String, account: String, name: String, avatar: String?, cursor: PresencePoint??,
                 drag: PresenceDrag?? = nil, panel: String??) {
         let now = clock.now
+        if let at = gone[client] {
+            if now - at < ttl { return }
+            gone[client] = nil
+        }
         var e = entries[client] ?? Entry(
             account: account, name: name, avatar: avatar, cursor: nil, drag: nil, panel: nil, seen: now, cursorAt: nil,
             joined: Int64(Date().timeIntervalSince1970 * 1000), expires: now + ttl)
@@ -77,13 +87,26 @@ actor PresenceRoom {
 
     /// The client said it is gone (`DELETE .../presence`).
     func remove(client: String) {
+        gone[client] = clock.now
         guard entries.removeValue(forKey: client) != nil else { return }
         dirty = true
         startLoop()
     }
 
-    /// The client's stream ended: gone after `streamGrace` unless it reports again (a reconnect does).
-    func streamEnded(client: String) {
+    /// A stream of [client] opened; [streamEnded] takes the token back. A reconnecting client opens its new stream
+    /// before its old one is noticed to have ended.
+    func streamStarted(client: String) -> Int {
+        gone[client] = nil
+        nextStream += 1
+        streams[client] = nextStream
+        return nextStream
+    }
+
+    /// The client's stream [token] ended: gone after `streamGrace` unless it reports again (a reconnect does). The end of
+    /// an older stream, once the client has opened a newer one, changes nothing: the client is still here.
+    func streamEnded(client: String, stream token: Int) {
+        guard streams[client] == token else { return }
+        streams[client] = nil
         guard var e = entries[client] else { return }
         e.expires = min(e.expires, clock.now + grace)
         entries[client] = e
@@ -136,6 +159,7 @@ actor PresenceRoom {
             entries[client] = nil
             dirty = true
         }
+        gone = gone.filter { now - $0.value < ttl }
         if dirty {
             dirty = false
             let users = merged()
@@ -147,7 +171,7 @@ actor PresenceRoom {
                 await announce(frame)
             }
         }
-        if entries.isEmpty && sent.isEmpty && !dirty {
+        if entries.isEmpty && sent.isEmpty && !dirty && gone.isEmpty {
             loop = nil
             return false
         }

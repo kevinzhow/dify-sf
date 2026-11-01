@@ -173,9 +173,13 @@ class HttpTransport implements CollabTransport {
         ..body = body;
     }
     try {
-      final res = await _client.send(req).timeout(connectTimeout);
-      final text = await res.stream.bytesToString();
-      if (res.statusCode != 204 && res.statusCode != 200) throw _errorFrom(res.statusCode, text);
+      // The whole exchange, body included, within the timeout: a stalled answer must not hold up the next report
+      // (or the goodbye when the editor closes).
+      final (status, text) = await () async {
+        final res = await _client.send(req);
+        return (res.statusCode, await res.stream.bytesToString());
+      }().timeout(connectTimeout);
+      if (status != 204 && status != 200) throw _errorFrom(status, text);
     } on TransportException {
       rethrow;
     } on TimeoutException {

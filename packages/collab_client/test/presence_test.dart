@@ -18,6 +18,29 @@ class _Refusing extends FakeTransport {
   }
 }
 
+/// A transport whose next presence report can fail once or be held, recording what reached the "server" in order.
+class _Flaky extends FakeTransport {
+  _Flaky(super.server);
+  bool failNext = false;
+  Completer<void>? hold;
+  final calls = <String>[];
+  String? panel;
+
+  @override
+  Future<void> putPresence(String client, PresenceReport report) async {
+    if (failNext) {
+      failNext = false;
+      throw const TransportException('temporarily unavailable', statusCode: 503);
+    }
+    if (hold != null) await hold!.future;
+    if (report.setsPanel) panel = report.panel;
+    calls.add('PUT ${report.toJson(client)}');
+  }
+
+  @override
+  Future<void> deletePresence(String client) async => calls.add('DELETE');
+}
+
 void main() {
   test('parses event: presence (full and delta)', () {
     final full =
@@ -156,6 +179,65 @@ void main() {
         'cursor': {'x': 300.0, 'y': 180.0},
         'drag': null,
       });
+    });
+  });
+
+  test('a report lost to a 503 goes with the next report or heartbeat, never over a newer value', () {
+    fakeAsync((async) {
+      final t = _Flaky(FakeServer());
+      final p = SessionPresence(t, () => 'c1', now: () => DateTime.utc(2026).add(async.elapsed));
+      p.enable();
+      async.flushMicrotasks();
+      t.failNext = true;
+      p.openPanel('llm');
+      async.flushMicrotasks();
+      expect(t.panel, isNull);
+      // Nothing else happens: the heartbeat carries it.
+      async.elapse(const Duration(seconds: 10));
+      expect(t.panel, 'llm');
+      // Lost again, then a newer panel: the newer one is what the server ends with.
+      t.failNext = true;
+      p.openPanel('code');
+      async.flushMicrotasks();
+      p.openPanel('answer');
+      async.flushMicrotasks();
+      expect(t.panel, 'answer');
+      async.elapse(const Duration(seconds: 10));
+      expect(t.panel, 'answer');
+    });
+  });
+
+  test('closing waits for a report in flight, so the goodbye arrives last', () async {
+    final t = _Flaky(FakeServer());
+    final p = SessionPresence(t, () => 'c1')..enable();
+    await Future<void>.delayed(Duration.zero);
+    t.hold = Completer<void>();
+    p.openPanel('llm');
+    await Future<void>.delayed(Duration.zero);
+    final closing = p.close();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(t.calls.where((c) => c == 'DELETE'), isEmpty);
+    t.hold!.complete();
+    await closing;
+    expect(t.calls.last, 'DELETE');
+    expect(t.calls[t.calls.length - 2], contains('llm'));
+  });
+
+  test('a report stuck in flight holds the goodbye up for at most a second', () {
+    fakeAsync((async) {
+      final t = _Flaky(FakeServer());
+      final p = SessionPresence(t, () => 'c1')..enable();
+      async.flushMicrotasks();
+      t.hold = Completer<void>();
+      p.openPanel('llm');
+      async.flushMicrotasks();
+      var closed = false;
+      unawaited(p.close().then((_) => closed = true));
+      async.elapse(const Duration(milliseconds: 900));
+      expect(closed, isFalse);
+      async.elapse(const Duration(milliseconds: 200));
+      expect(closed, isTrue);
+      expect(t.calls.last, 'DELETE');
     });
   });
 

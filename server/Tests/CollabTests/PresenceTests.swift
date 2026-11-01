@@ -81,24 +81,50 @@ import Testing
         #expect(got[2].users.first?.drag == nil && got[2].users.first?.cursor == PresencePoint(x: 9, y: 9))
     }
 
+    @Test func aReportArrivingAfterTheGoodbyeIsIgnoredUntilANewStream() async throws {
+        let frames = Frames()
+        let room = PresenceRoom(flushEvery: nil) { await frames.add($0) }
+        _ = await room.streamStarted(client: "m1")
+        await room.update(client: "m1", account: "maya", name: "Maya", avatar: nil, cursor: nil, panel: "llm")
+        await room.flush()
+        // The editor closes: goodbye, then a report it had sent just before arrives late.
+        await room.remove(client: "m1")
+        await room.update(client: "m1", account: "maya", name: "Maya", avatar: nil, cursor: nil, panel: "code")
+        await room.flush()
+        #expect(await frames.all.last?.left == ["maya"])
+        #expect(await room.clientCount == 0)
+        // The same client id opens the document again (a reload): its reports count again.
+        _ = await room.streamStarted(client: "m1")
+        await room.update(client: "m1", account: "maya", name: "Maya", avatar: nil, cursor: nil, panel: "code")
+        await room.flush()
+        #expect(await frames.all.last?.users.first?.panels == ["code"])
+    }
+
     @Test func silentClientsExpireAndAnEndedStreamOnlyHasAGracePeriod() async throws {
         let frames = Frames()
         let room = PresenceRoom(ttl: .seconds(2), streamGrace: .milliseconds(100), flushEvery: nil) { await frames.add($0) }
-        for (client, account) in [("a", "ann"), ("b", "ben"), ("c", "cy")] {
+        var streams: [String: Int] = [:]
+        for (client, account) in [("a", "ann"), ("b", "ben"), ("c", "cy"), ("d", "dee")] {
+            streams[client] = await room.streamStarted(client: client)
             await room.update(client: client, account: account, name: account, avatar: nil, cursor: nil, panel: nil)
         }
         await room.flush()
         // Ben's stream ends for good; Cy's ends and Cy reconnects (reports again) within the grace period.
-        await room.streamEnded(client: "b")
-        await room.streamEnded(client: "c")
+        await room.streamEnded(client: "b", stream: streams["b"]!)
+        await room.streamEnded(client: "c", stream: streams["c"]!)
         await room.update(client: "c", account: "cy", name: "cy", avatar: nil, cursor: nil, panel: nil)
+        // Dee reconnects the other way round: the new stream opens and she reports before the old stream's end is
+        // noticed. That late end must not make her leave.
+        _ = await room.streamStarted(client: "d")
+        await room.update(client: "d", account: "dee", name: "dee", avatar: nil, cursor: nil, panel: nil)
+        await room.streamEnded(client: "d", stream: streams["d"]!)
         try await Task.sleep(for: .milliseconds(300))
         await room.flush()
         #expect(await frames.all.flatMap(\.left) == ["ben"])
-        // Nobody reports any more: Ann and Cy expire after the ttl.
+        // Nobody reports any more: Ann, Cy and Dee expire after the ttl.
         try await Task.sleep(for: .milliseconds(2100))
         await room.flush()
-        #expect(Set(await frames.all.flatMap(\.left)) == ["ann", "ben", "cy"])
+        #expect(Set(await frames.all.flatMap(\.left)) == ["ann", "ben", "cy", "dee"])
         #expect(await room.clientCount == 0)
     }
 }

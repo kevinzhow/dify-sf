@@ -526,10 +526,11 @@ struct Routes: Sendable {
         let presence = await registry.presence(doc)
         // 1.22: `presence=0` (headless tools) leaves presence out of this stream.
         let wantsPresence = q["presence"] != "0"
+        let presenceStream: Int? = if let client { await presence.streamStarted(client: client) } else { nil }
         let stream = try Response.Body(stream: { writer in
             defer {
                 Task { await sequencer.unsubscribe(sub.id) }
-                if let client { Task { await presence.streamEnded(client: client) } }
+                if let client, let presenceStream { Task { await presence.streamEnded(client: client, stream: presenceStream) } }
             }
             do {
                 try await writer.write("retry: 1000\n\n")

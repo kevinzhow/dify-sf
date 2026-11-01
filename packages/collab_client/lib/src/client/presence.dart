@@ -46,6 +46,7 @@ class SessionPresence {
   Timer? _trailing;
   Timer? _heartbeat;
   bool _inFlight = false;
+  Future<void>? _draining;
   PresenceReport? _queued;
 
   /// Everyone present, by account id, this client's own account included (leave it out when drawing).
@@ -166,18 +167,19 @@ class SessionPresence {
   void _send(PresenceReport r) {
     if (!_enabled || _closed) return;
     final q = _queued;
-    _queued = q == null
-        ? r
-        : PresenceReport(
-            setsCursor: q.setsCursor || r.setsCursor,
-            cursor: r.setsCursor ? r.cursor : q.cursor,
-            setsDrag: q.setsDrag || r.setsDrag,
-            drag: r.setsDrag ? r.drag : q.drag,
-            setsPanel: q.setsPanel || r.setsPanel,
-            panel: r.setsPanel ? r.panel : q.panel,
-          );
-    if (!_inFlight) unawaited(_drain());
+    _queued = q == null ? r : _merge(q, r);
+    if (!_inFlight) _draining = _drain();
   }
+
+  /// [older] followed by [newer]: what [newer] sets wins.
+  static PresenceReport _merge(PresenceReport older, PresenceReport newer) => PresenceReport(
+    setsCursor: older.setsCursor || newer.setsCursor,
+    cursor: newer.setsCursor ? newer.cursor : older.cursor,
+    setsDrag: older.setsDrag || newer.setsDrag,
+    drag: newer.setsDrag ? newer.drag : older.drag,
+    setsPanel: older.setsPanel || newer.setsPanel,
+    panel: newer.setsPanel ? newer.panel : older.panel,
+  );
 
   Future<void> _drain() async {
     _inFlight = true;
@@ -195,7 +197,11 @@ class SessionPresence {
             _stopReporting();
             return;
           }
-          // Anything else: the next report or heartbeat tries again.
+          // Anything else (a 503, a timeout): what it said goes with the next report or heartbeat, under anything
+          // reported since; no retry loop while the server is away.
+          final since = _queued;
+          _queued = since == null ? r : _merge(r, since);
+          return;
         }
       }
     } finally {
@@ -210,12 +216,20 @@ class SessionPresence {
     _queued = null;
   }
 
-  /// Says goodbye (best-effort) and stops.
+  /// Says goodbye (best-effort) and stops: after a report still in flight (at most 1 s), so the goodbye arrives last.
   Future<void> close() async {
     if (_closed) return;
     final wasEnabled = _enabled;
+    final inFlight = _inFlight ? _draining : null;
     _stopReporting();
     _closed = true;
+    if (inFlight != null) {
+      try {
+        await inFlight.timeout(const Duration(seconds: 1));
+      } on Object {
+        // Gone or stalled: say goodbye anyway (the server ignores this client's later reports).
+      }
+    }
     final id = _clientId();
     if (wasEnabled && id.isNotEmpty) {
       try {
