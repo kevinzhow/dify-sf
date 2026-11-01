@@ -9,7 +9,7 @@
 | `postgres` | its database (and the plugin daemon's) |
 | `plugin_daemon`, `redis` | Dify's plugin daemon: model providers and tools |
 | `sandbox`, `ssrf_proxy` | Dify's code sandbox for code and template nodes; its only way out is a proxy that refuses private addresses |
-| `agent_service`, `sandbox_supervisor`, `agent_sandbox_proxy` | optional (profile `agent`): Agent v2 nodes |
+| `agent_service`, `sandbox_supervisor`, `agent_sandbox_proxy`, `codex_gateway` | optional (`./enable-agent.sh`): Agent v2 nodes and their shell sandboxes; `codex_gateway` only with Codex |
 
 Only the gateway's ports are published. The web client, the Linux desktop app and the Android app all talk to the same
 address.
@@ -55,12 +55,37 @@ Everything lives in `deploy/selfhost/.env` (see `.env.example`); after a change,
 
 * **Mail** (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_TLS`, `MAIL_FROM`): password reset,
   invitations by mail and mailed human-input forms. Without it, invitations give you a link to pass on yourself.
-* **Agent v2 nodes**: set `AGENT_ENABLED=true` and start with `docker compose --profile agent up -d --build`. The
-  sandbox supervisor gets the Docker socket and creates one container per agent execution (image
-  `langgenius/dify-agent-local-sandbox:1.17.1`; pull it once with `docker pull`); enable it only where that is
-  acceptable. `DOCKER_GID` is the socket's group (`init.sh` fills it in). See [Runtime services](runtime-services.md).
+* **Agent v2 nodes**: see the next section.
 * `PIP_MIRROR_URL`: a Python package mirror for plugins and the sandbox. `COLLAB_MODELS_VALIDATE=false` for a machine
   without internet access to the model providers.
+
+## Agent v2 nodes (optional)
+
+```sh
+./enable-agent.sh            # or ./enable-agent.sh --codex
+docker compose up -d --build
+```
+
+`enable-agent.sh` pulls the sandbox image and sets `AGENT_ENABLED=true` and `COMPOSE_PROFILES=agent` in `.env`. That
+starts the agent service, the sandbox supervisor and the package proxy, and gives Agent nodes a shell: one sandbox
+container per agent execution, which the supervisor creates through the Docker socket. Enable it only where that is
+acceptable. `DOCKER_GID` is the socket's group (`init.sh` fills it in); the sandboxes' networks come from
+`AGENT_SANDBOX_SUBNET_POOL` (default `10.213.0.0/16`), which must not overlap networks the machine reaches.
+
+An Agent node runs one of two harnesses (the Soul's `harness_style`, see [Agents](agents.md)):
+
+| harness | what it needs |
+|---|---|
+| `dify` (default) | `./enable-agent.sh` and a tool-capable model of the workspace. |
+| `codex` (the official Codex CLI) | `./enable-agent.sh --codex` on an x86_64 machine, and a model on the Responses wire: OpenAI, DeepSeek, or an OpenAI-API-compatible model whose API Type is Responses. The script downloads the Codex release the agent service pins from GitHub, checks its SHA-256, writes `executor-profiles.json` (the default profile mounts Codex read-only) and adds `codex.yml` to `COMPOSE_FILE`. Without internet access, download the release archive (`codex-x86_64-unknown-linux-musl.tar.gz` of the pinned version) elsewhere and pass it: `CODEX_ARCHIVE=/path/to/archive ./enable-agent.sh --codex`. |
+
+Sandboxes reach only PyPI and npm, through `agent_sandbox_proxy` (`docker/agent_sandbox_proxy/allowlist.txt`), with or
+without Codex. Codex's model calls go to `codex_gateway`, which passes only the Codex route to the server; the provider
+keys stay in the server.
+
+To turn Agent nodes off: in `.env` set `AGENT_ENABLED=false`, empty `COMPOSE_PROFILES` and drop `:codex.yml` from
+`COMPOSE_FILE`; then `docker compose --profile agent rm -sf agent_service sandbox_supervisor agent_sandbox_proxy
+codex_gateway` and `docker compose up -d`.
 
 ## Update
 

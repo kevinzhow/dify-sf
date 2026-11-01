@@ -4,7 +4,7 @@
 #   cd deploy/selfhost
 #   ./init.sh http://192.168.1.20                   # or https://dify.example.com you@example.com; writes .env (once)
 #   docker compose up -d --build                    # first build takes a while (server, web client)
-#   docker compose --profile agent up -d --build    # also the Agent v2 service (needs the Docker socket)
+#   ./enable-agent.sh [--codex]                     # optional: Agent v2 nodes (the supervisor gets the Docker socket)
 #
 # Code and template nodes run in Dify's sandbox, model and tool nodes in Dify's plugin daemon; both are part of this
 # stack. Keep .env (it holds the keys that decrypt stored credentials) and back up the volumes.
@@ -79,8 +79,9 @@ services:
       COLLAB_SANDBOX_URL: http://sandbox:8194
       COLLAB_SANDBOX_KEY: ${SANDBOX_KEY:?run ./init.sh first}
       COLLAB_SSRF_PROXY_URL: http://ssrf_proxy:3128
-      # The Agent v2 service: AGENT_ENABLED=true together with the profile `agent`.
+      # The Agent v2 service and its shell sandboxes (enable-agent.sh sets AGENT_ENABLED and COMPOSE_PROFILES=agent).
       COLLAB_AGENT_INLINE_ENABLED: ${AGENT_ENABLED:-false}
+      COLLAB_AGENT_SHELL_ENABLED: ${AGENT_ENABLED:-false}
       COLLAB_AGENT_SERVICE_URL: http://agent_service:5050
       COLLAB_AGENT_SERVICE_KEY: ${AGENT_SERVICE_KEY:?run ./init.sh first}
       COLLAB_LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -250,7 +251,8 @@ services:
       - "${DOCKER_GID:-999}"
     environment:
       SANDBOX_SUPERVISOR_KEY: ${AGENT_SANDBOX_SUPERVISOR_KEY}
-      SANDBOX_IMAGE: langgenius/dify-agent-local-sandbox:1.17.1
+      # Pulled by enable-agent.sh (the supervisor never pulls).
+      SANDBOX_IMAGE: langgenius/dify-agent-local-sandbox:1.17.1@sha256:f4d404c9dcdf80bd72f65e84c3f2bbd1f3404fd4b363db837176da8aaf771b1d
       SANDBOX_COMPOSE_PROJECT: ${COMPOSE_PROJECT_NAME:-dify-sf}
       SANDBOX_AGENT_PEERS: agent_service
       SANDBOX_PROXY_PEER: agent_sandbox_proxy

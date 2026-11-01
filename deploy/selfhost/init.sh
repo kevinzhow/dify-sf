@@ -136,7 +136,7 @@ SMTP_PASSWORD=
 # starttls (port 587), ssl (465) or none
 SMTP_TLS=starttls
 
-# Agent v2 nodes: AGENT_ENABLED=true and start with --profile agent (the supervisor gets the Docker socket).
+# Agent v2 nodes: ./enable-agent.sh [--codex] sets these (the sandbox supervisor gets the Docker socket).
 AGENT_ENABLED=false
 DOCKER_GID=$docker_gid
 
