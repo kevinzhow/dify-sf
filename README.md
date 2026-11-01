@@ -125,6 +125,19 @@ Run resource-intensive commands inside the host's normal build/test limits.
 For Android, install JDK 21 and the Android SDK, then run `flutter build apk --debug --split-per-abi` from `app/`.
 See the [Android guide](app/android/README.md) for SDK setup, server connections and publisher-controlled release signing.
 
+## Run your own server
+
+`deploy/selfhost` runs dify-sf for a team on one machine behind one address: the server, its database, the web
+client, Dify's plugin daemon and code sandbox, and Caddy in front (plain HTTP, or HTTPS with a Let's Encrypt
+certificate for your domain).
+
+```sh
+cd deploy/selfhost && ./init.sh http://192.168.1.20 && docker compose up -d --build   # or https://dify.example.com
+```
+
+See [Run dify-sf on your own server](docs/self-hosting.md) for requirements, clients, mail, Agent v2 nodes, updates and
+backups. The rest of this section is about development.
+
 ## Server requirements
 
 Docker. Everything builds and runs in containers (Swift 6.4.1, PostgreSQL 15, Toxiproxy 2.12.0); nothing is installed on the host.

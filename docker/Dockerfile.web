@@ -1,0 +1,44 @@
+# The web client behind Caddy: builds the Dart Wasm client exactly as tool/build_web.sh does (pinned Flutter, the
+# isolated web SDK with dify-sf's font fallback, self-hosted fonts and engine), then serves it with the reverse proxy
+# of deploy/selfhost (the API under /v1 and /files on the same origin, HTTPS when given a domain).
+#
+#   docker build -f docker/Dockerfile.web -t dify-sf-web .
+#
+# The build needs the internet (Flutter, its web artifacts, pub packages, the pinned fallback fonts) and about 4 GB of
+# memory; the result is a small Caddy image with the static files.
+
+FROM debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3 AS build
+
+# Flutter 3.47.6 (stable), the version app/ and tool/web_engine/build.py are pinned to.
+ARG FLUTTER_URL=https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.47.6-stable.tar.xz
+ARG FLUTTER_SHA256=f1631b9c2c8b3529323db412b0d1beacf4a748f8783b0d7cf599a8fd5f461675
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl git unzip xz-utils python3 python3-venv \
+ && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL "$FLUTTER_URL" -o /tmp/flutter.tar.xz \
+ && echo "$FLUTTER_SHA256  /tmp/flutter.tar.xz" | sha256sum -c - \
+ && tar -xJf /tmp/flutter.tar.xz -C /opt && rm /tmp/flutter.tar.xz \
+ && git config --global --add safe.directory /opt/flutter
+ENV PATH=/opt/flutter/bin:$PATH FLUTTER_SUPPRESS_ANALYTICS=true PUB_CACHE=/opt/pub-cache
+RUN flutter config --no-analytics >/dev/null && flutter precache --web --no-android --no-ios >/dev/null
+# The font subsetter's pinned tools (tool/fonts/subset.py).
+RUN python3 -m venv /opt/fonttools && /opt/fonttools/bin/pip install --no-cache-dir 'fonttools[woff]==4.59.0' 'brotli==1.1.0'
+
+WORKDIR /src
+# The CJK font subsets take long to cut: their own layer, rebuilt only when the fonts or the translations change.
+COPY tool/fonts/ tool/fonts/
+COPY app/assets/fonts/cjk/ app/assets/fonts/cjk/
+COPY app/assets/i18n/ app/assets/i18n/
+COPY app/assets/extension_i18n/ app/assets/extension_i18n/
+RUN /opt/fonttools/bin/python tool/fonts/subset.py
+COPY app/ app/
+COPY packages/ packages/
+COPY tool/ tool/
+COPY third_party/ third_party/
+RUN cd app && flutter pub get >/dev/null
+RUN FONTTOOLS_PYTHON=/opt/fonttools/bin/python tool/build_web.sh --output /web
+
+FROM caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+COPY --from=build /web /srv/web
+COPY deploy/selfhost/Caddyfile /etc/caddy/Caddyfile

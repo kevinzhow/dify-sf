@@ -1,0 +1,6 @@
+# Added by COMPOSE_FILE (init.sh) when Caddy does HTTPS itself: publish port 443 (and HTTP/3).
+services:
+  gateway:
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"

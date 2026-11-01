@@ -10,3 +10,8 @@ server/.swiftpm
 **/build
 .fvm
 tool/visual/.venv
+
+# The self-hosting kit's generated keys never enter a build context.
+deploy/selfhost/.env
+deploy/selfhost/codex/
+deploy/selfhost/.codex-download.*

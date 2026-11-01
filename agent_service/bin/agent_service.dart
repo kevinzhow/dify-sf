@@ -20,7 +20,8 @@ import 'package:agent_service/agent_service.dart';
 ///   AGENT_CODEX_RUNTIME official (default) | port: what runs harness_style
 ///                      codex (the Codex binary in the sandbox, or the Dart port)
 ///   AGENT_CODEX_GATEWAY_URL the Codex Responses entry as sandboxes reach it,
-///                      when the supervisor's grant has none (local tests)
+///                      when the supervisor's grant has none (a gateway
+///                      attached as an agent peer, or a test gateway)
 Future<void> main(List<String> args) async {
   if (args.contains('--healthcheck')) {
     await healthcheck('AGENT_SERVICE_KEY', 'AGENT_SERVICE_PORT', 5050);
