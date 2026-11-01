@@ -75,7 +75,7 @@ Without `AGENT_SANDBOX_SUPERVISOR_URL`, `tools.shell: true` fails with `sandbox_
 | `AGENT_SANDBOX_SUPERVISOR_KEY` | required with the URL | The supervisor's bearer key |
 | `AGENT_EXECUTOR_PROFILES` | `/etc/dify-sf/executor-profiles.json` | The executor profile file (docs/agent-v2.md, "Executor profiles"); without a file at the default path only the implicit `default`. A file that does not validate stops the process (exit 64) |
 | `AGENT_CODEX_RUNTIME` | `official` | What runs `harness_style: codex`: `official` (the Codex binary in the sandbox) or `port` (the Dart port) |
-| `AGENT_CODEX_GATEWAY_URL` | none | The Codex Responses entry as sandboxes reach it, used when the supervisor's grant has none (local tests) |
+| `AGENT_CODEX_GATEWAY_URL` | none | The Codex Responses entry as sandboxes reach it, used when the supervisor's grant has none: a gateway attached to every sandbox as an agent peer (`SANDBOX_AGENT_PEERS`), which keeps the package proxy (`deploy/selfhost/codex.yml`), or a test gateway |
 
 The supervisor (`sandbox_supervisor`) reads:
 

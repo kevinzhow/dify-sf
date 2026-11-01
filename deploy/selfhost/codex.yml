@@ -1,0 +1,53 @@
+# Added by COMPOSE_FILE (./enable-agent.sh --codex): the official Codex CLI for Agent nodes with `harness_style: codex`.
+#
+# The default executor profile (executor-profiles.json, written by enable-agent.sh) mounts the pinned Codex binary at
+# /opt/codex. Codex reaches the model through codex_gateway, which the supervisor attaches to every sandbox network as
+# an agent peer: it passes only the Codex Responses route to the server, which holds the provider credentials. The
+# package proxy (agent_sandbox_proxy) stays the sandboxes' way out to PyPI and npm.
+x-profiles: &profiles
+  type: bind
+  source: ./executor-profiles.json
+  target: /etc/dify-sf/executor-profiles.json
+  read_only: true
+  bind:
+    create_host_path: false   # run ./enable-agent.sh --codex first
+
+services:
+  agent_service:
+    environment:
+      # Sandboxes resolve the gateway by its container name (the supervisor attaches it without aliases).
+      AGENT_CODEX_GATEWAY_URL: http://${COMPOSE_PROJECT_NAME:-dify-sf}-codex_gateway-1:3128/inner/agent/codex/v1
+    volumes:
+      - *profiles
+
+  sandbox_supervisor:
+    environment:
+      SANDBOX_AGENT_PEERS: agent_service,codex_gateway
+    volumes:
+      - *profiles
+    depends_on:
+      codex_gateway:
+        condition: service_healthy
+
+  codex_gateway:
+    restart: unless-stopped
+    profiles: [agent]
+    image: nginx:1.30.6-alpine@sha256:0e52bd054126cdc040b1276c0af347aeb02a41b9cfe305d6094767ac30e97949
+    # The template is the repository's (agent_service/deploy); the server is its only upstream.
+    entrypoint: ["sh", "-c", "sed 's/[$]{CODEX_UPSTREAM}/server:8080/g' /etc/nginx/codex-gateway.conf.template > /tmp/nginx.conf && exec nginx -c /tmp/nginx.conf -g 'daemon off;'"]
+    volumes:
+      - ../../agent_service/deploy/codex-gateway.conf.template:/etc/nginx/codex-gateway.conf.template:ro
+    user: "101:101"
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      # Everything but the Codex route answers 403.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3128/ 2>&1 | grep -q 403"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 3s
+    mem_limit: 64m
