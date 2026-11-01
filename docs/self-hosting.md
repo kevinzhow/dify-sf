@@ -81,9 +81,10 @@ An Agent node runs one of two harnesses (the Soul's `harness_style`, see [Agents
 
 Sandboxes reach only PyPI and npm, through `agent_sandbox_proxy` (`docker/agent_sandbox_proxy/allowlist.txt`), with or
 without Codex. Codex's model calls go to `codex_gateway`, which passes only the Codex route to the server; the provider
-keys stay in the server. They use the HTTP transport (one request per model call, for every provider); the Responses
-WebSocket transport, which the server can use for the official OpenAI endpoint ([Agents](agents.md) 6.10), is not part
-of the kit.
+keys stay in the server. They use the HTTP transport, for every provider: each model call sends the whole conversation
+again, and a request may carry at most 128 MiB (96 MiB of files) through the gateway and the server; providers may
+accept less. Long sessions with large images can reach that limit. The Responses WebSocket transport, which sends only
+the new input after the first call (official OpenAI endpoint, [Agents](agents.md) 6.10), is not part of the kit yet.
 
 To turn Agent nodes off: in `.env` set `AGENT_ENABLED=false`, empty `COMPOSE_PROFILES` and drop `:codex.yml` from
 `COMPOSE_FILE`; then `docker compose --profile agent rm -sf agent_service sandbox_supervisor agent_sandbox_proxy
