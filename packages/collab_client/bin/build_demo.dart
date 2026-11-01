@@ -84,6 +84,8 @@ Future<void> main(List<String> argv) async {
     final known = file.existsSync()
         ? [for (final a in jsonDecode(file.readAsStringSync()) as List<Object?>) (a! as Map<String, Object?>)]
         : <Map<String, Object?>>[];
+    // A file written by an older version may still be readable by others: owner only from now on.
+    if (file.existsSync() && (Platform.isLinux || Platform.isMacOS)) await Process.run('chmod', ['600', file.path]);
     final rng = Random.secure();
     for (var i = known.length; i < clients.length; i++) {
       final name = clients[i]['name']! as String;
@@ -98,7 +100,7 @@ Future<void> main(List<String> argv) async {
       final password = 'demo${List.generate(16, (_) => rng.nextInt(36).toRadixString(36)).join()}7';
       await auth.api.activate(token: token, name: name, password: password);
       known.add({'email': email, 'password': password, 'name': name});
-      file.writeAsStringSync(const JsonEncoder.withIndent(' ').convert(known));
+      await writePrivate(file, const JsonEncoder.withIndent(' ').convert(known));
     }
     for (final a in known.take(clients.length)) {
       final s = AuthSession(api: HttpAuthApi(url));
@@ -168,4 +170,18 @@ Future<void> main(List<String> argv) async {
   }
   stdout.writeln(const JsonEncoder.withIndent('  ').convert(summary));
   exit(report.ok ? 0 : 1);
+}
+
+/// Writes [text] to [file] readable by the owner only (it holds passwords): a 0600 temporary file, then renamed over
+/// [file], as the token store does.
+Future<void> writePrivate(File file, String text) async {
+  final tmp = File('${file.path}.tmp');
+  await tmp.parent.create(recursive: true);
+  await tmp.writeAsString('');
+  if (Platform.isLinux || Platform.isMacOS) {
+    final r = await Process.run('chmod', ['600', tmp.path]);
+    if (r.exitCode != 0) throw FileSystemException('chmod 600 failed: ${r.stderr}', tmp.path);
+  }
+  await tmp.writeAsString(text, flush: true);
+  await tmp.rename(file.path);
 }

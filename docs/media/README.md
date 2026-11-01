@@ -7,8 +7,8 @@ the demo in Chromium at 1500x1080.
 ## The build demo (`build-demo.mp4`, 97 s, 1080p, with sound)
 
 The browser is "you": the ordinary dify-sf web editor, driven by a recording script (pointer, clicks, typing; your
-pointer is drawn into the video, as screen captures leave it out). The 100 other people are processes using dify-sf's
-client library, each signed in as its own editor account and driven by a plan, not people.
+pointer is drawn into the video, as screen captures leave it out). The 100 other people are client sessions of dify-sf's
+client library in one Dart process, each signed in as its own editor account and driven by a plan, not people.
 
 1. You open the workflow, which has only a Start and an End node, and look at the Start node's inputs. Nobody else is
    there.
