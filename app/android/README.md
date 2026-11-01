@@ -9,6 +9,9 @@ On first launch, enter the server origin, including `http://` or `https://` and
 any port, for example `http://192.168.1.10:8080`. Do not append `/v1` or a console
 path. HTTP and HTTPS are both supported; the deployment owner chooses which to use.
 HTTPS uses normal Android certificate and hostname validation.
+It trusts both system roots and certificates the device owner installs, including
+in release builds. This is intentional for private deployments: the owner controls
+which certificate authorities the device trusts.
 
 Sign in with an account on that server. The server address is remembered across
 restarts. The account menu has **Switch server**; the connection screen also has

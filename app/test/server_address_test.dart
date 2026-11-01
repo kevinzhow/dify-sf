@@ -24,6 +24,14 @@ void main() {
     'https://exa mple.com',
     'http://localhost:0',
     'http://localhost:65536',
+    'http://192.168.1.999',
+    'http://1.2.3',
+    'http://123',
+    'http://010.0.0.1',
+    'http://0x7f.0.0.1',
+    'http://dify.0x7f',
+    'http://[1]',
+    'http://[::::]',
   ]) {
     test('refuses a server choice that is not an origin: $value', () {
       expect(() => normalizeServerAddress(value), throwsA(isA<ServerAddressException>()));

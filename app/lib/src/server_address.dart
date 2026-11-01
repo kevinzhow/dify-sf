@@ -39,6 +39,16 @@ String normalizeServerAddress(String value) {
       uri.port > 65535) {
     throw const ServerAddressException(ServerAddressProblem.invalidOrigin);
   }
+  // Numeric final labels are interpreted as IPv4 by browsers. Reject shorthand,
+  // hexadecimal, octal and out-of-range forms instead of saving another origin
+  // than the web client would use. Uri already validates bracketed IPv6.
+  if (RegExp(r'^(?:[0-9]+|0x[0-9a-f]*)$').hasMatch(uri.host.split('.').last)) {
+    try {
+      Uri.parseIPv4Address(uri.host);
+    } on FormatException {
+      throw const ServerAddressException(ServerAddressProblem.invalidOrigin);
+    }
+  }
   return uri.origin;
 }
 
