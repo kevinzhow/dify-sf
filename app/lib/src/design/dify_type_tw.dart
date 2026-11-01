@@ -173,6 +173,9 @@ abstract final class DifyTw {
   /// `text-[10px] font-medium` (dify-ui Avatar `sm`'s initial)
   static const text10Medium = DifyTextStyle(TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: 0));
 
+  /// `text-[11px] font-medium` (collaboration/user-cursors.tsx: a collaborator's name beside their cursor)
+  static const text11Medium = DifyTextStyle(TextStyle(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0));
+
   /// `text-xl font-semibold` (the follow-up settings dialog title)
   static const textXlSemibold = DifyTextStyle(
     TextStyle(

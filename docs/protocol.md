@@ -1,4 +1,4 @@
-# dify-sf collaboration protocol, version 1.21
+# dify-sf collaboration protocol, version 1.22
 
 Status: additive extensions to the collaboration, console and draft-runtime APIs. Breaking changes will be listed in the "Changes" section at the very top of this file.
 
@@ -10,11 +10,15 @@ section 9 describes the same algorithm in prose.
 ## Changes
 
 The entries below describe when each capability was introduced. Current runtime discovery reports
-`workflow_runtime.protocol_version: "1.21"` when the model runtime or human-input web forms are enabled;
+`workflow_runtime.protocol_version: "1.22"` when the model runtime or human-input web forms are enabled;
 individual flags and per-request validation still determine availability. Inline Agent v2 execution is a separately
 gated extension: use `inline_agent` / `inline_agent_shell` and the [Agent v2 contract](agent-v2.md), rather than
 inferring Agent support from the protocol version or the ordinary `draft_run` node list.
 
+* 1.22 (additive): **presence**: who has a document open, their pointer on the canvas and the node whose panel they have
+  open (Dify 1.17.1's online users, collaborator cursors and node viewers), through `PUT/DELETE /v1/docs/{doc}/presence`
+  and `event: presence` on the document stream ("Presence (1.22)"). `system-features` advertises
+  `collaboration_presence: true`. In memory only: nothing about it is durable.
 * 1.21 (additive): model-backed generation and TTS helpers, semantic annotation indexing, and bounded URL DSL imports
   through the configured SSRF proxy ("Helper services and semantic annotations (1.21)").
 * 1.20 (additive): published workflow and Chatflow execution through the Web and service APIs, app-scoped end users,
@@ -318,7 +322,8 @@ One **document** (a workflow graph) is edited by many clients at once.
   `Last-Event-ID` and resumes exactly where it stopped. A client that is too far behind (or has no state) gets a
   `snapshot` event instead.
 * There is no WebSocket and no server-side session state per connection. Every request is self-contained and carries
-  its bearer token (1.8); the only server memory about a client is durable (in Postgres).
+  its bearer token (1.8); the only server memory about a client is durable (in Postgres), except presence (1.22): who has
+  the document open and where their pointer is, kept in memory, best-effort and forgotten on restart.
 
 Guarantees (the three promises of the product):
 
@@ -747,6 +752,57 @@ a `normal` or `dataset_operator` member gets `403 forbidden`).
 deleted) the server sends an `event: comments` on the document's event stream (section 5) to every stream of the document
 connected to the same server process. It is a notification only: clients refetch `GET /comments` (or the one comment). The
 REST list is the truth; clients must also refetch after every (re)connect of the stream, since notifications are not replayed.
+
+### Presence (1.22): `/v1/docs/{doc}/presence`
+
+Who has a document open, where their pointer is on the canvas and which node's configuration panel they have open: what
+Dify 1.17.1 shows as the header's online users, the collaborator cursors and the avatars on a node. Presence lives **in
+the server's memory only**: not in the op log, snapshots, the export or Postgres, never replayed; a server restart forgets
+everyone and clients re-announce with their next heartbeat. Like comments and `app`, it reaches the streams of this server
+process (dify-sf runs one).
+
+The unit is the **account**: several clients of one account (tabs, devices) are one user. Each client reports its own
+state; the server merges an account's clients: the cursor and `drag` are those of the client whose pointer moved last
+(`null` if that client's pointer left the canvas or drags nothing), `panels` every node whose panel one of them has open,
+`since` when the first of them appeared.
+
+| Method | Path | Body | Answer |
+|---|---|---|---|
+| PUT | `/v1/docs/{doc}/presence` | `{"client","cursor"?,"drag"?,"panel"?}` | `204` |
+| DELETE | `/v1/docs/{doc}/presence?client=` | - | `204` |
+
+* `PUT` needs the edit role (`403 forbidden` for `normal` and `dataset_operator`: Dify 1.17.1 refuses its collaboration
+  connection to members without edit permission; their streams still receive presence). `client` is the caller's own
+  client id, bound on first use like for ops (`403` for another account's id); an unknown document is `404`.
+* `cursor`: `{"x","y"}`, the pointer in flow (document) coordinates, `(screen - viewport offset) / zoom`, finite and at most
+  1e7 in size; `null` when the pointer is not over the canvas. `panel`: the id of the node whose configuration panel the
+  client has open, or `null`. A missing field leaves the client's value unchanged.
+* `drag` (dify-sf; Dify has none): `{"node","x","y"}` while the client drags nodes: the node under its pointer and the
+  pointer's offset from that node's top-left (flow coordinates, same limits as `cursor`); `null` when the drag ends. Send
+  it once when the drag starts, with the pointer, and `null` with the pointer where it let go. The drag's positions are
+  ordinary `moveNode` ops (at most about 8 a second); viewers draw that user's pointer at the node's drawn position plus
+  the offset, so it moves exactly with the node instead of trailing it on its own, slower schedule.
+* Rate (Dify's cursor service): report the pointer at most every 300 ms and only after it moved more than `10 / zoom` on
+  either axis; report a panel when it opens or closes; and send a heartbeat (any `PUT`, e.g. `{"client"}`) at least every
+  10 s. A client not heard from for 30 s is gone. When a stream opened with `client=` ends, its client is gone 5 s later
+  unless it reports again, so a reconnecting client that re-announces after `ready` never appears to leave.
+* `DELETE`: the client is gone now (a closing tab). Any member may remove its own client; another account's id is `403`.
+
+The stream (section 5) carries `event: presence`, without an `id:`:
+
+```
+event: presence
+data: {"full":true,"left":[],"users":[{"account":"…","cursor":{"x":120.5,"y":300},"name":"Maya Chen","panels":["llm-1"],"since":1793500000000}]}
+```
+
+A user's `avatar_url`, `cursor` and `drag` are left out when they have none.
+
+* Right after `ready` every stream gets one event with `full: true`: `users` is everyone present, the caller's own account
+  included (clients leave themselves out of what they draw), ordered by `since`.
+* Then, at most every 100 ms while something changed, an event with `full: false`: `users` are the accounts that appeared
+  or changed (complete entries), `left` the account ids that are gone.
+* Applying: `full` replaces what the client knows; otherwise upsert `users` and remove `left`. A client that knows an
+  account in `users` for the first time may show that it joined.
 
 ### Apps (1.10)
 
@@ -1769,6 +1825,7 @@ Query parameters (all optional):
   bound to any account (`403 forbidden` otherwise); naming it here does not bind it.
 * `from`: the client's lowest unresolved `cseq`. Snapshot events then include `committed` for `cseq >= from`.
 * `lastEventId`: same as the `Last-Event-ID` header (for clients that cannot set headers). The header wins if both are present.
+* `presence` (1.22): `0` leaves presence events out of this stream (headless tools that never show anyone).
 * `proto` (1.6): the protocol version the client implements, `major.minor` (e.g. `1.8`); anything else is `400 bad_request`.
   Without it (or below `1.6`) the stream never carries a `restoreNode` commit; below `1.7` it never carries a commit that
   writes `$app` (see the resume rules below).
@@ -1798,6 +1855,9 @@ data: {"action":"created","comment":"0192f3a1-..."}
 
 event: app
 data: {"action":"updated"}
+
+event: presence
+data: {"full":false,"left":["…"],"users":[{"account":"…","avatar_url":null,"cursor":null,"name":"Bo","panels":[],"since":1793500000000}]}
 
 : ping
 ```

@@ -87,6 +87,8 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
     store.setCanvasReadOnly(!widget.canEdit);
     canvas.isReadOnly = () => store.nodesReadOnly;
     canvas.animatePositions = () => store.nodeAnimation.value;
+    // A collaborator's move glides (their drags arrive every 125 ms); this client's own moves are drawn at once.
+    canvas.glideMove = (id) => !widget.controller.movedHere(id);
     canvas.onInteraction = () => store.setNodeAnimation(false);
     // useWorkflow().isValidConnection, with handleNodeConnect's checks.
     canvas.isValidConnection = (source, handle, target) {

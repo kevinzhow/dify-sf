@@ -19,13 +19,13 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Area | ported | partial | not ported | n/a | dify-sf only | total |
 |---|---|---|---|---|---|---|
 | [Canvas & interactions](#canvas) | 15 | 4 | 1 | 3 | 2 | 25 |
-| [Node cards (shared chrome)](#node-chrome) | 11 |  | 3 |  |  | 14 |
+| [Node cards (shared chrome)](#node-chrome) | 12 |  | 2 |  |  | 14 |
 | [Edges & connections](#edges) | 6 |  |  |  | 1 | 7 |
 | [Block selector & node insertion](#block-selector) | 6 | 4 | 1 | 1 |  | 12 |
 | [Context menus & node actions](#context-menus) | 5 | 1 | 1 |  |  | 7 |
 | [Keyboard shortcuts & clipboard](#shortcuts) | 6 |  |  | 1 |  | 7 |
-| [Control bar & operator bar](#operator) | 4 | 2 |  |  |  | 6 |
-| [Header, checklist & publish](#header) | 6 | 3 | 1 |  |  | 10 |
+| [Control bar & operator bar](#operator) | 5 | 1 |  |  |  | 6 |
+| [Header, checklist & publish](#header) | 7 | 2 | 1 |  |  | 10 |
 | [Node panel shell & shared fields](#node-panel) | 8 | 1 | 1 |  | 1 | 11 |
 | [Prompt editor & code editor](#editors) | 4 | 1 | 1 |  |  | 6 |
 | [Node: User Input (start)](#node-start) | 4 |  |  |  |  | 4 |
@@ -63,10 +63,10 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | [Accounts, sign-in & members](#accounts) | 10 |  | 6 | 2 | 2 | 20 |
 | [Settings tabs & workspace](#settings) | 3 | 4 | 5 | 3 | 1 | 16 |
 | [App-level pages outside the editor](#app-pages) | 19 | 6 | 5 | 4 | 2 | 36 |
-| [Collaboration (dify-sf's own)](#collaboration) |  |  | 1 | 1 | 7 | 9 |
+| [Collaboration (dify-sf's own)](#collaboration) | 1 |  |  | 1 | 8 | 10 |
 | [DSL import / export](#dsl) | 1 | 1 |  |  | 1 | 3 |
 | [i18n, design tokens & UI primitives](#design) | 5 | 3 | 1 | 1 | 1 | 11 |
-| **Total** | **182** | **57** | **30** | **17** | **19** | **305** |
+| **Total** | **186** | **55** | **28** | **17** | **20** | **306** |
 
 <a id="canvas"></a>
 
@@ -115,7 +115,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Node card: iteration / loop container (sized, dotted body, children inside) | ported |  | visual `canvas-iteration`, visual `canvas-loop`, visual `canvas-loop-answer` |
 | Node card: container and note resizer (bottom-right corner) | ported | Deviation: Container size writes from two users can conflict (stale write rejected and notified), unlike Dify's silent overwrite. | spec `workflow/nodes/_base/components` |
 | Node card: hover action bar (run this step / stop, more menu) | ported | Deviation: Dify bug kept intentionally inverted: Dify 1.17.1 never shows the run button (!nodesReadOnly on an object); dify-sf shows it (owner chose B, 2026-10-18). Masked in the visual panel cases. | visual `panel-start`, visual `panel-code` |
-| Node card: avatars of collaborators viewing the node | not ported | dify-sf has no presence of other users yet (no presence channel in the protocol). |  |
+| Node card: avatars of collaborators viewing the node | ported | Deviation: Drawn above the card (scaled with the zoom) rather than inside it, so cards (captured images on native builds) never change; viewers are accounts (protocol 1.22: several tabs are one user) whose panel on the node is open. | `server/Tests/CollabTests/PresenceTests.swift`, `packages/collab_client/test/presence_test.dart` |
 | Node card: plugin not installed (lock overlay, Install button, version switch) | not ported | Needs Dify's plugin APIs and marketplace (no plugin service in dify-sf). | spec `workflow/hooks/use-node-plugin-installation.spec.ts`, spec `workflow/utils/plugin-install-check.spec.ts`, spec `workflow/utils/plugin.spec.ts` |
 | Simple node variant (2 px frame, used by snippet / preview canvases) | not ported | Only used by canvases dify-sf does not have (snippets, previews); spec cases still to do. | spec `workflow/simple-node` |
 | Block metadata: titles, icons, colours, classification per node type | ported |  | spec `workflow/hooks/use-nodes-meta-data.spec.tsx`, spec `workflow/utils/gen-node-meta-data.spec.ts`, spec `workflow/nodes` |
@@ -193,7 +193,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Zoom pill: zoom in / out, percentage, presets menu, Fit | ported |  | spec `workflow/operator/zoom-in-out.spec.tsx` |
 | Minimap (pannable, zoomable, toggle) | ported |  | visual `editor-basic-llm` |
 | Undo / redo buttons | ported | Deviation: Undo and redo only this user's own edits (owner decision 2026-10-17); see History. | spec `workflow/header/undo-redo.spec.tsx` |
-| Zoom menu: show comments / collaborator cursors toggles | partial | Both toggles are ported; the cursors toggle has nothing to show (no presence of other users yet). | spec `workflow/operator/zoom-in-out.spec.tsx` |
+| Zoom menu: show comments / collaborator cursors toggles | ported |  | spec `workflow/operator/zoom-in-out.spec.tsx` |
 
 <a id="header"></a>
 
@@ -202,7 +202,7 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Feature | Status | Reason / deviation | Evidence |
 |---|---|---|---|
 | Header: layout, editing title (Auto-Saved / Syncing), scroll to selected node | ported | Deviation: The auto-saved line opens dify-sf's session menu (link state, unsaved edits, seq); 'Syncing' reports sustained unacknowledged edits after 500ms and clears after a 250ms quiet gap; the publishing barrier always uses actual pending operations. | spec `workflow/header`, visual `editor-basic-llm` |
-| Header: online users (avatars, +N popover, click to jump to their cursor) | partial | The widget is ported, but dify-sf has no presence of other users yet, so it shows the signed-in user only and there is no cursor to jump to. | `app/test/workflow_header_binding_test.dart`, `app/test/dify_spec/workflow/header/online_users_geometry_test.dart` |
+| Header: online users (avatars, +N popover, click to jump to their cursor) | ported | Deviation: Per account (protocol 1.22: several tabs or devices of one account are one user), where Dify lists each tab; the list comes from the document stream's presence events instead of Socket.IO. | `app/test/workflow_header_binding_test.dart`, `app/test/dify_spec/workflow/header/online_users_geometry_test.dart`, `packages/collab_client/test/presence_test.dart` |
 | Header: Test Run button, Running / Listening state with Stop, test run menu (User Input, triggers, Run all) | ported | Deviation: Supported workflows use the real server runtime. Unsupported remote operations report an error; simulated execution is restricted to the explicit local demo. | spec `workflow/hooks/use-dynamic-test-run-options.spec.tsx`, visual `run-input` |
 | Header: run history popover | ported | Deviation: Lists persisted server draft runs. Simulated session runs appear only in the explicit local demo, never mixed into remote history. | visual `run-history` |
 | Header: conversation / environment / system variable buttons, Features button | ported |  | spec `workflow-app/components/workflow-header`, visual `var-env` |
@@ -678,7 +678,8 @@ Evidence: `spec` names Dify's own unit tests ported to Dart (`app/test/dify_spec
 | Offline journal and reconnect: unsent edits survive a closed tab / crash and are re-sent idempotently | dify-sf only | dify-sf client journal (per account) and the protocol's clientId + seq idempotency. | `app/test/identity_test.dart` |
 | Session menu and offline pill: link state, unsaved edits, last seq, Reconnect now | dify-sf only | dify-sf's own status UI on Dify's auto-saved line. | `app/test/home_test.dart` |
 | Refused submissions: a 403 on ops is final, one notice, editor read-only until the role allows editing | dify-sf only | dify-sf protocol 1.8 behaviour (Dify has no equivalent). | `app/test/role_downgrade_test.dart` |
-| Presence: collaborators' cursors on the canvas, who is viewing a node | not ported | dify-sf's protocol has no presence channel yet (online users show only the signed-in user). |  |
+| Presence: collaborators' cursors on the canvas, who is viewing a node | ported | Deviation: Presence is protocol 1.22 (PUT /presence, event: presence on the document stream, in memory with a 30 s expiry) instead of Dify's Socket.IO; the pointer is sent with Dify's throttle (300 ms, 10 px) plus its resting position, and a cursor goes away when its pointer leaves the canvas. A cursor is pinned to the canvas (Dify eases it in screen space, so it lags while the canvas pans) and, while its owner drags nodes, drawn on the node it holds (presence `drag`), so it moves with the node; another person's node move glides into place over 160 ms. | `server/Tests/CollabTests/PresenceTests.swift`, `packages/collab_client/test/presence_test.dart` |
+| Notices when collaborators join or leave the workflow | dify-sf only | dify-sf only (Dify shows none): "Maya joined" / "Maya left" as info toasts, several arrivals within 0.8 s in one ("Maya and 4 others joined"). |  |
 | Demo mode and launch options (?server=, ?doc=, ?demo=1, ?view=, --name) | dify-sf only | dify-sf's own developer / test entry points. | `app/test/home_test.dart` |
 
 <a id="dsl"></a>

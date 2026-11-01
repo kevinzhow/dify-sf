@@ -362,7 +362,7 @@ class _LogAuditor {
                 log.add(entry);
                 lastSeq = entry.seq;
               }
-            case ReadyEvent() || PingEvent() || CommentsEvent() || AppEvent():
+            case ReadyEvent() || PingEvent() || CommentsEvent() || AppEvent() || PresenceEvent():
               break;
           }
         }

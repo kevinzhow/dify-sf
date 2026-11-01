@@ -147,9 +147,11 @@ extension Routes {
             var workflow_runtime: WorkflowRuntime?
             var inline_agent: Bool
             var inline_agent_shell: Bool
+            /// 1.22 (dify-sf only): `PUT/DELETE /v1/docs/{doc}/presence` and `event: presence` on the document stream.
+            var collaboration_presence = true
         }
         struct WorkflowRuntime: Encodable {
-            var protocol_version = "1.21"
+            var protocol_version = "1.22"
             /// Durable, creator-scoped console Chatflow conversations (published/end-user runs remain separate).
             var chatflow = true
             var published_run = true

@@ -18,6 +18,7 @@ export 'src/client/durable.dart';
 export 'src/client/events.dart';
 export 'src/client/machine.dart';
 export 'src/client/replace.dart';
+export 'src/client/presence.dart';
 export 'src/client/session.dart';
 export 'src/client/store.dart';
 export 'src/client/transport.dart';

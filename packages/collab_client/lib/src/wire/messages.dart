@@ -214,6 +214,8 @@ sealed class StreamEvent {
         return CommentsEvent.fromJson(jsonDecode(data));
       case 'app':
         return const AppEvent();
+      case 'presence':
+        return PresenceEvent.fromJson(jsonDecode(data));
       default:
         return null;
     }
@@ -376,4 +378,151 @@ final class StreamOpen {
 
   @override
   String toString() => 'StreamOpen(client=$client lastEventId=$lastEventId from=$from gen=$generation proto=$proto)';
+}
+
+/// A point on the canvas in flow (document) coordinates (protocol 1.22): `(screen - viewport offset) / zoom`.
+final class PresencePoint {
+  const PresencePoint(this.x, this.y);
+
+  factory PresencePoint.fromJson(Object? json) {
+    final m = _obj(json, 'cursor');
+    final x = m['x'], y = m['y'];
+    if (x is! num || y is! num) throw const FormatException('bad cursor');
+    return PresencePoint(x.toDouble(), y.toDouble());
+  }
+
+  final double x, y;
+
+  Map<String, Object?> toJson() => {'x': x, 'y': y};
+
+  @override
+  bool operator ==(Object other) => other is PresencePoint && other.x == x && other.y == y;
+
+  @override
+  int get hashCode => Object.hash(x, y);
+
+  @override
+  String toString() => '($x, $y)';
+}
+
+/// The node a client is dragging and where its pointer holds it: [x], [y] from the node's top-left, flow coordinates
+/// (protocol 1.22). Viewers draw that pointer on the node as it moves.
+final class PresenceDrag {
+  const PresenceDrag(this.node, this.x, this.y);
+
+  factory PresenceDrag.fromJson(Object? json) {
+    final m = _obj(json, 'drag');
+    final node = m['node'], x = m['x'], y = m['y'];
+    if (node is! String || x is! num || y is! num) throw const FormatException('bad drag');
+    return PresenceDrag(node, x.toDouble(), y.toDouble());
+  }
+
+  final String node;
+  final double x, y;
+
+  Map<String, Object?> toJson() => {'node': node, 'x': x, 'y': y};
+
+  @override
+  bool operator ==(Object other) => other is PresenceDrag && other.node == node && other.x == x && other.y == y;
+
+  @override
+  int get hashCode => Object.hash(node, x, y);
+
+  @override
+  String toString() => 'drag($node, $x, $y)';
+}
+
+/// One account present in a document (protocol 1.22): its clients merged by the server.
+final class PresenceUser {
+  const PresenceUser({
+    required this.account,
+    required this.name,
+    this.avatarUrl,
+    this.cursor,
+    this.drag,
+    this.panels = const [],
+    required this.since,
+  });
+
+  factory PresenceUser.fromJson(Object? json) {
+    final m = _obj(json, 'presence user');
+    final panels = m['panels'];
+    return PresenceUser(
+      account: m['account'] is String ? m['account']! as String : throw const FormatException('missing account'),
+      name: m['name'] is String ? m['name']! as String : '',
+      avatarUrl: m['avatar_url'] is String ? m['avatar_url']! as String : null,
+      cursor: m['cursor'] == null ? null : PresencePoint.fromJson(m['cursor']),
+      drag: m['drag'] == null ? null : PresenceDrag.fromJson(m['drag']),
+      panels: panels is List
+          ? [
+              for (final p in panels)
+                if (p is String) p,
+            ]
+          : const [],
+      since: m['since'] is int ? m['since']! as int : 0,
+    );
+  }
+
+  final String account;
+  final String name;
+  final String? avatarUrl;
+
+  /// The pointer that moved last among the account's clients; null while it is not over the canvas.
+  final PresencePoint? cursor;
+
+  /// The node that client is dragging, if any: draw the pointer on it.
+  final PresenceDrag? drag;
+
+  /// Nodes whose configuration panel one of the account's clients has open.
+  final List<String> panels;
+
+  /// When the account's first client appeared (Unix milliseconds); orders the online users.
+  final int since;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PresenceUser &&
+      other.account == account &&
+      other.name == name &&
+      other.avatarUrl == avatarUrl &&
+      other.cursor == cursor &&
+      other.drag == drag &&
+      other.since == since &&
+      other.panels.length == panels.length &&
+      Iterable<int>.generate(panels.length).every((i) => other.panels[i] == panels[i]);
+
+  @override
+  int get hashCode => Object.hash(account, name, avatarUrl, cursor, drag, since, Object.hashAll(panels));
+
+  @override
+  String toString() => 'PresenceUser($name, $cursor, $panels)';
+}
+
+/// `event: presence` (protocol 1.22): who has the document open. Best-effort like [CommentsEvent] (no `id`, not
+/// replayed). [full]: [users] is everyone (sent right after `ready`); otherwise [users] appeared or changed and [left]
+/// are the account ids that are gone.
+final class PresenceEvent extends StreamEvent {
+  const PresenceEvent({required this.full, this.users = const [], this.left = const []});
+
+  factory PresenceEvent.fromJson(Object? json) {
+    final m = _obj(json, 'presence');
+    final users = m['users'], left = m['left'];
+    return PresenceEvent(
+      full: m['full'] == true,
+      users: users is List ? [for (final u in users) PresenceUser.fromJson(u)] : const [],
+      left: left is List
+          ? [
+              for (final a in left)
+                if (a is String) a,
+            ]
+          : const [],
+    );
+  }
+
+  final bool full;
+  final List<PresenceUser> users;
+  final List<String> left;
+
+  @override
+  String toString() => 'PresenceEvent(full: $full, ${users.length} users, left: $left)';
 }

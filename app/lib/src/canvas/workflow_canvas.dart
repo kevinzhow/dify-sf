@@ -96,9 +96,12 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
   final _positions = <int, ({Offset from, Offset to})>{};
   Map<String, (int, int)> _documentPositions = {};
 
+  /// CSS ease-in-out for Dify's node animation (organize); ease-out for a collaborator's moves, which follow each other
+  /// closely and must not slow down at every step.
+  Curve _positionCurve = const Cubic(0.42, 0, 0.58, 1);
+
   void _positionFrame() {
-    const curve = Cubic(0.42, 0, 0.58, 1); // CSS ease-in-out
-    final t = curve.transform(_positionAnimation.value);
+    final t = _positionCurve.transform(_positionAnimation.value);
     for (final e in _positions.entries) {
       final n = graph.slots[e.key];
       if (n == null) continue;
@@ -155,6 +158,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
       validConnection: (source, handle, target) => canvas.isValidConnection(source, handle, target),
       nodeDrag: () => canvas.onNodeDrag,
       nodeDragStop: () => canvas.onNodeDragStop,
+      dragGrab: canvas.dragGrab,
       connectStart: () => canvas.onConnectStart,
       connectEnd: () => canvas.onConnectEnd,
       connectMove: () => canvas.onConnectMove,
@@ -324,8 +328,13 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
     }
     if (!change.isEmpty) {
       renderer.apply(change);
-      if (changedPositions && canvas.animatePositions()) {
+      final animateAll = changedPositions && canvas.animatePositions();
+      final glide = canvas.glideMove;
+      if (animateAll || (changedPositions && glide != null)) {
+        _positionCurve = animateAll ? const Cubic(0.42, 0, 0.58, 1) : Curves.easeOut;
+        _positionAnimation.duration = Duration(milliseconds: animateAll ? 200 : 160);
         for (final n in change.moved) {
+          if (!animateAll && !glide!(n.id)) continue;
           final from = before[n.slot];
           if (from == null) continue;
           _positions[n.slot] = (from: from, to: Offset(n.x, n.y));

@@ -535,6 +535,12 @@ actor DocumentSequencer {
         announce(frame)
     }
 
+    /// Protocol 1.22: a `presence` event (`PresenceRoom`), with the same best-effort rules as `announceComment`.
+    func announcePresence(_ frame: String) {
+        guard !subs.isEmpty else { return }
+        announce(frame)
+    }
+
     private func announce(_ frame: String) {
         for (id, c) in subs {
             if case .dropped = c.yield(frame) {
@@ -574,6 +580,7 @@ actor DocumentSequencer {
 /// Lazily creates one `DocumentSequencer` per document.
 actor DocumentRegistry {
     private var docs: [String: DocumentSequencer] = [:]
+    private var rooms: [String: PresenceRoom] = [:]
     private let store: PostgresStore
     private let config: ServerConfig
     private let logger: Logger
@@ -594,8 +601,18 @@ actor DocumentRegistry {
     /// The sequencer of document `id` if this process has one (never creates one).
     func existing(_ id: String) -> DocumentSequencer? { docs[id] }
 
+    /// Protocol 1.22: who has document `id` open, announced on its sequencer's streams.
+    func presence(_ id: String) -> PresenceRoom {
+        if let r = rooms[id] { return r }
+        let s = sequencer(id)
+        let r = PresenceRoom(announce: { frame in await s.announcePresence(frame) })
+        rooms[id] = r
+        return r
+    }
+
     /// Protocol 1.10: document `id`'s app was deleted: its sequencer ends its streams, refuses everything and is dropped.
     func evict(_ id: String) async {
+        rooms[id] = nil
         guard let s = docs.removeValue(forKey: id) else { return }
         await s.markDeleted()
     }

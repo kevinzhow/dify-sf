@@ -37,6 +37,7 @@ class CanvasInput {
     this.validConnection = _any,
     this.nodeDrag,
     this.nodeDragStop,
+    this.dragGrab,
     this.connectStart,
     this.connectEnd,
     this.connectMove,
@@ -55,6 +56,9 @@ class CanvasInput {
 
   /// The drag ended.
   final VoidCallback? Function()? nodeDragStop;
+
+  /// Set while nodes are dragged: the node under the pointer and where the pointer holds it ([CanvasController.dragGrab]).
+  final ValueNotifier<(String, Offset)?>? dragGrab;
 
   /// A connection drag began from a node's source handle / ended.
   final void Function(String nodeId, String handleId)? Function()? connectStart;
@@ -511,6 +515,8 @@ class CanvasInput {
     _grabRaw = snaps ? Offset(grab.x, grab.y) : null;
     _grabGroup = snaps ? {grab.slot, for (final d in graph.descendantsOf(grab.id)) d.slot} : {};
     renderer().beginMove(_moving);
+    final held = grab ?? graph.slots[_leaders.first];
+    if (held != null) dragGrab?.value = (held.id, _lastCanvas - Offset(held.x, held.y));
     // One drag is one undo step (Dify's NodeDragStop).
     controller.undo.begin(HistoryEvent.nodeDragStop, nodeId: graph.slots[_leaders.first]?.id);
     _sendTimer = Timer.periodic(const Duration(milliseconds: 125), (_) => _sendMoves());
@@ -563,6 +569,7 @@ class CanvasInput {
     _moving = {};
     renderer().endMove(done);
     graph.dragging.removeAll([for (final s in done) graph.slots[s]?.id].whereType<String>());
+    dragGrab?.value = null;
     _grabRaw = null;
     _grabGroup = {};
     nodeDragStop?.call()?.call();

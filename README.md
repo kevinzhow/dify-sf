@@ -42,15 +42,15 @@ pitfalls. In short:
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-305 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
+306 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
 
 | Status | Features |
 |---|---|
-| ported | 182 |
-| partial | 57 |
-| not ported | 30 |
+| ported | 186 |
+| partial | 55 |
+| not ported | 28 |
 | n/a | 17 |
-| dify-sf only | 19 |
+| dify-sf only | 20 |
 
 Per area, with the reason for everything not ported: [docs/features.md](docs/features.md).
 <!-- features:end -->

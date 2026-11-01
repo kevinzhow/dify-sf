@@ -538,7 +538,7 @@ class HttpFakeServer {
           onCommit(entry);
         case ReadyEvent(:final head):
           write(_frame('ready', null, {'head': head}));
-        case PingEvent() || CommentsEvent() || AppEvent():
+        case PingEvent() || CommentsEvent() || AppEvent() || PresenceEvent():
           break;
       }
     }
