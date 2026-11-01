@@ -8,15 +8,56 @@ import 'package:flutter/material.dart';
 import 'editor_controller.dart';
 import 'notices.dart';
 
-/// Non-modal notices about edits that were not applied, stacked at the bottom-left of the canvas.
-class NoticeOverlay extends StatelessWidget {
+/// Non-modal notices about edits that were not applied, stacked at the bottom-left of the canvas. Rebuilds when a
+/// notice comes or goes (each card follows its own notice), not on every other change of the document.
+class NoticeOverlay extends StatefulWidget {
   const NoticeOverlay({super.key, required this.controller});
 
   final EditorController controller;
 
   @override
+  State<NoticeOverlay> createState() => _NoticeOverlayState();
+}
+
+class _NoticeOverlayState extends State<NoticeOverlay> {
+  List<Notice> _shown = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_changed);
+    _shown = List.of(widget.controller.notices);
+  }
+
+  @override
+  void didUpdateWidget(NoticeOverlay old) {
+    super.didUpdateWidget(old);
+    if (old.controller != widget.controller) {
+      old.controller.removeListener(_changed);
+      widget.controller.addListener(_changed);
+      _shown = List.of(widget.controller.notices);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    final now = widget.controller.notices;
+    if (now.length == _shown.length && Iterable<int>.generate(now.length).every((i) => identical(now[i], _shown[i]))) {
+      return;
+    }
+    setState(() => _shown = List.of(now));
+  }
+
+  EditorController get controller => widget.controller;
+
+  @override
   Widget build(BuildContext context) {
-    if (controller.notices.isEmpty) return const SizedBox.shrink();
+    if (_shown.isEmpty) return const SizedBox.shrink();
     return Align(
       alignment: Alignment.bottomLeft,
       child: Padding(
@@ -27,7 +68,7 @@ class NoticeOverlay extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final n in controller.notices)
+              for (final n in _shown)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: _NoticeCard(key: ValueKey('notice-${n.id}'), notice: n, controller: controller),

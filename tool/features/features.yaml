@@ -330,10 +330,10 @@ features:
   area: node-chrome
   title: 'Node card: avatars of collaborators viewing the node'
   dify: [web/app/components/workflow/nodes/_base/node.tsx, web/app/components/workflow/collaboration/hooks/use-collaboration.ts]
-  status: not_ported
-  reason: dify-sf has no presence of other users yet (no presence channel in the protocol).
-  evidence: []
-  ours: []
+  status: ported
+  deviation: 'Drawn above the card (scaled with the zoom) rather than inside it, so cards (captured images on native builds) never change; viewers are accounts (protocol 1.22: several tabs are one user) whose panel on the node is open.'
+  evidence: [server/Tests/CollabTests/PresenceTests.swift, packages/collab_client/test/presence_test.dart]
+  ours: [app/lib/src/workflow_editor/collaboration/user_cursors.dart, app/lib/src/workflow_editor/collaboration/editor_presence.dart]
 - id: node-chrome.plugin-missing
   area: node-chrome
   title: 'Node card: plugin not installed (lock overlay, Install button, version switch)'
@@ -657,8 +657,7 @@ features:
   area: operator
   title: 'Zoom menu: show comments / collaborator cursors toggles'
   dify: [web/app/components/workflow/operator/zoom-in-out.tsx]
-  status: partial
-  reason: Both toggles are ported; the cursors toggle has nothing to show (no presence of other users yet).
+  status: ported
   evidence: ['spec:web/app/components/workflow/operator/__tests__/zoom-in-out.spec.tsx']
   ours: [app/lib/src/workflow_editor/operator/zoom_in_out.dart]
 
@@ -675,9 +674,9 @@ features:
   area: header
   title: 'Header: online users (avatars, +N popover, click to jump to their cursor)'
   dify: [web/app/components/workflow/header/online-users.tsx]
-  status: partial
-  reason: The widget is ported, but dify-sf has no presence of other users yet, so it shows the signed-in user only and there is no cursor to jump to.
-  evidence: [app/test/workflow_header_binding_test.dart, app/test/dify_spec/workflow/header/online_users_geometry_test.dart]
+  status: ported
+  deviation: 'Per account (protocol 1.22: several tabs or devices of one account are one user), where Dify lists each tab; the list comes from the document stream''s presence events instead of Socket.IO.'
+  evidence: [app/test/workflow_header_binding_test.dart, app/test/dify_spec/workflow/header/online_users_geometry_test.dart, packages/collab_client/test/presence_test.dart]
   ours: [app/lib/src/workflow_editor/header/online_users.dart]
 - id: header.run-mode
   area: header
@@ -1412,7 +1411,7 @@ features:
   title: 'Run a workflow on a real runtime (LLM calls, tools, HTTP, code execution)'
   dify: [api/core/workflow, web/service/workflow.ts]
   status: partial
-  reason: 'Real Swift graph execution now includes persisted draft workflow and Chatflow runs, files, models through the plugin daemon, HTTP through the strict proxy, sandbox code/templates, containers and built-in/published workflow tools. Tool invocations retain text/JSON/file outputs, selected credentials, retry/failure/stop semantics and nested run records. Published Web/API runs now use immutable versions, separate end users and durable operational logs; knowledge retrieval, Agent v2, custom/MCP tool services and OAuth remain outside the current runtime slice. Deterministic mocks are restricted to explicit demo/test mode, never a fallback for unsupported production nodes.'
+  reason: 'Real Swift graph execution now includes persisted draft workflow and Chatflow runs, files, models through the plugin daemon, HTTP through the strict proxy, sandbox code/templates, containers and built-in/published workflow tools. Tool invocations retain text/JSON/file outputs, selected credentials, retry/failure/stop semantics and nested run records. Published Web/API runs now use immutable versions, separate end users and durable operational logs; knowledge retrieval, the document extractor, triggers, Agent v1, custom/MCP tool services and OAuth remain outside the current runtime slice (inline Agent v2 runs; see the Agent rows). A graph containing any of these node types does not start (docs/migration-plan.md, next batch). Deterministic mocks are restricted to explicit demo/test mode, never a fallback for unsupported production nodes.'
   deviation: "A graph runs on the real server when all node types are advertised. Unsupported remote graphs and absent capabilities report an error, never local simulated success. Only the explicit local demo uses MockWorkflowRunService."
   evidence: [app/test/workflow_editor/run, app/test/workflow_editor/run/server_run_service_test.dart, app/test/workflow_editor/run/server_runtime_e2e_test.dart, packages/collab_client/test/runtime_e2e_test.dart]
   ours: [app/lib/src/workflow_editor/run/run_service.dart, app/lib/src/workflow_editor/run/server_run_service.dart, app/lib/src/workflow_editor/run/mock_run_service.dart]
@@ -2273,10 +2272,18 @@ features:
   area: collaboration
   title: 'Presence: collaborators'' cursors on the canvas, who is viewing a node'
   dify: [web/app/components/workflow/collaboration/components/user-cursors.tsx, web/app/components/workflow/collaboration/utils/user-color.ts]
-  status: not_ported
-  reason: dify-sf's protocol has no presence channel yet (online users show only the signed-in user).
+  status: ported
+  deviation: 'Presence is protocol 1.22 (PUT /presence, event: presence on the document stream, in memory with a 30 s expiry) instead of Dify''s Socket.IO; the pointer is sent with Dify''s throttle (300 ms, 10 px) plus its resting position, and a cursor goes away when its pointer leaves the canvas. A cursor is pinned to the canvas (Dify eases it in screen space, so it lags while the canvas pans) and, while its owner drags nodes, drawn on the node it holds (presence `drag`), so it moves with the node; another person''s node move glides into place over 160 ms.'
+  evidence: [server/Tests/CollabTests/PresenceTests.swift, packages/collab_client/test/presence_test.dart]
+  ours: [app/lib/src/workflow_editor/collaboration/user_cursors.dart, app/lib/src/workflow_editor/collaboration/editor_presence.dart, app/lib/src/workflow_editor/header/online_users.dart]
+- id: collaboration.join-notices
+  area: collaboration
+  title: 'Notices when collaborators join or leave the workflow'
+  dify: []
+  status: dify_sf_only
+  reason: 'dify-sf only (Dify shows none): "Maya joined" / "Maya left" as info toasts, several arrivals within 0.8 s in one ("Maya and 4 others joined").'
   evidence: []
-  ours: [app/lib/src/workflow_editor/header/online_users.dart]
+  ours: [app/lib/src/workflow_editor/collaboration/editor_presence.dart]
 - id: collaboration.demo
   area: collaboration
   title: 'Demo mode and launch options (?server=, ?doc=, ?demo=1, ?view=, --name)'

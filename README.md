@@ -21,6 +21,53 @@ storage. Built-in and published workflow tools, durable Chatflow and published w
 * `server/` - the SwiftPM package (`CollabCore`, `CollabServer`, `CollabStore`, simulator, harness).
 * `bench/` - chaos and storm runners.
 
+## Why dify-sf
+
+dify-sf reimplements Dify 1.17.1's workflow studio (Swift server, Flutter client) and reads and writes the same DSL
+files. What it adds, each backed by a measurement in this repository:
+
+[![100 clients build one workflow together, then the editor runs it](docs/media/build-demo-preview.webp)](docs/media/build-demo.mp4)
+
+*You open a workflow; 100 people join one by one, each signed in as their own account, and build its 81 nodes around
+you (code, templates, IF/ELSE, variable aggregators, links across lanes). You see who drags what and who has which node
+open. You rename a node while offline as Kai renames it too: your change is refused and you are told, with the choice to
+re-apply it or keep Kai's. Then you run the workflow: 79 nodes in 3.6 s. Every client ends identical to the server and
+every confirmed edit is in the server log; the 2 edits refused as conflicts were each reported to their author. The 100
+people are scripts using dify-sf's client library. [The full video with sound](docs/media/build-demo.mp4) ·
+[how it was made](docs/media/README.md).*
+
+**Collaborative editing never loses work silently.** Every edit is confirmed by the server. A write that would overwrite
+a value its author has not seen is refused, and the author is told who changed it, with buttons to apply it again or
+discard it. In Dify 1.17.1, measured with real Chromium tabs, two people changing different fields of the same node lost
+an edit in 3 of 20 runs, and two people renaming the same node lost one of the names in every run. Across a catalog of 88
+conflict cases Dify loses an edit in 33, dify-sf in none ([comparison](docs/results/dify-vs-difysf.md)).
+
+![An edit made offline is refused because another member changed the same title; the editor names her and offers to re-apply or discard](docs/media/conflict.webp)
+
+**It holds up under load and faults.** 100 client processes editing one 500-node workflow, one 120-second round per network
+profile, with dropped connections, killed clients and the server killed with `kill -9` every 25-40 s: 180,124 edits in 19
+rounds and no broken guarantee ([storm results](docs/results/storm-100c-sweeps.md)). Edits not yet sent survive a closed
+tab or a crash and are sent again when the client reconnects, at most once.
+
+**The same editor in the browser, on the desktop and on a phone.** The Flutter studio runs in the browser (Dart Wasm) and
+as a Linux desktop app. In Android browsers it has touch gestures and compact layouts for phones
+([mobile support](docs/mobile-support.md)). Light and dark themes follow Dify's design tokens.
+
+![The workflow editor with a node panel open](docs/media/editor.webp)
+
+| Dark theme | Phone (Android browser) |
+|---|---|
+| ![The editor in the dark theme](docs/media/editor-dark.webp) | ![The Studio and a node panel on a phone](docs/media/phone.webp) |
+
+**Built for AI agents too.** The desktop client can serve a read-only MCP server whose `check_workflow` runs the editor's
+own checklist, so an agent checks a workflow exactly as a person would see it before delivering it
+([agent guide](docs/agents.md)). Agent nodes can run with Codex in an isolated sandbox ([Agent v2](docs/agent-v2.md)).
+
+**Fewer moving parts.** Dify 1.17.1's default Docker Compose starts 16 services. dify-sf's editing server needs 2 (the server
+and PostgreSQL); with the model, code and HTTP runtime and the Agent service it is 9. The web client is static files.
+
+What is not ported yet, and why: [feature parity](#feature-parity-with-dify-1171) below and [the plan](docs/migration-plan.md).
+
 ## For AI agents
 
 Dify SF has no command-line tool. An agent uses the console HTTP API and the native client's read-only MCP server.
@@ -42,15 +89,15 @@ pitfalls. In short:
 <!-- features:begin -->
 ## Feature parity with Dify 1.17.1
 
-305 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
+306 features of Dify 1.17.1's workflow editor and the pages around it, tracked one by one in [docs/features.md](docs/features.md) (generated from `tool/features/features.yaml`):
 
 | Status | Features |
 |---|---|
-| ported | 182 |
-| partial | 57 |
-| not ported | 30 |
+| ported | 186 |
+| partial | 55 |
+| not ported | 28 |
 | n/a | 17 |
-| dify-sf only | 19 |
+| dify-sf only | 20 |
 
 Per area, with the reason for everything not ported: [docs/features.md](docs/features.md).
 <!-- features:end -->

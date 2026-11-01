@@ -11,6 +11,7 @@ import 'durable.dart';
 import 'events.dart';
 import 'machine.dart';
 import 'replace.dart';
+import 'presence.dart';
 import 'store.dart';
 import 'transport.dart';
 
@@ -158,6 +159,11 @@ class CollabSession {
   /// Fires (coalesced) whenever the view, status or pending ops changed. Broadcast.
   Stream<void> get changes => _changes.stream;
 
+  /// Presence (protocol 1.22): who else has the document open, and this client's pointer and open panel. Reporting
+  /// starts with [SessionPresence.enable] once the server advertises `collaboration_presence`.
+  late final SessionPresence presence = SessionPresence(transport, () => _started ? _machine.id : '');
+  bool _started = false;
+
   /// What the user sees: confirmed state plus unresolved local ops. Do not mutate; do not retain.
   Document get view => _machine.view;
 
@@ -206,6 +212,7 @@ class CollabSession {
         ? ClientMachine(id: id, journaled: journaled, config: config, random: _random)
         : ClientMachine.restore(saved, journaled: journaled, config: config, random: _random);
     _running = true;
+    _started = true;
     _lastQueuedRevision = _machine.durableRevision;
     // Counters must be on disk before anything is sent, even when nothing changed since the last run.
     if (saved == null) _journal?.write(_machine.durable);
@@ -336,6 +343,7 @@ class CollabSession {
     _ticker?.cancel();
     await _streamSub?.cancel();
     _streamSub = null;
+    await presence.close();
     transport.close();
     await _events.close();
     await _comments.close();
@@ -440,7 +448,10 @@ class CollabSession {
               _comments.add(e);
             } else if (e is AppEvent) {
               _appEvents.add(e);
+            } else if (e is PresenceEvent) {
+              presence.apply(e);
             } else if (e is ReadyEvent) {
+              presence.onReady();
               _comments.add(const CommentsEvent.resync());
               if (_appReadyOnce) _appEvents.add(const AppEvent.resync());
               _appReadyOnce = true;

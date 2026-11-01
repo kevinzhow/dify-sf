@@ -125,7 +125,10 @@ class EditorController extends ChangeNotifier {
   /// Undo and redo of this client's own structural edits (Dify's history).
   late final undo = UndoManager(
     doc: () => doc,
-    submit: (op) => session.edit(op),
+    submit: (op) {
+      _noteLocal(op);
+      session.edit(op);
+    },
     newId: newId,
     restoreNode: RestoreNode.new, // protocol 1.6
   );
@@ -133,7 +136,26 @@ class EditorController extends ChangeNotifier {
   /// Submits [op], recorded for undo under [event] (or in the step the UI opened with `undo.begin`).
   void _edit(Op op, {HistoryEvent? event, int? base}) {
     undo.record(op, event: event);
+    _noteLocal(op);
     session.edit(op, base: base);
+  }
+
+  /// When this client last moved each node (its own moves are drawn at once; a collaborator's glide, see
+  /// [movedHere]).
+  final _localMoves = <String, DateTime>{};
+
+  void _noteLocal(Op op) {
+    if (op is MoveNode) _localMoves[op.node] = DateTime.now();
+  }
+
+  /// Whether this client moved node [id] in the last second and a half (so a position change of it is not a
+  /// collaborator's).
+  bool movedHere(String id) {
+    final at = _localMoves[id];
+    if (at == null) return false;
+    if (DateTime.now().difference(at) < const Duration(milliseconds: 1500)) return true;
+    _localMoves.remove(id);
+    return false;
   }
 
   /// A `moveNode` op: layout is last-writer-wins, so it never conflicts.

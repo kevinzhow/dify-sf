@@ -70,6 +70,8 @@ import 'variable_inspect/panel.dart';
 import 'variable_inspect/trigger.dart';
 import 'variable_panels/variable_panels.dart';
 import 'block_selector/block_selector.dart';
+import 'collaboration/editor_presence.dart';
+import 'collaboration/user_cursors.dart';
 import 'comments/comment_layer.dart';
 import 'comments/comments_panel.dart';
 import 'comments/comments_store.dart';
@@ -358,6 +360,15 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       widget.commentsStore ??
       (_ownComments ??= CommentsStore.forSession(controller.session, accountId: widget.user?.id));
 
+  /// Presence (protocol 1.22): who else is here, their pointers and open panels; tied to the controller's session.
+  EditorPresence? _ownPresence;
+  EditorPresence get _presence => _ownPresence ??= EditorPresence(
+    controller,
+    self: widget.user?.id ?? controller.session.clientId,
+    selfName: widget.user?.name ?? controller.session.displayName ?? '',
+    selfAvatar: widget.user?.avatarUrl,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -377,6 +388,10 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
       _ownComments?.dispose();
       _ownComments = null;
     }
+    if (old.controller != controller || old.user?.id != widget.user?.id) {
+      _ownPresence?.dispose();
+      _ownPresence = null;
+    }
   }
 
   @override
@@ -384,6 +399,7 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
     _stopAudition();
     _audioPlayer.dispose();
     _ownComments?.dispose();
+    _ownPresence?.dispose();
     _versions?.dispose();
     super.dispose();
   }
@@ -532,7 +548,9 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => EditorPresenceScope(presence: _presence, child: Builder(builder: _buildEditor));
+
+  Widget _buildEditor(BuildContext context) {
     // dify-sf is a collaborative editor: Dify's collaboration chrome (comment mode, online users) is on.
     final options = OperatorOptions(
       collaborationEnabled: true,
@@ -622,6 +640,10 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                             LiveNoteBinding(controller: controller, canvas: canvas, options: menuOptions),
                             // Canvas comments: the pins, comment mode's clicks, the new comment's box and the thread.
                             CommentLayer(canvas: canvas),
+                            // Presence (1.22): this user's pointer, the others' avatars on nodes and their pointers.
+                            PresencePointerTracker(presence: _presence, canvas: canvas),
+                            NodeViewers(presence: _presence, controller: controller, canvas: canvas),
+                            UserCursors(presence: _presence, canvas: canvas),
                             CandidateNode(canvas: canvas, onPlace: _place),
                             if (widget.locateNodeId != null)
                               LocateNodeOnOpen(controller: controller, canvas: canvas, nodeId: widget.locateNodeId),
@@ -1190,7 +1212,8 @@ class _BoundHeaderState extends State<_BoundHeader> {
         fetchRunHistory: run?.fetchRunHistory,
         invalidAllLastRun: run?.invalidAllLastRun,
         isChatMode: widget.meta.isChatflow,
-        onlineUsers: _users,
+        onlineUsers: EditorPresenceScope.maybeOf(context)?.onlineUsers ?? _users,
+        cursorOf: EditorPresenceScope.maybeOf(context)?.cursorOf,
         currentUserId: widget.user?.id ?? widget.controller.session.clientId,
         canEdit: widget.access.canEdit,
         canRun: widget.access.canRun,

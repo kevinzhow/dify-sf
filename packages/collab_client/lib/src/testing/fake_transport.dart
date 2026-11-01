@@ -75,6 +75,15 @@ class FakeNetwork {
 const _appDeleted = TransportException('the app was deleted', statusCode: 404, code: 'app_deleted');
 
 class FakeTransport implements CollabTransport {
+  /// Presence reports this transport was asked to send (protocol 1.22), oldest first: (client, report or null = delete).
+  final List<(String, PresenceReport?)> presenceReports = [];
+
+  @override
+  Future<void> putPresence(String client, PresenceReport report) async => presenceReports.add((client, report));
+
+  @override
+  Future<void> deletePresence(String client) async => presenceReports.add((client, null));
+
   FakeTransport(this.server, {FakeNetwork? network, this.auth}) : network = network ?? FakeNetwork();
 
   final FakeServer server;

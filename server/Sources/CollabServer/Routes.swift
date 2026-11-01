@@ -72,6 +72,7 @@ struct Routes: Sendable {
         r.post("v1", "docs", ":doc", "ops") { req in await handle(req) { try await submit(req, doc: try docId(req)) } }
         r.get("v1", "docs", ":doc", "events") { req in await handle(req) { try await events(req, doc: try docId(req)) } }
         registerComments(on: r)
+        registerPresence(on: r)
         registerModels(on: r)
         registerProviderPlugins(on: r)
         registerAgentComposer(on: r)
@@ -522,8 +523,15 @@ struct Routes: Sendable {
         headers[.contentType] = "text/event-stream"
         headers[.cacheControl] = "no-store"
         headers[HTTPField.Name("X-Accel-Buffering")!] = "no"
+        let presence = await registry.presence(doc)
+        // 1.22: `presence=0` (headless tools) leaves presence out of this stream.
+        let wantsPresence = q["presence"] != "0"
+        let presenceStream: Int? = if let client { await presence.streamStarted(client: client) } else { nil }
         let stream = try Response.Body(stream: { writer in
-            defer { Task { await sequencer.unsubscribe(sub.id) } }
+            defer {
+                Task { await sequencer.unsubscribe(sub.id) }
+                if let client, let presenceStream { Task { await presence.streamEnded(client: client, stream: presenceStream) } }
+            }
             do {
                 try await writer.write("retry: 1000\n\n")
                 switch sub.plan {
@@ -542,7 +550,12 @@ struct Routes: Sendable {
                     }
                 }
                 try await writer.write(try StreamEvent.ready(head: sub.head).sseFrame())
-                for await frame in sub.live { try await writer.write(frame) }
+                // 1.22: everyone present, then the changes as they come (in `sub.live`).
+                if wantsPresence, let frame = await presence.fullFrame() { try await writer.write(frame) }
+                for await frame in sub.live {
+                    if !wantsPresence, frame.hasPrefix("event: \(PresenceEvent.eventName)\n") { continue }
+                    try await writer.write(frame)
+                }
             } catch {
                 logger.debug("stream for \(doc) ended: \(error)")
                 throw error

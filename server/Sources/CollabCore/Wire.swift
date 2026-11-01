@@ -527,3 +527,69 @@ public struct AppEvent: Hashable, Codable, Sendable {
 
     public func sseFrame() throws -> String { "event: \(Self.eventName)\ndata: \(try WireJSON.encodeString(self))\n\n" }
 }
+
+// MARK: - Presence (1.22)
+
+/// A point on the canvas in flow (document) coordinates: `(screen - viewport offset) / zoom`, Dify's cursor position.
+public struct PresencePoint: Hashable, Codable, Sendable {
+    public var x: Double
+    public var y: Double
+    public init(x: Double, y: Double) {
+        self.x = x
+        self.y = y
+    }
+}
+
+/// The node a client is dragging and where on it the pointer holds it (offset from the node's top-left, flow
+/// coordinates): viewers draw the pointer on the node as it moves.
+public struct PresenceDrag: Hashable, Codable, Sendable {
+    public var node: String
+    public var x: Double
+    public var y: Double
+    public init(node: String, x: Double, y: Double) {
+        self.node = node
+        self.x = x
+        self.y = y
+    }
+}
+
+/// One account present in a document (docs/protocol.md "Presence (1.22)"): its clients merged — the cursor (and drag)
+/// most recently reported by any of them, every node whose panel one of them has open, and when the first of them appeared.
+public struct PresenceUser: Hashable, Codable, Sendable {
+    public var account: String
+    public var name: String
+    public var avatar_url: String?
+    public var cursor: PresencePoint?
+    public var drag: PresenceDrag?
+    public var panels: [String]
+    /// When the account's first client appeared (Unix milliseconds); orders the online users list.
+    public var since: Int64
+    public init(account: String, name: String, avatar_url: String?, cursor: PresencePoint?, drag: PresenceDrag? = nil,
+                panels: [String], since: Int64) {
+        self.account = account
+        self.name = name
+        self.avatar_url = avatar_url
+        self.cursor = cursor
+        self.drag = drag
+        self.panels = panels
+        self.since = since
+    }
+}
+
+/// `event: presence` on the document stream. Best-effort like `CommentsEvent` (no `id:` line, not stored or replayed).
+/// `full`: `users` is everyone present (sent once right after `ready`); otherwise `users` are the accounts that appeared or
+/// changed since the previous event (complete entries) and `left` the accounts that are gone.
+public struct PresenceEvent: Hashable, Codable, Sendable {
+    public var full: Bool
+    public var users: [PresenceUser]
+    public var left: [String]
+    public init(full: Bool, users: [PresenceUser], left: [String] = []) {
+        self.full = full
+        self.users = users
+        self.left = left
+    }
+
+    public static let eventName = "presence"
+
+    public func sseFrame() throws -> String { "event: \(Self.eventName)\ndata: \(try WireJSON.encodeString(self))\n\n" }
+}

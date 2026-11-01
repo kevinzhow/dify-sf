@@ -25,6 +25,13 @@ abstract interface class CollabTransport {
   /// (`value` = the mask, `secret_ref` = the reference); the plaintext never enters ops, the log or snapshots.
   Future<({String ref, String masked})> storeSecret(String value);
 
+  /// `PUT /v1/docs/{doc}/presence` (protocol 1.22): this client's pointer and open panel. [report] says which of them
+  /// changed (unset fields are left unchanged); an empty report is a heartbeat. Throws [TransportException].
+  Future<void> putPresence(String client, PresenceReport report);
+
+  /// `DELETE /v1/docs/{doc}/presence?client=` (protocol 1.22): this client is gone. Throws [TransportException].
+  Future<void> deletePresence(String client);
+
   /// The canvas comments of this document (docs/protocol.md, "Comments"). Their change notifications arrive on the
   /// event stream as [CommentsEvent]s (`CollabSession.comments`).
   CommentsApi get comments;
@@ -63,4 +70,40 @@ class TransportException implements Exception {
   String toString() =>
       'TransportException($message${statusCode == null ? '' : ', HTTP $statusCode'}'
       '${code == null ? '' : ', $code'}${timeout ? ', timeout' : ''})';
+}
+
+/// What a client reports with `PUT /presence` (protocol 1.22): only what [setsCursor] / [setsDrag] / [setsPanel] say is
+/// sent; the server keeps the rest.
+final class PresenceReport {
+  const PresenceReport({
+    this.setsCursor = false,
+    this.cursor,
+    this.setsDrag = false,
+    this.drag,
+    this.setsPanel = false,
+    this.panel,
+  });
+
+  /// A heartbeat: changes nothing, keeps the client present.
+  const PresenceReport.heartbeat() : this();
+
+  final bool setsCursor;
+
+  /// The pointer in flow coordinates; null = not over the canvas.
+  final PresencePoint? cursor;
+  final bool setsDrag;
+
+  /// The node being dragged and where the pointer holds it; null = no drag.
+  final PresenceDrag? drag;
+  final bool setsPanel;
+
+  /// The node whose configuration panel is open; null = none.
+  final String? panel;
+
+  Map<String, Object?> toJson(String client) => {
+    'client': client,
+    if (setsCursor) 'cursor': cursor?.toJson(),
+    if (setsDrag) 'drag': drag?.toJson(),
+    if (setsPanel) 'panel': panel,
+  };
 }

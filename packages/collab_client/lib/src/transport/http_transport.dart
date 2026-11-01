@@ -33,6 +33,7 @@ class HttpTransport implements CollabTransport {
     this.connectTimeout = const Duration(seconds: 10),
     this.lastEventIdInQuery = false,
     this.accessTokenInQuery = false,
+    this.presenceEvents = true,
   }) : _base = baseUrl,
        _client = auth == null
            ? (client ?? http.Client())
@@ -59,6 +60,10 @@ class HttpTransport implements CollabTransport {
   /// browser's native EventSource, which cannot set headers). Not needed with this transport, which streams with
   /// `fetch`/HTTP and sends the header.
   final bool accessTokenInQuery;
+
+  /// Whether the event stream carries presence (protocol 1.22). Headless clients that never show anyone (the storm
+  /// tools) open it with `presence=0` and spare the decoding.
+  final bool presenceEvents;
 
   Uri _url(String suffix, [Map<String, String>? query]) => _base.replace(
     path:
@@ -153,6 +158,39 @@ class HttpTransport implements CollabTransport {
   }
 
   @override
+  Future<void> putPresence(String client, PresenceReport report) =>
+      _presence('PUT', _url('/presence'), jsonEncode(report.toJson(client)));
+
+  @override
+  Future<void> deletePresence(String client) => _presence('DELETE', _url('/presence', {'client': client}), null);
+
+  Future<void> _presence(String method, Uri url, String? body) async {
+    final abort = Completer<void>();
+    final req = http.AbortableRequest(method, url, abortTrigger: abort.future);
+    if (body != null) {
+      req
+        ..headers['Content-Type'] = 'application/json'
+        ..body = body;
+    }
+    try {
+      // The whole exchange, body included, within the timeout: a stalled answer must not hold up the next report
+      // (or the goodbye when the editor closes).
+      final (status, text) = await () async {
+        final res = await _client.send(req);
+        return (res.statusCode, await res.stream.bytesToString());
+      }().timeout(connectTimeout);
+      if (status != 204 && status != 200) throw _errorFrom(status, text);
+    } on TransportException {
+      rethrow;
+    } on TimeoutException {
+      if (!abort.isCompleted) abort.complete();
+      throw const TransportException('presence request timed out', timeout: true);
+    } on Object catch (e) {
+      throw TransportException('presence request failed: $e');
+    }
+  }
+
+  @override
   Future<void> setClientName(String client, String name) async {
     final abort = Completer<void>();
     final req =
@@ -186,6 +224,7 @@ class HttpTransport implements CollabTransport {
           if (open.from != null) 'from': '${open.from}',
           if (open.lastEventId != null && lastEventIdInQuery) 'lastEventId': '${open.lastEventId}',
           if (open.proto != null) 'proto': open.proto!,
+          if (!presenceEvents) 'presence': '0',
           if (accessTokenInQuery && auth?.accessToken != null) 'access_token': auth!.accessToken!,
         };
         final req =

@@ -51,6 +51,14 @@ class CanvasController {
 
   /// Dify's nodeAnimation flag, owned by the workflow store.
   bool Function() animatePositions = _never;
+
+  /// Whether a document move of node [id] glides into place although [animatePositions] is off: a collaborator's move
+  /// (presence, protocol 1.22; their drags arrive as positions every 125 ms). Null: never.
+  bool Function(String id)? glideMove;
+
+  /// While the user drags nodes: the node under the pointer and the pointer's offset from its top-left (canvas
+  /// coordinates). Presence reports it, so the others draw this user's pointer on the node as it moves.
+  final dragGrab = ValueNotifier<(String, Offset)?>(null);
   VoidCallback? onInteraction;
 
   static bool _never() => false;
@@ -109,6 +117,7 @@ class CanvasController {
   void dispose() {
     view.dispose();
     visualChanges.dispose();
+    dragGrab.dispose();
     dimming.dispose();
     selection.dispose();
     controlMode.dispose();

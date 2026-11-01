@@ -4,7 +4,7 @@ import Foundation
 /// configuration values or provider credentials into diagnostic metadata.
 struct BuildIdentity: Encodable, Sendable {
     let revision: String
-    let workflow_protocol = "1.21"
+    let workflow_protocol = "1.22"
     let agent_protocol = "dify-sf-agent/1"
     let client_manifest = "/version.json"
 
