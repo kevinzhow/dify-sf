@@ -81,12 +81,13 @@ Future<void> main(List<String> argv) async {
   final people = <TokenProvider>[];
   if (accountsPath != null) {
     final file = File(accountsPath);
-    final known = file.existsSync()
-        ? [for (final a in jsonDecode(file.readAsStringSync()) as List<Object?>) (a! as Map<String, Object?>)]
-        : <Map<String, Object?>>[];
+    // Checked before anything is read from it: a link could point anywhere.
     refuseLink(file.path);
     // A file written by an older version may still be readable by others: owner only from now on.
     if (file.existsSync()) await ownerOnly(file.path);
+    final known = file.existsSync()
+        ? [for (final a in jsonDecode(file.readAsStringSync()) as List<Object?>) (a! as Map<String, Object?>)]
+        : <Map<String, Object?>>[];
     final rng = Random.secure();
     for (var i = known.length; i < clients.length; i++) {
       final name = clients[i]['name']! as String;
