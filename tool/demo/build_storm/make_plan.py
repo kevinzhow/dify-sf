@@ -305,6 +305,17 @@ def make_target(g, clients) -> dict:
     dsl = start_dsl()["workflow"]["graph"]["nodes"]
     nodes = {n["id"]: {"type": n["data"]["type"], "title": n["data"]["title"], "x": n["position"]["x"],
                        "y": n["position"]["y"], "desc": ""} for n in dsl}
+    # Start keeps its imported inputs; End gets exactly the outputs the plan inserts (the report). In the document's
+    # form: lists as {"$items": [{"id", "value"}]}.
+    inserted = [op["item"] for c in clients for st in c["steps"] for op in [st.get("op") or {}]
+                if op.get("t") == "insertItem" and op.get("node") == "end"]
+    for n in dsl:
+        cfg = {"_dify_node": {"type": "custom"}, "desc": ""}
+        if n["data"]["type"] == "start":
+            cfg["variables"] = {"$items": [{"id": v["variable"], "value": v} for v in n["data"]["variables"]]}
+        else:
+            cfg["outputs"] = {"$items": inserted}
+        nodes[n["id"]]["config"] = cfg
     for nid, n in g.nodes.items():
         # The whole configuration as its owner added it, with the final description.
         nodes[nid] = {"type": n["type"], "title": n["title"], "x": n["x"], "y": int(n["y"]),

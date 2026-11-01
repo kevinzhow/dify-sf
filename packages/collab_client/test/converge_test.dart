@@ -234,6 +234,7 @@ void main() {
         'x': m['x'],
         'y': m['y'],
         'desc': ((m['config'] as Map?) ?? const {})['desc'] ?? '',
+        'config': m['config'] ?? const <String, Object?>{},
       };
     }
     final api = DocsApi(srv.url);
