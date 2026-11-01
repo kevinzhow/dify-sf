@@ -1,0 +1,33 @@
+# dify-sf behind one origin: the web client, and the API under /v1 and /files (the client's default server is the page's
+# own origin; the Android app is pointed at the same address).
+#
+# DIFYSF_SITE is the address Caddy serves (deploy/selfhost/.env, written by init.sh):
+#   :80                 plain HTTP for any host name or address (no certificate), or behind your own HTTPS proxy
+#   dify.example.com    HTTPS: Caddy obtains and renews a certificate for the domain (ports 80 and 443 reachable)
+{
+	# `email you@example.com` when ACME_EMAIL is set (expiry notices from Let's Encrypt), otherwise nothing.
+	{$CADDY_EMAIL_OPTION}
+}
+
+{$DIFYSF_SITE} {
+	# The API: events and run streams must flow at once, uploads go straight through, long requests stay open.
+	@api path /v1/* /files/* /healthz
+	handle @api {
+		reverse_proxy server:8080 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		root * /srv/web
+		encode zstd gzip
+		@shell path / /index.html
+		header @shell Cache-Control "no-store"
+		@boot path /flutter_bootstrap.js /wasm_policy.mjs /main.dart.js /main.dart.mjs /main.dart.wasm /version.json
+		header @boot Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+
+	# No `log` directive: signed file links and anonymous form tokens travel in query strings, so there is no access log.
+}

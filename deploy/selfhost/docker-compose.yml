@@ -1,0 +1,304 @@
+# dify-sf on your own server (docs/self-hosting.md). One origin for everything: Caddy serves the web client and passes
+# /v1 and /files to the server; only Caddy's ports are published.
+#
+#   cd deploy/selfhost
+#   ./init.sh http://192.168.1.20                   # or https://dify.example.com you@example.com; writes .env (once)
+#   docker compose up -d --build                    # first build takes a while (server, web client)
+#   docker compose --profile agent up -d --build    # also the Agent v2 service (needs the Docker socket)
+#
+# Code and template nodes run in Dify's sandbox, model and tool nodes in Dify's plugin daemon; both are part of this
+# stack. Keep .env (it holds the keys that decrypt stored credentials) and back up the volumes.
+
+name: ${COMPOSE_PROJECT_NAME:-dify-sf}
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  gateway:
+    <<: *restart
+    image: dify-sf-web
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.web
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      DIFYSF_SITE: ${DIFYSF_SITE:?run ./init.sh first}
+      CADDY_EMAIL_OPTION: ${ACME_EMAIL:+email ${ACME_EMAIL}}
+    # Port 443 too when Caddy does HTTPS itself (https.yml; init.sh sets COMPOSE_FILE).
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 256m
+
+  server:
+    <<: *restart
+    image: dify-sf-server
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      COLLAB_HTTP_HOST: 0.0.0.0
+      COLLAB_HTTP_PORT: "8080"
+      COLLAB_DB_HOST: postgres
+      COLLAB_DB_PORT: "5432"
+      COLLAB_DB_USER: collab
+      COLLAB_DB_PASSWORD: ${POSTGRES_PASSWORD:?run ./init.sh first}
+      COLLAB_DB_NAME: collab
+      # Encrypts model credentials and secret variables at rest. Keep it: another key cannot read what this one stored.
+      COLLAB_SECRETS_KEY: ${COLLAB_SECRETS_KEY:?run ./init.sh first}
+      COLLAB_MODELS_VALIDATE: ${COLLAB_MODELS_VALIDATE:-true}
+      # Files (uploads, run outputs, icons): signed links on the public origin.
+      COLLAB_FILES_DIRECTORY: /var/lib/collab/uploads
+      COLLAB_FILES_SIGNING_KEY: ${COLLAB_FILES_SIGNING_KEY:?run ./init.sh first}
+      COLLAB_FILES_URL: ${PUBLIC_URL:?run ./init.sh first}
+      COLLAB_FILES_INTERNAL_URL: http://server:8080
+      # Links in mail and shown for published apps.
+      COLLAB_WEBAPP_BASE_URL: ${PUBLIC_URL}
+      COLLAB_SERVICE_API_URL: ${PUBLIC_URL}
+      COLLAB_CORS_ALLOWED_ORIGINS: ${PUBLIC_URL}
+      # Outgoing mail (password reset, invitations, human input forms). Empty host = no mail.
+      COLLAB_MAIL_FROM: ${MAIL_FROM:-}
+      COLLAB_MAIL_SMTP_HOST: ${SMTP_HOST:-}
+      COLLAB_MAIL_SMTP_PORT: ${SMTP_PORT:-587}
+      COLLAB_MAIL_SMTP_USERNAME: ${SMTP_USERNAME:-}
+      COLLAB_MAIL_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      COLLAB_MAIL_SMTP_TLS: ${SMTP_TLS:-starttls}
+      COLLAB_HUMAN_INPUT_WEB_ENABLED: "true"
+      # The runtime (this stack's sandbox, SSRF proxy and plugin daemon).
+      COLLAB_PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      COLLAB_PLUGIN_DAEMON_KEY: ${PLUGIN_DAEMON_KEY:?run ./init.sh first}
+      COLLAB_SANDBOX_URL: http://sandbox:8194
+      COLLAB_SANDBOX_KEY: ${SANDBOX_KEY:?run ./init.sh first}
+      COLLAB_SSRF_PROXY_URL: http://ssrf_proxy:3128
+      # The Agent v2 service: AGENT_ENABLED=true together with the profile `agent`.
+      COLLAB_AGENT_INLINE_ENABLED: ${AGENT_ENABLED:-false}
+      COLLAB_AGENT_SERVICE_URL: http://agent_service:5050
+      COLLAB_AGENT_SERVICE_KEY: ${AGENT_SERVICE_KEY:?run ./init.sh first}
+      COLLAB_LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - file_uploads:/var/lib/collab/uploads
+    healthcheck:
+      # The image has bash but no curl.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /healthz HTTP/1.0\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200 '"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+    networks: [default, ssrf_proxy_network]
+    mem_limit: 1024m
+
+  postgres:
+    <<: *restart
+    image: postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81
+    environment:
+      POSTGRES_USER: collab
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run ./init.sh first}
+      POSTGRES_DB: collab
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collab -d collab"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    mem_limit: 512m
+
+  # Runs model and tool plugins; its database `dify_plugin` lives in the Postgres above.
+  plugin_daemon:
+    <<: *restart
+    image: langgenius/dify-plugin-daemon:0.6.11-local@sha256:9a3eaf522f20dcf8686b0a8c0db3bf9f3b5798a772f9d0b7c90cd7fd6a8c71b7
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgresql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USERNAME: collab
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_DATABASE: dify_plugin
+      DB_SSL_MODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?run ./init.sh first}
+      SERVER_PORT: "5002"
+      SERVER_KEY: ${PLUGIN_DAEMON_KEY}
+      DIFY_INNER_API_URL: http://server:8080
+      DIFY_INNER_API_KEY: ${PLUGIN_INNER_API_KEY:?run ./init.sh first}
+      PLUGIN_REMOTE_INSTALLING_ENABLED: "false"
+      PLUGIN_WORKING_PATH: /app/storage/cwd
+      PLUGIN_STORAGE_TYPE: local
+      PLUGIN_STORAGE_LOCAL_ROOT: /app/storage
+      PLUGIN_INSTALLED_PATH: plugin
+      PLUGIN_PACKAGE_CACHE_PATH: plugin_packages
+      PLUGIN_MEDIA_CACHE_PATH: assets
+      FORCE_VERIFYING_SIGNATURE: "true"
+      PYTHON_ENV_INIT_TIMEOUT: "600"
+      PLUGIN_INSTALL_TIMEOUT: "900"
+      PLUGIN_MAX_EXECUTION_TIMEOUT: "600"
+      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+    volumes:
+      - plugin_storage:/app/storage
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5002/health/check"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
+    mem_limit: 1024m
+
+  redis:
+    <<: *restart
+    image: redis:6-alpine@sha256:b362b5dff9d14d961dc3352db4776aba6a8c53ca2661d7c74ad2c121f82cdaea
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--maxmemory", "48mb", "--save", ""]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    mem_limit: 64m
+
+  # Python / Node.js / Jinja2 for code and template nodes; its only way out is ssrf_proxy.
+  sandbox:
+    <<: *restart
+    image: langgenius/dify-sandbox:0.2.15@sha256:750e1111426ef31a9217b81c98cccfb750f17b182af3221102e420afa9f0928e
+    environment:
+      API_KEY: ${SANDBOX_KEY}
+      GIN_MODE: release
+      WORKER_TIMEOUT: "15"
+      ENABLE_NETWORK: "true"
+      HTTP_PROXY: http://ssrf_proxy:3128
+      HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: "8194"
+      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+    volumes:
+      - ../../docker/sandbox/config.yaml:/conf/config.yaml:ro
+      - sandbox_dependencies:/dependencies
+    depends_on:
+      ssrf_proxy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8194/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
+    networks: [ssrf_proxy_network]
+    mem_limit: 512m
+
+  # Forward proxy refusing private destinations, for the sandbox and HTTP request nodes.
+  ssrf_proxy:
+    <<: *restart
+    image: ubuntu/squid:latest@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
+    volumes:
+      - ../../docker/ssrf_proxy/squid.conf:/etc/squid/squid.conf:ro
+    healthcheck:
+      test: ["CMD", "squid", "-k", "check"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [ssrf_proxy_network, default]
+    mem_limit: 128m
+
+  # ---- profile `agent`: the Agent v2 service and its sandboxes (docs/agent-v2.md). The supervisor gets the Docker
+  # socket and creates one container per execution: only enable it on a host where that is acceptable. ----
+  agent_service:
+    <<: *restart
+    profiles: [agent]
+    image: dify-sf-agent-service
+    build:
+      context: ../../agent_service
+    environment:
+      AGENT_SERVICE_KEY: ${AGENT_SERVICE_KEY}
+      AGENT_INNER_URL: http://server:8080
+      AGENT_SANDBOX_SUPERVISOR_URL: http://sandbox_supervisor:5060
+      AGENT_SANDBOX_SUPERVISOR_KEY: ${AGENT_SANDBOX_SUPERVISOR_KEY:?run ./init.sh first}
+    volumes:
+      - agent_service_data:/data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/agent_service", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    depends_on:
+      sandbox_supervisor:
+        condition: service_healthy
+    mem_limit: 512m
+
+  sandbox_supervisor:
+    <<: *restart
+    profiles: [agent]
+    image: dify-sf-agent-service
+    build:
+      context: ../../agent_service
+    entrypoint: ["/usr/local/bin/sandbox_supervisor"]
+    group_add:
+      - "${DOCKER_GID:-999}"
+    environment:
+      SANDBOX_SUPERVISOR_KEY: ${AGENT_SANDBOX_SUPERVISOR_KEY}
+      SANDBOX_IMAGE: langgenius/dify-agent-local-sandbox:1.17.1
+      SANDBOX_COMPOSE_PROJECT: ${COMPOSE_PROJECT_NAME:-dify-sf}
+      SANDBOX_AGENT_PEERS: agent_service
+      SANDBOX_PROXY_PEER: agent_sandbox_proxy
+      SANDBOX_SUBNET_POOL: ${AGENT_SANDBOX_SUBNET_POOL:-10.213.0.0/16}
+      SANDBOX_LABEL: dify-sf.agent-sandbox=${COMPOSE_PROJECT_NAME:-dify-sf}
+      SANDBOX_STATE_FILE: /data/sandboxes.json
+      SANDBOX_MEMORY_MB: "1024"
+      SANDBOX_CPUS: "1"
+      SANDBOX_PIDS_LIMIT: "256"
+      SANDBOX_HOME_MB: "256"
+      SANDBOX_WORKSPACE_MB: "512"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - sandbox_supervisor_state:/data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/sandbox_supervisor", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    mem_limit: 128m
+
+  agent_sandbox_proxy:
+    <<: *restart
+    profiles: [agent]
+    image: ubuntu/squid:latest@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
+    volumes:
+      - ../../docker/agent_sandbox_proxy/squid.conf:/etc/squid/squid.conf:ro
+      - ../../docker/agent_sandbox_proxy/allowlist.txt:/etc/squid/allowlist.txt:ro
+    healthcheck:
+      test: ["CMD", "squid", "-k", "check"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    mem_limit: 128m
+
+networks:
+  default: {}
+  # The sandbox's only network: no route out except through ssrf_proxy.
+  ssrf_proxy_network:
+    internal: true
+
+volumes:
+  pgdata:
+  file_uploads:
+  plugin_storage:
+  sandbox_dependencies:
+  caddy_data:
+  caddy_config:
+  agent_service_data:
+  sandbox_supervisor_state:
