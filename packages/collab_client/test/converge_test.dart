@@ -150,6 +150,7 @@ import 'package:test/test.dart';
             'x': nodes[id]!['x'],
             'y': nodes[id]!['y'],
             'desc': desc(id),
+            'config': {'desc': desc(id)},
           },
       },
       'edges': {

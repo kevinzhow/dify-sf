@@ -196,13 +196,18 @@ Future<void> main(List<String> argv) async {
         p.name: [for (var i = 0; i < clients.length; i++) i].where((i) => LatencyProfile.forIndex(i) == p).length,
     };
   }
+  // One verdict for everything that reports the run: the storm checks and the target together.
+  final ok = report.ok && targetProblems.isEmpty;
+  summary
+    ..['ok'] = ok
+    ..['violations'] = [...report.violations, for (final p in targetProblems) 'target: $p'];
   writeProgress({
     'phase': 'verified',
     'clients': clients.length,
     'online': clients.length,
     'intended': report.ledger.length,
     ...report.counts,
-    'ok': report.ok && targetProblems.isEmpty,
+    'ok': ok,
     'violations': report.violations.length + targetProblems.length,
   });
 
@@ -210,11 +215,13 @@ Future<void> main(List<String> argv) async {
   if (ledgerPath != null) {
     File(ledgerPath)
       ..parent.createSync(recursive: true)
-      ..writeAsStringSync(const JsonEncoder.withIndent(' ').convert(report.toJson()));
+      ..writeAsStringSync(
+        const JsonEncoder.withIndent(' ').convert({...report.toJson(), 'summary': summary}),
+      );
     stderr.writeln('ledger written to $ledgerPath');
   }
   stdout.writeln(const JsonEncoder.withIndent('  ').convert(summary));
-  exit(report.ok && targetProblems.isEmpty ? 0 : 1);
+  exit(ok ? 0 : 1);
 }
 
 /// Refuses to read or write the accounts (passwords) through a symbolic link: it could point anywhere.

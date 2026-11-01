@@ -294,8 +294,8 @@ def final_desc(node, owner: str) -> str:
 
 
 def make_target(g, clients) -> dict:
-    """The document a convergence run must end with: every node where its owner put it, with the owner's final
-    description, and exactly the planned connections (plus the report's link to End)."""
+    """The document a convergence run must end with: every node where its owner put it, with its whole configuration
+    and the owner's final description, and exactly the planned connections (plus the report's link to End)."""
     owner = {}
     for c in clients:
         for st in c["steps"]:
@@ -306,8 +306,10 @@ def make_target(g, clients) -> dict:
     nodes = {n["id"]: {"type": n["data"]["type"], "title": n["data"]["title"], "x": n["position"]["x"],
                        "y": n["position"]["y"], "desc": ""} for n in dsl}
     for nid, n in g.nodes.items():
+        # The whole configuration as its owner added it, with the final description.
         nodes[nid] = {"type": n["type"], "title": n["title"], "x": n["x"], "y": int(n["y"]),
-                      "desc": final_desc(n, owner[nid])}
+                      "desc": final_desc(n, owner[nid]),
+                      "config": {**n.get("config", {}), "desc": final_desc(n, owner[nid])}}
     edges = {e["id"]: {k: e[k] for k in ("source", "sourceHandle", "target", "targetHandle")} for e in g.edges}
     edges["e-report-end"] = {"source": "report", "sourceHandle": "source", "target": "end", "targetHandle": "target"}
     return {"nodes": nodes, "edges": edges}

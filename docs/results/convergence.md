@@ -5,8 +5,9 @@ every client ends with the server's document. This run checks one more thing: th
 **the workflow they meant to build**, after many people on very different networks have edited it at the same time,
 including fighting over the same fields.
 
-Server: this branch on a local dify-sf with Postgres, 2026-11-01. Clients: 120 processes of dify-sf's client library,
-each signed in as its own editor account (`packages/collab_client`, `bin/build_demo.dart`), driven by a plan.
+Server: this branch on a local dify-sf with Postgres, 2026-11-01. Clients: 120 client sessions of dify-sf's client
+library in one Dart process (`packages/collab_client`, `bin/build_demo.dart`), each signed in as its own editor account
+and driven by a plan.
 
 ## The plan
 
@@ -43,8 +44,9 @@ and back, stream events arrive that late too, in order.
 * Every client ended with exactly the server's document, and every confirmed edit is in the server's log (the storm
   checks).
 * **The server's workflow is exactly `target.json`**: all 83 nodes (the 81 built plus Start and End) with their type,
-  title, position and description, all 121 connections with both ends, nothing missing and nothing extra.
-* All 81 final writes were confirmed.
+  title, position and description, the 81 built nodes with their whole configuration (code, inputs, outputs), all 121
+  connections with both ends, nothing missing and nothing extra.
+* The final values of all 81 nodes were confirmed (162 writes: position and description).
 * Time from an edit to its outcome, all clients: median 209 ms, 95th percentile 3.4 s, 99th 5.4 s, longest 9.0 s (the
   slow numbers are the mobile and train clients during stalls).
 
