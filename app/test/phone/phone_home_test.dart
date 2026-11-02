@@ -117,6 +117,28 @@ void main() {
     await unmount(t);
   });
 
+  testWidgets('Android back on a tab closes a popup open there first, then returns to the Studio', (t) async {
+    phoneWindow(t);
+    final ws = await workspace();
+    await pumpApp(t, ws);
+    await t.tap(_nav('Integrations'));
+    await settle(t);
+    // A popup opened on the tab (a menu, a select) holds a back step on the same route, like DifyFloating does.
+    var popupClosed = 0;
+    final popup = DifyBackStep(onDismiss: () => popupClosed++);
+    popup.attach(t.element(find.byType(PhoneHomeShell)));
+    await t.pump();
+
+    expect(await systemBack(t), isTrue);
+    expect(popupClosed, 1);
+    expect(_shell(t).tab, HomeTab.integrations, reason: 'one back press closes only the newest layer');
+
+    expect(await systemBack(t), isTrue);
+    expect(_shell(t).tab, HomeTab.studio);
+    expect(popupClosed, 1);
+    await unmount(t);
+  });
+
   testWidgets('Android back closes a sheet, then the search, before it leaves the Studio', (t) async {
     phoneWindow(t);
     final pops = recordSystemPops(t);

@@ -82,11 +82,12 @@ class _PhoneHomeShellState extends State<PhoneHomeShell> {
     AppLocaleScope.of(context);
     String c(String key) => DifyI18n.tr('common', key);
     final tab = widget.tab;
-    return PopScope(
-      canPop: tab == HomeTab.studio,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && widget.tab != HomeTab.studio) widget.onTab(HomeTab.studio);
-      },
+    // Integrations and Account are a back layer over Studio, like a popup: one back step on the route
+    // ([DifyBackDismiss]), so a popup opened on the tab closes first and the tab only on the next back. A PopScope
+    // here would receive the same back press as the popup's step.
+    return DifyBackDismiss(
+      enabled: tab != HomeTab.studio,
+      onDismiss: () => widget.onTab(HomeTab.studio),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
