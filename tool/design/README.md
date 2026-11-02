@@ -24,6 +24,7 @@ Outside `design/`:
 | `dialog-route` | calls to `showDialog`, `showGeneralDialog`, `showModalBottomSheet`, `showMenu`, `showCupertinoDialog` | `showDifyDialog` and the design dialogs |
 | `material-widget` | `AlertDialog`, `Dialog`, `Switch`, `Checkbox`, `Radio`, `Slider`, `DropdownButton*`, `TabBar`, `Tooltip`, `PopupMenuButton`, Material buttons, progress indicators, `SnackBar`, `Chip`, `InputDecoration` | the `Dify*` widget |
 | `component-token` | `DifyColors.components(Checkbox\|Radio\|Toggle\|Slider\|SegmentedControl\|BadgeStatusLight\|Input)*` | the widget that owns the token |
+| `design-package` | `import`/`export` of a package only design/ may use: `smooth_sheets` (no exceptions) | `showDifyBottomSheet`, `DifyPersistentSheet`, `showDifyActionSheet` |
 | `dify-class` | `class/mixin/enum Dify…` declared outside design/ (feature-level exceptions: `DifyWorkflowEditor`, `DifyCodeEditor`, `DifyPromptEditor*`, `DifyCards`, `DifyNodeCard`, `DifyFlowNode`, `DifyFlowEdge`, `DifyMarkdown`, `DifyDocumentTitle*`) | move it into design/ |
 
 Inside `design/`: `design-import` flags an import that resolves outside `design/` and `i18n/` (packages are fine).

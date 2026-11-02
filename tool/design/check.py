@@ -26,12 +26,14 @@ ALLOWLIST_REL = 'tool/design/allowlist.tsv'
 PACKAGE = 'dify_sf_app'  # app/pubspec.yaml name; `package:dify_sf_app/src/...` resolves to app/lib/src/...
 DESIGN = 'design/'
 DESIGN_IMPORT_OK = ('design/', 'i18n/')  # what design/ may import from app/lib/src
+# Packages only design/ may import: its widgets wrap them (smooth_sheets: DifyBottomSheet, DifyPersistentSheet).
+DESIGN_PACKAGES = ('package:smooth_sheets/',)
 
 REASON_RE = re.compile(r'(third-party|dify-hardcoded|legit):\S.*|dev-shell|todo:step\d+')
 # Migration step (ds-audit §5) that removes each rule's hits; `--reason todo` uses it.
 TODO_STEP = {
     'color-literal': 4, 'box-shadow': 3, 'raw-text-style': 5, 'dialog-route': 3, 'material-widget': 3,
-    'component-token': 3, 'dify-class': 2, 'design-import': 1,
+    'component-token': 3, 'dify-class': 2, 'design-import': 1, 'design-package': 3,
 }
 # Files whose primitives move into design/ in step 1 (pure moves).
 STEP1_FILES = {
@@ -66,7 +68,7 @@ DIFY_CLASS_OK = re.compile(
 IMPORT_RE = re.compile(r'''^[ \t]*(?:import|export)\s+(['"])([^'"\n]+)\1''', re.M)
 
 RULES = ['color-literal', 'box-shadow', 'raw-text-style', 'dialog-route', 'material-widget', 'component-token',
-         'dify-class', 'design-import', 'focus-ring', 'text-line']
+         'dify-class', 'design-import', 'focus-ring', 'text-line', 'design-package']
 
 
 def _close_paren(text, i):
@@ -110,6 +112,9 @@ def scan_file(rel, src):
             if target is not None and not target.startswith(DESIGN_IMPORT_OK):
                 hits.append(('design-import', m.start()))
         return hits
+    for m in IMPORT_RE.finditer(src):
+        if code[m.start():m.end()].strip() and m.group(2).startswith(DESIGN_PACKAGES):
+            hits.append(('design-package', m.start()))
     for rule, rx in (('color-literal', COLOR_RE), ('box-shadow', SHADOW_RE), ('dialog-route', DIALOG_RE),
                      ('material-widget', MATERIAL_RE), ('component-token', COMPONENT_TOKEN_RE)):
         hits += [(rule, m.start()) for m in rx.finditer(code)]
@@ -259,7 +264,7 @@ def read_allowlist(path):
             errors.append(f'{where}: expected 4 tab-separated fields (rule, path, max_count, reason)')
             continue
         rule, rel, count, reason = parts
-        if rule in ('material-widget', 'focus-ring', 'text-line'):
+        if rule in ('material-widget', 'focus-ring', 'text-line', 'design-package'):
             errors.append(f'{where}: {rule} exceptions are prohibited; use design/ components')
         if rule not in RULES:
             errors.append(f'{where}: unknown rule {rule!r}')
