@@ -418,7 +418,9 @@ class _MentionInputState extends State<MentionInput> {
           overlayLocation: OverlayChildLocation.rootOverlay,
           overlayChildBuilder: (context, info) {
             final rect = MatrixUtils.transformRect(info.childPaintTransform, Offset.zero & info.childSize);
-            final below = info.overlaySize.height - rect.bottom, above = rect.top;
+            // The root overlay reaches under the system bars; the list keeps clear of them.
+            final insets = DifyWindowInsets.of(context);
+            final below = info.overlaySize.height - insets.bottom - rect.bottom, above = rect.top - insets.top;
             final up = below < 160 && above > below;
             return Positioned(
               left: rect.left,

@@ -926,7 +926,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
     final options = _options(m);
     final showVars = wvb?.show ?? false;
     return CustomSingleChildLayout(
-      delegate: _MenuLayout(anchor),
+      delegate: _MenuLayout(anchor, DifyWindowInsets.of(context)),
       child: TextFieldTapRegion(
         child: ComponentPickerMenu(
           footer: _showAgentOutputAction ? NewAgentOutputAction(onPressed: _newAgentOutput) : null,
@@ -1151,23 +1151,27 @@ class _RenderFullWidth extends RenderProxyBox {
 }
 
 /// floating-ui `bottom-start` with `shift({padding: 8})` and `flip()`: below the trigger, above it when it doesn't
-/// fit below but does above (else the side with less overflow), kept 8 px inside the window horizontally.
+/// fit below but does above (else the side with less overflow), kept 8 px inside the window horizontally. The window
+/// is the root overlay minus the system bars ([insets], from [DifyWindowInsets]): the overlay reaches under them.
 class _MenuLayout extends SingleChildLayoutDelegate {
-  _MenuLayout(this.anchor);
+  _MenuLayout(this.anchor, this.insets);
   final Rect anchor;
+  final EdgeInsets insets;
 
   @override
-  BoxConstraints getConstraintsForChild(BoxConstraints constraints) => BoxConstraints.loose(constraints.biggest);
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
+      BoxConstraints.loose(insets.deflateSize(constraints.biggest));
 
   @override
   Offset getPositionForChild(Size size, Size child) {
-    final below = anchor.bottom + child.height - size.height;
-    final above = child.height - anchor.top;
+    final bottom = size.height - insets.bottom, right = size.width - insets.right;
+    final below = anchor.bottom + child.height - bottom;
+    final above = child.height - (anchor.top - insets.top);
     final y = below > 0 && above < below ? anchor.top - child.height : anchor.bottom;
-    final x = anchor.left < size.width - child.width - 8 ? anchor.left : size.width - child.width - 8;
-    return Offset(x < 8 ? 8 : x, y);
+    final x = anchor.left < right - child.width - 8 ? anchor.left : right - child.width - 8;
+    return Offset(x < insets.left + 8 ? insets.left + 8 : x, y);
   }
 
   @override
-  bool shouldRelayout(_MenuLayout old) => old.anchor != anchor;
+  bool shouldRelayout(_MenuLayout old) => old.anchor != anchor || old.insets != insets;
 }
