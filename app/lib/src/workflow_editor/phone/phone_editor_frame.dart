@@ -150,20 +150,10 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
     final store = a.store, phone = _phone;
     if (phone == null) return null;
     if (phone.settingsNodeId != null) return phone.closeSettings;
-    // The sheets: the modal ones, then the lists and the run sheet (collapsed to their peek first).
+    // The docked sheets (the lists and the run sheet, lowered to their peek first). The modal sheets (DifySheetPortal)
+    // hold their own back steps, newer than this one.
     if (_sheets.backStep() case final step?) return step;
-    final panels = <ValueNotifier<bool>, VoidCallback>{
-      store.showDebugAndPreviewPanel: () => store.setShowDebugAndPreviewPanel(false),
-      store.showEnvPanel: () => store.setShowEnvPanel(false),
-      store.showChatVariablePanel: () => store.setShowChatVariablePanel(false),
-      store.showGlobalVariablePanel: () => store.setShowGlobalVariablePanel(false),
-      store.showCommentsPanel: () => store.setShowCommentsPanel(false),
-      store.showFeaturesPanel: () => store.setShowFeaturesPanel(false),
-      store.showWorkflowVersionHistoryPanel: () => store.setShowWorkflowVersionHistoryPanel(false),
-    };
-    for (final MapEntry(key: open, value: close) in panels.entries) {
-      if (open.value) return close;
-    }
+    if (store.showFeaturesPanel.value) return () => store.setShowFeaturesPanel(false);
     if (store.historyWorkflowData.value != null) return a.leaveRunHistory;
     if (store.isRestoring.value) return a.exitVersions;
     if (store.controlMode.value == ControlMode.comment) return () => store.setControlMode(ControlMode.pointer);
@@ -242,8 +232,8 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
                                 _bottomBar(a, phone),
                               ],
                             ),
-                            // The node's settings (the other panels are sheets).
-                            if (phone.settingsNodeId != null) ?config.body.panels,
+                            // The node's settings sheet (the other panels are this frame's sheets).
+                            ?config.body.panels,
                           ],
                         ),
                       ),

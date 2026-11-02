@@ -61,8 +61,8 @@ class NodePanelActions extends WorkflowActions {
 /// On a phone ([PhoneEditorScope]) the node panel is a modal bottom sheet over the whole editor ([DifySheetPortal]:
 /// it keeps the editor's scopes), open while the phone's settings node ([PhoneEditorController.settingsNodeId]) is the
 /// selected node: half the window first (the step or canvas above stays visible), pulled up to full; back, the scrim,
-/// a drag down and its close button close it (the selection stays). The other panels take the area under the app
-/// bar.
+/// a drag down and its close button close it (the selection stays). The other panels are the phone editor's sheets
+/// (`PhoneEditorSheets`): the phone's panel row has nothing else.
 class WorkflowPanels extends StatefulWidget {
   const WorkflowPanels({
     super.key,
@@ -222,6 +222,8 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
       }
     }
     final sheet = phone == null ? null : _settingsSheet(phone, sheetNode);
+    // On a phone the other panels are sheets of the phone editor (it gives this row none): only the settings sheet.
+    if (sheet != null) return sheet;
     return ListenableBuilder(
       listenable: Listenable.merge([
         store.showEnvPanel,
@@ -242,7 +244,7 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
             store.showCommentsPanel.value ||
             store.showWorkflowVersionHistoryPanel.value ||
             store.historyWorkflowData.value != null;
-        if (compact && panelNode == null && !otherOpen) return sheet ?? const SizedBox.shrink();
+        if (compact && panelNode == null && !otherOpen) return const SizedBox.shrink();
         final row = WorkflowRightPanelScope(
           panelKey: _panelKey,
           child: _SizeReporter(
@@ -286,23 +288,7 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
             child: row,
           ),
         );
-        if (phone == null) return rail;
-        // The phone layout gives the other panels the whole area under its app bar (the canvas is not squeezed
-        // beside them): an opaque page whose content keeps clear of the bottom inset.
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            ColoredBox(
-              key: const ValueKey('phone-panels'),
-              color: DifyColors.backgroundBody,
-              child: Padding(
-                padding: EdgeInsets.only(top: 4, bottom: MediaQuery.paddingOf(context).bottom + 4),
-                child: MediaQuery.removePadding(context: context, removeBottom: true, child: rail),
-              ),
-            ),
-            ?sheet,
-          ],
-        );
+        return rail;
       },
     );
   }

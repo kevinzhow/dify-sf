@@ -277,14 +277,13 @@ class _SheetTopInset extends InheritedWidget {
 /// A sheet that lives in a page instead of a route (mockup 7's run panel): the page behind stays interactive. Put
 /// it last in a Stack that fills the page; it fills the Stack and only its sheet takes pointers. It rests at
 /// [initialDetent] (the first of [detents]) and snaps between [detents]; without [onDismiss] it cannot be dragged
-/// away.
+/// away. (A modal sheet shown from a page's tree is a [DifySheetPortal].)
 ///
-/// Because it is part of the page, its content sees the page's inherited scopes (a route's content would not), and
-/// the page decides when it shows: an owner that shows it while some state says so (a panel is open) passes
-/// [onDismiss] to clear that state. Then a drag or flick below the lowest detent, [DifySheetController.dismiss] (Back,
-/// through the owner) and a tap on the [modal] scrim slide it away and call [onDismiss]; should the owner keep it, it
-/// slides back. [slideIn] makes it rise from the bottom edge when it first shows. With [modal], a scrim
-/// (`DifySheetRecipe.scrim`, fading with the sheet) covers the page and blocks it, as a modal sheet route's does.
+/// Because it is part of the page, its content sees the page's inherited scopes, and the page decides when it shows:
+/// an owner that shows it while some state says so (a list is open) passes [onDismiss] to clear that state. Then a
+/// drag or flick below the lowest detent and [DifySheetController.dismiss] (Back, through the owner) slide it away and
+/// call [onDismiss]; should the owner keep it, it slides back. [slideIn] makes it rise from the bottom edge when it
+/// first shows.
 ///
 /// Edge to edge like [showDifyBottomSheet]: in an edge-to-edge page it paints to the window's edges and pads its
 /// content by the system insets and the keyboard; its full height stops at the top safe area.
@@ -296,28 +295,20 @@ class DifyPersistentSheet extends StatelessWidget {
     this.initialDetent,
     this.controller,
     this.onDismiss,
-    this.modal = false,
     this.slideIn = false,
-    this.barrierLabel,
-  }) : assert(!modal || onDismiss != null, 'A modal sheet needs onDismiss: its scrim closes it');
+  });
 
   final Widget child;
   final List<DifySheetDetent> detents;
   final DifySheetDetent? initialDetent;
   final DifySheetController? controller;
 
-  /// Called once the sheet has slid away (dragged below its lowest detent, dismissed through [controller], or its
-  /// scrim tapped); null: the sheet cannot be dismissed.
+  /// Called once the sheet has slid away (dragged below its lowest detent, or dismissed through [controller]); null:
+  /// the sheet cannot be dismissed.
   final VoidCallback? onDismiss;
-
-  /// A scrim covers the page behind the sheet and blocks it; a tap on it dismisses the sheet.
-  final bool modal;
 
   /// The sheet rises from the bottom edge to [initialDetent] when it first shows.
   final bool slideIn;
-
-  /// The scrim's accessible name (the framework's "Dismiss" by default).
-  final String? barrierLabel;
 
   @override
   Widget build(BuildContext context) => _DifySheet(
@@ -326,11 +317,9 @@ class DifyPersistentSheet extends StatelessWidget {
     controller: controller,
     requestClose: null,
     modalRoute: false,
-    shadow: !modal,
+    shadow: true,
     onDismiss: onDismiss,
-    scrim: modal,
     slideIn: slideIn,
-    barrierLabel: barrierLabel,
     child: child,
   );
 }
@@ -387,9 +376,7 @@ class _DifySheet extends StatefulWidget {
     required this.shadow,
     required this.child,
     this.onDismiss,
-    this.scrim = false,
     this.slideIn = false,
-    this.barrierLabel,
   });
 
   final List<DifySheetDetent> detents;
@@ -406,9 +393,8 @@ class _DifySheet extends StatefulWidget {
   /// A sheet without a route: what closing it does, after it slid away ([DifyPersistentSheet.onDismiss]).
   final VoidCallback? onDismiss;
 
-  /// A sheet without a route: a scrim behind it ([DifyPersistentSheet.modal]), and whether it rises into view.
-  final bool scrim, slideIn;
-  final String? barrierLabel;
+  /// A page sheet: whether it rises into view ([DifyPersistentSheet.slideIn]).
+  final bool slideIn;
 
   @override
   State<_DifySheet> createState() => _DifySheetState();
@@ -700,22 +686,9 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
             ),
           );
         }
-        final page = Padding(
+        return Padding(
           padding: EdgeInsets.only(top: top, bottom: keyboard),
           child: sheet,
-        );
-        if (!widget.scrim) return page;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            _SheetScrim(
-              sheet: _sheet,
-              resting: () => _fraction(_resting),
-              label: widget.barrierLabel,
-              onTap: () => unawaited(_dismiss()),
-            ),
-            page,
-          ],
         );
       },
     );
@@ -820,46 +793,6 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
     );
     return widget.modalRoute ? content : _surface(content);
   }
-}
-
-/// A routeless modal sheet's scrim (`DifySheetRecipe.scrim`): it fades with the sheet's height up to its resting
-/// detent (painted, not rebuilt: the sheet moves during layout), blocks the page behind, and a tap on it (or its
-/// semantic dismiss action) closes the sheet.
-class _SheetScrim extends StatelessWidget {
-  const _SheetScrim({required this.sheet, required this.resting, required this.onTap, this.label});
-  final DraggableScrollableController sheet;
-  final double Function() resting;
-  final VoidCallback onTap;
-  final String? label;
-
-  @override
-  Widget build(BuildContext context) => CustomPaint(
-    key: const ValueKey('dify-sheet-scrim'),
-    painter: _ScrimPainter(sheet: sheet, resting: resting, color: DifySheetRecipe.scrim),
-    child: ModalBarrier(
-      dismissible: true,
-      onDismiss: onTap,
-      semanticsLabel: label ?? MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    ),
-  );
-}
-
-class _ScrimPainter extends CustomPainter {
-  _ScrimPainter({required this.sheet, required this.resting, required this.color}) : super(repaint: sheet);
-  final DraggableScrollableController sheet;
-  final double Function() resting;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rest = resting();
-    final t = !sheet.isAttached || rest <= 0 ? 0.0 : (sheet.size / rest).clamp(0.0, 1.0);
-    if (t == 0) return;
-    canvas.drawRect(Offset.zero & size, Paint()..color = color.withValues(alpha: color.a * t));
-  }
-
-  @override
-  bool shouldRepaint(_ScrimPainter old) => old.sheet != sheet || old.color != color;
 }
 
 /// Lays the content out at its own height (at most [maxHeight]) to measure it ([onMeasured]: the full detent of content

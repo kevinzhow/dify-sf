@@ -3,13 +3,14 @@
 /// step's input forms as modal sheets, and the editor's other panels (the variable panels, variable inspect, the
 /// comment list, the version list) as bottom sheets instead of the area under the app bar.
 ///
-/// Every sheet is a [DifyPersistentSheet] in the editor's page, not a route: its content keeps the editor's scopes
-/// (the store, the run host, the header's data, variable inspect, comments), which a route on the root navigator would
-/// not see. The store's panel flags say which sheet shows, exactly as they say which desktop panel shows, and closing a
-/// sheet clears its flag the way the desktop panel's close button does. The non-modal sheets (the run, the version
-/// list, the comment list) sit between the view switch and the bottom bar, so the Steps view or the canvas above them
-/// and the toolbar or selection bar below them stay usable; the modal ones cover the page with a scrim, as a sheet
-/// route does. Back closes the newest first ([PhoneEditorSheets.backStep]).
+/// No sheet is a route: a route on the root navigator would not see the editor's scopes (the store, the run host, the
+/// header's data, variable inspect, comments), which their content needs. The non-modal sheets (the run, the version
+/// list, the comment list) are [DifyPersistentSheet]s between the view switch and the bottom bar, so the Steps view or
+/// the canvas above them and the toolbar or selection bar below them stay usable. The modal ones (the input forms, the
+/// chat, variable inspect, the variable panels) are [DifySheetPortal]s, as the node's settings are: shown over the whole
+/// window from the editor's tree, with a scrim. The store's panel flags say which sheet shows, exactly as they say
+/// which desktop panel shows, and closing a sheet clears its flag the way the desktop panel's close button does. Back
+/// closes a modal sheet first (its own back step), then the docked ones ([PhoneEditorSheets.backStep]).
 library;
 
 import 'dart:async';
@@ -381,24 +382,13 @@ class PhoneEditorSheets {
     return close;
   }
 
-  /// A modal sheet slides away, then its `onDismiss` clears its state.
-  VoidCallback _dismiss(DifySheetController c, VoidCallback close) =>
-      c.isAttached ? () => unawaited(c.dismiss()) : close;
-
-  /// What Back does to the newest open sheet, or null when none is open: the modal sheets close first (a single
-  /// step's form, the run's form, the chat, variable inspect, the variable panels), then the lists and the run sheet
-  /// collapse to their peek and then close.
+  /// What Back does to the newest open docked sheet, or null when none is open: the comment list, the version list
+  /// and the run sheet drop to their peek and then close. The modal sheets ([DifySheetPortal]) hold their own back
+  /// steps, which are newer: they close first, and they are not handled here.
   VoidCallback? backStep() {
     final s = _shown();
     final store = _store;
     if (store == null) return null;
-    if (s.stepInput case final id?) {
-      return _dismiss(stepInput, () => _hideStepInput(id));
-    }
-    if (s.runInput) return _dismiss(runInput, _cancelRunPanel);
-    if (s.chat) return _dismiss(chat, _cancelRunPanel);
-    if (s.inspect) return _dismiss(inspect, () => store.setShowVariableInspectPanel(false));
-    if (s.variables) return _dismiss(variables, _closeVariables);
     if (s.comments) return _collapseOr(comments, _listPeek, _exitCommentMode);
     if (s.versions) return _collapseOr(versions, _listPeek, () => store.setShowWorkflowVersionHistoryPanel(false));
     if (s.run case final kind?) return _collapseOr(run, _runPeek, () => _closeRun(kind));
@@ -526,82 +516,98 @@ class _SheetLayerState extends State<_SheetLayer> {
       ),
   ];
 
+  /// The step whose form the step sheet showed last (it keeps showing it while it slides away).
+  String? _stepInput;
+
   List<Widget> _modal(BuildContext context, _Shown s, WorkflowStore store) {
-    Widget modalSheet({
+    // Each modal sheet is a DifySheetPortal, mounted all along and open while the store says so: it slides in and out,
+    // keeps the editor's scopes, holds its own back step, and closes through [onDismiss] (the panel's own close).
+    Widget portal({
       required String key,
+      required bool open,
       required DifySheetController controller,
       required VoidCallback onDismiss,
-      required Widget child,
+      required WidgetBuilder builder,
       List<DifySheetDetent> detents = const [DifySheetDetent.half, DifySheetDetent.full],
-    }) => DifyPersistentSheet(
-      key: ValueKey(key),
+    }) => DifySheetPortal(
+      key: ValueKey('$key-portal'),
+      open: open,
       controller: controller,
-      modal: true,
-      slideIn: true,
       detents: detents,
       onDismiss: onDismiss,
-      child: PanelSheetScope(onClose: () => unawaited(controller.dismiss()), child: child),
+      barrierLabel: DifyI18n.tr('common', 'operation.close'),
+      builder: (context) => KeyedSubtree(
+        key: ValueKey(key),
+        child: PanelSheetScope(
+          onClose: onDismiss,
+          child: Builder(builder: builder),
+        ),
+      ),
     );
     final panel = RunPanelContext(
       startVariables: startVariablesOf(sheets.controller.doc),
       hasSelectedNode: sheets.controller.selectedNode != null,
       canRun: sheets._panels.canRun,
     );
+    if (s.stepInput case final id?) _stepInput = id;
+    final step = _stepInput;
     return [
-      if (s.variables)
-        modalSheet(
-          key: 'phone-variables-sheet',
-          controller: sheets.variables,
-          onDismiss: sheets._closeVariables,
-          child: sheets._panels.variables!,
+      portal(
+        key: 'phone-variables-sheet',
+        open: s.variables,
+        controller: sheets.variables,
+        onDismiss: sheets._closeVariables,
+        builder: (context) => sheets._panels.variables ?? const SizedBox.shrink(),
+      ),
+      portal(
+        key: 'phone-inspect-sheet',
+        open: s.inspect,
+        controller: sheets.inspect,
+        detents: const [DifySheetDetent.full],
+        onDismiss: () => store.setShowVariableInspectPanel(false),
+        builder: (context) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DifySheetHeader(title: _tw('debug.variableInspect.title')),
+            // Its two panes are laid out by the width the editor's bottom panel reports; on a phone that is the
+            // window's, as in the full-area page this replaces.
+            const Expanded(child: InspectPanel()),
+          ],
         ),
-      if (s.inspect)
-        modalSheet(
-          key: 'phone-inspect-sheet',
-          controller: sheets.inspect,
-          detents: const [DifySheetDetent.full],
-          onDismiss: () => store.setShowVariableInspectPanel(false),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DifySheetHeader(
-                title: _tw('debug.variableInspect.title'),
-                onClose: () => unawaited(sheets.inspect.dismiss()),
-              ),
-              // Its two panes are laid out by the width the editor's bottom panel reports; on a phone that is the
-              // window's, as in the full-area page this replaces.
-              const Expanded(child: InspectPanel()),
-            ],
-          ),
-        ),
-      if (s.chat)
-        modalSheet(
-          key: 'phone-chat-sheet',
-          controller: sheets.chat,
-          detents: const [DifySheetDetent.full],
-          onDismiss: sheets._cancelRunPanel,
-          child: DebugAndPreview(panel: panel),
-        ),
-      if (s.runInput)
-        modalSheet(
-          key: 'phone-run-input-sheet',
-          controller: sheets.runInput,
-          onDismiss: sheets._cancelRunPanel,
-          child: _RunInputSheet(panel: panel, sheets: sheets),
-        ),
-      if (s.stepInput case final id?)
-        modalSheet(
-          key: 'phone-step-input-sheet',
-          controller: sheets.stepInput,
-          detents: const [DifySheetDetent.full],
-          onDismiss: () => sheets._hideStepInput(id),
-          // The node's single-run form (what covers its panel on the desktop): Start Run runs it, its result goes to
-          // the run sheet.
-          child: Stack(
+      ),
+      portal(
+        key: 'phone-chat-sheet',
+        open: s.chat,
+        controller: sheets.chat,
+        detents: const [DifySheetDetent.full],
+        onDismiss: sheets._cancelRunPanel,
+        builder: (context) => DebugAndPreview(panel: panel),
+      ),
+      portal(
+        key: 'phone-run-input-sheet',
+        open: s.runInput,
+        controller: sheets.runInput,
+        onDismiss: sheets._cancelRunPanel,
+        builder: (context) => _RunInputSheet(panel: panel, sheets: sheets),
+      ),
+      portal(
+        key: 'phone-step-input-sheet',
+        open: s.stepInput != null,
+        controller: sheets.stepInput,
+        detents: const [DifySheetDetent.full],
+        onDismiss: () {
+          if (step != null) sheets._hideStepInput(step);
+        },
+        // The node's single-run form (what covers its panel on the desktop): Start Run runs it, its result goes to the
+        // run sheet.
+        builder: (context) => switch (step == null ? null : sheets.controller.doc.nodes[step]) {
+          final node? => Stack(
             fit: StackFit.expand,
-            children: [NodeSingleRunOverlay(node: sheets.controller.doc.nodes[id]!, doc: sheets.controller.doc)],
+            children: [NodeSingleRunOverlay(node: node, doc: sheets.controller.doc)],
           ),
-        ),
+          _ => const SizedBox.shrink(),
+        },
+      ),
     ];
   }
 }
@@ -622,7 +628,6 @@ class _RunInputSheet extends StatelessWidget {
         DifySheetHeader(
           title: _tw('common.run'),
           subtitle: start == null ? null : (start.title.isEmpty ? _tw('blocks.start') : start.title),
-          onClose: () => unawaited(sheets.runInput.dismiss()),
         ),
         Flexible(
           child: SingleChildScrollView(

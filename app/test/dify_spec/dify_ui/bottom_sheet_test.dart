@@ -232,8 +232,8 @@ void main() {
       await t.pumpAndSettle();
       expect(_top(t), closeTo(_h - 120, 0.5));
     });
-    testWidgets('modal and dismissible: slides in, its scrim blocks the page and closes it, a drag down or dismiss() '
-        'slides it away and calls onDismiss; an owner that keeps it sees it slide back', (t) async {
+    testWidgets('dismissible: slides in over an interactive page, a drag down or dismiss() slides it away and calls '
+        'onDismiss; an owner that keeps it sees it slide back', (t) async {
       phoneView(t);
       final controller = DifySheetController();
       addTearDown(controller.dispose);
@@ -256,9 +256,7 @@ void main() {
                 if (on)
                   DifyPersistentSheet(
                     controller: controller,
-                    modal: true,
                     slideIn: true,
-                    barrierLabel: 'Close the sheet',
                     detents: const [DifySheetDetent.half, DifySheetDetent.full],
                     onDismiss: () {
                       dismissed++;
@@ -271,24 +269,17 @@ void main() {
           ),
         ),
       );
-      // It rises from the bottom edge to its first detent.
+      // It rises from the bottom edge to its first detent; the page behind stays interactive (no scrim).
       await t.pump();
       expect(_top(t), greaterThan(_h / 2 + 100));
       await t.pumpAndSettle();
       expect(_top(t), closeTo(_h / 2, 0.5));
       expect(controller.detent, DifySheetDetent.half);
-      // The scrim: the page behind gets no taps; a tap on the scrim slides the sheet away.
-      await t.tapAt(const Offset(20, 20));
-      await t.pumpAndSettle();
-      expect(taps, 0);
-      expect(dismissed, 1);
-      expect(find.byType(DifySheetGrabHandle), findsNothing);
-      expect(find.bySemanticsLabel('Close the sheet'), findsNothing);
+      expect(find.byKey(const ValueKey('dify-sheet-scrim')), findsNothing);
+      await t.tap(find.text('Behind'));
+      expect(taps, 1);
 
-      // A drag down below its lowest detent closes it too.
-      shown.value = true;
-      await t.pumpAndSettle();
-      expect(find.bySemanticsLabel('Close the sheet'), findsOneWidget);
+      // A drag down below its lowest detent slides it away and calls onDismiss.
       final g = await t.startGesture(t.getCenter(find.byType(DifySheetGrabHandle)));
       for (var i = 0; i < 20; i++) {
         await g.moveBy(const Offset(0, 20));
@@ -296,7 +287,7 @@ void main() {
       }
       await g.up();
       await t.pumpAndSettle();
-      expect(dismissed, 2);
+      expect(dismissed, 1);
       expect(find.byType(DifySheetGrabHandle), findsNothing);
 
       // dismiss() (what Back does); an owner that keeps the sheet sees it slide back to its detent.
@@ -305,12 +296,12 @@ void main() {
       keep = true;
       unawaited(controller.dismiss());
       await t.pumpAndSettle();
-      expect(dismissed, 3);
+      expect(dismissed, 2);
       expect(_top(t), closeTo(_h / 2, 0.5));
       keep = false;
       unawaited(controller.dismiss());
       await t.pumpAndSettle();
-      expect(dismissed, 4);
+      expect(dismissed, 3);
       expect(find.byType(DifySheetGrabHandle), findsNothing);
       expect(t.takeException(), isNull);
     });

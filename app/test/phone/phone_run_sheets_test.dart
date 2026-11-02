@@ -21,6 +21,7 @@ import 'package:dify_sf_app/src/workflow_editor/phone/phone_editor_frame.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/mock_run_service.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/run_scope.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/run_types.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/ui/before_run_form.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/debug_and_preview.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/run_panel.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/tracing_node.dart';
@@ -126,9 +127,19 @@ class _Editor {
   Finder get runSheet => sheet('phone-run-sheet');
   Finder get runHeader => find.byKey(const ValueKey('phone-run-sheet-header'));
 
+  /// [key]'s grab handle: inside a docked sheet (the key is the DifyPersistentSheet's), or in the sheet around a modal
+  /// sheet's content (a DifySheetPortal's: the key is its content's).
+  Finder handle(String key) {
+    final inside = find.descendant(of: sheet(key), matching: find.byType(DifySheetGrabHandle));
+    if (inside.evaluate().isNotEmpty) return inside;
+    return find.descendant(
+      of: find.ancestor(of: sheet(key), matching: find.byType(DraggableScrollableSheet)).first,
+      matching: find.byType(DifySheetGrabHandle),
+    );
+  }
+
   /// The top of [key]'s sheet surface on screen (its grab handle's row).
-  double top(String key) =>
-      t.getTopLeft(find.descendant(of: sheet(key), matching: find.byType(DifySheetGrabHandle))).dy;
+  double top(String key) => t.getTopLeft(handle(key)).dy;
 
   /// The bottom bar's top (the run, version and comment sheets rest on it).
   double get barTop {
@@ -140,8 +151,7 @@ class _Editor {
 
   /// Drags [key]'s sheet by its grab handle by [dy], in finger-sized steps.
   Future<void> drag(String key, double dy) async {
-    final handle = find.descendant(of: sheet(key), matching: find.byType(DifySheetGrabHandle));
-    final g = await t.startGesture(t.getCenter(handle));
+    final g = await t.startGesture(t.getCenter(handle(key)));
     for (var i = 0; i < 20; i++) {
       await g.moveBy(Offset(0, dy / 20));
       await t.pump(const Duration(milliseconds: 16));
@@ -594,6 +604,54 @@ void main() {
     });
   }
 
+  testWidgets('Run step from the open settings sheet runs once, in the settings; its result also in the run sheet', (
+    t,
+  ) async {
+    final e = await _pump(t);
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration(milliseconds: 300));
+    var starts = 0;
+    var was = e.store.nodeRunDataOf('llm')['_singleRunningStatus'];
+    void count() {
+      final now = e.store.nodeRunDataOf('llm')['_singleRunningStatus'];
+      if (now == NodeRunningStatus.running && was != NodeRunningStatus.running) starts++;
+      was = now;
+    }
+
+    final store = e.store;
+    store.nodeRunData.addListener(count);
+    addTearDown(() => store.nodeRunData.removeListener(count));
+    // A tap on the step opens its settings (4a's sheet).
+    await t.tap(find.text('Summarize'));
+    await settle(t, 800);
+    final settings = find.byKey(const Key('node-settings-sheet'));
+    expect(settings, findsOneWidget);
+    expect(e.phone.settingsNodeId, 'llm');
+    // Its Run step: the settings' panel takes the request and shows the step's form inside the settings; the phone's
+    // own step sheet stays closed.
+    await t.tap(find.byKey(const Key('node-settings-run')));
+    await settle(t, 800);
+    expect(e.store.pendingSingleRun.value, isNull);
+    expect(e.sheet('phone-step-input-sheet'), findsNothing);
+    final form = find.descendant(of: settings, matching: find.byType(BeforeRunFormFinder.type));
+    expect(form, findsOneWidget);
+    await t.enterText(find.descendant(of: form, matching: find.byType(EditableText)).first, 'hello');
+    await t.pump();
+    await t.tap(find.descendant(of: form, matching: find.text(_tw('singleRun.startRun'))));
+    await settle(t, 2000);
+    expect(starts, 1, reason: 'one run');
+    expect(e.store.nodeRunDataOf('llm')['_singleRunningStatus'], NodeRunningStatus.succeeded);
+    expect(e.phone.settingsNodeId, 'llm', reason: 'the settings stay open on their Last Run');
+    expect(e.phone.singleRunNodeId, 'llm', reason: 'the run sheet shows it too, under the settings');
+    // Closing the settings leaves the run sheet with the result.
+    expect(await systemBack(t), isTrue);
+    await settle(t, 800);
+    expect(e.phone.settingsNodeId, isNull);
+    expect(find.descendant(of: e.runHeader, matching: find.textContaining(_tp('runSucceeded'))), findsOneWidget);
+    expect(starts, 1);
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
   testWidgets('chatflow: Preview opens the chat as a full sheet; back closes it', (t) async {
     final e = await _pump(t, chat: true);
     await t.tap(find.byKey(const ValueKey('phone-run')));
@@ -664,4 +722,9 @@ abstract final class WorkflowPanelsFinder {
 
 abstract final class ControlModeFinder {
   static const comment = ControlMode.comment;
+}
+
+/// The before-run form's type, for finders.
+abstract final class BeforeRunFormFinder {
+  static const type = BeforeRunForm;
 }
