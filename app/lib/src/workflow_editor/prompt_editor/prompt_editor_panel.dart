@@ -419,27 +419,30 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
   @override
   Widget build(BuildContext context) => OverlayPortal(
     controller: _portal,
-    overlayChildBuilder: (context) => Positioned(
-      right: 9,
-      top: 166,
-      bottom: 8,
-      width: widget.expandedWidth,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBg,
-          borderRadius: BorderRadius.circular(DifyRadius.xl),
-          boxShadow: [
-            BoxShadow(blurRadius: 12, spreadRadius: -4, color: DifyToggleExpendColors.shadow),
-            BoxShadow(
-              offset: const Offset(0, -3),
-              blurRadius: 6,
-              spreadRadius: -2,
-              color: DifyToggleExpendColors.shadowTop,
-            ),
-          ],
+    // Measured from the window's safe edges, as when the app kept the whole navigator inside the safe area.
+    overlayChildBuilder: (context) => DifyOverlaySafeArea(
+      child: Positioned(
+        right: 9,
+        top: 166,
+        bottom: 8,
+        width: widget.expandedWidth,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: DifyColors.componentsPanelBg,
+            borderRadius: BorderRadius.circular(DifyRadius.xl),
+            boxShadow: [
+              BoxShadow(blurRadius: 12, spreadRadius: -4, color: DifyToggleExpendColors.shadow),
+              BoxShadow(
+                offset: const Offset(0, -3),
+                blurRadius: 6,
+                spreadRadius: -2,
+                color: DifyToggleExpendColors.shadowTop,
+              ),
+            ],
+          ),
+          child: KeyedSubtree(key: _contentKey, child: _content(expand: true)),
         ),
-        child: KeyedSubtree(key: _contentKey, child: _content(expand: true)),
       ),
     ),
     // Expanded, the editor is `fixed` over the panel and leaves its place empty.

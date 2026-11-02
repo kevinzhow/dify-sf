@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import 'page.dart' show DifyWindowInsets;
 import 'placement.dart';
 import 'text.dart';
 
@@ -308,7 +309,8 @@ class _FloatingGroup extends InheritedWidget {
 }
 
 /// Lays a popup out against [anchor] in the overlay ([computeFloatingPosition]) and paints the open/close
-/// transition around Base UI's transform origin.
+/// transition around Base UI's transform origin. The collision bounds are the overlay less the window's system insets
+/// ([DifyWindowInsets]): the root overlay fills the window, popups stay clear of the status and navigation bars.
 class DifyFloatingLayout extends SingleChildRenderObjectWidget {
   const DifyFloatingLayout({
     super.key,
@@ -333,17 +335,29 @@ class DifyFloatingLayout extends SingleChildRenderObjectWidget {
   final bool scale;
 
   @override
-  RenderDifyFloatingLayout createRenderObject(BuildContext context) => RenderDifyFloatingLayout(this);
+  RenderDifyFloatingLayout createRenderObject(BuildContext context) =>
+      RenderDifyFloatingLayout(this, insets: DifyWindowInsets.of(context));
 
   @override
-  void updateRenderObject(BuildContext context, RenderDifyFloatingLayout renderObject) => renderObject.config = this;
+  void updateRenderObject(BuildContext context, RenderDifyFloatingLayout renderObject) => renderObject
+    ..config = this
+    ..insets = DifyWindowInsets.of(context);
 }
 
 class RenderDifyFloatingLayout extends RenderShiftedBox {
-  RenderDifyFloatingLayout(this._config) : super(null);
+  RenderDifyFloatingLayout(this._config, {this._insets = EdgeInsets.zero}) : super(null);
 
   DifyFloatingLayout _config;
   DifyFloatingPosition? _position;
+
+  /// The overlay's edges the popup keeps clear of (the window's system insets).
+  EdgeInsets get insets => _insets;
+  EdgeInsets _insets;
+  set insets(EdgeInsets value) {
+    if (value == _insets) return;
+    _insets = value;
+    markNeedsLayout();
+  }
 
   /// The side and alignment the popup ended up with (Base UI's `data-side` / `data-align`).
   DifySide get side => _position!.side;
@@ -423,18 +437,28 @@ class RenderDifyFloatingLayout extends RenderShiftedBox {
     final child = this.child;
     if (child == null) return;
     final c = _config;
-    DifyFloatingPosition place() => computeFloatingPosition(
-      anchor: c.anchor,
-      popup: child.size,
-      bounds: size,
-      placement: c.placement,
-      sideOffset: c.sideOffset,
-      alignOffset: c.alignOffset,
-      collision: c.collision,
+    // Positions are computed in the safe area (origin at its top-left) and moved back into the overlay.
+    final origin = Offset(math.min(_insets.left, size.width), math.min(_insets.top, size.height));
+    final bounds = Size(
+      math.max(0, size.width - _insets.horizontal),
+      math.max(0, size.height - _insets.vertical),
     );
+    DifyFloatingPosition place() {
+      final p = computeFloatingPosition(
+        anchor: c.anchor.shift(-origin),
+        popup: child.size,
+        bounds: bounds,
+        placement: c.placement,
+        sideOffset: c.sideOffset,
+        alignOffset: c.alignOffset,
+        collision: c.collision,
+      );
+      return DifyFloatingPosition(p.offset + origin, p.side, p.align, p.availableHeight);
+    }
+
     final popupBounds = Size(
-      math.max(0, size.width - 2 * difyFloatingCollisionPadding),
-      math.max(0, size.height - 2 * difyFloatingCollisionPadding),
+      math.max(0, bounds.width - 2 * difyFloatingCollisionPadding),
+      math.max(0, bounds.height - 2 * difyFloatingCollisionPadding),
     );
     child.layout(BoxConstraints.loose(popupBounds), parentUsesSize: true);
     var p = place();

@@ -17,7 +17,7 @@ import 'widgets.dart';
 const difyDrawerBlackBackdrop = Color.fromRGBO(0, 0, 0, 0.25);
 
 /// dify-ui's DrawerPortal: retain the caller's inherited state while laying out
-/// the drawer and backdrop in the root overlay, against the full viewport.
+/// the drawer and backdrop in the root overlay, against the window's safe area ([DifyOverlaySafeArea]).
 class DifyDrawerPortal extends StatefulWidget {
   const DifyDrawerPortal({super.key, required this.open, required this.child});
 
@@ -53,7 +53,8 @@ class _DifyDrawerPortalState extends State<DifyDrawerPortal> {
   Widget build(BuildContext context) => OverlayPortal(
     controller: _portal,
     overlayLocation: OverlayChildLocation.rootOverlay,
-    overlayChildBuilder: (_) => widget.child,
+    // The root overlay fills the window; the drawer keeps today's geometry inside the safe area.
+    overlayChildBuilder: (_) => DifyOverlaySafeArea(child: widget.child),
     child: const SizedBox.shrink(),
   );
 }

@@ -18,6 +18,7 @@ import '../../design/dify_palette.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/dify_type_tw.dart';
 import '../../design/widgets/icon_button.dart';
+import '../../design/widgets/page.dart' show DifyOverlaySafeArea;
 import '../../design/widgets/text.dart';
 import '../../i18n/dify_i18n.dart';
 import '../store/workflow_store_scope.dart';
@@ -361,42 +362,47 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
     return OverlayPortal(
       controller: _portal,
       overlayLocation: inNode ? OverlayChildLocation.rootOverlay : OverlayChildLocation.nearestOverlay,
-      overlayChildBuilder: (context) {
-        Widget expanded(double? width) => LayoutBuilder(
-          builder: (context, c) => _box(
-            // editor/base.tsx: `useToggleExpend({ hasFooter: false })`.
-            bodyHeight: toggleExpendEditorHeight(c.maxHeight, hasFooter: false),
-            expanded: true,
-          ),
-        );
-        if (inNode) {
-          return Positioned(
-            right: 9,
-            top: 166,
-            bottom: 8,
-            child: ListenableBuilder(
-              listenable: panelWidth ?? const _NoListenable(),
-              builder: (context, _) => Container(
-                width: panelWidth == null ? null : panelWidth.value - 1,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: DifyColors.componentsPanelBg,
-                  borderRadius: BorderRadius.circular(DifyRadius.xl),
-                  boxShadow: shadow,
+      // Measured from the window's safe edges, as when the app kept the whole navigator inside the safe area.
+      overlayChildBuilder: (context) => DifyOverlaySafeArea(
+        child: Builder(
+          builder: (context) {
+            Widget expanded(double? width) => LayoutBuilder(
+              builder: (context, c) => _box(
+                // editor/base.tsx: `useToggleExpend({ hasFooter: false })`.
+                bodyHeight: toggleExpendEditorHeight(c.maxHeight, hasFooter: false),
+                expanded: true,
+              ),
+            );
+            if (inNode) {
+              return Positioned(
+                right: 9,
+                top: 166,
+                bottom: 8,
+                child: ListenableBuilder(
+                  listenable: panelWidth ?? const _NoListenable(),
+                  builder: (context, _) => Container(
+                    width: panelWidth == null ? null : panelWidth.value - 1,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: DifyColors.componentsPanelBg,
+                      borderRadius: BorderRadius.circular(DifyRadius.xl),
+                      boxShadow: shadow,
+                    ),
+                    child: expanded(null),
+                  ),
                 ),
+              );
+            }
+            return Positioned.fill(
+              child: Container(
+                padding: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: DifyColors.componentsPanelBg, boxShadow: shadow),
                 child: expanded(null),
               ),
-            ),
-          );
-        }
-        return Positioned.fill(
-          child: Container(
-            padding: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(color: DifyColors.componentsPanelBg, boxShadow: shadow),
-            child: expanded(null),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
       child: _isExpand ? const SizedBox.shrink() : _box(bodyHeight: null, expanded: false),
     );
   }

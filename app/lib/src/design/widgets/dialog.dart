@@ -64,22 +64,26 @@ Future<T?> showDifyDialog<T>(
     DifyDialogTransition.linearFade => FadeTransition(opacity: animation, child: child),
     DifyDialogTransition.none => child,
   },
-  pageBuilder: (context, _, _) => !closeOnEscape
-      ? FocusScope(autofocus: true, child: DifySelectionRegion(child: builder(context)))
-      : Shortcuts(
-          shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
-          child: Actions(
-            actions: {
-              DismissIntent: CallbackAction<DismissIntent>(
-                onInvoke: (_) {
-                  Navigator.of(context).pop();
-                  return null;
-                },
-              ),
-            },
-            child: FocusScope(autofocus: true, child: DifySelectionRegion(child: builder(context))),
+  // The backdrop covers the whole window; the dialog stays inside the safe area (DifyApplication no longer consumes
+  // the system insets for the navigator).
+  pageBuilder: (context, _, _) => SafeArea(
+    child: !closeOnEscape
+        ? FocusScope(autofocus: true, child: DifySelectionRegion(child: builder(context)))
+        : Shortcuts(
+            shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
+            child: Actions(
+              actions: {
+                DismissIntent: CallbackAction<DismissIntent>(
+                  onInvoke: (_) {
+                    Navigator.of(context).pop();
+                    return null;
+                  },
+                ),
+              },
+              child: FocusScope(autofocus: true, child: DifySelectionRegion(child: builder(context))),
+            ),
           ),
-        ),
+  ),
 );
 
 /// DialogContent: centred (or [top] below the viewport's top: `mt-*`), [width] wide (at most the viewport less 2 rem),

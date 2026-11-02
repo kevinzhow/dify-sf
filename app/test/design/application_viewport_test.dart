@@ -87,7 +87,13 @@ void main() {
     final before = bars();
     manager.add(const DifyToastData(id: 'failure', title: 'Connection failed', type: DifyToastType.error));
     await t.pumpAndSettle();
-    expect(t.getRect(find.byType(DifyToastHost)), const Rect.fromLTRB(12, 30, 382, 776));
+    // The host fills the window over the navigator (the app no longer consumes the insets) and lays its toasts out
+    // in the safe area.
+    expect(t.getRect(find.byType(DifyToastHost)), const Rect.fromLTRB(0, 0, 400, 800));
+    expect(
+      t.getRect(find.descendant(of: find.byType(DifyToastHost), matching: find.byType(Stack)).first),
+      const Rect.fromLTRB(12, 30, 382, 776),
+    );
     expect(t.getTopLeft(find.text('Connection failed')).dy, greaterThanOrEqualTo(46));
     expect(bars(), before);
     expect(bars().statusBarColor, Colors.transparent);
@@ -96,7 +102,7 @@ void main() {
     // The insets have an opaque app background even when the page has no Scaffold.
     expect(
       find.byWidgetPredicate(
-        (w) => w is ColoredBox && t.getRect(find.byWidget(w)) == const Rect.fromLTWH(0, 0, 400, 800),
+        (w) => w is ColoredBox && w.color.a == 1 && t.getRect(find.byWidget(w)) == const Rect.fromLTWH(0, 0, 400, 800),
       ),
       findsOneWidget,
     );
