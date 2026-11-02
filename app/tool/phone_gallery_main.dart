@@ -197,6 +197,31 @@ class _GalleryState extends State<_Gallery> {
                   ),
                 ),
                 _Section(
+                  'DifyFloatingIconButton',
+                  child: Row(
+                    spacing: 16,
+                    children: [
+                      DifyFloatingIconButton(
+                        label: 'Pan mode',
+                        selected: false,
+                        icon: const RemixIcon('hand', size: 22),
+                        onPressed: () => _toast('Pan mode'),
+                      ),
+                      DifyFloatingIconButton(
+                        label: 'Select mode',
+                        selected: true,
+                        icon: const RemixIcon('cursor-line', size: 22),
+                        onPressed: () => _toast('Select mode'),
+                      ),
+                      DifyFloatingIconButton(
+                        label: 'Fit to screen',
+                        icon: const RemixIcon('focus-2-line', size: 22),
+                        onPressed: () => _toast('Fit to screen'),
+                      ),
+                    ],
+                  ),
+                ),
+                _Section(
                   'DifyNavigationBar',
                   child: _Framed(
                     child: DifyNavigationBar(

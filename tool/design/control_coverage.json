@@ -228,9 +228,10 @@
       "evidence": [
         "app/test/dify_spec/dify_ui/navigation_bar_test.dart",
         "app/tool/phone_gallery_main.dart",
-        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/floating_icon_button_test.dart"
       ],
-      "note": "dify-sf floating action button (no Dify counterpart): Dify primary button colours, label through DifyText (DifyPhoneType.labelStrong); size, radius, shadow and disabled state are tested."
+      "note": "dify-sf floating action button and the canvas's small floating controls (no Dify counterpart): Dify primary / secondary button colours, label through DifyText (DifyPhoneType.labelStrong); size, radius, ring, shadow, selected (toggled) and disabled states and the 48 px hit area are tested."
     },
     "filter_chip.dart": {
       "kind": "text-composition",
