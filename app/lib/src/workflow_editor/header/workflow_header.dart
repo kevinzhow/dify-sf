@@ -195,12 +195,9 @@ class HeaderInHistory extends StatelessWidget {
 class HeaderInRestoring extends StatefulWidget {
   const HeaderInRestoring({super.key});
 
-  @override
-  State<HeaderInRestoring> createState() => _HeaderInRestoringState();
-}
-
-class _HeaderInRestoringState extends State<HeaderInRestoring> {
-  Future<void> _restore(WorkflowStore store, WorkflowHeaderData data) async {
+  /// "Restore": the version on the canvas over the draft (the list closes, the browser ends on success), toasted
+  /// either way.
+  static Future<void> restore(WorkflowStore store, WorkflowHeaderData data) async {
     final v = store.currentVersion.value;
     final restore = data.restoreWorkflow;
     if (v == null || restore == null) return;
@@ -222,6 +219,19 @@ class _HeaderInRestoringState extends State<HeaderInRestoring> {
     }
   }
 
+  /// Whether [version] (the store's current version) can be restored with [data].
+  static bool canRestore(DifyJson? version, WorkflowHeaderData data) {
+    final id = version?['id'];
+    return id is String && id.isNotEmpty && data.restoreWorkflow != null && version?['version'] != workflowVersionDraft;
+  }
+
+  @override
+  State<HeaderInRestoring> createState() => _HeaderInRestoringState();
+}
+
+class _HeaderInRestoringState extends State<HeaderInRestoring> {
+  Future<void> _restore(WorkflowStore store, WorkflowHeaderData data) => HeaderInRestoring.restore(store, data);
+
   @override
   Widget build(BuildContext context) {
     final data = WorkflowHeaderScope.of(context);
@@ -229,9 +239,7 @@ class _HeaderInRestoringState extends State<HeaderInRestoring> {
     return ValueListenableBuilder(
       valueListenable: store.currentVersion,
       builder: (context, v, _) {
-        final id = v?['id'];
-        final canRestore =
-            id is String && id.isNotEmpty && data.restoreWorkflow != null && v?['version'] != workflowVersionDraft;
+        final canRestore = HeaderInRestoring.canRestore(v, data);
         return Row(
           mainAxisSize: MainAxisSize.min,
           spacing: 8,

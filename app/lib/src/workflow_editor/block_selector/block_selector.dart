@@ -139,7 +139,14 @@ class BlockSelector extends StatefulWidget {
   /// Opens this selector at [anchor] (global coordinates; default: [context]'s box), for triggers that are not
   /// widgets (the canvas's handles and edges) or that the caller owns (the next-step buttons). Completes when it
   /// closes. [open], [onOpenChange] and [trigger] are not used.
-  Future<void> show(BuildContext context, {Rect? anchor}) {
+  ///
+  /// In a compact window (a phone, dify-sf) the same tabs and lists open in a bottom sheet instead, under a header
+  /// naming where the block goes ([sheetTitle], "Add Node" by default, and [sheetSubtitle]); its search field does not
+  /// take focus, so the keyboard only opens when the user taps it. [anchor] is not used then.
+  Future<void> show(BuildContext context, {Rect? anchor, String? sheetTitle, String? sheetSubtitle}) {
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) {
+      return _showSheet(context, title: sheetTitle, subtitle: sheetSubtitle);
+    }
     final box = context.findRenderObject() as RenderBox?;
     final rect = anchor ?? (box == null ? Rect.zero : box.localToGlobal(Offset.zero) & box.size);
     final data = BlockSelectorScope.of(context);
@@ -163,8 +170,73 @@ class BlockSelector extends StatefulWidget {
     return done.future;
   }
 
+  Future<void> _showSheet(BuildContext context, {String? title, String? subtitle}) async {
+    final data = BlockSelectorScope.of(context);
+    await showDifyBottomSheet<void>(
+      context,
+      (context) => BlockSelectorScope(
+        data: data,
+        child: _SheetSelector(selector: this, title: title ?? wf('common.addBlock'), subtitle: subtitle),
+      ),
+    );
+    onOpenChange?.call(false);
+  }
+
   @override
   State<BlockSelector> createState() => _BlockSelectorState();
+}
+
+/// [BlockSelector.show]'s phone sheet: a header, then the popup's tabs and lists at the sheet's width. Choosing a
+/// block closes the sheet, then hands it on. The search field's focus node is never requested by the sheet.
+class _SheetSelector extends StatefulWidget {
+  const _SheetSelector({required this.selector, required this.title, this.subtitle});
+  final BlockSelector selector;
+  final String title;
+  final String? subtitle;
+
+  @override
+  State<_SheetSelector> createState() => _SheetSelectorState();
+}
+
+class _SheetSelectorState extends State<_SheetSelector> {
+  final _search = FocusNode(debugLabel: 'BlockSelector sheet search');
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _select(String type, [DifyJson? value]) {
+    final s = widget.selector;
+    if (s.disabled) return;
+    final defaults = _defaultsOf(type, BlockSelectorScope.of(context));
+    Navigator.of(context).pop();
+    s.onSelect(type, defaults, toolDefaultValue: value);
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    label: widget.title,
+    explicitChildNodes: true,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DifySheetHeader(title: widget.title, subtitle: widget.subtitle),
+        Flexible(
+          child: BlockSelectorCard(
+            selector: widget.selector,
+            searchFocus: _search,
+            onSelect: _select,
+            onRequestClose: () => Navigator.of(context).maybePop(),
+            sheet: true,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 DifyJson _defaultsOf(String type, BlockSelectorData data) =>
@@ -336,12 +408,16 @@ class BlockSelectorCard extends StatelessWidget {
     required this.searchFocus,
     required this.onSelect,
     required this.onRequestClose,
+    this.sheet = false,
   });
 
   final BlockSelector selector;
   final FocusNode searchFocus;
   final OnSelectBlock onSelect;
   final VoidCallback onRequestClose;
+
+  /// Inside the phone sheet ([BlockSelector.show] in a compact window): the sheet's width, no card of its own.
+  final bool sheet;
 
   static const _hiddenBlocks = {
     'start', 'start-placeholder', 'datasource', 'tool', 'iteration-start', 'loop-start', 'datasource-empty', //
@@ -377,17 +453,22 @@ class BlockSelectorCard extends StatelessWidget {
       disableStartTab: snippetFlow,
       forceEnableStartTab: s.forceEnableStartTab,
     );
-    Widget card = Container(
-      width: s.popupWidth,
-      constraints: BoxConstraints(minWidth: s.popupMinWidth),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: DifyColors.componentsPanelBg,
-        borderRadius: BorderRadius.circular(DifyRadius.xl),
-        border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-        boxShadow: DifyShadows.lg,
-      ),
-      child: DifySurface(
+    Widget frame(Widget child) => sheet
+        ? child
+        : Container(
+            width: s.popupWidth,
+            constraints: BoxConstraints(minWidth: s.popupMinWidth),
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: DifyColors.componentsPanelBg,
+              borderRadius: BorderRadius.circular(DifyRadius.xl),
+              border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+              boxShadow: DifyShadows.lg,
+            ),
+            child: child,
+          );
+    Widget card = frame(
+      DifySurface(
         child: BlockSelectorPanels(
           tabs: tabs,
           defaultTab: initialTab,

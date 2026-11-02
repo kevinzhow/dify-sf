@@ -51,7 +51,15 @@ class FeaturesTrigger extends StatelessWidget {
     this.workflowToolPublished,
     this.onPublishToMarketplace,
     this.onUpdateVersionInfo,
+    this.panelOnly = false,
+    this.onClose,
   });
+
+  /// The publisher's panel alone ([AppPublisher.panelOnly]: the phone editor's publish sheet), without Features.
+  final bool panelOnly;
+
+  /// [panelOnly]: closes the host.
+  final VoidCallback? onClose;
 
   final WorkflowPublishHooks hooks;
   final bool? workflowToolPublished;
@@ -134,6 +142,37 @@ class FeaturesTrigger extends StatelessWidget {
         final readOnly = nodesReadOnlyOf(store, canEdit: data.canEdit);
         final hasNodes = nodes.isNotEmpty;
         final publishedAt = store.publishedAt.value, draftUpdatedAt = store.draftUpdatedAt.value;
+        final publisher = AppPublisher(
+          publishedAt: publishedAt == 0 ? null : publishedAt,
+          draftUpdatedAt: draftUpdatedAt == 0 ? null : draftUpdatedAt,
+          disabled: readOnly || !hasNodes || !data.canReleaseAndVersion,
+          publishDisabled: !hasNodes || !data.canReleaseAndVersion,
+          toolPublished: workflowToolPublished ?? store.toolPublished.value,
+          workflowToolAvailable: store.lastPublishedHasUserInput.value,
+          crossAxisOffset: 4,
+          missingStartNode: !nodes.any((n) => n.type == 'start'),
+          hasTriggerNode: nodes.any((n) => _isTrigger(n.type)),
+          hasHumanInputNode: nodes.any((n) => n.type == 'human-input'),
+          onPublish: () => publish(store: store, data: data, hooks: hooks),
+          onToggle: (open) {
+            if (open) hooks.syncWorkflowDraft?.call();
+          },
+          app: app,
+          publishedWorkflow: publishedWorkflow,
+          capabilities: capabilities,
+          onOpenLink: onOpenLink,
+          onOpenRunConfig: onOpenRunConfig,
+          onConfigureWorkflowTool: onConfigureWorkflowTool == null
+              ? null
+              : () => onConfigureWorkflowTool!(workflowToolInputsOf(nodes), workflowToolOutputsOf(nodes)),
+          onPublishToMarketplace: onPublishToMarketplace,
+          onUpdateVersionInfo: onUpdateVersionInfo,
+          onToast: data.toast,
+          formatTimeFromNow: data.formatters.formatTimeFromNow,
+          panelOnly: panelOnly,
+          onClose: onClose,
+        );
+        if (panelOnly) return publisher;
         return Row(
           mainAxisSize: MainAxisSize.min,
           spacing: 8,
@@ -148,34 +187,7 @@ class FeaturesTrigger extends StatelessWidget {
                 restyle: difyDarkGlass(),
                 child: DifyTextLine(DifyI18n.tr('workflow', 'common.features')),
               ),
-            AppPublisher(
-              publishedAt: publishedAt == 0 ? null : publishedAt,
-              draftUpdatedAt: draftUpdatedAt == 0 ? null : draftUpdatedAt,
-              disabled: readOnly || !hasNodes || !data.canReleaseAndVersion,
-              publishDisabled: !hasNodes || !data.canReleaseAndVersion,
-              toolPublished: workflowToolPublished ?? store.toolPublished.value,
-              workflowToolAvailable: store.lastPublishedHasUserInput.value,
-              crossAxisOffset: 4,
-              missingStartNode: !nodes.any((n) => n.type == 'start'),
-              hasTriggerNode: nodes.any((n) => _isTrigger(n.type)),
-              hasHumanInputNode: nodes.any((n) => n.type == 'human-input'),
-              onPublish: () => publish(store: store, data: data, hooks: hooks),
-              onToggle: (open) {
-                if (open) hooks.syncWorkflowDraft?.call();
-              },
-              app: app,
-              publishedWorkflow: publishedWorkflow,
-              capabilities: capabilities,
-              onOpenLink: onOpenLink,
-              onOpenRunConfig: onOpenRunConfig,
-              onConfigureWorkflowTool: onConfigureWorkflowTool == null
-                  ? null
-                  : () => onConfigureWorkflowTool!(workflowToolInputsOf(nodes), workflowToolOutputsOf(nodes)),
-              onPublishToMarketplace: onPublishToMarketplace,
-              onUpdateVersionInfo: onUpdateVersionInfo,
-              onToast: data.toast,
-              formatTimeFromNow: data.formatters.formatTimeFromNow,
-            ),
+            publisher,
           ],
         );
       },

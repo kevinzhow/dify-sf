@@ -255,6 +255,9 @@ extension NodeInsertion on WorkflowActions {
     final data = BlockSelectorScope.of(context);
     final List<String> types;
     final bool startTab;
+    // On a phone the selector is a bottom sheet whose header says where the block goes.
+    final String where;
+    String tw(String key, Map<String, Object?> params) => DifyI18n.tr('workflow', key, params);
     var p = placement;
     switch (at) {
       case InsertAfter(:final nodeId):
@@ -263,16 +266,19 @@ extension NodeInsertion on WorkflowActions {
         types = availableBlocksOf(n, data).next;
         startTab = true;
         p ??= BlockSelectorPlacements.sourceHandle;
+        where = tw('mobile.addAfter', {'name': n.title});
       case InsertBefore(:final nodeId):
         final n = doc.nodes[nodeId];
         if (n == null) return;
         types = availableBlocksOf(n, data).prev;
         startTab = true;
         p ??= BlockSelectorPlacements.targetHandle;
+        where = tw('mobile.addBefore', {'name': n.title});
       case InsertOnEdge(:final edgeId):
         final e = doc.edges[edgeId];
         final s = e == null ? null : doc.nodes[e.source], t = e == null ? null : doc.nodes[e.target];
         if (s == null || t == null) return;
+        where = tw('mobile.addBetween', {'from': s.title, 'to': t.title});
         // custom-edge.tsx: both ends' blocks under the edge's container (the target's flags, as edge data has).
         final inContainer = _inContainer(t);
         final all = availableNodeTypes(chatMode: data.chatMode, agentV2: data.agentV2);
@@ -294,7 +300,7 @@ extension NodeInsertion on WorkflowActions {
       showStartTab: (showStartTab ?? startTab) && !data.chatMode && data.flow == BlockSelectorFlow.app,
       onSelect: (type, defaults, {toolDefaultValue}) =>
           addNodeAt(at, type, defaults, toolDefaultValue: toolDefaultValue),
-    ).show(context, anchor: anchor);
+    ).show(context, anchor: anchor, sheetSubtitle: where);
   }
 
   /// next-step/operator.tsx ChangeItem: the block selector replacing node [nodeId] (reached from [sourceHandle]) by
@@ -318,6 +324,6 @@ extension NodeInsertion on WorkflowActions {
       ],
       onSelect: (type, defaults, {toolDefaultValue}) =>
           changeNode(nodeId, type, defaults, sourceHandle, toolDefaultValue: toolDefaultValue),
-    ).show(context, anchor: anchor);
+    ).show(context, anchor: anchor, sheetTitle: DifyI18n.tr('workflow', 'panel.changeBlock'), sheetSubtitle: n.title);
   }
 }

@@ -116,7 +116,17 @@ class AppPublisher extends StatefulWidget {
     this.onUpdateVersionInfo,
     this.onToast,
     this.formatTimeFromNow = _fromNow,
+    this.panelOnly = false,
+    this.onClose,
   });
+
+  /// Shows the panel alone, at its host's width and without a card of its own (the phone editor's bottom sheet,
+  /// dify-sf): no trigger, no popover, no hotkey. It counts as opened when it is built; where the popover would close,
+  /// [onClose] is called instead.
+  final bool panelOnly;
+
+  /// [panelOnly]: closes the host.
+  final VoidCallback? onClose;
 
   /// The trigger is disabled and the panel can't open.
   final bool disabled;
@@ -206,7 +216,17 @@ class _AppPublisherState extends State<AppPublisher> {
     return w.createdAt != 0 ? w.createdAt * 1000 : null;
   }
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.panelOnly) widget.onToggle?.call(true);
+  }
+
   void _setOpen(bool open) {
+    if (widget.panelOnly) {
+      if (!open) widget.onClose?.call();
+      return;
+    }
     if (mounted && open != _open) setState(() => _open = open);
   }
 
@@ -287,16 +307,18 @@ class _AppPublisherState extends State<AppPublisher> {
     final noAccessPermission = caps.noAccessPermission && app != null && app.accessMode != 'sso_verified';
     final r = BorderRadius.circular(DifyRadius.xxl);
     return Container(
-      width: 352,
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height - 32),
+      width: w.panelOnly ? null : 352,
+      constraints: w.panelOnly ? null : BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height - 32),
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: DifyColors.componentsPanelBg,
-        border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-        borderRadius: r,
-        // shadow-xl shadow-shadow-shadow-5: the colour utility replaces shadow-xl's colours.
-        boxShadow: [for (final s in DifyShadows.xl) s.copyWith(color: DifyColors.shadowShadow5)],
-      ),
+      decoration: w.panelOnly
+          ? null
+          : BoxDecoration(
+              color: DifyColors.componentsPanelBg,
+              border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+              borderRadius: r,
+              // shadow-xl shadow-shadow-shadow-5: the colour utility replaces shadow-xl's colours.
+              boxShadow: [for (final s in DifyShadows.xl) s.copyWith(color: DifyColors.shadowShadow5)],
+            ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -355,6 +377,7 @@ class _AppPublisherState extends State<AppPublisher> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.panelOnly) return _panel(context);
     final label = DifyI18n.tr('workflow', 'common.publish');
     return PageHotkey(
       hotkey: appPublishHotkey,
