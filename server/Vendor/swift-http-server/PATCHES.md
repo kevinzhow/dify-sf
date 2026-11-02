@@ -1,3 +1,19 @@
+## Explicit HTTP/1.1 connection closure
+
+`HTTPKeepAliveHandler.swift` also honors an explicit `Connection: close` token in
+a request or final response, including comma-separated case-insensitive tokens.
+A fully consumed request previously left the socket reusable and omitted the
+closing response header, while the HTTP decoder had already entered its terminal
+state. Reusing that socket caused `HTTPParserError.closedConnection` and an empty
+400. The patched handler advertises closure and uses its existing close-after-end
+path, so a streaming response completes before the socket closes. Informational
+responses and ordinary persistent requests keep their existing behavior.
+
+The root `HTTPConnectionCloseTests` exercise the handler's token handling, final
+response lifetime, and actual TCP closure versus multiple persistent requests.
+The upstream main implementation was inspected when preparing this patch and
+still lacked handling for explicit request-close tokens.
+
 # dify-sf local patches to swift-http-server 0.3.0
 
 ## HTTP/1.1 failure diagnostics
