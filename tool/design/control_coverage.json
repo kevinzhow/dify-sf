@@ -180,6 +180,13 @@
       ],
       "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive. No dedicated direct construction test is claimed by this row."
     },
+    "fab.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/navigation_bar_test.dart"
+      ],
+      "note": "dify-sf floating action button (no Dify counterpart): Dify primary button colours, label through DifyText (DifyPhoneType.labelStrong); size, radius, shadow and disabled state are tested."
+    },
     "floating.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
@@ -313,6 +320,13 @@
         "app/test/dify_spec/dify_ui/context_menu_test.dart"
       ],
       "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive."
+    },
+    "navigation_bar.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/navigation_bar_test.dart"
+      ],
+      "note": "dify-sf bottom navigation (no Dify counterpart): system-xs labels through DifyText, count badge text-[11px]; selection, badges, semantics and insets are tested."
     },
     "number_field.dart": {
       "kind": "gallery",
