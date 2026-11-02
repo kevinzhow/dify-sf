@@ -160,15 +160,14 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
     v ? _portal.show() : _portal.hide();
   }
 
-  /// handleInsertVariable: focus the editor and type `/` at the caret (PROMPT_EDITOR_INSERT_QUICKLY).
+  /// handleInsertVariable: focus the editor and type `/` at the caret (PROMPT_EDITOR_INSERT_QUICKLY). A phone opens the
+  /// variable sheet directly instead (no trigger typed, no keyboard); the pick goes in at the caret.
   void _insertVariable() {
     setState(() => _isFocus = true);
-    // A phone opens the picker as a sheet without the keyboard: the editor takes focus only when tapped.
-    if (!_asPage) _focusNode.requestFocus();
     final c = _controller;
     if (!c.selection.isValid) c.selection = TextSelection.collapsed(offset: c.text.length);
-    // A phone's sheet takes the `/` back out when it is dismissed without a choice.
-    c.buttonTriggerAt = _asPage ? c.selection.baseOffset : null;
+    if (_asPage && (c.openVariableSheet?.call() ?? false)) return;
+    _focusNode.requestFocus();
     c.insertText('/');
   }
 

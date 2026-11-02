@@ -606,7 +606,8 @@ void main() {
     await e.dispose();
   });
 
-  testWidgets('the prompt editor\'s insert-variable button: dismissed without a choice, its "/" goes again', (t) async {
+  testWidgets('the prompt editor\'s insert-variable button opens "Insert variable" directly (no trigger typed), '
+      'after "sentence." too; a pick goes in at the caret; a dismissal changes nothing', (t) async {
     final e = await _pump(t);
     await _openFromSteps(t, _llmTitle);
     await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
@@ -614,39 +615,41 @@ void main() {
     await _scrollTo(t, editor);
     final state = t.state<DifyPromptEditorState>(editor);
     final before = state.controller.prompt;
+    expect(before, endsWith('sentence.'));
+    final sheet = find.byKey(const Key('prompt-editor-picker-sheet'));
     final button = find.descendant(
       of: _inSheet(find.byType(DifyPromptEditorPanel)).first,
       matching: find.bySemanticsLabel(_tw('common.insertVarTip')),
     );
-    for (final close in ['back', 'close']) {
-      // Dify's `/` trigger needs a word boundary before it: the caret at the start.
-      state.controller.selection = const TextSelection.collapsed(offset: 0);
+    Future<void> open() async {
+      // The caret after "sentence.", where a typed "/" would not open anything.
+      state.controller.selection = TextSelection.collapsed(offset: state.controller.text.length);
       await t.tap(button.first);
       await settle(t, 800);
-      expect(find.byKey(const Key('prompt-editor-picker-sheet')), findsOneWidget, reason: close);
+      expect(sheet, findsOneWidget);
+      expect(find.descendant(of: sheet, matching: find.text(_insertVariable)), findsOneWidget);
+      expect(state.controller.prompt, before, reason: 'no trigger typed');
+      expect(t.testTextInput.isVisible, isFalse);
+    }
+
+    for (final close in ['back', 'close']) {
+      await open();
       if (close == 'back') {
         expect(await systemBack(t), isTrue);
       } else {
-        // The sheet fills the window (its list): its header's close.
-        await t.tap(
-          find.descendant(
-            of: find.byKey(const Key('prompt-editor-picker-sheet')),
-            matching: find.byType(DifyTouchIconButton),
-          ),
-        );
+        await t.tap(find.descendant(of: sheet, matching: find.byType(DifyTouchIconButton)));
         await settle(t, 800);
       }
-      expect(find.byKey(const Key('prompt-editor-picker-sheet')), findsNothing, reason: close);
-      expect(state.controller.prompt, before, reason: '$close: the "/" the button typed is gone');
+      expect(sheet, findsNothing, reason: close);
+      expect(state.controller.prompt, before, reason: close);
       expect(_sheet, findsOneWidget, reason: close);
     }
-    // A "/" the user typed stays when the sheet is dismissed.
-    state.controller
-      ..selection = TextSelection.collapsed(offset: state.controller.text.length)
-      ..insertText('/');
+    // A pick goes in at the caret (the end).
+    await open();
+    await t.tap(find.descendant(of: sheet, matching: find.text('query')));
     await settle(t, 800);
-    expect(await systemBack(t), isTrue);
-    expect(state.controller.prompt, '$before/');
+    expect(sheet, findsNothing);
+    expect(state.controller.prompt, '$before{{#n-start.query#}}');
     expect(t.takeException(), isNull);
     await e.dispose();
   });

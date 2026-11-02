@@ -19,9 +19,10 @@ class PromptEditorController extends TextEditingController {
     super.value = TextEditingValue(text: _encode(parsePrompt(prompt, blocks)));
   }
 
-  /// Where the panel's insert-variable button typed its trigger (`/`) to open a phone's picker sheet: the sheet removes
-  /// it again when it is dismissed without a choice (the user did not type it). Null otherwise.
-  int? buttonTriggerAt;
+  /// Opens the variable picker of the editor showing this controller as a sheet, with no trigger typed (a phone's
+  /// insert-variable button); a pick goes in at the caret. Set by that editor ([DifyPromptEditor]); returns false
+  /// when it cannot (no editor, not a phone, nothing to pick).
+  bool Function()? openVariableSheet;
 
   static const _firstCode = 0xE000, _lastCode = 0xF8FF;
 

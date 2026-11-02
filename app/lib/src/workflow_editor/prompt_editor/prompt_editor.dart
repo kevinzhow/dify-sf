@@ -158,6 +158,16 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
 
   bool get _asSheet => mounted && DifyFloating.presentsAsSheet(context);
 
+  /// The variable sheet opened without a trigger (the panel's insert-variable button on a phone).
+  bool _variableSheet = false;
+
+  bool _openVariableSheet() {
+    if (!_asSheet || !widget.editable || !(widget.workflowVariableBlock?.show ?? false)) return false;
+    _variableSheet = true;
+    _updateMenu();
+    return true;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -198,10 +208,12 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
       ..onBlockRemoved = ((b) {
         _configOf(b.kind)?.onDelete?.call();
       })
+      ..openVariableSheet = _openVariableSheet
       ..addListener(_onChanged);
   }
 
   void _detach(PromptEditorController c) {
+    if (c.openVariableSheet == _openVariableSheet) c.openVariableSheet = null;
     c
       ..removeListener(_onChanged)
       ..chipBuilder = null
@@ -329,6 +341,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
   }
 
   bool get _menuVisible {
+    if (_variableSheet) return true;
     final m = _match;
     // A phone's sheet is modal: it closes through its scrim, back or a choice, not when the editor loses focus (the
     // sheet's search field, or the panel's insert-variable button, which leaves the keyboard down).
@@ -385,13 +398,12 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
     _updateMenu();
   }
 
-  /// The phone's sheet dismissed without a choice: a `/` the insert-variable button typed goes again; a trigger the
-  /// user typed stays (as Escape leaves it).
+  /// The phone's sheet dismissed without a choice: the button's sheet just closes; a typed trigger stays (as Escape
+  /// leaves it).
   void _dismissSheet() {
-    final at = controller.buttonTriggerAt, m = _match;
-    controller.buttonTriggerAt = null;
-    if (at != null && m != null && m.trigger == '/' && m.leadOffset == at && m.query.isEmpty) {
-      _removeTrigger();
+    if (_variableSheet) {
+      _variableSheet = false;
+      _updateMenu();
       return;
     }
     _dismiss();
@@ -416,9 +428,13 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
 
   /// handleSelectWorkflowVariable.
   void _selectVariable(List<String> variables) {
-    controller.buttonTriggerAt = null;
     _markKeyUsed();
-    _removeTrigger();
+    // The button's sheet has no trigger to replace: the variable goes in at the caret.
+    if (_variableSheet) {
+      _variableSheet = false;
+    } else {
+      _removeTrigger();
+    }
     final PromptBlock? block;
     if (variables.length == 1) {
       block = switch (variables[0]) {
@@ -433,12 +449,13 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
       block = PromptBlock.variable(variables);
     }
     if (block != null) controller.insertBlock(block);
+    _updateMenu();
     // A phone's sheet picker does not bring the keyboard up when the editor did not have it.
     if (!_asSheet) focusNode.requestFocus();
   }
 
   void _selectOption(PickerOption o) {
-    controller.buttonTriggerAt = null;
+    _variableSheet = false;
     _markKeyUsed();
     if (o.key.isNotEmpty) _removeTrigger();
     o.onSelect?.call();
@@ -1004,13 +1021,15 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
   /// 48 px, its search not focused (the editor keeps the keyboard and the typed query); a row inserts at the trigger,
   /// the scrim, a drag down, the close button and back dismiss it.
   Widget _sheetMenu(BuildContext context, OverlayChildLayoutInfo info) {
-    final m = _match;
+    // The button's sheet: the variables with their search, as for `{`, at the caret.
+    final caret = controller.selection.isValid ? controller.selection.baseOffset : controller.text.length;
+    final m = _variableSheet ? (trigger: '{', leadOffset: caret, caret: caret, query: '') : _match;
     if (m == null || !_menuVisible) return const SizedBox.shrink();
     final w = widget;
     final wvb = w.workflowVariableBlock;
     final slash = m.trigger == '/';
     final showVars = wvb?.show ?? false;
-    final options = _options(m);
+    final options = _variableSheet ? const <PickerOption>[] : _options(m);
     return DifyPortalSheetFrame(
       animation: _sheetCurve,
       onDismiss: _dismissSheet,
