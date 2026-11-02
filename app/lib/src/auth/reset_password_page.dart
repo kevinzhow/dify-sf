@@ -228,12 +228,14 @@ class _ResetPasswordFormState extends State<ResetPasswordForm> {
                   onSubmitted: (_) => _submit(),
                 ),
                 const SizedBox(height: 12),
-                DifyButton(
-                  key: const ValueKey('reset-send'),
-                  variant: DifyButtonVariant.primary,
-                  loading: _loading,
-                  onPressed: _submit,
-                  child: DifyTextLine(tLogin(context, 'sendVerificationCode')),
+                DifyPrimaryAction(
+                  child: DifyButton(
+                    key: const ValueKey('reset-send'),
+                    variant: DifyButtonVariant.primary,
+                    loading: _loading,
+                    onPressed: _submit,
+                    child: DifyTextLine(tLogin(context, 'sendVerificationCode')),
+                  ),
                 ),
               ],
             ),
@@ -376,12 +378,14 @@ class _ResetPasswordCheckCodeFormState extends State<ResetPasswordCheckCodeForm>
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: DifyButton(
-                    key: const ValueKey('reset-verify'),
-                    variant: DifyButtonVariant.primary,
-                    loading: _loading,
-                    onPressed: _verify,
-                    child: DifyTextLine(tLogin(context, 'checkCode.verify')),
+                  child: DifyPrimaryAction(
+                    child: DifyButton(
+                      key: const ValueKey('reset-verify'),
+                      variant: DifyButtonVariant.primary,
+                      loading: _loading,
+                      onPressed: _verify,
+                      child: DifyTextLine(tLogin(context, 'checkCode.verify')),
+                    ),
                   ),
                 ),
                 ResendCountdown(onResend: () => unawaited(_resend())),
@@ -647,12 +651,14 @@ class _SetPasswordFormState extends State<SetPasswordForm> {
               onSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 20),
-            DifyButton(
-              key: const ValueKey('reset-set-password'),
-              variant: DifyButtonVariant.primary,
-              loading: _submitting,
-              onPressed: _submit,
-              child: DifyTextLine(tLogin(context, 'changePasswordBtn')),
+            DifyPrimaryAction(
+              child: DifyButton(
+                key: const ValueKey('reset-set-password'),
+                variant: DifyButtonVariant.primary,
+                loading: _submitting,
+                onPressed: _submit,
+                child: DifyTextLine(tLogin(context, 'changePasswordBtn')),
+              ),
             ),
           ],
         ),

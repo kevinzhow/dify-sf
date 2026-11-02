@@ -246,21 +246,24 @@ void showConfigVarModal(
 }) {
   late final OverlayEntry entry;
   entry = OverlayEntry(
-    builder: (_) => ConfigVarModal(
-      isCreate: isCreate,
-      payload: payload,
-      supportFile: supportFile,
-      showHiddenField: showHiddenField,
-      isBasicApp: isBasicApp,
-      maxFileUploadLimit: maxFileUploadLimit,
-      toastError: toastError,
-      onOpenUrl: onOpenUrl,
-      onClose: () => entry.remove(),
-      onConfirm: (p, m) {
-        final ok = onConfirm(p, m);
-        if (ok) entry.remove();
-        return ok;
-      },
+    // Inside the window's safe area, as when the app kept the whole navigator inside it.
+    builder: (_) => DifyOverlaySafeArea(
+      child: ConfigVarModal(
+        isCreate: isCreate,
+        payload: payload,
+        supportFile: supportFile,
+        showHiddenField: showHiddenField,
+        isBasicApp: isBasicApp,
+        maxFileUploadLimit: maxFileUploadLimit,
+        toastError: toastError,
+        onOpenUrl: onOpenUrl,
+        onClose: () => entry.remove(),
+        onConfirm: (p, m) {
+          final ok = onConfirm(p, m);
+          if (ok) entry.remove();
+          return ok;
+        },
+      ),
     ),
   );
   Overlay.of(context, rootOverlay: true).insert(entry);

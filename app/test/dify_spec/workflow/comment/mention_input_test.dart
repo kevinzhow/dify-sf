@@ -77,6 +77,53 @@ void main() {
       expect(submitted.single.$2, ['user-2']);
     });
 
+    testWidgets('the mention list keeps clear of the system navigation bar (opens above the field)', (t) async {
+      // The root overlay reaches under the system bars; 200 px below the field is enough room without the 120 px
+      // navigation bar, not with it, so the list must open above the field.
+      t.view.padding = const FakeViewPadding(bottom: 120);
+      addTearDown(t.view.resetPadding);
+      await pumpComments(
+        t,
+        Align(
+          alignment: Alignment.bottomLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 200),
+            child: _Controlled(onSubmit: (c, ids) async {}),
+          ),
+        ),
+        store: store,
+        comments: h.store('u'),
+      );
+      await settle(t);
+      await t.enterText(find.byType(TextField), '@Ali');
+      await t.pump();
+      final field = t.getRect(find.byType(TextField));
+      expect(t.getRect(find.text('Alice')).bottom, lessThan(field.top));
+    });
+
+    testWidgets('closes the list without an error when the parent resets the value while it is open', (t) async {
+      // The text controller then notifies during the rebuild: the overlay portal must not be hidden mid-build.
+      final value = ValueNotifier('');
+      addTearDown(value.dispose);
+      await render(
+        t,
+        ValueListenableBuilder<String>(
+          valueListenable: value,
+          builder: (_, v, _) => SizedBox(
+            width: 360,
+            child: MentionInput(value: v, onChange: (x) => value.value = x, onSubmit: (_, _) async {}, users: _users),
+          ),
+        ),
+      );
+      await t.enterText(find.byType(TextField), '@');
+      await t.pump();
+      expect(find.text('Alice'), findsOneWidget);
+      value.value = '';
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      expect(find.text('Alice'), findsNothing);
+    });
+
     testWidgets('supports editing mode cancel and save actions', (t) async {
       final submitted = <(String, List<String>)>[];
       var cancels = 0;

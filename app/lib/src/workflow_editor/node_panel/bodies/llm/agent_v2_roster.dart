@@ -388,25 +388,28 @@ class _AgentRosterFieldState extends State<AgentRosterField> {
     });
     return OverlayPortal(
       controller: _drawer,
-      overlayChildBuilder: (context) => Positioned(
-        right: 4,
-        top: 56,
-        bottom: 4,
-        width: w.drawerWidth,
-        child: w.agent == null
-            ? const SizedBox.shrink()
-            : AgentRosterDrawer(
-                agent: w.agent!,
-                mode: w.panelMode,
-                isInlineSetup: w.isInlineSetup,
-                showDetailActions: w.showPanelDetailActions,
-                isCopyPending: w.isPanelCopyPending,
-                onMakeCopy: w.onMakeCopy,
-                onSaveInlineToRoster: w.onSaveInlineToRoster,
-                onOpenUrl: w.onOpenUrl,
-                onClose: () => _setPanelOpen(false),
-                body: w.panelBody,
-              ),
+      // Measured from the window's safe edges, as when the app kept the whole navigator inside the safe area.
+      overlayChildBuilder: (context) => DifyOverlaySafeArea(
+        child: Positioned(
+          right: 4,
+          top: 56,
+          bottom: 4,
+          width: w.drawerWidth,
+          child: w.agent == null
+              ? const SizedBox.shrink()
+              : AgentRosterDrawer(
+                  agent: w.agent!,
+                  mode: w.panelMode,
+                  isInlineSetup: w.isInlineSetup,
+                  showDetailActions: w.showPanelDetailActions,
+                  isCopyPending: w.isPanelCopyPending,
+                  onMakeCopy: w.onMakeCopy,
+                  onSaveInlineToRoster: w.onSaveInlineToRoster,
+                  onOpenUrl: w.onOpenUrl,
+                  onClose: () => _setPanelOpen(false),
+                  body: w.panelBody,
+                ),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

@@ -190,23 +190,26 @@ class _HumanInputPanelState extends State<HumanInputPanel> {
     );
     final preview = OverlayPortal(
       controller: _preview,
-      overlayChildBuilder: (context) => ValueListenableBuilder(
-        valueListenable: store.panelWidth,
-        builder: (context, width, _) => Positioned(
-          top: 112,
-          right: width + 8,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height - 116),
-            child: DifySurface(
-              child: FormContentPreview(
-                content: jsStr(props.data['form_content']) ?? '',
-                formInputs: jsList(props.data['inputs']),
-                userActions: jsList(props.data['user_actions']),
-                nodeName: _nodeName,
-                onClose: () => setState(() {
-                  _isPreview = false;
-                  _preview.hide();
-                }),
+      // Measured from the window's safe edges, as when the app kept the whole navigator inside the safe area.
+      overlayChildBuilder: (context) => DifyOverlaySafeArea(
+        child: ValueListenableBuilder(
+          valueListenable: store.panelWidth,
+          builder: (context, width, _) => Positioned(
+            top: 112,
+            right: width + 8,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height - 116),
+              child: DifySurface(
+                child: FormContentPreview(
+                  content: jsStr(props.data['form_content']) ?? '',
+                  formInputs: jsList(props.data['inputs']),
+                  userActions: jsList(props.data['user_actions']),
+                  nodeName: _nodeName,
+                  onClose: () => setState(() {
+                    _isPreview = false;
+                    _preview.hide();
+                  }),
+                ),
               ),
             ),
           ),
@@ -216,17 +219,19 @@ class _HumanInputPanelState extends State<HumanInputPanel> {
     );
     final formContent = OverlayPortal(
       controller: _expanded,
-      overlayChildBuilder: (context) => ValueListenableBuilder(
-        valueListenable: store.nodePanelWidth,
-        builder: (context, width, _) => Positioned(
-          top: 244,
-          right: 4,
-          bottom: 8,
-          width: width,
-          child: DifySurface(
-            color: DifyColors.componentsPanelBg,
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-            child: _formContentSection(context, expanded: true),
+      overlayChildBuilder: (context) => DifyOverlaySafeArea(
+        child: ValueListenableBuilder(
+          valueListenable: store.nodePanelWidth,
+          builder: (context, width, _) => Positioned(
+            top: 244,
+            right: 4,
+            bottom: 8,
+            width: width,
+            child: DifySurface(
+              color: DifyColors.componentsPanelBg,
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+              child: _formContentSection(context, expanded: true),
+            ),
           ),
         ),
       ),

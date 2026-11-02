@@ -188,6 +188,8 @@ class _CreateAppModalState extends State<CreateAppModal> {
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 1536;
+    // A phone (compact window): 16 px sides, the type cards stacked, the buttons wrapping (layout only).
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
     final top = wide ? 139.0 : 24.0;
     final canSubmit = widget.canCreateApp && _name.isNotEmpty;
     return CallbackShortcuts(
@@ -209,7 +211,7 @@ class _CreateAppModalState extends State<CreateAppModal> {
                   child: Align(
                     alignment: AlignmentDirectional.topEnd,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      padding: EdgeInsets.symmetric(horizontal: phone ? 16 : 40),
                       child: SizedBox(
                         width: 660,
                         child: Column(
@@ -246,11 +248,14 @@ class _CreateAppModalState extends State<CreateAppModal> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               spacing: 16,
                               children: [
-                                Row(
+                                Flex(
+                                  direction: phone ? Axis.vertical : Axis.horizontal,
+                                  crossAxisAlignment: phone ? CrossAxisAlignment.stretch : CrossAxisAlignment.center,
                                   spacing: 8,
                                   children: [
                                     _AppTypeCard(
                                       key: const ValueKey('create-app-type-workflow'),
+                                      width: phone ? null : _AppTypeCard.defaultWidth,
                                       active: _mode == AppModes.workflow,
                                       title: _a('types.workflow'),
                                       description: _a('newApp.workflowShortDescription'),
@@ -264,6 +269,7 @@ class _CreateAppModalState extends State<CreateAppModal> {
                                     ),
                                     _AppTypeCard(
                                       key: const ValueKey('create-app-type-advanced-chat'),
+                                      width: phone ? null : _AppTypeCard.defaultWidth,
                                       active: _mode == AppModes.advancedChat,
                                       title: _a('types.advanced'),
                                       description: _a('newApp.advancedShortDescription'),
@@ -362,9 +368,10 @@ class _CreateAppModalState extends State<CreateAppModal> {
                             ),
                             Padding(
                               padding: const EdgeInsets.only(top: 20, bottom: 40),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
+                              child: Wrap(
+                                alignment: WrapAlignment.end,
                                 spacing: 8,
+                                runSpacing: 8,
                                 children: [
                                   DifyButton(
                                     key: const ValueKey('create-app-cancel'),
@@ -407,6 +414,7 @@ class _CreateAppModalState extends State<CreateAppModal> {
 class _AppTypeCard extends StatelessWidget {
   const _AppTypeCard({
     super.key,
+    this.width = _AppTypeCard.defaultWidth,
     required this.active,
     required this.title,
     required this.description,
@@ -414,6 +422,10 @@ class _AppTypeCard extends StatelessWidget {
     required this.icon,
     required this.onTap,
   });
+
+  /// `box-content w-47.75 p-3 border-[0.5px]`; null: the width it is given (a phone stacks the cards).
+  final double? width;
+  static const defaultWidth = 191 + 24 + 1.0;
 
   final bool active;
   final String title, description;
@@ -432,7 +444,7 @@ class _AppTypeCard extends StatelessWidget {
         children: [
           Container(
             // `box-content w-47.75 h-21 p-3 border-[0.5px]`.
-            width: 191 + 24 + 1,
+            width: width,
             height: 84 + 24 + 1,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(

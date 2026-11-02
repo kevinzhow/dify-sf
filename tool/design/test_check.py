@@ -92,6 +92,18 @@ class RuleTest(unittest.TestCase):
                ' abstract final class DifyY {} enum DifyZ { a }')
         self.assertEqual(rules('a.dart', src), ['dify-class'] * 3)
 
+    def test_raw_framework_sheets_only_inside_design(self):
+        src = ('DraggableScrollableSheet(builder: b); ModalBottomSheetRoute<void>(builder: b); showBottomSheet(context: c);'
+               ' m.BottomSheet(onClosing: f, builder: b); final c = DraggableScrollableController();'
+               ' showDifyBottomSheet(c, b); DifyBottomSheet(); showModalBottomSheet(context: c);')
+        self.assertEqual(rules('studio/a.dart', src), ['dialog-route'] + ['raw-sheet'] * 5)
+        self.assertEqual(rules('design/widgets/bottom_sheet.dart', src), [])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'allowlist.tsv'
+            path.write_text('raw-sheet\ta.dart\t1\tlegit:x\n')
+            _, errors = check.read_allowlist(path)
+            self.assertTrue(any('prohibited' in e for e in errors))
+
     def test_design_files_only_checked_for_imports(self):
         src = ("import 'package:flutter/widgets.dart';\nimport '../dify_tokens.g.dart';\nimport '../../i18n/x.dart';\n"
                "import '../../workflow_editor/panel_fields/dialog.dart';\n"

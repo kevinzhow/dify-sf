@@ -66,3 +66,18 @@ export 'workspace_avatar.dart';
 export 'main_nav_link.dart';
 export 'public_app_layout.dart';
 export 'text_input_scope.dart';
+// dify-sf's phone layout (no Dify counterpart).
+export 'action_sheet.dart';
+export 'back_dismiss.dart';
+export 'bottom_sheet.dart';
+export 'bottom_toolbar.dart';
+export 'fab.dart';
+export 'filter_chip.dart';
+export 'keyboard_scroll_view.dart';
+export 'list_row.dart';
+export 'navigation_bar.dart';
+export 'refresh_indicator.dart';
+export 'responsive.dart';
+export 'top_app_bar.dart';
+export 'touch_target.dart';
+export '../dify_phone_tokens.dart';

@@ -6,6 +6,7 @@ library;
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/auth/auth_controller.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/home_page.dart';
 import 'package:dify_sf_app/src/app_detail/detail_sidebar.dart';
 import 'package:dify_sf_app/src/settings/integrations_page.dart';
@@ -107,7 +108,8 @@ void main() {
       labels();
       await t.tap(find.byKey(const ValueKey('main-nav-studio')));
       await settle(t);
-      t.view.physicalSize = const Size(390, 844);
+      // 600-719 px keeps the narrow desktop layout (the rail with its toggle); phones get the navigation bar below.
+      t.view.physicalSize = const Size(640, 844);
       await settle(t);
       await t.tap(find.byType(DetailSidebarToggleButton));
       await settle(t);
@@ -117,6 +119,11 @@ void main() {
       await t.tap(find.byType(DetailSidebarToggleButton));
       await settle(t);
       labels();
+      t.view.physicalSize = const Size(390, 844);
+      await settle(t);
+      final bar = find.byType(DifyNavigationBar);
+      expect(find.descendant(of: bar, matching: find.text(studio)), findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text(integrations)), findsOneWidget);
       await t.pumpWidget(const SizedBox());
       await t.pump(const Duration(seconds: 20));
     });

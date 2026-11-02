@@ -336,6 +336,8 @@ class _MailAndPasswordAuthState extends State<MailAndPasswordAuth> {
             password: true,
             revealButtonSize: DifyIconButtonSize.lg,
             autofillHints: const [AutofillHints.password],
+            // The keyboard's Done signs in (the last field).
+            textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submit(),
             labelTrailing: _ForgetLink(
               enabled: widget.isEmailSetup,
@@ -346,12 +348,14 @@ class _MailAndPasswordAuthState extends State<MailAndPasswordAuth> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: DifyButton(
-              key: const ValueKey('signin-submit'),
-              variant: DifyButtonVariant.primary,
-              loading: _loading,
-              onPressed: _submit,
-              child: DifyTextLine(tLogin(context, 'signBtn')),
+            child: DifyPrimaryAction(
+              child: DifyButton(
+                key: const ValueKey('signin-submit'),
+                variant: DifyButtonVariant.primary,
+                loading: _loading,
+                onPressed: _submit,
+                child: DifyTextLine(tLogin(context, 'signBtn')),
+              ),
             ),
           ),
         ],

@@ -260,13 +260,16 @@ class _ChatWrapperState extends State<ChatWrapper> {
     _modal.show();
     return OverlayPortal(
       controller: _modal,
-      overlayChildBuilder: (context) => ColoredBox(
-        color: DifyColors.backgroundOverlay,
-        child: Center(
-          child: ConversationVariableModal(
-            conversationId: chat.conversationId,
-            varList: store.conversationVariables.value,
-            onHide: () => widget.onConversationModalHide?.call(),
+      // Inside the window's safe area, as when the app kept the whole navigator inside it.
+      overlayChildBuilder: (context) => DifyOverlaySafeArea(
+        child: ColoredBox(
+          color: DifyColors.backgroundOverlay,
+          child: Center(
+            child: ConversationVariableModal(
+              conversationId: chat.conversationId,
+              varList: store.conversationVariables.value,
+              onHide: () => widget.onConversationModalHide?.call(),
+            ),
           ),
         ),
       ),

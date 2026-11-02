@@ -13,11 +13,40 @@ import 'widgets.dart';
 /// One option of a [DifySegmentedControl]: its [value], what it shows and its accessible [label].
 typedef DifySegment<T> = ({T value, Widget child, String label});
 
+/// [DifySegmentedControl] sizes.
+enum DifySegmentedControlSize {
+  /// dify-ui's control: [DifySegmentedControl.height] and the padding parameters.
+  regular,
+
+  /// dify-sf's phone control (mockup 2 "Steps | Canvas", gen.py `.seg`): 36 px tall, `p-[3px] gap-0.5`, items
+  /// `h-[30px] px-3.5 rounded-lg`, text-tertiary text and text-primary when checked, centred in a 48 px tall box.
+  /// The whole box is the items' touch target: the control's padding and the 6 px above and below it
+  /// ([DifyTouchTarget] inside the box, so the target never depends on the parent).
+  touch,
+}
+
+/// A segment's content with a leading icon (`gap-[5px]`), e.g. `DifySegmentLabel(icon: RemixIcon('list-unordered'),
+/// text: 'Steps')`. The icon takes the item's text colour.
+class DifySegmentLabel extends StatelessWidget {
+  const DifySegmentLabel({super.key, required this.icon, required this.text});
+
+  final Widget icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    spacing: 5,
+    children: [icon, DifyTextLine(text)],
+  );
+}
+
 /// dify-ui's SegmentedControl: `inline-flex gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5`
 /// around radio items (`h-7 rounded-lg border-[0.5px] px-2 py-1 system-sm-medium`; checked: the active background,
 /// border and accent text with shadow-xs). [itemPadding], [textColor], [checkedTextColor] and [bordered] take
 /// call-site overrides (FormInputTypeSwitch: `border-0 px-2.5 py-1.5`, tertiary / secondary text). [tooltip] wraps
-/// unchecked items.
+/// unchecked items. [size] [DifySegmentedControlSize.touch] is the phone control; it ignores [height], [itemPadding],
+/// [padding], [radius] and [itemRadius].
 class DifySegmentedControl<T> extends StatefulWidget {
   const DifySegmentedControl({
     super.key,
@@ -36,6 +65,7 @@ class DifySegmentedControl<T> extends StatefulWidget {
     this.padding = 2,
     this.radius = 10,
     this.itemRadius = DifyRadius.lg,
+    this.size = DifySegmentedControlSize.regular,
   });
 
   final T value;
@@ -47,9 +77,12 @@ class DifySegmentedControl<T> extends StatefulWidget {
   final double height;
   final EdgeInsets itemPadding;
   final Color? _textColor, _checkedTextColor;
-  Color get textColor => _textColor ?? DifyColors.textSecondary;
-  Color get checkedTextColor => _checkedTextColor ?? DifyColors.textAccentLightModeOnly;
+  bool get _touch => size == DifySegmentedControlSize.touch;
+  Color get textColor => _textColor ?? (_touch ? DifyColors.textTertiary : DifyColors.textSecondary);
+  Color get checkedTextColor =>
+      _checkedTextColor ?? (_touch ? DifyColors.textPrimary : DifyColors.textAccentLightModeOnly);
   final bool bordered, tooltip;
+  final DifySegmentedControlSize size;
 
   /// A call site's `p-*` and `rounded-*` over the control's `p-0.5 rounded-[10px]` and the items' `rounded-lg`.
   final double padding, radius, itemRadius;
@@ -93,10 +126,14 @@ class _DifySegmentedControlState<T> extends State<DifySegmentedControl<T>> {
   Widget build(BuildContext context) {
     final w = widget;
     final value = w.value, segments = w.segments, disabled = w.disabled;
-    final height = w.height, padding = w.padding, radius = w.radius, itemRadius = w.itemRadius;
-    final itemPadding = w.itemPadding, textColor = w.textColor, checkedTextColor = w.checkedTextColor;
+    final touch = w._touch;
+    // The touch size moves the control's padding into the items, so every point of it belongs to an item.
+    final height = touch ? 36.0 : w.height, padding = touch ? 0.0 : w.padding;
+    final radius = touch ? 10.0 : w.radius, itemRadius = touch ? DifyRadius.lg : w.itemRadius;
+    final itemPadding = touch ? const EdgeInsets.symmetric(horizontal: 14) : w.itemPadding;
+    final textColor = w.textColor, checkedTextColor = w.checkedTextColor;
     final bordered = w.bordered, tooltip = w.tooltip;
-    return Semantics(
+    final control = Semantics(
       container: true,
       role: SemanticsRole.radioGroup,
       label: w.semanticLabel,
@@ -109,9 +146,9 @@ class _DifySegmentedControlState<T> extends State<DifySegmentedControl<T>> {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          spacing: 1,
+          spacing: touch ? 0 : 1,
           children: [
-            for (final s in segments)
+            for (final (i, s) in segments.indexed)
               () {
                 final checked = s.value == value;
                 final unavailable = disabled || w.disabledValues.contains(s.value);
@@ -137,7 +174,9 @@ class _DifySegmentedControlState<T> extends State<DifySegmentedControl<T>> {
                             : checked
                             ? checkedTextColor
                             : textColor;
-                        return Container(
+                        final pill = Container(
+                          height: touch ? 30 : null,
+                          alignment: touch ? Alignment.center : null,
                           padding: itemPadding,
                           decoration: DifyFocusDecoration(
                             color: checked
@@ -168,6 +207,11 @@ class _DifySegmentedControlState<T> extends State<DifySegmentedControl<T>> {
                             ),
                           ),
                         );
+                        if (!touch) return pill;
+                        return Padding(
+                          padding: EdgeInsets.fromLTRB(i == 0 ? 3 : 1, 3, i == segments.length - 1 ? 3 : 1, 3),
+                          child: pill,
+                        );
                       },
                     ),
                   ),
@@ -178,6 +222,11 @@ class _DifySegmentedControlState<T> extends State<DifySegmentedControl<T>> {
           ],
         ),
       ),
+    );
+    if (!touch) return control;
+    return SizedBox(
+      height: DifyTouch.minTarget,
+      child: Center(widthFactor: 1, child: DifyTouchTarget(child: control)),
     );
   }
 }

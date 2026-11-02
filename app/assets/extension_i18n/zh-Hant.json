@@ -33,7 +33,10 @@
     "modelProvider.plugins.refresh": "重新整理",
     "modelProvider.plugins.missingTip": "請在整合頁面開啟「管理模型外掛」安裝此供應商。現有設定會保留。",
     "modelProvider.metadataMissing": "模型未識別",
-    "modelProvider.metadataMissingTip": "目前的供應商外掛無法識別此模型，請確認模型名稱和外掛版本。"
+    "modelProvider.metadataMissingTip": "目前的供應商外掛無法識別此模型，請確認模型名稱和外掛版本。",
+    "mobile.switchWorkspace": "切換工作區",
+    "mobile.logoutConfirm": "確定登出此帳戶？",
+    "mobile.unstarApp": "取消星標"
   },
   "agent-v-2": {
     "inline.executorProfile": "執行環境",

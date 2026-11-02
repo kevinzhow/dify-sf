@@ -26,6 +26,10 @@ String tLogin(BuildContext context, String key, [Map<String, Object?> params = c
 /// Tailwind's `md` breakpoint.
 bool _md(BuildContext context) => MediaQuery.sizeOf(context).width >= 768;
 
+/// A phone (a compact window, below 600 dp): the auth pages are full bleed and edge to edge ([SignInLayout],
+/// [AuthPageFrame]); wider windows keep Dify's centred card.
+bool _phone(BuildContext context) => DifyWindowClass.of(context) == DifyWindowClass.compact;
+
 // ---- form state ---------------------------------------------------------------------------------------------------
 
 /// One field of a form (Base UI Field.Root): its value, the error shown (null: valid), and the focus. [validate] returns
@@ -180,14 +184,18 @@ class _AuthTextFieldState extends State<AuthTextField> {
             else
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  label,
-                  const Spacer(),
+                  // Both give way on a narrow phone or with a long translation (they wrap instead of overflowing).
+                  Flexible(child: label),
+                  const SizedBox(width: 8),
                   // In the DOM the trailing link follows the input (it is only drawn at the label's end): it comes
                   // after the input and its buttons in the tab order, not before them as reading order would put it.
-                  FocusTraversalOrder(
-                    order: const NumericFocusOrder(2),
-                    child: Padding(padding: const EdgeInsets.only(top: 4), child: trailing),
+                  Flexible(
+                    child: FocusTraversalOrder(
+                      order: const NumericFocusOrder(2),
+                      child: Padding(padding: const EdgeInsets.only(top: 4), child: trailing),
+                    ),
                   ),
                 ],
               ),
@@ -436,7 +444,8 @@ class SignInHeader extends StatelessWidget {
       explicitChildNodes: true,
       // role="banner"
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        // On a phone the header is the page's top bar: less of the height goes to its padding.
+        padding: _phone(context) ? const EdgeInsets.fromLTRB(24, 12, 16, 12) : const EdgeInsets.all(24),
         child: Row(
           children: [
             const DifyLogo(alt: 'Dify', size: DifyLogoSize.large),
@@ -553,14 +562,89 @@ class _AuthCard extends StatelessWidget {
   );
 }
 
+/// The native app's "Server: …" button for the auth pages' phone frame, which shows it as a row under the header
+/// (part of the page, not over it). AppRoot provides it; without one the frame shows none.
+class AuthServerSlot extends InheritedWidget {
+  const AuthServerSlot({super.key, required this.indicator, required super.child});
+
+  final Widget indicator;
+
+  static Widget? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<AuthServerSlot>()?.indicator;
+
+  @override
+  bool updateShouldNotify(AuthServerSlot old) => old.indicator != indicator;
+}
+
+/// The auth pages on a phone (a dify-sf divergence: Dify's card layout needs a desktop window): full bleed on the
+/// card's colour (no burn frame, no centred card, no vertical centring, so no gap above the title), edge to edge.
+/// The page pads its content by the system insets, and while the soft keyboard is up by the keyboard instead of the
+/// bottom inset, so its scroll view ends at the keyboard; [DifyKeyboardScrollView] keeps the focused field and the
+/// page's [DifyPrimaryAction] above it (raft-flutter's auth shell does the same). Under the header: the native app's
+/// server row ([AuthServerSlot]); then [child] and the copyright.
+class _PhoneAuthFrame extends StatelessWidget {
+  const _PhoneAuthFrame({required this.child, required this.footerStyle});
+  final Widget child;
+  final DifyTextStyle footerStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    final insets = MediaQuery.paddingOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final server = AuthServerSlot.of(context);
+    return DifySurface(
+      child: ColoredBox(
+        color: DifyColors.backgroundDefaultSubtle,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(insets.left, insets.top, insets.right, math.max(insets.bottom, keyboard)),
+          child: MediaQuery.removePadding(
+            context: context,
+            removeLeft: true,
+            removeTop: true,
+            removeRight: true,
+            removeBottom: true,
+            child: DefaultTextStyle.merge(
+              style: difyTextStyle(DifyTw.trackingNormal, DifyColors.textPrimary),
+              child: DifyKeyboardScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SignInHeader(),
+                    if (server != null)
+                      Padding(
+                        key: const ValueKey('auth-server-row'),
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                        child: server,
+                      ),
+                    Semantics(
+                      container: true,
+                      explicitChildNodes: true,
+                      // role="main"
+                      child: Padding(padding: const EdgeInsets.fromLTRB(24, 16, 24, 0), child: child),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                      child: DifyTextLine(difyCopyright(), style: difyTextStyle(footerStyle, DifyColors.textTertiary)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// signin/layout.tsx: the card with the header, the content centred in `<main>` (`px-6 md:px-27`, `w-full md:w-100`)
-/// and the copyright footer (`px-8 py-6 system-xs-regular text-text-tertiary`).
+/// and the copyright footer (`px-8 py-6 system-xs-regular text-text-tertiary`). On a phone: [_PhoneAuthFrame].
 class SignInLayout extends StatelessWidget {
   const SignInLayout({super.key, required this.child});
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
+    if (_phone(context)) return _PhoneAuthFrame(footerStyle: DifyType.systemXsRegular, child: child);
     final md = _md(context);
     return _AuthCard(
       child: LayoutBuilder(
@@ -599,38 +683,41 @@ class SignInLayout extends StatelessWidget {
 }
 
 /// install/page.tsx and activate/page.tsx: the card (`flex-col`) with the header, [child] and the copyright
-/// (`px-8 py-6 text-sm text-text-tertiary`; at the bottom (`mt-auto`) when [footerAtBottom]).
+/// (`px-8 py-6 text-sm text-text-tertiary`; at the bottom (`mt-auto`) when [footerAtBottom]). On a phone:
+/// [_PhoneAuthFrame].
 class AuthPageFrame extends StatelessWidget {
   const AuthPageFrame({super.key, required this.child, this.footerAtBottom = true});
   final Widget child;
   final bool footerAtBottom;
 
   @override
-  Widget build(BuildContext context) => _AuthCard(
-    child: LayoutBuilder(
-      builder: (context, c) => SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SignInHeader(),
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: footerAtBottom ? math.max(0, c.maxHeight - signInHeaderHeight - 68) : 0,
+  Widget build(BuildContext context) => _phone(context)
+      ? _PhoneAuthFrame(footerStyle: DifyType.systemMdRegular, child: child)
+      : _AuthCard(
+          child: LayoutBuilder(
+            builder: (context, c) => SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SignInHeader(),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: footerAtBottom ? math.max(0, c.maxHeight - signInHeaderHeight - 68) : 0,
+                    ),
+                    child: child,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                    child: DifyTextLine(
+                      difyCopyright(),
+                      style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary), // `text-sm font-normal`
+                    ),
+                  ),
+                ],
               ),
-              child: child,
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-              child: DifyTextLine(
-                difyCopyright(),
-                style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textTertiary), // `text-sm font-normal`
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
+          ),
+        );
 }
 
 /// Submits on Enter from any field of the form (a browser submits a form on Enter in a text input).

@@ -2,6 +2,16 @@
   "schema": 1,
   "scope": "Exported design widgets. Inventory completeness is a review gate, not proof of visual correctness.",
   "files": {
+    "action_sheet.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/action_sheet_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_behaviour_test.dart"
+      ],
+      "note": "dify-sf phone action sheet (no Dify counterpart): DifyText rows in DifyType/DifyPhoneType styles; functional tests cover row height, colours, close-then-act, Cancel/scrim/back, scrolling."
+    },
     "adaptive.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
@@ -47,6 +57,15 @@
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
     },
+    "back_dismiss.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart",
+        "app/test/phone/phone_home_test.dart",
+        "app/test/phone/phone_auth_test.dart"
+      ],
+      "note": "dify-sf Android back steps (no Dify counterpart, after raft-flutter RaftBackDismiss): no text of its own; tests cover popups closing before the page, newest-first unwinding, no step left after a close in code, Escape unchanged on desktop."
+    },
     "badge.dart": {
       "kind": "gallery",
       "evidence": [
@@ -54,6 +73,28 @@
         "app/test/control_gallery_typography_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "bottom_sheet.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/bottom_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_behaviour_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
+      ],
+      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular."
+    },
+    "bottom_toolbar.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/bottom_toolbar_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
+      ],
+      "note": "dify-sf phone toolbar and selection bar (no Dify counterpart): 11 px DifyPhoneType labels and system-md-semibold titles through DifyText; geometry, hit areas and colours are tested."
     },
     "button.dart": {
       "kind": "text-composition",
@@ -144,7 +185,8 @@
       "evidence": [
         "app/test/design_typography_test.dart",
         "app/test/design/page_selection_test.dart",
-        "app/test/dify_spec/dify_ui/dialog_test.dart"
+        "app/test/dify_spec/dify_ui/dialog_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
     },
@@ -162,7 +204,8 @@
       "evidence": [
         "app/test/design_typography_test.dart",
         "app/test/dify_spec/dify_ui/drawer_test.dart",
-        "app/test/dify_spec/features/new_feature_panel/feature_panel_drawer_test.dart"
+        "app/test/dify_spec/features/new_feature_panel/feature_panel_drawer_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
     },
@@ -180,6 +223,25 @@
       ],
       "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive. No dedicated direct construction test is claimed by this row."
     },
+    "fab.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/navigation_bar_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+      ],
+      "note": "dify-sf floating action button (no Dify counterpart): Dify primary button colours, label through DifyText (DifyPhoneType.labelStrong); size, radius, shadow and disabled state are tested."
+    },
+    "filter_chip.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart",
+        "app/test/phone/phone_studio_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+      ],
+      "note": "dify-sf phone filter chips (no Dify counterpart): 13 px DifyTw text; tests cover 34 px chips, the 48 px hit area inside the chip bar, selected colour and semantics, sideways scrolling."
+    },
     "floating.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
@@ -187,7 +249,9 @@
         "app/test/design_widgets_test.dart",
         "app/test/dify_spec/dify_ui/dropdown_menu_test.dart",
         "app/test/dify_spec/dify_ui/popover_test.dart",
-        "app/test/dify_spec/prompt_editor/shortcuts_popup_test.dart"
+        "app/test/dify_spec/prompt_editor/shortcuts_popup_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
+        "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract."
     },
@@ -265,6 +329,25 @@
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
+    "keyboard_scroll_view.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart",
+        "app/test/phone/phone_auth_test.dart"
+      ],
+      "note": "dify-sf port of raft-flutter RaftKeyboardScrollView (no Dify counterpart): no text of its own; tests keep the focused field and the primary action above a 300 dp keyboard at 360 and 411 dp."
+    },
+    "list_row.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart",
+        "app/test/phone/phone_account_test.dart",
+        "app/test/phone/phone_studio_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+      ],
+      "note": "dify-sf phone list rows (no Dify counterpart): DifyText in DifyType/DifyPhoneType styles; tests cover 52/64 px heights, one-line ellipsis, the row target, separate action semantics, destructive colour, section headings."
+    },
     "loading.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
@@ -314,6 +397,17 @@
       ],
       "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive."
     },
+    "navigation_bar.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/navigation_bar_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
+      ],
+      "note": "dify-sf bottom navigation (no Dify counterpart): system-xs labels through DifyText, count badge text-[11px]; selection, badges, semantics and insets are tested."
+    },
     "number_field.dart": {
       "kind": "gallery",
       "evidence": [
@@ -329,14 +423,16 @@
         "app/test/design/page_selection_test.dart",
         "app/test/workflow_editor/mobile_start_list_test.dart",
         "app/test/workflow_editor/page_selection_canvas_test.dart",
-        "app/test/workflow_editor/mobile_layout_test.dart"
+        "app/test/workflow_editor/mobile_layout_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract."
     },
     "page_route.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
-        "app/test/design_typography_test.dart"
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract. No dedicated direct construction test is claimed by this row."
     },
@@ -389,12 +485,29 @@
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
+    "refresh_indicator.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart",
+        "app/test/phone/phone_studio_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+      ],
+      "note": "dify-sf pull to refresh on the widgets layer (no Dify counterpart, no Material RefreshIndicator): a spinner disc, no text; tests cover refresh past the trigger, the spinner until the future completes, a short pull going back on clamping and bouncing lists."
+    },
     "reorderable_list.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
         "app/test/design_typography_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract. No dedicated direct construction test is claimed by this row."
+    },
+    "responsive.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/touch_target_test.dart"
+      ],
+      "note": "Window size classes and touch metrics; no text."
     },
     "scrollbar.dart": {
       "kind": "layout-or-non-text",
@@ -407,7 +520,8 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
@@ -415,7 +529,9 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/segmented_control_touch_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
@@ -579,7 +695,8 @@
         "app/test/editor_export_toast_test.dart",
         "app/test/toast_wiring_test.dart",
         "app/test/account_page_test.dart",
-        "app/test/design/app_icon_picker_test.dart"
+        "app/test/design/app_icon_picker_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
     },
@@ -590,6 +707,29 @@
         "app/test/control_gallery_typography_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "top_app_bar.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/top_app_bar_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart",
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart"
+      ],
+      "note": "dify-sf phone app bar (no Dify counterpart): DifyPhoneType title / large title and system-xs-regular subtitle through DifyText; height, ellipsis, back and insets are tested."
+    },
+    "touch_target.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/touch_target_test.dart",
+        "app/test/dify_spec/dify_ui/segmented_control_touch_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
+      ],
+      "note": "Hit-area expansion and the icon-only touch button; no text of their own."
     },
     "workspace_avatar.dart": {
       "kind": "text-composition",

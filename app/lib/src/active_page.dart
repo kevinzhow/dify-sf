@@ -11,6 +11,10 @@ class ActivePage extends InheritedWidget {
   /// Read at key time, without a dependency: true outside any [ActivePage].
   static bool isActive(BuildContext context) => context.getInheritedWidgetOfExactType<ActivePage>()?.active ?? true;
 
+  /// The same, rebuilding [context] when it changes (state that is only meaningful while shown, such as an open
+  /// layer's back step).
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<ActivePage>()?.active ?? true;
+
   @override
   bool updateShouldNotify(ActivePage old) => old.active != active;
 }

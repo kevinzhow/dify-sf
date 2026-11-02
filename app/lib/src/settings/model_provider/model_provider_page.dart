@@ -76,6 +76,7 @@ class ModelProviderPage extends StatefulWidget {
     this.onSearchTextChange,
     this.stickyToolbar = false,
     this.hideSystemModelSelectorProviderSettingsFooter = false,
+    this.phone = false,
   });
 
   final Widget Function(BuildContext context, Widget toolbar, Widget body)? layout;
@@ -83,6 +84,10 @@ class ModelProviderPage extends StatefulWidget {
   final ValueChanged<String>? onSearchTextChange;
   final bool stickyToolbar;
   final bool hideSystemModelSelectorProviderSettingsFooter;
+
+  /// The phone toolbar (compact windows): the search across the width with the plugins button beside it, the
+  /// default-model warning or button below.
+  final bool phone;
 
   @override
   State<ModelProviderPage> createState() => _ModelProviderPageState();
@@ -189,38 +194,70 @@ class _ModelProviderPageState extends State<ModelProviderPage> {
               )
             : null;
 
-        final toolbar = Padding(
-          padding: EdgeInsets.only(bottom: widget.layout == null ? 8 : 0),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 200,
-                child: SelectorSearchInput(
-                  key: const ValueKey('model-provider-search'),
-                  value: _search,
-                  placeholder: _t('modelProvider.searchModels'),
-                  onChanged: _onSearch,
-                ),
-              ),
-              const SizedBox(width: 12),
-              if (models.api is ModelProviderPluginsApi)
-                DifyIconButton(
-                  key: const ValueKey('manage-provider-plugins'),
-                  label: _t('modelProvider.plugins.title'),
-                  icon: const RemixIcon('puzzle-2-line'),
-                  onPressed: () => showProviderPlugins(context, env),
-                ),
-              const Spacer(),
-              if (showWarning)
-                Flexible(
-                  flex: 100,
-                  child: _NoneConfiguredWarning(text: _t(warning), selector: selector(true)),
-                )
-              else
-                ?selector(false),
-            ],
-          ),
+        final search = SelectorSearchInput(
+          key: const ValueKey('model-provider-search'),
+          value: _search,
+          placeholder: _t('modelProvider.searchModels'),
+          onChanged: _onSearch,
         );
+        final plugins = models.api is ModelProviderPluginsApi
+            ? DifyIconButton(
+                key: const ValueKey('manage-provider-plugins'),
+                label: _t('modelProvider.plugins.title'),
+                icon: const RemixIcon('puzzle-2-line'),
+                onPressed: () => showProviderPlugins(context, env),
+              )
+            : null;
+        final toolbar = widget.phone
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 12,
+                children: [
+                  Row(
+                    spacing: 8,
+                    children: [
+                      Expanded(child: search),
+                      ?plugins,
+                    ],
+                  ),
+                  if (showWarning)
+                    _NoneConfiguredWarning(text: _t(warning), selector: selector(true))
+                  else if (selector(false) case final s?)
+                    Align(alignment: AlignmentDirectional.centerStart, child: s),
+                ],
+              )
+            : Padding(
+                padding: EdgeInsets.only(bottom: widget.layout == null ? 8 : 0),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 200,
+                      child: SelectorSearchInput(
+                        key: const ValueKey('model-provider-search'),
+                        value: _search,
+                        placeholder: _t('modelProvider.searchModels'),
+                        onChanged: _onSearch,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    if (models.api is ModelProviderPluginsApi)
+                      DifyIconButton(
+                        key: const ValueKey('manage-provider-plugins'),
+                        label: _t('modelProvider.plugins.title'),
+                        icon: const RemixIcon('puzzle-2-line'),
+                        onPressed: () => showProviderPlugins(context, env),
+                      ),
+                    const Spacer(),
+                    if (showWarning)
+                      Flexible(
+                        flex: 100,
+                        child: _NoneConfiguredWarning(text: _t(warning), selector: selector(true)),
+                      )
+                    else
+                      ?selector(false),
+                  ],
+                ),
+              );
 
         final body = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

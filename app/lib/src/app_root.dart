@@ -180,26 +180,35 @@ class _AppRootState extends State<AppRoot> {
     super.dispose();
   }
 
+  /// The app shows its pages edge to edge ([DifyApplication.edgeToEdge] in [buildApp]); a page that does not pad
+  /// itself for the system bars sits in the safe area as before. The home pads itself ([HomePage]: a [DifyPage]), and
+  /// so do the auth pages on a phone (their frames go full bleed there).
   @override
   Widget build(BuildContext context) {
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
     if (_needsAddress) {
       markStartupReadyAfterFrame();
+      final page = ServerAddressPage(connection: _connection);
       return ServerConnectionScope(
         controller: _connection,
-        child: ServerAddressPage(connection: _connection),
+        child: phone ? page : SafeArea(child: page),
       );
     }
     final launch = _connection.generation == 0 ? widget.launch : null;
     // Dify's mailed link (`/form/{token}`) is a page of its own, outside the account: a recipient has none.
     if (launch?.formToken case final token?) {
-      return HumanInputFormPage(
-        token: token,
-        server: Uri.parse(_auth.server),
-        apiFor: widget.humanInputApiFor,
+      return SafeArea(
+        child: HumanInputFormPage(
+          token: token,
+          server: Uri.parse(_auth.server),
+          apiFor: widget.humanInputApiFor,
+        ),
       );
     }
     if (launch?.publicAppCode case final code?) {
-      return PublicAppPage(code: code, server: Uri.parse(_auth.server), parameters: launch!.publicParameters);
+      return SafeArea(
+        child: PublicAppPage(code: code, server: Uri.parse(_auth.server), parameters: launch!.publicParameters),
+      );
     }
     final route = _auth.route;
     Widget page = switch (route) {
@@ -235,20 +244,28 @@ class _AppRootState extends State<AppRoot> {
     // survive a change to another server, even when it signs in with an identically named account.
     page = KeyedSubtree(key: ValueKey(_auth.server), child: page);
     if (!kIsWeb && route is! HomeRoute && _connection.canChange) {
-      page = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-              child: NativeServerButton(connection: _connection),
-            ),
-          ),
-          Expanded(child: page),
-        ],
-      );
+      // The native app's server button: on a phone a row of the page under its header (it used to overlap the
+      // page's top), on wider windows a bar above the page as before.
+      page = phone
+          ? AuthServerSlot(
+              indicator: NativeServerButton(connection: _connection),
+              child: page,
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                    child: NativeServerButton(connection: _connection),
+                  ),
+                ),
+                Expanded(child: page),
+              ],
+            );
     }
+    if (route is! HomeRoute && !phone) page = SafeArea(child: page);
     if (route is! StartingRoute) markStartupReadyAfterFrame();
     return ServerConnectionScope(
       controller: _connection,

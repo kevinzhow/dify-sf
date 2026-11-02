@@ -96,7 +96,10 @@
     "modelProvider.plugins.refresh": "Refresh",
     "modelProvider.plugins.missingTip": "Open Integrations and Manage model plugins to install this provider. Your saved configuration is kept.",
     "modelProvider.metadataMissing": "Model not recognized",
-    "modelProvider.metadataMissingTip": "This provider plugin does not recognize the model. Check the model name and plugin version."
+    "modelProvider.metadataMissingTip": "This provider plugin does not recognize the model. Check the model name and plugin version.",
+    "mobile.switchWorkspace": "Switch workspace",
+    "mobile.logoutConfirm": "Log out of this account?",
+    "mobile.unstarApp": "Unstar app"
   },
   "server-connection": {
     "title": "Connect to your server",

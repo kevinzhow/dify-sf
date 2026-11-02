@@ -31,7 +31,7 @@ REASON_RE = re.compile(r'(third-party|dify-hardcoded|legit):\S.*|dev-shell|todo:
 # Migration step (ds-audit §5) that removes each rule's hits; `--reason todo` uses it.
 TODO_STEP = {
     'color-literal': 4, 'box-shadow': 3, 'raw-text-style': 5, 'dialog-route': 3, 'material-widget': 3,
-    'component-token': 3, 'dify-class': 2, 'design-import': 1,
+    'component-token': 3, 'dify-class': 2, 'design-import': 1, 'raw-sheet': 3,
 }
 # Files whose primitives move into design/ in step 1 (pure moves).
 STEP1_FILES = {
@@ -58,6 +58,10 @@ MATERIAL_RE = re.compile(
     r'|LinearProgressIndicator|SnackBar|Chip|ListTile|Card|InkWell|Badge|AdaptiveTextSelectionToolbar)'
     r'(?:\.[a-zA-Z_]\w*)?' + GENERIC)
 
+# The framework's sheets: only design/ builds on them (showDifyBottomSheet, DifyPersistentSheet).
+SHEET_RE = re.compile(
+    r'(?<![\w$])(?:[a-zA-Z_]\w*\.)?(?:BottomSheet|ModalBottomSheetRoute|DraggableScrollableSheet|'
+    r'DraggableScrollableController|CupertinoModalPopupRoute|showBottomSheet|showCupertinoModalPopup)' + GENERIC)
 COMPONENT_TOKEN_RE = re.compile(
     r'\bDifyColors\.components(?:Checkbox|Radio|Toggle|Slider|SegmentedControl|BadgeStatusLight|Input)\w*')
 DIFY_CLASS_RE = re.compile(r'\b(?:class|mixin|enum)\s+(Dify\w+)')
@@ -66,7 +70,7 @@ DIFY_CLASS_OK = re.compile(
 IMPORT_RE = re.compile(r'''^[ \t]*(?:import|export)\s+(['"])([^'"\n]+)\1''', re.M)
 
 RULES = ['color-literal', 'box-shadow', 'raw-text-style', 'dialog-route', 'material-widget', 'component-token',
-         'dify-class', 'design-import', 'focus-ring', 'text-line']
+         'dify-class', 'design-import', 'focus-ring', 'text-line', 'raw-sheet']
 
 
 def _close_paren(text, i):
@@ -111,7 +115,7 @@ def scan_file(rel, src):
                 hits.append(('design-import', m.start()))
         return hits
     for rule, rx in (('color-literal', COLOR_RE), ('box-shadow', SHADOW_RE), ('dialog-route', DIALOG_RE),
-                     ('material-widget', MATERIAL_RE), ('component-token', COMPONENT_TOKEN_RE)):
+                     ('material-widget', MATERIAL_RE), ('component-token', COMPONENT_TOKEN_RE), ('raw-sheet', SHEET_RE)):
         hits += [(rule, m.start()) for m in rx.finditer(code)]
     for m in TEXT_STYLE_RE.finditer(code):
         _, args = _close_paren(code, m.end())
@@ -259,7 +263,7 @@ def read_allowlist(path):
             errors.append(f'{where}: expected 4 tab-separated fields (rule, path, max_count, reason)')
             continue
         rule, rel, count, reason = parts
-        if rule in ('material-widget', 'focus-ring', 'text-line'):
+        if rule in ('material-widget', 'focus-ring', 'text-line', 'raw-sheet'):
             errors.append(f'{where}: {rule} exceptions are prohibited; use design/ components')
         if rule not in RULES:
             errors.append(f'{where}: unknown rule {rule!r}')

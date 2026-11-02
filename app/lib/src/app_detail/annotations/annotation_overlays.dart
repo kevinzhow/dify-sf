@@ -61,27 +61,30 @@ class _ControlledOverlayState extends State<ControlledOverlay> {
   @override
   Widget build(BuildContext context) => OverlayPortal(
     controller: _portal,
-    overlayChildBuilder: (context) => Stack(
-      fit: StackFit.expand,
-      children: [
-        if (widget.backdrop)
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: widget.dismissible ? widget.onClose : null,
-              child: ColoredBox(color: DifyColors.backgroundOverlay),
+    // Inside the window's safe area, as when the app kept the whole navigator inside it.
+    overlayChildBuilder: (context) => DifyOverlaySafeArea(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (widget.backdrop)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: widget.dismissible ? widget.onClose : null,
+                child: ColoredBox(color: DifyColors.backgroundOverlay),
+              ),
+            ),
+          CallbackShortcuts(
+            bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => widget.onClose?.call()},
+            child: FocusScope(
+              autofocus: true,
+              child: DifySurface(
+                child: Builder(builder: widget.builder),
+              ),
             ),
           ),
-        CallbackShortcuts(
-          bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => widget.onClose?.call()},
-          child: FocusScope(
-            autofocus: true,
-            child: DifySurface(
-              child: Builder(builder: widget.builder),
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     ),
     child: const SizedBox.shrink(),
   );

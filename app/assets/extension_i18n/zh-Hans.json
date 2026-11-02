@@ -96,7 +96,10 @@
     "modelProvider.plugins.refresh": "刷新",
     "modelProvider.plugins.missingTip": "请在集成页面打开“管理模型插件”安装该供应商。已有配置会保留。",
     "modelProvider.metadataMissing": "模型未识别",
-    "modelProvider.metadataMissingTip": "当前供应商插件不识别该模型，请核对模型名称和插件版本。"
+    "modelProvider.metadataMissingTip": "当前供应商插件不识别该模型，请核对模型名称和插件版本。",
+    "mobile.switchWorkspace": "切换工作空间",
+    "mobile.logoutConfirm": "确定登出此账户？",
+    "mobile.unstarApp": "取消星标"
   },
   "server-connection": {
     "title": "连接到你的服务器",

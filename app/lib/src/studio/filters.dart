@@ -13,6 +13,7 @@ import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/dify_i18n.dart';
+import '../settings/workspace_members.dart';
 import 'app_list_controller.dart';
 
 String _a(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('app', key, params);
@@ -637,4 +638,125 @@ class CreateAppDropdown extends StatelessWidget {
         ),
     ],
   );
+}
+
+/// The phone Studio's Creators picker (a dify-sf divergence: the desktop popover as a bottom sheet): the sheet header
+/// with Reset, the search field and a 52 px row per creator (checkbox, avatar, name, "You"). Each tap changes the
+/// filter at once, as the popover does.
+class CreatorsSheet extends StatefulWidget {
+  const CreatorsSheet({
+    super.key,
+    required this.members,
+    required this.value,
+    required this.onChange,
+    this.currentUserId,
+  });
+
+  final WorkspaceMembers? members;
+  final List<String> value;
+  final ValueChanged<List<String>> onChange;
+  final String? currentUserId;
+
+  @override
+  State<CreatorsSheet> createState() => _CreatorsSheetState();
+}
+
+class _CreatorsSheetState extends State<CreatorsSheet> {
+  late List<String> _value = widget.value;
+  String _keywords = '';
+
+  void _set(List<String> v) {
+    setState(() => _value = v);
+    widget.onChange(v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final source = widget.members;
+    return ListenableBuilder(
+      listenable: source ?? const _NoMembers(),
+
+      builder: (context, _) {
+        final options = creatorOptionsOf(source?.members ?? const [], widget.currentUserId);
+        final q = _keywords.trim().toLowerCase();
+        final visible = [
+          for (final o in options)
+            if (q.isEmpty || o.name.toLowerCase().contains(q)) o,
+        ];
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DifySheetHeader(
+              title: _a('studio.filters.creators'),
+              actions: [
+                if (_value.isNotEmpty)
+                  DifyButton(
+                    key: const ValueKey('studio-creators-sheet-reset'),
+                    variant: DifyButtonVariant.ghost,
+                    onPressed: () => _set(const []),
+                    child: DifyTextLine(_a('studio.filters.reset')),
+                  ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: DifySearchInput(
+                key: const ValueKey('studio-creators-sheet-search'),
+                value: _keywords,
+                height: 40,
+                placeholder: _a('studio.filters.searchCreators'),
+                semanticLabel: _a('studio.filters.searchCreators'),
+                onValueChange: (v) => setState(() => _keywords = v),
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: [
+                  for (final o in visible)
+                    Semantics(
+                      checked: _value.contains(o.id),
+                      child: DifyListRow(
+                        key: ValueKey('studio-creator-row-${o.id}'),
+                        leading: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: 12,
+                          children: [
+                            DifyCheckboxBox(checked: _value.contains(o.id)),
+                            DifyAvatar(name: o.name, url: o.avatarUrl, size: DifyAvatarSize.md),
+                          ],
+                        ),
+                        title: o.name,
+                        trailing: [
+                          if (o.isYou)
+                            DifyText(
+                              _a('studio.filters.you'),
+                              DifyType.systemMdRegular,
+                              color: DifyColors.textQuaternary,
+                            ),
+                        ],
+                        onTap: () => _set(
+                          _value.contains(o.id) ? [..._value.where((v) => v != o.id)] : [..._value, o.id],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _NoMembers implements Listenable {
+  const _NoMembers();
+  @override
+  void addListener(VoidCallback listener) {}
+  @override
+  void removeListener(VoidCallback listener) {}
 }

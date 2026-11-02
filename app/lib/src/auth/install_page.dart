@@ -164,12 +164,14 @@ class _InstallFormState extends State<InstallForm> {
                   onSubmitted: (_) => _submit(),
                 ),
                 const SizedBox(height: 20),
-                DifyButton(
-                  key: const ValueKey('install-submit'),
-                  variant: DifyButtonVariant.primary,
-                  loading: _submitting,
-                  onPressed: _submit,
-                  child: DifyTextLine(tLogin(context, 'installBtn')),
+                DifyPrimaryAction(
+                  child: DifyButton(
+                    key: const ValueKey('install-submit'),
+                    variant: DifyButtonVariant.primary,
+                    loading: _submitting,
+                    onPressed: _submit,
+                    child: DifyTextLine(tLogin(context, 'installBtn')),
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
