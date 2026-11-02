@@ -5,6 +5,11 @@
 /// `getRedirectionPath` sends it), and the window title is `<page> · <app name>`. Pages are built when first shown and
 /// stay alive while another one shows (the editor keeps its session, stream and journal); a page that is not shown
 /// gets no ticks, no focus and no page-wide keys.
+///
+/// In a compact window (a phone, dify-sf) there is no sidebar: the editor fills the page edge to edge (or, without
+/// the right to edit, the page the guard leads to, under an app bar), the app's other pages open as pushed pages with
+/// an app bar from the editor's "…" menu (back returns to the editor), and so do the app's operations (edit info,
+/// duplicate, export, import, delete).
 library;
 
 import 'dart:async';
@@ -15,13 +20,16 @@ import 'package:flutter/material.dart';
 
 import '../active_page.dart';
 import '../auth/widgets/auth_widgets.dart' show DifyDocumentTitle;
+import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/app_icon_picker.dart' show UploadAppIcon;
 import '../i18n/dify_i18n.dart';
+import '../shell/phone_page.dart';
 import '../studio/export_app_dsl.dart';
 import '../studio/studio_scope.dart' show saveDslFile, SaveDslFile;
 import '../workflow/workspace_models.dart';
 import '../workflow_editor/dsl/update_dsl_modal.dart' show WorkflowImport;
+import '../workflow_editor/phone/phone_editor_controller.dart' show PhoneEditorHostActions;
 import 'app_info_actions.dart';
 import 'app_permission.dart';
 import 'app_sidebar.dart';
@@ -141,6 +149,9 @@ class AppDetailPageState extends State<AppDetailPage> {
   final _contexts = <AppDetailPageId, AppDetailContext>{};
   bool _left = false;
 
+  /// The pages move between the desktop frame and the phone layout with their state (a rotation keeps the editor).
+  final _pagesKey = GlobalKey(debugLabel: 'app detail pages');
+
   WorkflowImport? _editorImport;
   final _importWaiters = <Completer<WorkflowImport?>>[];
 
@@ -200,6 +211,18 @@ class AppDetailPageState extends State<AppDetailPage> {
       final app = await widget.apps.get(widget.appId);
       if (!mounted) return;
       _setApp(app);
+      final root = _compact(context) ? phoneRootPage : null;
+      final initial = widget.initialPage;
+      if (root != null && initial != null && initial != root) {
+        // A phone opens the editor (or the guard's page) and pushes the asked page over it.
+        _select(root, const {});
+        if (appDetailPageAllowed(initial, appACLCapabilities(app.permissionKeys))) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _pushPhonePage(initial, widget.query);
+          });
+        }
+        return;
+      }
       _select(widget.initialPage, widget.query);
     } on TransportException catch (e) {
       if (!mounted) return;
@@ -236,13 +259,106 @@ class AppDetailPageState extends State<AppDetailPage> {
     if (widget.onLeave case final leave?) {
       leave();
     } else {
-      // A pop, not maybePop: back would first close an open popup, and leaving must leave.
-      Navigator.of(context).pop();
+      // A pop, not maybePop: back would first close an open popup, and leaving must leave (on a phone, from under
+      // one of the app's pushed pages as well).
+      final route = ModalRoute.of(context);
+      final navigator = Navigator.of(context);
+      if (_compact(context) && route != null && !route.isCurrent) navigator.popUntil((r) => r == route);
+      navigator.pop();
     }
   }
 
-  /// Opens [page] (null: the redirection target) if the rights allow it, else where Dify's guard sends the user.
-  void navigate(AppDetailPageId page, {Map<String, String> query = const {}}) => _select(page, query);
+  /// Opens [page] (null: the redirection target) if the rights allow it, else where Dify's guard sends the user. On a
+  /// phone a page other than the root ([phoneRootPage]) is pushed over it, and the root is shown again by popping.
+  void navigate(AppDetailPageId page, {Map<String, String> query = const {}}) {
+    if (mounted && _compact(context)) {
+      final root = phoneRootPage;
+      final app = _app?.value;
+      if (root != null &&
+          app != null &&
+          page != root &&
+          appDetailPageAllowed(page, appACLCapabilities(app.permissionKeys))) {
+        _pushPhonePage(page, query);
+        return;
+      }
+      if (root != null && page == root) {
+        final route = ModalRoute.of(context);
+        if (route != null && !route.isCurrent) Navigator.of(context).popUntil((r) => r == route);
+      }
+    }
+    _select(page, query);
+  }
+
+  static bool _compact(BuildContext context) => DifyWindowClass.of(context) == DifyWindowClass.compact;
+
+  /// The page a phone shows under its app's pushed pages: the editor when the user may open it, else the page the
+  /// guard leads to. Null until the app is loaded.
+  AppDetailPageId? get phoneRootPage {
+    final app = _app?.value;
+    if (app == null) return null;
+    final acl = appACLCapabilities(app.permissionKeys);
+    if (appDetailPageAllowed(AppDetailPageId.workflow, acl)) return AppDetailPageId.workflow;
+    return AppDetailPageId.fromPath(appRedirectionPath(id: app.id, mode: app.mode, permissionKeys: app.permissionKeys));
+  }
+
+  /// A page of this app pushed on a phone: its app bar (back to the root page) over the page.
+  void _pushPhonePage(AppDetailPageId page, Map<String, String> query) {
+    final app = _app;
+    if (app == null) return;
+    final detail = _contextFor(page).withQuery(query);
+    final builder = (widget.pageBuilders ?? appDetailPageBuilders)[page];
+    unawaited(
+      pushPhonePage<void>(
+        context,
+        title: appDetailPageTitle(page),
+        subtitle: app.value.name,
+        scrollable: false,
+        settings: RouteSettings(name: 'app-detail-${page.segment}'),
+        builder: (context) => DifyDocumentTitle(
+          title: '${appDetailPageTitle(page)} · ${app.value.name}',
+          child: AppDetailContextScope(
+            detail: detail,
+            child: Builder(
+              builder: (context) => KeyedSubtree(
+                key: ValueKey('app-detail-phone-page-${page.segment}'),
+                child: builder?.call(context, detail) ?? _Placeholder(page: page),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The editor's "…" entries on a phone: the app's other pages, then its operations.
+  List<DifyActionSheetAction> _phoneMenu() {
+    final app = _app?.value;
+    if (app == null) return const [];
+    final acl = appACLCapabilities(app.permissionKeys);
+    final root = phoneRootPage;
+    final color = DifyColors.textSecondary;
+    return [
+      for (final item in appDetailNavigation(app, acl))
+        if (item.page != root)
+          DifyActionSheetAction(
+            label: item.name,
+            icon: IconTheme.merge(
+              data: IconThemeData(color: color),
+              child: item.icon(color, false),
+            ),
+            onTap: () => navigate(item.page),
+          ),
+      for (final group in actions.operationGroups(app, acl, canCreateApp: widget.canCreateApp))
+        for (final op in group)
+          DifyActionSheetAction(
+            label: op.title,
+            icon: RemixIcon(op.icon, size: 20),
+            destructive: op.destructive,
+            enabled: !op.loading,
+            onTap: op.onClick,
+          ),
+    ];
+  }
 
   void _select(AppDetailPageId? page, Map<String, String> query) {
     final app = _app?.value;
@@ -312,6 +428,7 @@ class AppDetailPageState extends State<AppDetailPage> {
     final app = _app?.value;
     final page = _page;
     final title = '${appDetailPageTitle(page)} · ${app?.name ?? _c('menus.appDetail')}';
+    if (_compact(context)) return DifyDocumentTitle(title: title, child: _phone(context, app, page));
     return DifyDocumentTitle(
       title: title,
       child: DifyPage(
@@ -337,23 +454,71 @@ class AppDetailPageState extends State<AppDetailPage> {
                     ),
                   ),
                 ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (app == null || page == null)
-                ColoredBox(color: DifyColors.backgroundBody, child: const DifyLoading())
-              else
-                _pages(page),
-              if (app != null)
-                AppInfoModalsHost(
-                  actions: actions,
-                  app: app,
-                  importDsl: _importDsl,
-                  uploadIcon: widget.uploadIcon,
+          child: _content(app, page),
+        ),
+      ),
+    );
+  }
+
+  /// The pages (or the loading state) and the app info dialogs' host.
+  Widget _content(AppInfo? app, AppDetailPageId? page) => Stack(
+    fit: StackFit.expand,
+    children: [
+      if (app == null || page == null)
+        ColoredBox(color: DifyColors.backgroundBody, child: const DifyLoading())
+      else
+        KeyedSubtree(key: _pagesKey, child: _pages(page)),
+      if (app != null)
+        AppInfoModalsHost(
+          actions: actions,
+          app: app,
+          importDsl: _importDsl,
+          uploadIcon: widget.uploadIcon,
+        ),
+    ],
+  );
+
+  /// The phone layout: the root page edge to edge, the editor with its own bars, any other root page under an app bar
+  /// whose "…" offers the app's other pages and operations.
+  Widget _phone(BuildContext context, AppInfo? app, AppDetailPageId? page) {
+    if (app == null || page == null) {
+      return DifyPage(
+        backgroundColor: DifyColors.backgroundBody,
+        body: _content(app, page),
+      );
+    }
+    if (page == AppDetailPageId.workflow) {
+      return DifyPage(edgeToEdge: true, backgroundColor: DifyColors.backgroundBody, body: _content(app, page));
+    }
+    final menu = _phoneMenu();
+    return DifyPage(
+      edgeToEdge: true,
+      backgroundColor: DifyColors.componentsPanelBg,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DifyTopAppBar(
+            title: appDetailPageTitle(page),
+            subtitle: app.name,
+            backgroundColor: DifyColors.componentsPanelBg,
+            actions: [
+              if (menu.isNotEmpty)
+                DifyTouchIconButton(
+                  key: const ValueKey('app-detail-phone-more'),
+                  label: _c('operation.more'),
+                  icon: const RemixIcon('more-fill', size: 22),
+                  onPressed: () => unawaited(showDifyActionSheet(context, title: app.name, actions: _phoneMenu())),
                 ),
             ],
           ),
-        ),
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: SafeArea(top: false, child: _content(app, page)),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -389,22 +554,30 @@ class AppDetailPageState extends State<AppDetailPage> {
         color: DifyColors.componentsPanelBg,
         child: AppDetailContextScope(
           detail: detail,
-          child: Builder(
-            builder: (context) =>
-                widget.editor?.call(context, _editorHost) ?? const _Placeholder(page: AppDetailPageId.workflow),
+          // The phone editor's "…" menu gets the app's other pages and operations (the desktop has the sidebar).
+          child: PhoneEditorHostActions(
+            actions: _phoneMenu,
+            child: Builder(
+              builder: (context) =>
+                  widget.editor?.call(context, _editorHost) ?? const _Placeholder(page: AppDetailPageId.workflow),
+            ),
           ),
         ),
       );
     }
     final builder = (widget.pageBuilders ?? appDetailPageBuilders)[p];
+    // A phone shows the page full bleed under its app bar (the same widgets, so a rotation keeps the page).
+    final phone = _compact(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 4, 4, 4),
+      padding: phone ? EdgeInsets.zero : const EdgeInsets.fromLTRB(0, 4, 4, 4),
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: DifyColors.componentsPanelBg,
-          borderRadius: BorderRadius.circular(DifyRadius.lg),
-          boxShadow: [BoxShadow(offset: const Offset(0, 1), blurRadius: 0.866, color: DifyColors.shadowShadow3)],
+          borderRadius: BorderRadius.circular(phone ? 0 : DifyRadius.lg),
+          boxShadow: phone
+              ? null
+              : [BoxShadow(offset: const Offset(0, 1), blurRadius: 0.866, color: DifyColors.shadowShadow3)],
         ),
         child: AppDetailContextScope(
           detail: detail,

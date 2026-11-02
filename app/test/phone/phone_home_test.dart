@@ -175,12 +175,15 @@ void main() {
     await t.tap(find.text('Support triage'));
     await settle(t, 2500);
     expect(find.byType(AppDetailPage), findsOneWidget);
-    // Pushed edge to edge: the page's Scaffold (its background) fills the window, its content stays safe.
+    // Pushed edge to edge: the page's Scaffold (its background) fills the window; the editor's own bars reach under
+    // the system bars and keep their content clear of them (batch 3a: no sidebar on a phone).
     final page = find.descendant(of: find.byType(AppDetailPage), matching: find.byType(Scaffold));
     expect(t.getRect(page.first), const Offset(0, 0) & const Size(411, 914));
-    final safe = find.descendant(of: page.first, matching: find.byType(SafeArea));
-    expect(t.getRect(safe.first), insideSafeArea(const Size(411, 914), EdgeInsets.zero));
-    expect(MediaQuery.paddingOf(t.element(find.byType(DetailSidebarFrame))), EdgeInsets.zero);
+    expect(find.byType(DetailSidebarFrame), findsNothing);
+    final bar = t.getRect(find.byKey(const ValueKey('phone-editor-app-bar')));
+    expect(bar.top, 0);
+    expect(t.getRect(find.byKey(const ValueKey('phone-editor-more'))).top, greaterThanOrEqualTo(threeButtonInsets.top));
+    expect(t.getRect(find.byKey(const ValueKey('phone-toolbar'))).bottom, 914);
 
     expect(await systemBack(t), isTrue);
     await settle(t, 1000);
