@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
 import '../../canvas/canvas_graph.dart';
+import '../../canvas/canvas_input.dart' show CanvasInput;
 import '../../canvas/edge_curve.dart';
 import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
@@ -9,6 +10,7 @@ import '../../editor/editor_controller.dart';
 import '../block_selector/block_selector.dart';
 import '../context_menu/context_menu.dart';
 import '../node_insertion/insert_block.dart';
+import '../phone/phone_editor_controller.dart';
 import '../store/store.dart';
 
 /// The canvas "+" buttons (node-handle.tsx and custom-edge.tsx): on the handles of the hovered or selected node (a
@@ -16,6 +18,10 @@ import '../store/store.dart';
 /// trigger, a 16 px blue circle that scales with the canvas; picking a block inserts it after the node, before it, or
 /// between the edge's nodes. While the store asks for it (`shouldAutoOpenStartNodeSelector`, onboarding), a Start
 /// or trigger node opens its next-block selector by itself, once (not in chatflows).
+///
+/// On a phone (dify-sf, [PhoneEditorScope]) there is no hover: the selected node alone shows a large "+" on each of
+/// its source handles. It only marks the handle's finger-sized hit area ([CanvasInput.touchHandleArea]), where the
+/// canvas itself takes the touch: a tap adds the next node there ([CanvasController.onHandleTap]), a drag connects.
 class CanvasPlusButtons extends StatefulWidget {
   const CanvasPlusButtons({super.key, required this.controller, required this.canvas, this.options});
 
@@ -105,13 +111,64 @@ class _CanvasPlusButtonsState extends State<CanvasPlusButtons> {
     _open(context, 'out-${n.id}-$handle', InsertAfter(n.id, handle), global);
   }
 
+  /// The phone's large "+" on the selected node's source handles (drawn only: the canvas takes the touches).
+  static const phonePlusSize = 28.0;
+
+  Widget _phoneHandles(CanvasGraph graph) {
+    final c = widget.canvas;
+    if (c.selection.nodes.length != 1) return const SizedBox.shrink();
+    final n = graph.slots.elementAtOrNull(c.selection.nodes.single);
+    final doc = n == null ? null : widget.controller.doc.nodes[n.id];
+    final actions = _actions(context);
+    if (n == null || doc == null || actions.nodesReadOnly) return const SizedBox.shrink();
+    if (actions.availableBlocksOf(doc, BlockSelectorScope.of(context)).next.isEmpty) return const SizedBox.shrink();
+    final view = c.view;
+    return IgnorePointer(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (final (handle, box) in n.outHandles)
+            Positioned.fromRect(
+              key: ValueKey('phone-plus-${n.id}-$handle'),
+              rect: Rect.fromCenter(
+                center: view.toScreen(CanvasInput.touchHandleArea(box, view.scale).center),
+                width: phonePlusSize,
+                height: phonePlusSize,
+              ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: DifyColors.componentsButtonPrimaryBg,
+                  border: Border.all(
+                    color: DifyColors.stateAccentHoverAlt,
+                    width: 3,
+                    strokeAlign: BorderSide.strokeAlignOutside,
+                  ),
+                  boxShadow: DifyShadows.primaryButton,
+                ),
+                child: Center(
+                  child: DifyIcon(
+                    'vender/line/general/plus-02',
+                    size: 16,
+                    color: DifyColors.componentsButtonPrimaryText,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = widget.canvas, graph = c.graph;
     if (graph == null) return const SizedBox.shrink();
+    final phone = PhoneEditorScope.maybeOf(context) != null;
     return ListenableBuilder(
       listenable: Listenable.merge([c.view, c.visualChanges, c.selection, c.selection.hoveredEdge, widget.controller]),
       builder: (context, _) {
+        if (phone) return _phoneHandles(graph);
         final hovered = {?c.selection.hovered, if (c.selection.nodes.length == 1) c.selection.nodes.first};
         final hoveredEdge = c.selection.hoveredEdge.value;
         if (_held == null) {

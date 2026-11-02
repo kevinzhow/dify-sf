@@ -17,8 +17,9 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/app_fonts.dart';
 
 void main() {
-  for (final width in [320.0, 390.0, 640.0]) {
-    testWidgets('phone $width keeps the sidebar left and the header on one band', (t) async {
+  // Narrow windows that are not phones (600 px and wider; phones have their own layout: test/phone/phone_editor_test).
+  for (final width in [600.0, 640.0, 700.0]) {
+    testWidgets('narrow $width keeps the sidebar left and the header on one band', (t) async {
       await useAppFonts();
       SharedPreferences.setMockInitialValues({detailSidebarStorageKey: 'expand'});
       t.view.physicalSize = Size(width, 844);
@@ -75,9 +76,9 @@ void main() {
     });
   }
 
-  testWidgets('phone panels and history headers remain usable', (t) async {
+  testWidgets('narrow panels and history headers remain usable', (t) async {
     await useAppFonts();
-    t.view.physicalSize = const Size(390, 844);
+    t.view.physicalSize = const Size(640, 844);
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
     final demo = DemoBackend(withBo: false);
@@ -110,7 +111,7 @@ void main() {
     await t.drag(headerScroll, const Offset(-800, 0));
     await settle();
     final back = find.descendant(of: find.byType(HeaderInHistory), matching: find.byType(DifyButton));
-    expect(t.getRect(back).right, lessThanOrEqualTo(390));
+    expect(t.getRect(back).right, lessThanOrEqualTo(640));
     await t.tap(back);
     await settle();
     expect(store.historyWorkflowData.value, isNull);
@@ -120,7 +121,7 @@ void main() {
     await t.drag(headerScroll, const Offset(-800, 0));
     await settle();
     final exit = find.descendant(of: find.byType(HeaderInRestoring), matching: find.byType(DifyButton)).last;
-    expect(t.getRect(exit).right, lessThanOrEqualTo(390));
+    expect(t.getRect(exit).right, lessThanOrEqualTo(640));
     await t.tap(exit);
     await settle();
     expect(store.isRestoring.value, isFalse);
@@ -129,8 +130,8 @@ void main() {
     await t.pump(const Duration(seconds: 20));
   });
 
-  for (final width in [320.0, 360.0, 390.0, 430.0, 640.0]) {
-    testWidgets('phone $width: header, panels, keyboard and rotation remain reachable', (t) async {
+  for (final width in [600.0, 640.0, 700.0]) {
+    testWidgets('narrow $width: header, panels, keyboard and rotation remain reachable', (t) async {
       await useAppFonts();
       t.view.physicalSize = Size(width, 844);
       t.view.devicePixelRatio = 1;

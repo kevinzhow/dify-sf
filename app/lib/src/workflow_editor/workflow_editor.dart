@@ -5,6 +5,7 @@ import '../canvas/canvas_controller.dart';
 import '../canvas/workflow_canvas.dart';
 import '../editor/editor_controller.dart';
 import '../design/widgets/adaptive.dart';
+import '../design/widgets/responsive.dart' show DifyWindowClass;
 import 'context_menu/context_menu.dart';
 import 'hooks/use_helpline.dart';
 import 'hooks/use_workflow.dart';
@@ -13,6 +14,7 @@ import '../cards/dify_cards.dart';
 import '../workflow/dify_json.dart';
 import 'canvas_plus/aggregator_controls.dart';
 import 'operator/actions.dart' show OperatorReadOnly;
+import 'phone/phone_editor_controller.dart';
 import 'store/store.dart';
 import 'workflow_confirm.dart';
 
@@ -23,6 +25,10 @@ import 'workflow_confirm.dart';
 /// mode is the canvas's; panel sizes and the control mode are kept in the stored preferences).
 ///
 /// Slots are filled as the chrome is ported; an empty slot draws nothing.
+///
+/// In a compact window (a phone) with a [phone] layout, that layout replaces the floating desktop chrome ([header],
+/// [control], [operator]) and places the canvas, the panels and the modal layers itself (dify-sf; Dify's editor has no
+/// phone mode). The canvas keeps its state when the window crosses between the two layouts.
 class WorkflowEditor extends StatefulWidget {
   const WorkflowEditor({
     super.key,
@@ -36,7 +42,12 @@ class WorkflowEditor extends StatefulWidget {
     this.modal,
     this.scope,
     this.canEdit = true,
+    this.phone,
   });
+
+  /// The phone layout (compact windows): builds the phone chrome around [PhoneEditorBody]; [PhoneEditorScope] is above
+  /// it and above the slots it places. Null: the desktop layout at every width.
+  final Widget Function(BuildContext context, CanvasController canvas, PhoneEditorBody body)? phone;
 
   final EditorController controller;
 
@@ -79,6 +90,12 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
   late final store = WorkflowStore(controlMode: canvas.controlMode);
   final preferences = WorkflowPreferences();
   late final bridge = WorkflowLocalStorageBridge(store, preferences);
+
+  /// The phone layout's state, made when the window is first compact.
+  PhoneEditorController? _phone;
+
+  /// The canvas and its layers move between the desktop and the phone layouts with their state.
+  final _canvasKey = GlobalKey(debugLabel: 'workflow canvas layers');
 
   @override
   void initState() {
@@ -173,6 +190,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
   @override
   void dispose() {
     bridge.dispose();
+    _phone?.dispose();
     preferences.dispose();
     store.dispose();
     canvas.dispose();
@@ -204,23 +222,30 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               _measured(constraints.biggest);
+              final canvasLayer = KeyedSubtree(
+                key: _canvasKey,
+                child: WorkflowShortcuts(
+                  controller: w.controller,
+                  canvas: canvas,
+                  options: w.menuOptions,
+                  child: WorkflowContextMenus(
+                    controller: w.controller,
+                    canvas: canvas,
+                    options: w.menuOptions,
+                    child: WorkflowCanvas(controller: w.controller, canvas: canvas),
+                  ),
+                ),
+              );
+              if (w.phone != null && DifyWindowClass.of(context) == DifyWindowClass.compact) {
+                return _phoneLayout(context, constraints, canvasLayer);
+              }
               // Viewport listeners in overlays can relayout this LayoutBuilder.
               // Give canvas/chrome regions independent display lists so painting
               // one region does not repaint the unchanged controls around it.
               final stack = Stack(
                 fit: StackFit.expand,
                 children: [
-                  WorkflowShortcuts(
-                    controller: w.controller,
-                    canvas: canvas,
-                    options: w.menuOptions,
-                    child: WorkflowContextMenus(
-                      controller: w.controller,
-                      canvas: canvas,
-                      options: w.menuOptions,
-                      child: WorkflowCanvas(controller: w.controller, canvas: canvas),
-                    ),
-                  ),
+                  canvasLayer,
                   Positioned.fill(child: HelpLine(canvas: canvas)),
                   Positioned.fill(
                     child: AggregatorPopupHost(controller: w.controller, canvas: canvas),
@@ -292,6 +317,38 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
           ),
         ),
       ),
+    );
+  }
+
+  /// The phone layout: [WorkflowEditor.phone] around the canvas, its layers, the panels and the modal layers.
+  Widget _phoneLayout(BuildContext context, BoxConstraints constraints, Widget canvasLayer) {
+    final w = widget;
+    final phone = _phone ??= PhoneEditorController(docId: w.controller.docId);
+    // There is no bottom operator bar on a phone: the desktop control bar starts from the canvas's full height when
+    // the window turns wide again (until the operator bar measures itself).
+    if (store.bottomPanelHeight.value != 0) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => mounted ? store.setBottomPanelHeight(0) : null);
+    }
+    final body = PhoneEditorBody(
+      canvas: Stack(
+        fit: StackFit.expand,
+        children: [
+          canvasLayer,
+          Positioned.fill(child: HelpLine(canvas: canvas)),
+          Positioned.fill(
+            child: AggregatorPopupHost(controller: w.controller, canvas: canvas),
+          ),
+          if (w.overlay != null) Positioned.fill(child: w.overlay!(context, canvas)),
+        ],
+      ),
+      panels: w.panels == null ? null : RepaintBoundary(child: w.panels!(context, canvas)),
+      modal: w.modal?.call(context, canvas),
+      confirm: const WorkflowConfirm(),
+    );
+    final frame = Builder(builder: (context) => w.phone!(context, canvas, body));
+    return PhoneEditorScope(
+      controller: phone,
+      child: DifyViewport(width: constraints.maxWidth, child: w.scope?.call(context, canvas, frame) ?? frame),
     );
   }
 }

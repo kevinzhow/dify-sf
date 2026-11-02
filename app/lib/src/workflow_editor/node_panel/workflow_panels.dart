@@ -14,6 +14,7 @@ import '../../editor/editor_controller.dart';
 import '../../editor/graph_info.dart';
 import '../../i18n/dify_i18n.dart';
 import '../context_menu/context_menu.dart';
+import '../phone/phone_editor_controller.dart';
 import '../prompt_editor/shortcuts_popup.dart' show WorkflowRightPanelScope;
 import '../store/store.dart';
 import 'node_panel_bodies.dart';
@@ -189,8 +190,13 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
   Widget build(BuildContext context) {
     final node = _node;
     final store = _store!;
+    // On a phone a selected node shows its selection bar; its panel opens through the bar's Settings.
+    final phone = PhoneEditorScope.maybeOf(context);
     // Only workflow blocks have a panel (not notes or container starts: Panel renders CUSTOM_NODE only).
-    final panelNode = node != null && reactFlowTypeOf(node) == 'custom' ? node : null;
+    final panelNode =
+        node != null && reactFlowTypeOf(node) == 'custom' && (phone == null || phone.settingsNodeId == node.id)
+        ? node
+        : null;
     return ListenableBuilder(
       listenable: Listenable.merge([
         store.showEnvPanel,
@@ -202,7 +208,7 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
         store.historyWorkflowData,
       ]),
       builder: (context, _) {
-        final compact = DifyAdaptive.compactOf(context);
+        final compact = phone != null || DifyAdaptive.compactOf(context);
         final otherOpen =
             store.showEnvPanel.value ||
             store.showChatVariablePanel.value ||
@@ -246,13 +252,24 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
         if (!compact) return row;
         // Desktop can show several side-by-side panels. On a phone keep their
         // independent state and make the whole rail horizontally reachable.
-        return SizedBox(
+        final rail = SizedBox(
           width: DifyAdaptive.widthOf(context),
           child: SingleChildScrollView(
             key: const ValueKey('compact-panel-rail'),
             scrollDirection: Axis.horizontal,
             reverse: true,
             child: row,
+          ),
+        );
+        if (phone == null) return rail;
+        // The phone layout gives the panels the whole area under its app bar (the canvas is not squeezed beside
+        // them): an opaque page whose content keeps clear of the bottom inset.
+        return ColoredBox(
+          key: const ValueKey('phone-panels'),
+          color: DifyColors.backgroundBody,
+          child: Padding(
+            padding: EdgeInsets.only(top: 4, bottom: MediaQuery.paddingOf(context).bottom + 4),
+            child: MediaQuery.removePadding(context: context, removeBottom: true, child: rail),
           ),
         );
       },
