@@ -233,16 +233,14 @@ class _InspectPanelState extends State<InspectPanel> {
             title: title,
             onClose: sheet.onClose,
             actions: [
-              DifyTouchTarget(
-                child: DifyButton(
-                  key: const ValueKey('inspect-reset-all'),
-                  variant: DifyButtonVariant.ghost,
-                  onPressed: () {
-                    crud.deleteAllInspectorVars();
-                    store.setCurrentFocusNodeId('');
-                  },
-                  child: DifyTextLine(_tw('debug.variableInspect.clearAll')),
-                ),
+              DifyButton(
+                key: const ValueKey('inspect-reset-all'),
+                variant: DifyButtonVariant.ghost,
+                onPressed: () {
+                  crud.deleteAllInspectorVars();
+                  store.setCurrentFocusNodeId('');
+                },
+                child: DifyTextLine(_tw('debug.variableInspect.clearAll')),
               ),
             ],
           ),

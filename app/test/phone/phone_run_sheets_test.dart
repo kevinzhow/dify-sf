@@ -35,6 +35,7 @@ import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:dify_sf_app/src/workflow_editor/variable_inspect/panel.dart';
 import 'package:dify_sf_app/src/workflow_editor/variable_inspect/value_content.dart' show ValueContent;
 import 'package:dify_sf_app/src/workflow_editor/variable_panels/variable_panels.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -283,6 +284,9 @@ void main() {
       expect(find.descendant(of: e.runHeader, matching: find.textContaining(_tp('runSucceeded'))), findsOneWidget);
       expect(e.top('phone-run-sheet'), closeTo(e.barTop - 72, 1));
       expect(find.byKey(const ValueKey('phone-run')), findsOneWidget);
+      // (The settings sheet opened above revealed Count Android: back to the top of the list, every card built.)
+      await t.drag(find.byType(WorkflowStepsView), const Offset(0, 1500));
+      await settle(t, 600);
       expect(find.byKey(const ValueKey('step-status-succeeded')), findsNWidgets(4));
       expect(
         find.descendant(
@@ -845,16 +849,15 @@ void main() {
 
   testWidgets('touch sizes: Start Run, the environment variable form and its cards\' actions', (t) async {
     final e = await _pump(t);
-    // Start Run: 36 px with a 48 px target.
+    // Start Run: 44 px, the design's button height in a phone sheet.
     await t.tap(find.byKey(const ValueKey('phone-run')));
     await settle(t, 800);
     final start = find.ancestor(of: find.text(_tw('singleRun.startRun')), matching: find.byType(DifyButton)).first;
-    expect(t.getSize(start).height, 36);
-    expect(find.ancestor(of: start, matching: find.byType(DifyTouchTarget)), findsWidgets);
+    expect(t.getSize(start).height, 44);
     expect(await systemBack(t), isTrue);
     await settle(t, 600);
 
-    // Add an environment variable: the form is the sheet's content (its header, 36 px Cancel / Save).
+    // Add an environment variable: the form is the sheet's content (its header, 44 px Cancel / Save).
     await overflow(t, _tw('env.envPanelTitle'));
     await t.tap(find.text(_tw('env.envPanelButton')));
     await settle(t, 800);
@@ -865,7 +868,7 @@ void main() {
       find.ancestor(of: find.text(_tw('env.modal.title')), matching: find.byType(DifySheetHeader)),
       findsOneWidget,
     );
-    expect(t.getSize(form).height, 36);
+    expect(t.getSize(form).height, 44);
     final fields = find.byType(EditableText);
     await t.enterText(fields.first, 'api_base');
     await t.pump();
@@ -886,6 +889,50 @@ void main() {
     expect(a.height, 44);
     expect((b.center.dx - a.center.dx).abs(), greaterThanOrEqualTo(48));
     expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('accessibility: the run form (modal) exposes its controls and hides the editor; the run sheet at its '
+      'peek (non-modal) is read with the editor', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration(seconds: 2));
+    List<String> labels() {
+      final out = <String>[];
+      void walk(SemanticsNode n) {
+        if (n.label.isNotEmpty) out.add(n.label);
+        n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder).forEach(walk);
+      }
+
+      for (final view in t.binding.renderViews) {
+        if (view.owner?.semanticsOwner?.rootSemanticsNode case final root?) walk(root);
+      }
+      return out;
+    }
+
+    bool has(List<String> l, String label) => l.any((x) => x.contains(label));
+    // The editor's own labels, matched whole ("Run" is also in the form's "Test Run").
+    bool editor(List<String> l) => l.contains(_tp('run')) || l.contains(_tp('steps'));
+    final startRun = _tw('singleRun.startRun');
+    expect(editor(labels()), isTrue, reason: 'the editor: its app bar and view switch');
+    // The run form: a modal sheet, read alone.
+    await t.tap(find.byKey(const ValueKey('phone-run')));
+    await settle(t, 800);
+    var l = labels();
+    expect(has(l, startRun), isTrue, reason: 'the form\'s Start Run: $l');
+    expect(has(l, 'Query'), isTrue, reason: 'its field: $l');
+    expect(editor(l), isFalse, reason: 'the editor behind is hidden: $l');
+    await t.enterText(find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)), 'q');
+    await t.pump();
+    await t.tap(find.text(startRun));
+    await settle(t, 800);
+    // The run sheet at its peek: not modal, so the editor is read with it.
+    l = labels();
+    expect(has(l, _tw('common.running')), isTrue, reason: 'the run sheet\'s state: $l');
+    expect(has(l, _tp('stop')), isTrue, reason: 'its Stop: $l');
+    expect(editor(l), isTrue, reason: 'the editor stays readable: $l');
+    expect(has(l, 'Count Android'), isTrue, reason: 'a step: $l');
+    semantics.dispose();
     await e.dispose();
   });
 

@@ -918,15 +918,13 @@ class _RunHeader extends StatelessWidget {
         showClose: !running,
         onClose: onClose,
         actions: [
+          // A button in a phone sheet is 44 px (the design's touch height there).
           if (running && stop != null)
-            DifyTouchTarget(
-              child: DifyButton(
-                key: const ValueKey('phone-run-sheet-stop'),
-                size: DifyButtonSize.medium,
-                leading: const RemixIcon('stop-circle-line', size: 16),
-                onPressed: stop,
-                child: DifyTextLine(_tp('stop')),
-              ),
+            DifyButton(
+              key: const ValueKey('phone-run-sheet-stop'),
+              leading: const RemixIcon('stop-circle-line', size: 16),
+              onPressed: stop,
+              child: DifyTextLine(_tp('stop')),
             ),
         ],
         tabs: tabs,

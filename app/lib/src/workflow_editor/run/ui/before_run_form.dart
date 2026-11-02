@@ -1151,16 +1151,12 @@ class _BeforeRunFormState extends State<BeforeRunForm> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: SizedBox(
                 width: double.infinity,
-                // dify-sf: in a phone sheet the large size with a 48 px target.
-                child: DifyTouchTarget(
-                  child: DifyButton(
-                    variant: DifyButtonVariant.primary,
-                    size: PanelSheetScope.maybeOf(context) != null ? DifyButtonSize.large : DifyButtonSize.medium,
-                    disabled: !isFilesLoaded(widget.forms),
-                    onPressed: _run,
-                    child: DifyTextLine(
-                      _isHumanInput ? _tw('nodes.humanInput.singleRun.button') : _tw('singleRun.startRun'),
-                    ),
+                child: DifyButton(
+                  variant: DifyButtonVariant.primary,
+                  disabled: !isFilesLoaded(widget.forms),
+                  onPressed: _run,
+                  child: DifyTextLine(
+                    _isHumanInput ? _tw('nodes.humanInput.singleRun.button') : _tw('singleRun.startRun'),
                   ),
                 ),
               ),

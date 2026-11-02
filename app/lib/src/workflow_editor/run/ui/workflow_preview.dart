@@ -210,15 +210,11 @@ class InputsPanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: SizedBox(
                 width: double.infinity,
-                // dify-sf: in a phone sheet the large size with a 48 px target.
-                child: DifyTouchTarget(
-                  child: DifyButton(
-                    variant: DifyButtonVariant.primary,
-                    size: PanelSheetScope.maybeOf(context) != null ? DifyButtonSize.large : DifyButtonSize.medium,
-                    disabled: !canRun || running,
-                    onPressed: doRun,
-                    child: DifyTextLine(DifyI18n.tr('workflow', 'singleRun.startRun')),
-                  ),
+                child: DifyButton(
+                  variant: DifyButtonVariant.primary,
+                  disabled: !canRun || running,
+                  onPressed: doRun,
+                  child: DifyTextLine(DifyI18n.tr('workflow', 'singleRun.startRun')),
                 ),
               ),
             ),

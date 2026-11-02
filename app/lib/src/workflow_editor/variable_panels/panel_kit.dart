@@ -367,7 +367,7 @@ class VariableModalSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // dify-sf: in a phone sheet (the popover shown as a bottom sheet) the form is the sheet's content: the sheet's
-    // header (title, close), the fields, and 36 px Cancel / Save with 48 px targets.
+    // header (title, close), the fields, and Cancel / Save (a button in a phone sheet is 44 px).
     if (DifyFloating.inSheet(context)) {
       return DifySurface(
         child: Column(
@@ -382,23 +382,14 @@ class VariableModalSurface extends StatelessWidget {
                 spacing: 12,
                 children: [
                   Expanded(
-                    child: DifyTouchTarget(
-                      child: DifyButton(
-                        size: DifyButtonSize.large,
-                        onPressed: onClose,
-                        child: DifyTextLine(tc('operation.cancel')),
-                      ),
-                    ),
+                    child: DifyButton(onPressed: onClose, child: DifyTextLine(tc('operation.cancel'))),
                   ),
                   Expanded(
-                    child: DifyTouchTarget(
-                      child: DifyButton(
-                        key: const ValueKey('variable-modal-save'),
-                        variant: DifyButtonVariant.primary,
-                        size: DifyButtonSize.large,
-                        onPressed: onSave,
-                        child: DifyTextLine(tc('operation.save')),
-                      ),
+                    child: DifyButton(
+                      key: const ValueKey('variable-modal-save'),
+                      variant: DifyButtonVariant.primary,
+                      onPressed: onSave,
+                      child: DifyTextLine(tc('operation.save')),
                     ),
                   ),
                 ],
