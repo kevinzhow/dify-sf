@@ -57,6 +57,13 @@
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
     },
+    "back_dismiss.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart"
+      ],
+      "note": "dify-sf Android back steps (no Dify counterpart, after raft-flutter RaftBackDismiss): no text of its own; tests cover popups closing before the page, newest-first unwinding, no step left after a close in code, Escape unchanged on desktop."
+    },
     "badge.dart": {
       "kind": "gallery",
       "evidence": [
@@ -231,7 +238,8 @@
         "app/test/dify_spec/dify_ui/dropdown_menu_test.dart",
         "app/test/dify_spec/dify_ui/popover_test.dart",
         "app/test/dify_spec/prompt_editor/shortcuts_popup_test.dart",
-        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
+        "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract."
     },
@@ -308,6 +316,13 @@
         "app/test/control_gallery_typography_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "keyboard_scroll_view.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart"
+      ],
+      "note": "dify-sf port of raft-flutter RaftKeyboardScrollView (no Dify counterpart): no text of its own; tests keep the focused field and the primary action above a 300 dp keyboard at 360 and 411 dp."
     },
     "loading.dart": {
       "kind": "layout-or-non-text",

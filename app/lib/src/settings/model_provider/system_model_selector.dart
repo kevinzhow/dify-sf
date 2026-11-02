@@ -147,7 +147,9 @@ class _SystemModelDialogState extends State<SystemModelDialog> {
   final _changed = <String>[];
   bool _saving = false;
 
-  void _close() => Navigator.of(context).maybePop();
+  /// Closes this dialog: a pop of its route, not `maybePop`, which would first close a model selector that is still
+  /// closing (an open popup holds a back step on the dialog's route, see [DifyBackStep]).
+  void _close() => Navigator.of(context).pop();
 
   Future<void> _save(ModelProviderEnv env, Map<String, DefaultModel?> current) async {
     final models = env.models;

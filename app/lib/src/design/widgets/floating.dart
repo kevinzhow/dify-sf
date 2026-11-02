@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import 'back_dismiss.dart';
 import 'page.dart' show DifyWindowInsets;
 import 'placement.dart';
 import 'text.dart';
@@ -58,7 +59,9 @@ enum DifyFloatingTransition { scaleFade, fade }
 
 /// The anchored-popup engine behind popovers, menus and tooltips (Base UI Root + Portal + Positioner + Popup): the
 /// popup is rendered in the root overlay, positioned against the trigger (or a point, for context menus) with Base UI's
-/// collision rules, animated, dismissed on outside tap and Escape, and returns focus to the trigger on close.
+/// collision rules, animated, dismissed on outside tap and Escape, and returns focus to the trigger on close. A
+/// [dismissible] popup also closes on Android back before the page under it does (a [DifyBackStep] on the trigger's
+/// route while it is open).
 class DifyFloating extends StatefulWidget {
   const DifyFloating({
     super.key,
@@ -139,6 +142,9 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
   bool _visible = false;
   Offset? _point;
 
+  /// Android back closes the open popup first.
+  late final _back = DifyBackStep(onDismiss: () => _request(false, instant: true));
+
   DifyFloatingController get _controller => widget.controller ?? (_ownController ??= DifyFloatingController());
 
   Object get _group => widget.tapRegionGroup ?? _controller;
@@ -174,6 +180,7 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
   @override
   void dispose() {
     if (_controller._state == this) _controller._state = null;
+    _back.detach();
     _curved.dispose();
     _anim.dispose();
     _scope.dispose();
@@ -187,6 +194,8 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
       setState(() => _point = overlay?.globalToLocal(at) ?? at);
     }
     if (open == _visible) return;
+    // A close request takes the back step away at once, also when the owner closes a controlled popup later.
+    if (!open) _back.detach();
     widget.onOpenChange?.call(open);
     if (widget.open != null) return;
     final inst = instant || (widget.instantTransition?.call(open) ?? false) || (open && lastInputWasKeyboard);
@@ -206,6 +215,16 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
   void _show({required bool instant, bool rebuild = true}) {
     _visible = true;
     _portal.show();
+    if (widget.dismissible) {
+      // Opened from initState (no inherited lookups yet): after the first frame.
+      if (rebuild) {
+        _back.attach(context);
+      } else {
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _visible) _back.attach(context);
+        });
+      }
+    }
     if (_instant(instant)) {
       _anim.value = 1;
     } else {
@@ -223,6 +242,7 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
   void _hide({required bool instant, bool rebuild = true}) {
     final hadFocus = _scope.hasFocus;
     _visible = false;
+    _back.detach();
     if (!_portal.isShowing) {
       _anim.value = 0;
     } else if (_instant(instant)) {

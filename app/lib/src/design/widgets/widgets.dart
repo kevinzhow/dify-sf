@@ -68,9 +68,11 @@ export 'public_app_layout.dart';
 export 'text_input_scope.dart';
 // dify-sf's phone layout (no Dify counterpart).
 export 'action_sheet.dart';
+export 'back_dismiss.dart';
 export 'bottom_sheet.dart';
 export 'bottom_toolbar.dart';
 export 'fab.dart';
+export 'keyboard_scroll_view.dart';
 export 'navigation_bar.dart';
 export 'responsive.dart';
 export 'top_app_bar.dart';
