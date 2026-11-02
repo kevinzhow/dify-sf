@@ -379,8 +379,9 @@ void main() {
       await t.tap(find.text(_tw('singleRun.startRun')));
       await settle(t, 1000);
       expect(find.byKey(const ValueKey('phone-run-sheet-stop')), findsOneWidget);
-      // While it runs the header counts the time; there is no close, only Stop.
-      expect(find.descendant(of: e.runHeader, matching: find.textContaining(RegExp(r' · \d\.\d s$'))), findsOneWidget);
+      // While it runs the header counts the time in whole seconds; there is no close, only Stop.
+      expect(find.descendant(of: e.runHeader, matching: find.textContaining(RegExp(r' · \d+ s$'))), findsOneWidget);
+      expect(find.descendant(of: e.runHeader, matching: find.textContaining(RegExp(r'\.\d s$'))), findsNothing);
       expect(_close(e.runHeader), findsNothing);
 
       await t.tap(find.byKey(const ValueKey('phone-run-sheet-stop')));
@@ -429,7 +430,7 @@ void main() {
       expect(e.runSheet, findsNothing);
       expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.running);
       expect(chip, findsOneWidget);
-      final running = find.bySemanticsLabel(RegExp(r'^Running · \d+\.\d s$'));
+      final running = find.bySemanticsLabel(RegExp(r'^Running · \d+ s$'));
       expect(running, findsOneWidget);
       final row = t.getRect(find.byKey(const ValueKey('phone-view-switch')));
       final shown = t.getRect(runChip());
@@ -439,7 +440,7 @@ void main() {
       // It counts while the run goes.
       final before = t.getSemantics(running).label;
       await settle(t, 1100);
-      expect(t.getSemantics(find.bySemanticsLabel(RegExp(r'^Running · \d+\.\d s$'))).label, isNot(before));
+      expect(t.getSemantics(find.bySemanticsLabel(RegExp(r'^Running · \d+ s$'))).label, isNot(before));
 
       // A tap reopens the sheet at its peek; Back hides it again.
       await t.tap(runChip());
@@ -480,13 +481,16 @@ void main() {
       await e.dispose();
     });
 
-    testWidgets('$name: the hidden run\'s chip and the run sheet show the same time, on the same tick', (t) async {
+    testWidgets('$name: the hidden run\'s chip and the run sheet show the same whole seconds, on the same tick', (
+      t,
+    ) async {
       final e = await _pump(t, size: size);
       e.mock.scenario = const MockRunScenario(stepDelay: Duration(seconds: 3));
       final clock = TestWidgetsFlutterBinding.instance.clock;
       final chip = find.byKey(const ValueKey('phone-run-chip'));
       Finder runChip() => find.descendant(of: chip, matching: find.byType(DifyFilterChip)).hitTestable().first;
-      final time = RegExp(r'(\d+\.\d) s$');
+      // Whole seconds while it runs (no tenths).
+      final time = RegExp(r'(?<![\d.])(\d+) s$');
       await t.tap(find.byKey(const ValueKey('phone-run')));
       await settle(t, 800);
       await t.enterText(
@@ -516,17 +520,18 @@ void main() {
         for (final c in chips) {
           expect(time.firstMatch(c.label)?.group(1), shown, reason: c.label);
         }
-        expect(double.parse(shown), closeTo(elapsed, 0.11), reason: 'no lag: $shown s at $elapsed s');
+        // The seconds since the start, floored: within a second of the test clock.
+        expect(elapsed - int.parse(shown), inInclusiveRange(0, 1), reason: 'no lag: $shown s at $elapsed s');
         await t.tap(runChip());
         await t.pump();
         final subtitle = t.widget<DifySheetHeader>(find.byKey(const ValueKey('phone-run-sheet-header'))).subtitle!;
         expect(subtitle, '${_tw('common.running')} · $shown s', reason: 'the sheet at the same instant');
-        // A tick later both moved on together.
-        await t.pump(const Duration(milliseconds: 100));
+        // A second later (the next tick) it moved on by one.
+        await t.pump(const Duration(seconds: 1));
         final next = time.firstMatch(
           t.widget<DifySheetHeader>(find.byKey(const ValueKey('phone-run-sheet-header'))).subtitle!,
         )!;
-        expect(double.parse(next.group(1)!), closeTo(double.parse(shown) + 0.1, 0.001));
+        expect(int.parse(next.group(1)!), int.parse(shown) + 1);
         expect(await systemBack(t), isTrue);
         await settle(t, 400);
         expect(e.runSheet, findsNothing);
@@ -921,13 +926,13 @@ void main() {
     await t.enterText(find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)), 'q');
     await t.pump();
     await t.tap(find.text(_tw('singleRun.startRun')));
-    await settle(t, 900);
+    await settle(t, 1500);
     final text = t
         .widgetList<Text>(find.descendant(of: e.runHeader, matching: find.byType(Text)))
         .map((w) => w.data ?? '')
         .firstWhere((d) => d.startsWith(_tw('common.running')));
-    final seconds = double.parse(RegExp(r'(\d+\.\d) s$').firstMatch(text)!.group(1)!);
-    expect(seconds, inInclusiveRange(0.7, 1.1), reason: text);
+    // Whole seconds while it runs: one second since the start, not the 10 s idle before it.
+    expect(text, endsWith(' · 1 s'));
     // Hidden, the chip counts on the same clock.
     expect(await systemBack(t), isTrue);
     await settle(t, 300);
@@ -935,7 +940,7 @@ void main() {
       find.descendant(of: find.byKey(const ValueKey('phone-run-chip')), matching: find.byType(DifyFilterChip)).first,
     );
     // The same clock: a second or two since the start, not the idle time before it.
-    final n = double.parse(RegExp(r'· (\d+\.\d) s$').firstMatch(chip.semanticLabel!)!.group(1)!);
+    final n = int.parse(RegExp(r'· (\d+) s$').firstMatch(chip.semanticLabel!)!.group(1)!);
     expect(n, inInclusiveRange(1, 2), reason: chip.semanticLabel);
     await e.dispose();
   });
@@ -1109,13 +1114,14 @@ void main() {
       final badge = find.ancestor(of: word, matching: find.byType(Container)).first;
       // The word, its 5 px padding and 1 px border on each side: not stretched over the row.
       expect(t.getSize(badge).width, closeTo(t.getSize(word).width + 12, 1));
-      // The unnamed latest version: its time right under its title (the column's 2 px), no empty line between.
+      // The unnamed latest version: its time under its title with no line between (Dify's empty comment `div`: only
+      // the column's two 2 px gaps).
       final v2 = find.byKey(const ValueKey('item-v2'));
       final title = find.descendant(of: v2, matching: find.textContaining('2')).first;
       final time = find.descendant(of: v2, matching: find.textContaining('Owner'));
       expect(
         t.getTopLeft(time).dy - t.getBottomLeft(find.ancestor(of: title, matching: find.byType(SizedBox)).first).dy,
-        closeTo(2, 0.5),
+        closeTo(4, 0.5),
       );
       // A version with a comment keeps it between its title and time.
       expect(

@@ -185,9 +185,9 @@ class PhoneEditorSheets {
   DateTime? _liveStart, _liveEnd;
   String? _liveStatus;
 
-  /// The test run's time in seconds, in tenths, moved by one tick every tenth of a second while it runs and frozen
-  /// when it ends: the run sheet's header and the view row's chip both show this value (whichever shows), so they
-  /// agree to the tenth and change together.
+  /// The test run's time in seconds: whole seconds while it runs, moved by one tick a second from its start; once it
+  /// ended, its time to the tenth. The run sheet's header and the view row's chip both show this value (whichever
+  /// shows, [_formatRunTime]), so they agree and change together.
   final liveTime = ValueNotifier<double>(0);
   Timer? _liveTick;
 
@@ -198,7 +198,7 @@ class PhoneEditorSheets {
       _liveStart = now();
       _liveEnd = null;
       _liveTick?.cancel();
-      _liveTick = Timer.periodic(const Duration(milliseconds: 100), (_) => _tickLive());
+      _liveTick = Timer.periodic(const Duration(seconds: 1), (_) => _tickLive());
     } else if (!running && _liveStatus == WorkflowRunningStatus.running) {
       _liveEnd = now();
       _liveTick?.cancel();
@@ -208,8 +208,10 @@ class PhoneEditorSheets {
     _tickLive();
   }
 
-  // The ticks fall on the tenths since the start, give or take the timer's lateness: the nearest tenth.
-  void _tickLive() => liveTime.value = (liveSeconds * 10).round() / 10;
+  void _tickLive() => liveTime.value = _liveEnd == null
+      // The ticks fall on the whole seconds since the start, give or take the timer's lateness.
+      ? (liveSeconds + 0.05).floorToDouble()
+      : (liveSeconds * 10).round() / 10;
 
   /// Seconds since the test run started (while it runs; frozen once it ended), to the millisecond.
   double get liveSeconds {
@@ -949,6 +951,14 @@ class _RunHeader extends StatelessWidget {
   }
 }
 
+/// A test run's time as the run sheet's header and the view row's chip show it: whole seconds while it [running]
+/// ("12 s", the chip stays short), the run's time to the tenth once it ended ("3.1 s").
+String _formatRunTime(num seconds, {required bool running}) {
+  if (!running) return formatStepSeconds(seconds);
+  final whole = seconds.floor();
+  return whole < 60 ? '$whole s' : formatStepSeconds(whole);
+}
+
 /// The run's time: [live] while it runs (from its start, ticking with the view row's chip), else counted from when
 /// this run was first shown running (tenths of a second, only while it runs); then the run's own time once it has one.
 class _RunTime extends StatefulWidget {
@@ -1039,7 +1049,11 @@ class _RunTimeState extends State<_RunTime> {
     if (!widget.running && own != null) {
       time = formatStepSeconds(own);
     } else if (live != null) {
-      time = widget.running || live.value > 0 ? formatStepSeconds(live.value) : null;
+      time = widget.running
+          ? _formatRunTime(live.value, running: true)
+          : live.value > 0
+          ? formatStepSeconds(live.value)
+          : null;
     } else {
       time = _counted > 0 ? formatStepSeconds(_counted) : null;
     }
@@ -1117,7 +1131,7 @@ class _RunChipRowState extends State<_RunChipRow> {
     final running = status == WorkflowRunningStatus.running;
     // The run sheet's header shows the same time ([PhoneEditorSheets.liveTime] while it runs, the run's own after).
     final elapsed = resultOf(_store!.workflowRunningData.value)['elapsed_time'];
-    final time = formatStepSeconds(!running && elapsed is num ? elapsed : widget.sheets.liveTime.value);
+    final time = _formatRunTime(!running && elapsed is num ? elapsed : widget.sheets.liveTime.value, running: running);
     final full = running ? '${_stateLabel(status)} · $time' : _stateLabel(status);
     // Ended: the short form is its time beside the outcome's icon ("✓ 3.1 s"), never a bare icon like the issues chip's.
     Widget chip({required bool compact}) => DifyFilterChip(

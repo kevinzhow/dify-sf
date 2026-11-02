@@ -417,22 +417,24 @@ class _VersionHistoryItemState extends State<VersionHistoryItem> {
     final comment = '${item['marked_comment'] ?? ''}';
     final creator = '${_map(item['created_by'])['name'] ?? ''}';
     final showMenu = !w.hideActionMenu && !isDraft;
-    // dify-sf: in a phone sheet the Latest badge hugs its word (Dify's `shrink-0`) and an empty comment takes no line
-    // (Dify's empty `div`).
-    final inSheet = PanelSheetScope.maybeOf(context) != null;
+    // The Latest badge hugs its word (`shrink-0`) beside the truncated title. dify-sf: at most 96 px, where Dify's
+    // `overflow-hidden` column would clip an overlong word instead.
     final latest = Container(
       height: 20,
+      constraints: const BoxConstraints(maxWidth: 96),
       padding: const EdgeInsets.symmetric(horizontal: 5),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: DifyColors.componentsBadgeBgDimm,
         borderRadius: BorderRadius.circular(DifyRadius.md),
         border: Border.all(color: DifyColors.textAccentSecondary),
       ),
-      child: DifyText(
-        _w('versionHistory.latest').toUpperCase(),
-        DifyType.system2xsMediumUppercase,
-        color: DifyColors.textAccentSecondary,
+      child: Center(
+        widthFactor: 1,
+        child: DifyText(
+          _w('versionHistory.latest').toUpperCase(),
+          DifyType.system2xsMediumUppercase,
+          color: DifyColors.textAccentSecondary,
+        ),
       ),
     );
     final content = Row(
@@ -475,14 +477,16 @@ class _VersionHistoryItemState extends State<VersionHistoryItem> {
                           color: isSelected ? DifyColors.textAccent : DifyColors.textSecondary,
                         ),
                       ),
-                      if (isLatest) inSheet ? latest : Flexible(child: latest),
+                      if (isLatest) latest,
                     ],
                   ),
                 ),
               ),
               if (!isDraft) ...[
-                if (comment.isNotEmpty || !inSheet)
-                  DifyText(comment, DifyType.systemXsRegular, color: DifyColors.textSecondary, maxLines: null),
+                // An empty comment is Dify's empty `div`: no line, only the column's gaps around it.
+                comment.isEmpty
+                    ? const SizedBox.shrink()
+                    : DifyText(comment, DifyType.systemXsRegular, color: DifyColors.textSecondary, maxLines: null),
                 DifyText(
                   '${formatVersionTime((item['created_at'] as num?) ?? 0)} · $creator',
                   DifyType.systemXsRegular,
