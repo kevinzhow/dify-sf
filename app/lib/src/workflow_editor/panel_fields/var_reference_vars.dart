@@ -572,7 +572,8 @@ class _MemberRow extends StatelessWidget {
               DifyTouchArea(
                 accessibleBox: true,
                 child: DifyIconButton(
-                  label: name,
+                  // What it does (its row is read with the name): Dify's "View Details".
+                  label: DifyI18n.tr('common', 'operation.viewDetails'),
                   onPressed: drill,
                   icon: DifyIcon('vender/line/arrows/chevron-right', size: 16, color: DifyColors.textTertiary),
                 ),
@@ -895,7 +896,7 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
                   accessibleBox: true,
                   child: DifyIconButton(
                     key: ValueKey('var-members-${_v.variable}'),
-                    label: _v.variable,
+                    label: DifyI18n.tr('common', 'operation.viewDetails'),
                     onPressed: () => w.onDrill?.call(_schema),
                     icon: DifyIcon('vender/line/arrows/chevron-right', size: 16, color: DifyColors.textTertiary),
                   ),

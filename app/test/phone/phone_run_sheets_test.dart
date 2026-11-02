@@ -5,6 +5,8 @@
 // history and the version list as sheets; Android back closes the newest first. At 411x914 and 360x780 with gesture
 // insets and the real Noto Sans.
 
+import 'dart:ui' show CheckedState, Tristate;
+
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
@@ -1277,9 +1279,12 @@ void main() {
     // The header's boxes (Tips; Close is the sheet's touch button): 44 dp, all of them hittable.
     await expectTouchTarget(t, tips.evaluate().single, 'Tips');
     expect(find.descendant(of: sheet, matching: find.text('TIPS')), findsOneWidget);
+    Tristate tipsOn() => t.getSemantics(tips).getSemanticsData().flagsCollection.isToggled;
+    expect(tipsOn(), Tristate.isTrue, reason: 'Tips reports on (recheck 4)');
     await t.tap(tips);
     await settle(t, 400);
     expect(find.descendant(of: sheet, matching: find.text('TIPS')), findsNothing);
+    expect(tipsOn(), Tristate.isFalse, reason: 'and off');
     await t.tap(tips);
     await settle(t, 400);
     expect(find.descendant(of: sheet, matching: find.text('TIPS')), findsOneWidget);
@@ -1306,7 +1311,25 @@ void main() {
       final node = t.getSemantics(card);
       expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$type ${node.rect}');
       expectHittable(t, card.evaluate().single, node, type);
+      // One node per card (recheck 4): a choice among the types, named, the current one checked.
+      final d = node.getSemanticsData();
+      expect(d.label, type);
+      expect(d.flagsCollection.isInMutuallyExclusiveGroup, isTrue, reason: type);
+      expect(d.flagsCollection.isChecked, type == 'String' ? CheckedState.isTrue : CheckedState.isFalse, reason: type);
     }
+    // No nameless switch beside the cards (each card was two stops).
+    void nameless(SemanticsNode n) {
+      final d = n.getSemanticsData();
+      if (!n.isMergedIntoParent && d.flagsCollection.isToggled != Tristate.none) {
+        expect(d.label, isNotEmpty, reason: 'a nameless switch at ${n.rect}');
+      }
+      n.visitChildren((c) {
+        nameless(c);
+        return true;
+      });
+    }
+
+    nameless(t.binding.renderViews.first.owner!.semanticsOwner!.rootSemanticsNode!);
     expect(t.takeException(), isNull);
     semantics.dispose();
     await e.dispose();

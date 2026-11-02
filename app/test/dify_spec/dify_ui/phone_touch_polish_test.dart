@@ -6,6 +6,8 @@
 // marks the current one with DifyChoiceMark.
 import 'dart:async';
 
+import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
+
 import 'phone_harness.dart';
 
 /// The semantics node control [f] forms (or is merged into) for the platform.
@@ -214,6 +216,28 @@ void main() {
     await t.pumpAndSettle();
     expect(find.byType(DifySheetGrabHandle), findsNothing);
     expect(t.testTextInput.isVisible, isTrue);
+  });
+
+  testWidgets('the text selection menu leaves out items it has no name for (the platform\'s Share, Look Up): no blank '
+      'row between Copy and Select All', (t) async {
+    phoneView(t);
+    await pumpPhoneApp(
+      t,
+      DifyPage(
+        body: DifySelectionMenu(
+          anchors: const TextSelectionToolbarAnchors(primaryAnchor: Offset(200, 300)),
+          buttonItems: [
+            ContextMenuButtonItem(type: ContextMenuButtonType.copy, onPressed: () {}),
+            ContextMenuButtonItem(type: ContextMenuButtonType.share, onPressed: () {}),
+            ContextMenuButtonItem(type: ContextMenuButtonType.lookUp, onPressed: () {}),
+            ContextMenuButtonItem(type: ContextMenuButtonType.selectAll, onPressed: () {}),
+          ],
+        ),
+      ),
+    );
+    expect(find.byType(DifyMenuItem), findsNWidgets(2));
+    expect(find.text(DifyI18n.tr('common', 'operation.copy')), findsOneWidget);
+    expect(find.text(DifyI18n.tr('common', 'operation.selectAll')), findsOneWidget);
   });
 
   test('DifyChoiceMark: the current choice\'s row and the accent check', () {

@@ -77,7 +77,9 @@ class _ChatVariablePanelState extends State<ChatVariablePanel> {
     return VariablePanelShell(
       title: tw('chatVariable.panelTitle'),
       actions: [
+        // On / off for a screen reader (the tips show or not), besides Dify's aria-expanded.
         Semantics(
+          toggled: _showTip,
           expanded: _showTip,
           child: _TipsButton(open: _showTip, onPressed: () => setState(() => _showTip = !_showTip)),
         ),

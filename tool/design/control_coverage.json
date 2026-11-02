@@ -594,9 +594,10 @@
         "app/test/design/page_selection_test.dart",
         "app/test/workflow_editor/canvas_connect_and_drag_test.dart",
         "app/test/workflow_editor/canvas_touch_test.dart",
-        "app/test/dify_spec/access_point/embedded_settings_test.dart"
+        "app/test/dify_spec/access_point/embedded_settings_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. Polish recheck (PR #89): items the menu has no name for (the platform's Share, Look Up, Search Web) are left out (no blank rows)."
     },
     "shortcut_kbd.dart": {
       "kind": "text-composition",

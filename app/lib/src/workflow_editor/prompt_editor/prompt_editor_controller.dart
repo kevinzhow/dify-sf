@@ -26,6 +26,9 @@ class PromptEditorController extends TextEditingController {
 
   static const _firstCode = 0xE000, _lastCode = 0xF8FF;
 
+  /// A letter or a digit: a name next to one is read apart from it ([semanticsText]).
+  static final _wordCharacter = RegExp(r'[\p{L}\p{N}]', unicode: true);
+
   final _codeOf = <String, int>{};
   final _blockOf = <int, PromptBlock>{};
   int _next = _firstCode;
@@ -46,19 +49,30 @@ class PromptEditorController extends TextEditingController {
     final value = StringBuffer();
     final starts = List<int>.filled(text.length + 1, 0);
     var named = false;
+    int? last;
+    void write(String s) {
+      value.write(s);
+      if (s.isNotEmpty) last = s.codeUnitAt(s.length - 1);
+    }
+
+    bool word(int? unit) => unit != null && _wordCharacter.hasMatch(String.fromCharCode(unit));
     for (var i = 0; i < text.length; i++) {
       starts[i] = value.length;
-      final block = _blockOf[text.codeUnitAt(i)];
+      final unit = text.codeUnitAt(i);
+      final block = _blockOf[unit];
       if (block == null) {
-        value.writeCharCode(text.codeUnitAt(i));
+        write(String.fromCharCode(unit));
       } else if (block.kind == PromptBlockKind.literal) {
-        value.write(block.text);
+        write(block.text);
       } else if (label(block) case final name?) {
-        value.write(name);
+        // A name next to a word or another name is read apart from it ("text Slow count", not "textSlow count"):
+        // the space is part of the block's piece, so the offsets stay exact.
+        final next = i + 1 < text.length ? text.codeUnitAt(i + 1) : null;
+        write('${word(last) ? ' ' : ''}$name${next != null && _blockOf[next] == null && word(next) ? ' ' : ''}');
         named = true;
       } else {
         // A block with semantics of its own: the placeholder character, as the field reports it.
-        value.write('\uFFFC');
+        write('\uFFFC');
       }
     }
     starts[text.length] = value.length;

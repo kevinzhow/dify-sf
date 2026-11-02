@@ -3,6 +3,7 @@
 // and close order; the panel's fields at phone density; every picker as a sheet; the keyboard; at 411x914 and
 // 360x780 with the system bars' insets.
 import 'dart:async';
+import 'dart:ui' show Tristate;
 
 import 'package:dify_sf_app/src/canvas/canvas_controller.dart';
 import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
@@ -1106,6 +1107,66 @@ void main() {
       },
     );
   }
+
+  testWidgets('accessibility (recheck 2, 4): a USER message is not one "switch" node: its role is a button of its own, '
+      'the hover drag handle is not read on a phone; the code editor\'s resize handle covers nothing; a drill chevron '
+      'says what it does', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+    await _openFromSteps(t, _llmTitle);
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final add = _inSheet(find.text(_tw('nodes.llm.addMessage'))).first;
+    await _scrollTo(t, add);
+    await t.tap(add);
+    await settle(t, 600);
+    final role = _inSheet(find.text('USER')).first;
+    await _scrollTo(t, role);
+    final node = semanticsNodeOf(t, role.evaluate().single);
+    final data = node.getSemanticsData();
+    expect(data.label, 'USER', reason: 'the role trigger is its own node');
+    expect(data.flagsCollection.isButton, isTrue);
+    expect(data.flagsCollection.isToggled, Tristate.none, reason: 'not a switch');
+    await expectTouchTarget(t, role.evaluate().single, 'the role');
+    // The messages can be reordered: the hover drag handle is there (it swallowed the block).
+    expect(_inSheet(find.byWidgetPredicate((w) => '${w.key}'.contains('sort-handle-'))), findsWidgets);
+    final reorder = DifyI18n.tr('common', 'sort.handle', {'item': 'user'});
+    final labels = platformLabels(t);
+    expect(labels.where((l) => l.contains(reorder) || l.contains('USER') && l != 'USER'), isEmpty, reason: '$labels');
+    void noSwitch(SemanticsNode n) {
+      final d = n.getSemanticsData();
+      if (!n.isMergedIntoParent && d.flagsCollection.isToggled != Tristate.none) {
+        expect(d.label, isNotEmpty, reason: 'a nameless switch at ${n.rect}');
+        expect(d.label, isNot(contains('USER')), reason: 'the message block read as a switch');
+      }
+      n.visitChildren((c) {
+        noSwitch(c);
+        return true;
+      });
+    }
+
+    noSwitch(t.binding.renderViews.first.owner!.semanticsOwner!.rootSemanticsNode!);
+    expect(await systemBack(t), isTrue);
+    // The code step: no "Resize editor" node over the editor on a phone; the header's buttons are read.
+    await _openFromSteps(t, 'Count words');
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final copy = _inSheet(find.bySemanticsLabel(_tc('operation.copy'))).first;
+    await _scrollTo(t, copy);
+    expect(platformLabels(t), isNot(contains(_tc('resize.editor'))));
+    expect(platformLabels(t), contains(_tc('operation.copy')));
+    expect(await systemBack(t), isTrue);
+    // A drill chevron: "View Details" (its row is read with the variable's name).
+    await _openFromSteps(t, 'End');
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final trigger = _inSheet(find.byKey(const Key('var-reference-picker-trigger'))).first;
+    await _scrollTo(t, trigger);
+    await t.tap(trigger);
+    await settle(t, 800);
+    final chevron = find.byKey(const ValueKey('var-members-attachment')).evaluate().single;
+    expect(semanticsNodeOf(t, chevron).getSemanticsData().label, _tc('operation.viewDetails'));
+    expect(t.takeException(), isNull);
+    semantics.dispose();
+    await e.dispose();
+  });
 
   testWidgets('the prompt is read as one text with each variable\'s name in its place (polish 3): "Summarize Start '
       'query in one sentence.", no U+FFFC, the chip not read again; every offset between the platform and the field is '

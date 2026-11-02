@@ -508,7 +508,11 @@ class _ClassListState extends State<ClassList> {
               child: Builder(
                 builder: (context) {
                   final visible = hovered || pressed || _handle(id).hasFocus;
-                  return Semantics(
+                  // A node of its own (not merged into the class item); none on a phone (hover and keys only).
+                  return ExcludeSemantics(
+                    excluding: DifyTouch.compactOf(context),
+                    child: Semantics(
+                    container: true,
                     button: true,
                     toggled: pressed,
                     label: label,
@@ -526,6 +530,7 @@ class _ClassListState extends State<ClassList> {
                         ),
                       ),
                     ),
+                  ),
                   );
                 },
               ),

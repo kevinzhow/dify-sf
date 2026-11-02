@@ -173,6 +173,17 @@ void main() {
     final m2 = c.semanticsText!;
     c.text = m2.textFor('A Stat query c');
     expect(c.prompt, 'A Stat query c');
+    // Names next to a word or another name are read apart (recheck 4: "textSlow"); the spaces belong to the blocks.
+    final adjacent = PromptEditorController(
+      prompt: 'A{{#start1.query#}}{{#start1.query#}}b {{#start1.query#}}.',
+      blocks: const PromptBlockSet({PromptBlockKind.workflowVariable}),
+    )..blockLabel = (b) => 'Start query';
+    final a = adjacent.semanticsText!;
+    expect(a.value, 'A Start query Start query b Start query.');
+    // Text: "A" b b "b " b "." (7 long).
+    expect([for (var i = 0; i <= 7; i++) a.toValue(i)], [0, 1, 13, 26, 27, 28, 39, 40]);
+    expect(a.toText(13), 2);
+    adjacent.dispose();
     // No named block: no map (the field's own text).
     expect((PromptEditorController(prompt: 'plain')..blockLabel = (b) => 'x').semanticsText, isNull);
     c.dispose();

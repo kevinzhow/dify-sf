@@ -489,37 +489,43 @@ class _ResizeWrapState extends State<_ResizeWrap> {
             right: 0,
             bottom: 0,
             height: 8,
-            child: Semantics(
-              button: true,
-              label: DifyI18n.tr('common', 'resize.editor'),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.resizeRow,
-                onEnter: (_) => setState(() => _hovered = true),
-                onExit: (_) => setState(() => _hovered = false),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  dragStartBehavior: DragStartBehavior.down,
-                  onVerticalDragStart: (d) {
-                    _startHeight = widget.height;
-                    _startY = d.globalPosition.dy;
-                  },
-                  onVerticalDragUpdate: (d) {
-                    widget.onHeightChange(math.max(widget.minHeight, _startHeight + d.globalPosition.dy - _startY));
-                  },
-                  // A click without a drag resets the height (a drag never ends in a tap here).
-                  onTap: () => widget.onHeightChange(widget.minHeight),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: _hovered ? DifyColors.stateBaseHover : null,
-                      borderRadius: BorderRadius.circular(DifyRadius.md),
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 20,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: DifyColors.stateBaseHandle,
-                          borderRadius: BorderRadius.circular(DifyRadius.xs),
+            // Its own node (merged up, it covered the whole editor over its header's buttons); none on a phone,
+            // where the 8 px handle is no touch target and the editor expands into a page instead.
+            child: ExcludeSemantics(
+              excluding: DifyTouch.compactOf(context),
+              child: Semantics(
+                container: true,
+                button: true,
+                label: DifyI18n.tr('common', 'resize.editor'),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.resizeRow,
+                  onEnter: (_) => setState(() => _hovered = true),
+                  onExit: (_) => setState(() => _hovered = false),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    dragStartBehavior: DragStartBehavior.down,
+                    onVerticalDragStart: (d) {
+                      _startHeight = widget.height;
+                      _startY = d.globalPosition.dy;
+                    },
+                    onVerticalDragUpdate: (d) {
+                      widget.onHeightChange(math.max(widget.minHeight, _startHeight + d.globalPosition.dy - _startY));
+                    },
+                    // A click without a drag resets the height (a drag never ends in a tap here).
+                    onTap: () => widget.onHeightChange(widget.minHeight),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: _hovered ? DifyColors.stateBaseHover : null,
+                        borderRadius: BorderRadius.circular(DifyRadius.md),
+                      ),
+                      child: Center(
+                        child: Container(
+                          width: 20,
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: DifyColors.stateBaseHandle,
+                            borderRadius: BorderRadius.circular(DifyRadius.xs),
+                          ),
                         ),
                       ),
                     ),
