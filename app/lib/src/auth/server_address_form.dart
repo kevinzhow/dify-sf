@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart' show TextInputAction;
 import 'package:flutter/widgets.dart';
 
 import '../design/dify_tokens.g.dart';
@@ -78,6 +79,8 @@ class _ServerAddressFormState extends State<ServerAddressForm> {
         semanticLabel: serverText(context, 'address'),
         placeholder: 'https://dify.example.com',
         keyboardType: TextInputType.url,
+        // The keyboard's Go connects.
+        textInputAction: TextInputAction.go,
         disabled: _busy,
         invalid: _error != null,
         onChanged: (v) => _value = v,
@@ -96,11 +99,13 @@ class _ServerAddressFormState extends State<ServerAddressForm> {
             style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textDestructive),
           ),
         ),
-      DifyButton(
-        key: widget.buttonKey,
-        variant: DifyButtonVariant.primary,
-        onPressed: _busy ? null : _connect,
-        child: _busy ? const DifyLoading() : DifyTextLine(widget.buttonLabel ?? serverText(context, 'connect')),
+      DifyPrimaryAction(
+        child: DifyButton(
+          key: widget.buttonKey,
+          variant: DifyButtonVariant.primary,
+          onPressed: _busy ? null : _connect,
+          child: _busy ? const DifyLoading() : DifyTextLine(widget.buttonLabel ?? serverText(context, 'connect')),
+        ),
       ),
     ],
   );

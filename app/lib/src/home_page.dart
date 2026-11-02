@@ -698,6 +698,8 @@ Widget buildApp(
     builder: (context, _) => DifyApplication(
       title: 'dify-sf',
       navigatorKey: navigatorKey,
+      // Pages pad themselves for the system bars (AppRoot): the phone home and auth pages draw under them.
+      edgeToEdge: true,
       // Dify's font stack: the system UI font, which is Noto Sans on Linux (bundled, also for the web build).
       theme: difyTheme(
         fontFamily: cardFontFamily ??= kIsWeb || defaultTargetPlatform == TargetPlatform.linux ? 'Noto Sans' : null,

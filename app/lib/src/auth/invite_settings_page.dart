@@ -239,12 +239,14 @@ class _InviteSettingsFormState extends State<InviteSettingsForm> {
                 ),
                 const SizedBox(height: 20),
               ],
-              DifyButton(
-                key: const ValueKey('invite-submit'),
-                variant: DifyButtonVariant.primary,
-                loading: _activating,
-                onPressed: _activate,
-                child: DifyTextLine(joinTitle),
+              DifyPrimaryAction(
+                child: DifyButton(
+                  key: const ValueKey('invite-submit'),
+                  variant: DifyButtonVariant.primary,
+                  loading: _activating,
+                  onPressed: _activate,
+                  child: DifyTextLine(joinTitle),
+                ),
               ),
             ],
           ),
