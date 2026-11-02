@@ -197,11 +197,14 @@ class _ToolPickerPanelState extends State<ToolPickerPanel> {
       explicitChildNodes: true,
       child: Container(
         width: 320,
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBgBlur,
-          borderRadius: BorderRadius.circular(DifyRadius.xl),
-          border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-          boxShadow: DifyShadows.lg,
+        decoration: DifyFloating.surface(
+          context,
+          BoxDecoration(
+            color: DifyColors.componentsPanelBgBlur,
+            borderRadius: BorderRadius.circular(DifyRadius.xl),
+            border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+            boxShadow: DifyShadows.lg,
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

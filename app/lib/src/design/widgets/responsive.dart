@@ -36,6 +36,13 @@ abstract final class DifyTouch {
   /// controls get it from [DifyTouchTarget].
   static const minTarget = 48.0;
 
+  /// The visible height of a form control a finger picks from (a select's trigger, a variable picker) in a compact
+  /// window: Apple's 44 pt; its hit area still reaches [minTarget] where the row around it has the room.
+  static const controlHeight = 44.0;
+
+  /// Whether [context]'s window is compact (below 600 dp): the phone layout of forms and pickers.
+  static bool compactOf(BuildContext context) => DifyWindowClass.of(context) == DifyWindowClass.compact;
+
   /// Whether the primary input is a finger: true on Android and iOS (the native apps and their mobile browsers, whose
   /// platform the web build reads from the browser), false on the desktop platforms, including the web on a desktop
   /// OS. It answers for the platform, not the pointer in use: an Android tablet with a mouse still answers true, a

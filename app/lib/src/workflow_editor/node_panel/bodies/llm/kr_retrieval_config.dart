@@ -80,11 +80,14 @@ class RetrievalConfig extends StatelessWidget {
         child: Container(
           width: 404,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          decoration: BoxDecoration(
-            color: DifyColors.componentsPanelBg,
-            borderRadius: BorderRadius.circular(DifyRadius.xxl),
-            border: Border.all(color: DifyColors.componentsPanelBorder),
-            boxShadow: DifyShadows.xl,
+          decoration: DifyFloating.surface(
+            context,
+            BoxDecoration(
+              color: DifyColors.componentsPanelBg,
+              borderRadius: BorderRadius.circular(DifyRadius.xxl),
+              border: Border.all(color: DifyColors.componentsPanelBorder),
+              boxShadow: DifyShadows.xl,
+            ),
           ),
           child: ConfigRetrievalContent(
             datasetConfigs: datasetConfigsOf(retrievalMode, multipleRetrievalConfig),

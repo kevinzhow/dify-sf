@@ -82,6 +82,7 @@ import 'canvas_plus/node_resizers.dart';
 import 'version_history/version_history_panel.dart';
 import 'phone/phone_editor_controller.dart';
 import 'phone/phone_editor_frame.dart';
+import 'phone/phone_editor_sheets.dart' show PhoneEditorPanels;
 import 'phone/steps_view_slot.dart';
 import 'workflow_editor.dart';
 import '../design/widgets/widgets.dart';
@@ -668,6 +669,19 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                           ),
                           publisher: (context, close) => featuresTrigger(close),
                           stepsView: widget.stepsView,
+                          // The run and the other panels are sheets on a phone (the right panel row has only the
+                          // node's settings there).
+                          panels: PhoneEditorPanels(
+                            isChatMode: meta.isChatflow,
+                            canRun: widget.access.canRun,
+                            variables: VariablePanels(
+                              controller: controller,
+                              isChatMode: meta.isChatflow,
+                              storeSecret: controller.storeSecret,
+                            ),
+                            comments: CommentsPanel(canvas: canvas),
+                            versions: _versionHistoryPanel(),
+                          ),
                         ),
                       ),
                       // A block picked from Add Node follows the pointer until a click places it (candidate-node.tsx).
@@ -769,19 +783,26 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                         controller: controller,
                         canvas: canvas,
                         options: menuOptions,
-                        others: [
-                          // The viewed history run and the Test Run / Debug & Preview panel (workflow-panel.tsx).
-                          RunPanels(controller: controller, isChatMode: meta.isChatflow, canRun: widget.access.canRun),
-                          VariablePanels(
-                            controller: controller,
-                            isChatMode: meta.isChatflow,
-                            storeSecret: controller.storeSecret,
-                          ),
-                          // The comment list, in comment mode.
-                          CommentsPanel(canvas: canvas),
-                          // While browsing versions (without a version service: the current draft alone).
-                          _versionHistoryPanel(),
-                        ],
+                        // A phone shows these as sheets ([PhoneEditorPanels] above).
+                        others: DifyWindowClass.of(context) == DifyWindowClass.compact
+                            ? const []
+                            : [
+                                // The viewed history run and the Test Run / Debug & Preview panel (workflow-panel.tsx).
+                                RunPanels(
+                                  controller: controller,
+                                  isChatMode: meta.isChatflow,
+                                  canRun: widget.access.canRun,
+                                ),
+                                VariablePanels(
+                                  controller: controller,
+                                  isChatMode: meta.isChatflow,
+                                  storeSecret: controller.storeSecret,
+                                ),
+                                // The comment list, in comment mode.
+                                CommentsPanel(canvas: canvas),
+                                // While browsing versions (without a version service: the current draft alone).
+                                _versionHistoryPanel(),
+                              ],
                       ),
                       // The Features drawer (chatflows open it from the header), over everything with its backdrop.
                       modal: (context, canvas) => Stack(

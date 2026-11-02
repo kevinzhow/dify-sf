@@ -89,6 +89,8 @@ class OperationSelector extends StatelessWidget {
     final selected = items.where((i) => i.value == value && isOperationItem(i)).firstOrNull;
     final title = _opLabel('title');
     return DifyDropdownMenu(
+      // A picker (value choices as plain items): a sheet on a phone.
+      sheetOnCompact: true,
       placement: DifyPlacement.bottomStart,
       width: 140,
       builder: (context, controller) => DifyPressable(

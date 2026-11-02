@@ -271,7 +271,8 @@ class DifyInput extends StatefulWidget {
   final TextInputType? keyboardType;
   final FocusNode? focusNode;
 
-  /// A fixed height (`h-8` …); the default is the padding plus the line.
+  /// A fixed height (`h-8` …); the default is the padding plus the line. In a compact window (a phone) the field is at
+  /// least [DifyTouch.controlHeight] (44 px) tall, whatever is asked here: the one place phone fields get their height.
   final double? height;
 
   /// InputGroup addons before and after the text (the text loses its padding on that side).
@@ -342,9 +343,12 @@ class _DifyInputState extends State<DifyInput> with DifyControlledText<DifyInput
       maxLength: w.maxLength,
       textInputAction: w.textInputAction,
     );
-    if (w.height != null) {
+    final height = DifyTouch.compactOf(context)
+        ? (w.height == null || w.height! < DifyTouch.controlHeight ? DifyTouch.controlHeight : w.height)
+        : w.height;
+    if (height != null) {
       field = SizedBox(
-        height: w.height! - 2,
+        height: height - 2,
         child: Center(child: field),
       );
     }

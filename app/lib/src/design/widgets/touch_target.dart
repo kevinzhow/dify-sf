@@ -76,9 +76,38 @@ class RenderDifyTouchTarget extends RenderProxyBox {
   }
 }
 
+/// A small control in a box of at least [minSize] square, centred, with the hit area of a [DifyTouchTarget]: where the
+/// row around the control is only as tall as the control (a 24 px field header), this is the "real 48 px box" the
+/// target needs. The control keeps its own size and look; only the slot around it grows.
+///
+/// With [accessibleBox] (one control in the box) the box is also the control's bounds for accessibility: TalkBack's
+/// focus and what the platform reports as the target's size are the box, not the 24 px glyph.
+class DifyTouchArea extends StatelessWidget {
+  const DifyTouchArea({super.key, this.minSize = DifyTouch.minTarget, this.accessibleBox = false, required this.child});
+
+  final double minSize;
+  final bool accessibleBox;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final box = ConstrainedBox(
+      constraints: BoxConstraints(minWidth: minSize, minHeight: minSize),
+      child: Center(
+        widthFactor: 1,
+        heightFactor: 1,
+        child: DifyTouchTarget(minSize: minSize, child: child),
+      ),
+    );
+    return accessibleBox ? MergeSemantics(child: box) : box;
+  }
+}
+
 /// The phone chrome's icon button (the mockups' `.ibtn`): a [size] square (44 px) with `rounded-[10px]`, an icon
 /// (22 px by convention) in text-secondary, state-base-hover while pressed or hovered, and at least a 48 px hit area.
-/// [label] is its accessible name (there are no tooltips on touch). [destructive] tints it text-destructive.
+/// [label] is its accessible name (there are no tooltips on touch). [destructive] tints it text-destructive. A toggle
+/// passes [selected]: on, it shows state-accent-active with a text-accent icon (Dify's toggled icon buttons) and reports
+/// `toggled` to assistive technology.
 class DifyTouchIconButton extends StatelessWidget {
   const DifyTouchIconButton({
     super.key,
@@ -88,6 +117,7 @@ class DifyTouchIconButton extends StatelessWidget {
     this.disabled = false,
     this.destructive = false,
     this.size = 44,
+    this.selected,
   });
 
   final String label;
@@ -97,9 +127,13 @@ class DifyTouchIconButton extends StatelessWidget {
   final bool destructive;
   final double size;
 
+  /// On / off for a toggle; null for a plain action.
+  final bool? selected;
+
   @override
-  Widget build(BuildContext context) => DifyTouchTarget(
-    child: DifyPressable(
+  Widget build(BuildContext context) {
+    final on = selected ?? false;
+    Widget button = DifyPressable(
       onPressed: onPressed,
       disabled: disabled,
       semanticLabel: label,
@@ -109,8 +143,14 @@ class DifyTouchIconButton extends StatelessWidget {
               ? DifyColors.textDisabled
               : destructive
               ? DifyColors.textDestructive
+              : on
+              ? DifyColors.textAccent
               : DifyColors.textSecondary,
-          background: hovered && !disabled ? DifyColors.stateBaseHover : null,
+          background: on
+              ? (hovered && !disabled ? DifyColors.stateAccentActiveAlt : DifyColors.stateAccentActive)
+              : hovered && !disabled
+              ? DifyColors.stateBaseHover
+              : null,
         ),
         radius: DifyRadius.container,
         focused: focused,
@@ -119,6 +159,13 @@ class DifyTouchIconButton extends StatelessWidget {
           child: Center(child: ExcludeSemantics(child: icon)),
         ),
       ),
-    ),
-  );
+    );
+    // One node: the button with its name and, for a toggle, its state.
+    if (selected != null) {
+      button = MergeSemantics(
+        child: Semantics(toggled: selected, child: button),
+      );
+    }
+    return DifyTouchTarget(child: button);
+  }
 }

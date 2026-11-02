@@ -148,17 +148,26 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
 
   bool get _jinja => widget.isSupportJinja && widget.editionType == PromptEditionType.jinja2;
 
+  /// A phone expands the editor into a full-screen page ([DifyPortalPage]) instead of lifting it over the panel.
+  bool get _asPage => DifyTouch.compactOf(context);
+
   void _setExpand(bool v) {
     setState(() => _isExpand = v);
+    if (_asPage) {
+      if (_portal.isShowing) _portal.hide();
+      return;
+    }
     v ? _portal.show() : _portal.hide();
   }
 
-  /// handleInsertVariable: focus the editor and type `/` at the caret (PROMPT_EDITOR_INSERT_QUICKLY).
+  /// handleInsertVariable: focus the editor and type `/` at the caret (PROMPT_EDITOR_INSERT_QUICKLY). A phone opens the
+  /// variable sheet directly instead (no trigger typed, no keyboard); the pick goes in at the caret.
   void _insertVariable() {
     setState(() => _isFocus = true);
-    _focusNode.requestFocus();
     final c = _controller;
     if (!c.selection.isValid) c.selection = TextSelection.collapsed(offset: c.text.length);
+    if (_asPage && (c.openVariableSheet?.call() ?? false)) return;
+    _focusNode.requestFocus();
     c.insertText('/');
   }
 
@@ -212,40 +221,100 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
             margin: const EdgeInsets.symmetric(horizontal: 8),
             color: DifyColors.dividerRegular,
           ),
-          Row(
-            spacing: 2,
-            children: [
-              if (w.isSupportJinja) _jinjaSwitch(),
-              if (!w.readOnly)
-                DifyTooltip(
-                  content: DifyTextLine(DifyI18n.tr('workflow', 'common.insertVarTip')),
-                  child: DifyIconButton(
-                    label: DifyI18n.tr('workflow', 'common.insertVarTip'),
-                    onPressed: _insertVariable,
-                    icon: const DifyIcon('vender/solid/development/variable-02', size: 16),
-                  ),
-                ),
-              if (w.showRemove)
-                DifyIconButton(
-                  label: DifyI18n.tr('common', 'operation.remove'),
-                  onPressed: w.onRemove,
-                  icon: const RemixIcon('delete-bin-line', size: 16),
-                ),
-              DifyIconButton(
-                label: DifyI18n.tr('common', 'operation.copy'),
-                onPressed: _isCopied
-                    ? null
-                    : () {
-                        Clipboard.setData(ClipboardData(text: w.value));
-                        setState(() => _isCopied = true);
-                      },
-                icon: DifyIcon(_isCopied ? 'vender/line/files/copy-check' : 'vender/line/files/copy', size: 16),
-              ),
-              ToggleExpandBtn(isExpand: _isExpand, onExpandChange: _setExpand),
-            ],
-          ),
+          _controls(),
         ],
       ),
+    );
+  }
+
+  void _copy() {
+    Clipboard.setData(ClipboardData(text: widget.value));
+    setState(() => _isCopied = true);
+  }
+
+  /// The header's buttons. On a phone each has its own 48 px touch box: insert variable shows, expand, copy and
+  /// remove are under "…" (an action sheet; the title keeps its room); elsewhere Dify's row of 24 px buttons.
+  Widget _controls() {
+    final w = widget;
+    final insert = DifyTooltip(
+      content: DifyTextLine(DifyI18n.tr('workflow', 'common.insertVarTip')),
+      child: DifyIconButton(
+        label: DifyI18n.tr('workflow', 'common.insertVarTip'),
+        onPressed: _insertVariable,
+        icon: const DifyIcon('vender/solid/development/variable-02', size: 16),
+      ),
+    );
+    final expand = ToggleExpandBtn(isExpand: _isExpand, onExpandChange: _setExpand);
+    if (_asPage) {
+      final copy = DifyI18n.tr('common', 'operation.copy'), remove = DifyI18n.tr('common', 'operation.remove');
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (w.isSupportJinja) _jinjaSwitch(),
+          // A phone: no tooltip (no hover), and the button is named for what it does, not the desktop's "/" tip.
+          if (!w.readOnly)
+            DifyTouchArea(
+              minSize: DifyTouch.controlHeight,
+              accessibleBox: true,
+              child: DifyIconButton(
+                key: const Key('prompt-editor-insert'),
+                label: DifyI18n.tr('phone-editor', 'insertVariable'),
+                onPressed: _insertVariable,
+                icon: const DifyIcon('vender/solid/development/variable-02', size: 16),
+              ),
+            ),
+          DifyTouchArea(
+            minSize: DifyTouch.controlHeight,
+            accessibleBox: true,
+            child: DifyIconButton(
+              key: const Key('prompt-editor-more'),
+              label: DifyI18n.tr('common', 'operation.more'),
+              icon: const RemixIcon('more-fill', size: 16),
+              onPressed: () => showDifyActionSheet(
+                context,
+                actions: [
+                  DifyActionSheetAction(
+                    label: DifyI18n.tr('share', 'chat.expand'),
+                    icon: const RemixIcon('expand-diagonal-line', size: 20),
+                    onTap: () => _setExpand(true),
+                  ),
+                  DifyActionSheetAction(
+                    label: copy,
+                    icon: const DifyIcon('vender/line/files/copy', size: 20),
+                    onTap: _copy,
+                  ),
+                  if (w.showRemove && w.onRemove != null)
+                    DifyActionSheetAction(
+                      label: remove,
+                      icon: const RemixIcon('delete-bin-line', size: 20),
+                      destructive: true,
+                      onTap: w.onRemove!,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return Row(
+      spacing: 2,
+      children: [
+        if (w.isSupportJinja) _jinjaSwitch(),
+        if (!w.readOnly) insert,
+        if (w.showRemove)
+          DifyIconButton(
+            label: DifyI18n.tr('common', 'operation.remove'),
+            onPressed: w.onRemove,
+            icon: const RemixIcon('delete-bin-line', size: 16),
+          ),
+        DifyIconButton(
+          label: DifyI18n.tr('common', 'operation.copy'),
+          onPressed: _isCopied ? null : _copy,
+          icon: DifyIcon(_isCopied ? 'vender/line/files/copy-check' : 'vender/line/files/copy', size: 16),
+        ),
+        expand,
+      ],
     );
   }
 
@@ -417,7 +486,28 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
   }
 
   @override
-  Widget build(BuildContext context) => OverlayPortal(
+  Widget build(BuildContext context) {
+    if (_asPage) {
+      // Named after the step whose settings hold the editor, the prompt's own title below it.
+      final named = DifyPortalPageTitle.maybeOf(context);
+      final title = widget.title is String ? widget.title as String : null;
+      return DifyPortalPage(
+        key: const Key('prompt-editor-page'),
+        open: _isExpand,
+        onClose: () => _setExpand(false),
+        title: named?.title ?? title ?? DifyI18n.tr('share', 'chat.expand'),
+        subtitle: named == null ? null : title ?? named.subtitle,
+        builder: (context) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: KeyedSubtree(key: _contentKey, child: _content(expand: true)),
+        ),
+        child: _isExpand ? const SizedBox.shrink() : KeyedSubtree(key: _contentKey, child: _content()),
+      );
+    }
+    return _overlay();
+  }
+
+  Widget _overlay() => OverlayPortal(
     controller: _portal,
     // Measured from the window's safe edges, as when the app kept the whole navigator inside the safe area.
     overlayChildBuilder: (context) => DifyOverlaySafeArea(

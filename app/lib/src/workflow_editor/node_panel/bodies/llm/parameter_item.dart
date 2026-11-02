@@ -76,6 +76,8 @@ class PresetsParameter extends StatelessWidget {
     if (tones.isEmpty) return const SizedBox.shrink();
     final label = _c('modelProvider.loadPresets');
     return DifyDropdownMenu(
+      // A picker (value choices as plain items): a sheet on a phone.
+      sheetOnCompact: true,
       builder: (context, controller) => DifyButton(
         size: DifyButtonSize.small,
         semanticLabel: label,

@@ -9,6 +9,7 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
+import '../phone/panel_sheet_scope.dart';
 
 String tw(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
 String tc(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);
@@ -25,7 +26,29 @@ class VariablePanelShell extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    // dify-sf: in a phone sheet the sheet is the frame; the title and the actions other than close go in its header,
+    // whose close button is the sheet's.
+    if (PanelSheetScope.maybeOf(context) case final sheet?) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DifySheetHeader(
+            title: title,
+            onClose: sheet.onClose,
+            actions: [
+              for (final a in actions)
+                if (a is! PanelCloseButton) DifyTouchArea(minSize: 44, accessibleBox: true, child: a),
+            ],
+          ),
+          ...children,
+        ],
+      );
+    }
+    return _desktop(context);
+  }
+
+  Widget _desktop(BuildContext context) => Container(
     width: DifyAdaptive.panelWidth(context, 420),
     decoration: BoxDecoration(
       color: DifyColors.componentsPanelBgAlt,
@@ -224,7 +247,28 @@ class _VariableItemCardState extends State<VariableItemCard> {
                           ],
                         ),
                       ),
-                      if (w.onEdit != null || w.onDelete != null)
+                      // dify-sf: in a phone sheet, 44 px touch buttons with their 48 px targets side by side.
+                      if ((w.onEdit != null || w.onDelete != null) && PanelSheetScope.maybeOf(context) != null)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: 4,
+                          children: [
+                            if (w.onEdit != null)
+                              DifyTouchIconButton(
+                                label: tc('operation.edit'),
+                                icon: const RemixIcon('edit-line', size: 20),
+                                onPressed: w.onEdit,
+                              ),
+                            if (w.onDelete != null)
+                              DifyTouchIconButton(
+                                label: tc('operation.delete'),
+                                icon: const RemixIcon('delete-bin-line', size: 20),
+                                destructive: true,
+                                onPressed: w.onDelete,
+                              ),
+                          ],
+                        )
+                      else if (w.onEdit != null || w.onDelete != null)
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           spacing: 4,
@@ -321,7 +365,44 @@ class VariableModalSurface extends StatelessWidget {
   final Widget? close;
 
   @override
-  Widget build(BuildContext context) => DifySurface(
+  Widget build(BuildContext context) {
+    // dify-sf: in a phone sheet (the popover shown as a bottom sheet) the form is the sheet's content: the sheet's
+    // header (title, close), the fields, and Cancel / Save (a button in a phone sheet is 44 px).
+    if (DifyFloating.inSheet(context)) {
+      return DifySurface(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DifySheetHeader(title: title, onClose: onClose),
+            Flexible(child: body),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Row(
+                spacing: 12,
+                children: [
+                  Expanded(
+                    child: DifyButton(onPressed: onClose, child: DifyTextLine(tc('operation.cancel'))),
+                  ),
+                  Expanded(
+                    child: DifyButton(
+                      key: const ValueKey('variable-modal-save'),
+                      variant: DifyButtonVariant.primary,
+                      onPressed: onSave,
+                      child: DifyTextLine(tc('operation.save')),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return _desktop(context);
+  }
+
+  Widget _desktop(BuildContext context) => DifySurface(
     child: Container(
       width: width,
       decoration: BoxDecoration(

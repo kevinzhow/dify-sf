@@ -224,11 +224,14 @@ class _ButtonStyleDropdownState extends State<ButtonStyleDropdown> {
       ),
       popupBuilder: (context) => Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBgBlur,
-          borderRadius: BorderRadius.circular(DifyRadius.xl),
-          border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-          boxShadow: DifyShadows.lg,
+        decoration: DifyFloating.surface(
+          context,
+          BoxDecoration(
+            color: DifyColors.componentsPanelBgBlur,
+            borderRadius: BorderRadius.circular(DifyRadius.xl),
+            border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+            boxShadow: DifyShadows.lg,
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -19,6 +19,9 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/dify_type_tw.dart';
 import '../../design/widgets/icon_button.dart';
 import '../../design/widgets/page.dart' show DifyOverlaySafeArea;
+import '../../design/widgets/portal_page.dart';
+import '../../design/widgets/responsive.dart' show DifyTouch;
+import '../../design/widgets/touch_target.dart' show DifyTouchArea;
 import '../../design/widgets/text.dart';
 import '../../i18n/dify_i18n.dart';
 import '../store/workflow_store_scope.dart';
@@ -262,13 +265,23 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
     });
   }
 
+  /// A phone expands the editor into a full-screen page ([DifyPortalPage]) instead of lifting it over the panel.
+  bool get _asPage => DifyTouch.compactOf(context);
+
   void _setExpand(bool value) {
     setState(() => _isExpand = value);
+    if (_asPage) {
+      if (_portal.isShowing) _portal.hide();
+      return;
+    }
     value ? _portal.show() : _portal.hide();
   }
 
   Widget _box({required double? bodyHeight, required bool expanded}) {
     final focus = widget.isFocus;
+    // A phone: a touch-high title bar whose buttons have 48 px boxes.
+    final touch = DifyTouch.compactOf(context);
+    Widget button(Widget b) => touch ? DifyTouchArea(accessibleBox: true, child: b) : b;
     final title =
         widget.titleWidget ?? DifyTextLine(difyTransform(DifyType.systemXsSemiboldUppercase, widget.title ?? ''));
     // `<div className="ml-1">` around an inline button (the generator's, the expand toggle's): the div's text line
@@ -279,9 +292,9 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
       child: button,
     );
     final header = SizedBox(
-      height: 28,
+      height: touch ? DifyTouch.minTarget : 28,
       child: Padding(
-        padding: const EdgeInsets.only(top: 4, right: 8, left: 12),
+        padding: EdgeInsets.only(top: touch ? 0 : 4, right: touch ? 4 : 8, left: 12),
         child: OverflowBox(
           minHeight: 0,
           maxHeight: double.infinity,
@@ -294,20 +307,24 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
                 ),
               ),
               ?widget.headerRight,
-              if (widget.codeGenerator case final generator?) inlineButton(generator),
+              if (widget.codeGenerator case final generator?) inlineButton(button(generator)),
               Padding(
                 padding: const EdgeInsets.only(left: 4),
-                child: DifyIconButton(
-                  label: DifyI18n.tr('common', 'operation.copy'),
-                  onPressed: _handleCopy,
-                  icon: DifyIcon(_isCopied ? 'vender/line/files/copy-check' : 'vender/line/files/copy', size: 16),
+                child: button(
+                  DifyIconButton(
+                    label: DifyI18n.tr('common', 'operation.copy'),
+                    onPressed: _handleCopy,
+                    icon: DifyIcon(_isCopied ? 'vender/line/files/copy-check' : 'vender/line/files/copy', size: 16),
+                  ),
                 ),
               ),
               inlineButton(
-                DifyIconButton(
-                  label: DifyI18n.tr('share', _isExpand ? 'chat.collapse' : 'chat.expand'),
-                  onPressed: () => _setExpand(!_isExpand),
-                  icon: RemixIcon(_isExpand ? 'collapse-diagonal-line' : 'expand-diagonal-line', size: 16),
+                button(
+                  DifyIconButton(
+                    label: DifyI18n.tr('share', _isExpand ? 'chat.collapse' : 'chat.expand'),
+                    onPressed: () => _setExpand(!_isExpand),
+                    icon: RemixIcon(_isExpand ? 'collapse-diagonal-line' : 'expand-diagonal-line', size: 16),
+                  ),
                 ),
               ),
             ],
@@ -359,6 +376,26 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
       BoxShadow(color: DifyToggleExpendColors.shadowTop, offset: const Offset(0, -3), blurRadius: 6, spreadRadius: -2),
     ];
     final panelWidth = inNode ? context.getInheritedWidgetOfExactType<WorkflowStoreScope>()?.store.panelWidth : null;
+    if (_asPage) {
+      // Named after the step whose settings hold the editor (its type below), else the editor's own title.
+      final named = DifyPortalPageTitle.maybeOf(context);
+      final title = widget.title ?? '';
+      return DifyPortalPage(
+        key: const Key('code-editor-page'),
+        open: _isExpand,
+        onClose: () => _setExpand(false),
+        title: named?.title ?? (title.isEmpty ? DifyI18n.tr('share', 'chat.expand') : title),
+        subtitle: named == null ? null : (title.isEmpty ? named.subtitle : title),
+        builder: (context) => LayoutBuilder(
+          builder: (context, c) => _box(
+            // The page's body less the touch-high title bar (`useToggleExpend` counts Dify's 28 px one).
+            bodyHeight: math.max(0, c.maxHeight - DifyTouch.minTarget - 1),
+            expanded: true,
+          ),
+        ),
+        child: _isExpand ? const SizedBox.shrink() : _box(bodyHeight: null, expanded: false),
+      );
+    }
     return OverlayPortal(
       controller: _portal,
       overlayLocation: inNode ? OverlayChildLocation.rootOverlay : OverlayChildLocation.nearestOverlay,

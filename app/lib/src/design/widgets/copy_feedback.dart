@@ -11,9 +11,13 @@ import '../dify_icon.dart';
 import 'widgets.dart';
 
 /// DifyCopyFeedback: an IconButton copying [content], "Copy" / "Copied" (2 s) as its name and tooltip.
+///
+/// dify-sf: [touch] makes it the phone's touch icon button ([DifyTouchIconButton], 44 px, a 20 px icon) for a phone
+/// sheet's header; it keeps the name and the icon's "Copied" state, without the hover tooltip.
 class DifyCopyFeedback extends StatefulWidget {
-  const DifyCopyFeedback({super.key, required this.content});
+  const DifyCopyFeedback({super.key, required this.content, this.touch = false});
   final String content;
+  final bool touch;
 
   @override
   State<DifyCopyFeedback> createState() => _DifyCopyFeedbackState();
@@ -41,6 +45,13 @@ class _DifyCopyFeedbackState extends State<DifyCopyFeedback> {
   @override
   Widget build(BuildContext context) {
     final label = DifyI18n.tr('app-overview', 'overview.appInfo.embedded.${_copied ? 'copied' : 'copy'}');
+    if (widget.touch) {
+      return DifyTouchIconButton(
+        label: label,
+        icon: RemixIcon(_copied ? 'clipboard-fill' : 'clipboard-line', size: 20),
+        onPressed: _copy,
+      );
+    }
     return DifyTooltip(
       content: DifyTextLine(label),
       child: DifyIconButton(

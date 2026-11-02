@@ -7,8 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'back_dismiss.dart';
+import 'bottom_sheet.dart';
 import 'page.dart' show DifyWindowInsets;
 import 'placement.dart';
+import 'responsive.dart';
 import 'text.dart';
 
 /// Opens and closes a [DifyFloating] (its `open` state when uncontrolled; a request to `onOpenChange` otherwise).
@@ -62,6 +64,16 @@ enum DifyFloatingTransition { scaleFade, fade }
 /// collision rules, animated, dismissed on outside tap and Escape, and returns focus to the trigger on close. A
 /// [dismissible] popup also closes on Android back before the page under it does (a [DifyBackStep] on the trigger's
 /// route while it is open).
+///
+/// A picker opens as a bottom sheet in a compact window instead (dify-sf's phones; raft-flutter's picker policy: a
+/// sheet below the breakpoint, a popover above). By default every dismissible popup that takes the focus is a picker
+/// (selects, lists, forms, popovers); tooltips and hover cards (no focus), submenus (not dismissible) and context
+/// menus (anchored to a point) are not, and action menus opt out ([sheetOnCompact] false: raft keeps menus anchored).
+/// This is the one switch ([presentsAsSheet]): the same popup content, in the same overlay (it keeps the trigger's
+/// inherited state), over a window-wide scrim, under an optional [sheetTitle] header, full width and without its own
+/// surface ([inSheet] and [surface] tell the content so: menus and lists grow their rows to 48 px). Its focus stays on
+/// the sheet itself, so a search field in it does not open the keyboard until it is tapped. The scrim, a drag down,
+/// Escape and Android back close it.
 class DifyFloating extends StatefulWidget {
   const DifyFloating({
     super.key,
@@ -83,6 +95,10 @@ class DifyFloating extends StatefulWidget {
     this.constrainHeight = false,
     this.instantTransition,
     this.pointAnchor = false,
+    this.sheetOnCompact,
+    this.sheetTitle,
+    this.sheetTitleFromField = false,
+    this.sheetDetents = const [DifySheetDetent.full],
   });
 
   /// Builds the trigger (the anchor), which opens the popup through the controller.
@@ -123,8 +139,72 @@ class DifyFloating extends StatefulWidget {
   /// origin (Base UI's initial context-menu anchor).
   final bool pointAnchor;
 
+  /// Whether it is a picker, which opens as a bottom sheet in a compact window ([presentsAsSheet]); null: when it is
+  /// [dismissible], takes the focus ([focusPopup]) and is anchored to its trigger (not [pointAnchor]).
+  final bool? sheetOnCompact;
+
+  bool get _picker => sheetOnCompact ?? (dismissible && focusPopup && !pointAnchor);
+
+  /// The sheet's header title (a [DifySheetHeader] with a close button); none: the sheet starts with its grab handle.
+  final String? sheetTitle;
+
+  /// A select's sheet (a list of choices): without a [sheetTitle] it is titled with the label of the form field it is
+  /// in ([DifyFieldLabel]), first letter capitalised. Other popups (forms, popups with their own header) never are.
+  final bool sheetTitleFromField;
+
+  /// Where the sheet rests: its content's height by default (up to the top safe area).
+  final List<DifySheetDetent> sheetDetents;
+
+  /// The text inset of a picker sheet's rows from the sheet's edges: menus, type lists and lists of strategies share it.
+  static const sheetRowInset = 16.0;
+
+  /// Whether a popup that opens as a sheet on compact windows ([sheetOnCompact]) does so in [context]'s window: below
+  /// 600 dp ([DifyWindowClass.compact]). The single compact switch of the pickers.
+  static bool presentsAsSheet(BuildContext context, {bool sheetOnCompact = true}) =>
+      sheetOnCompact && DifyWindowClass.of(context) == DifyWindowClass.compact;
+
+  /// Whether [context] is inside a popup shown as a bottom sheet: its content drops its own surface and fixed width,
+  /// and its rows take touch height (48 px).
+  static bool inSheet(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DifyPopupSheetScope>() != null;
+
+  /// A popup's own surface ([decoration]: its panel colour, border, radius and shadow), or none in a sheet, where the
+  /// sheet is the surface.
+  static Decoration? surface(BuildContext context, Decoration decoration) => inSheet(context) ? null : decoration;
+
   @override
   State<DifyFloating> createState() => _DifyFloatingState();
+}
+
+/// The label of the form field a control belongs to (a field's title): a select's sheet opened from the control is
+/// titled with it when the select names none ([DifyFloating.sheetTitleFromField]). A popup's content is in no field
+/// (null), so a select in a popup is not titled with the label of the field the popup's trigger is in.
+class DifyFieldLabel extends InheritedWidget {
+  const DifyFieldLabel({super.key, required this.label, required super.child});
+
+  final String? label;
+
+  static String? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<DifyFieldLabel>()?.label;
+
+  /// [label] as a sheet's title: its first letter capitalised (Dify writes some field labels in lower case, e.g.
+  /// "model", and shows them capitalised).
+  static String? titleOf(BuildContext context) => switch (of(context)) {
+    final l? when l.isNotEmpty => l[0].toUpperCase() + l.substring(1),
+    _ => null,
+  };
+
+  @override
+  bool updateShouldNotify(DifyFieldLabel oldWidget) => label != oldWidget.label;
+}
+
+/// Marks the content of a popup shown as a bottom sheet ([DifyFloating.inSheet]): [DifyFloating] puts it there, and
+/// so does a popup host of its own that presents its content in a sheet on a phone (the prompt editor's `{` / `/`
+/// picker, through [DifyPortalSheetFrame]).
+class DifyPopupSheetScope extends InheritedWidget {
+  const DifyPopupSheetScope({super.key, required super.child});
+
+  @override
+  bool updateShouldNotify(DifyPopupSheetScope oldWidget) => false;
 }
 
 class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderStateMixin {
@@ -212,8 +292,13 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
 
   bool _instant(bool requested) => requested || _reduceMotion;
 
+  /// Whether the popup shows as a sheet (read live: the window's class).
+  bool get _sheet => mounted && DifyFloating.presentsAsSheet(context, sheetOnCompact: widget._picker);
+
   void _show({required bool instant, bool rebuild = true}) {
     _visible = true;
+    // Opened from initState the window cannot be read yet; the duration follows from the next opening.
+    if (rebuild) _anim.duration = _sheet ? DifySheetRecipe.openDuration : difyTransitionDuration;
     _portal.show();
     if (widget.dismissible) {
       // Opened from initState (no inherited lookups yet): after the first frame.
@@ -233,7 +318,8 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
     if (widget.focusPopup) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_visible) return;
-        (widget.initialFocus ?? _scope).requestFocus();
+        // A sheet keeps the focus on itself: a search field in it would open the keyboard over the list.
+        (_sheet ? _scope : widget.initialFocus ?? _scope).requestFocus();
       });
     }
     if (rebuild) setState(() {});
@@ -268,6 +354,16 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
       child: Builder(builder: (context) => widget.builder(context, _controller)),
     );
     if (widget.triggerInsideTapRegion) trigger = TapRegion(groupId: _group, child: trigger);
+    // A picker sheet is modal for accessibility, as a route (an anchored popup is not).
+    // The trigger is where the sheet's semantics hang (its OverlayPortal's place): it stays, without its own.
+    final modal = _visible && _sheet;
+    return DifyPortalSemantics(
+      modal: modal,
+      child: _portalFor(ExcludeSemantics(excluding: modal, child: trigger)),
+    );
+  }
+
+  Widget _portalFor(Widget trigger) {
     return OverlayPortal.overlayChildLayoutBuilder(
       controller: _portal,
       overlayLocation: OverlayChildLocation.rootOverlay,
@@ -275,6 +371,7 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
         // Portal descendants are inside every ancestor popup, not only the
         // immediate parent. Keep the complete tree in the same tap regions.
         final groups = <Object>{...?_FloatingGroup.of(context), _group};
+        if (_sheet) return _sheetPopup(groups);
         final anchor = widget.pointAnchor
             ? (_point ?? Offset.zero) & Size.zero
             : MatrixUtils.transformRect(info.childPaintTransform, Offset.zero & info.childSize);
@@ -290,7 +387,7 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
           },
           child: _FloatingGroup(
             groups: groups,
-            child: Builder(builder: widget.popupBuilder),
+            child: DifyFieldLabel(label: null, child: Builder(builder: widget.popupBuilder)),
           ),
         );
         for (final group in groups) {
@@ -314,6 +411,53 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
       },
       child: trigger,
     );
+  }
+}
+
+extension on _DifyFloatingState {
+  /// The popup as a bottom sheet: the scrim closes it (not an outside tap: the sheet's own handle is outside the
+  /// content), and the whole frame is inside the popup's tap regions, so a popup it opens keeps it open.
+  Widget _sheetPopup(Set<Object> groups) {
+    final w = widget;
+    Widget content = FocusScope(
+      node: _scope,
+      skipTraversal: !w.focusPopup,
+      onKeyEvent: (node, e) {
+        if (w.dismissible && e is KeyDownEvent && e.logicalKey == LogicalKeyboardKey.escape) {
+          _request(false, instant: true);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: _FloatingGroup(
+        groups: groups,
+        child: DifyPopupSheetScope(
+          child: DifyFieldLabel(label: null, child: Builder(builder: w.popupBuilder)),
+        ),
+      ),
+    );
+    // Titled with the picker's own title, else (a select) the label of the field it belongs to.
+    if ((w.sheetTitle ?? (w.sheetTitleFromField ? DifyFieldLabel.titleOf(context) : null)) case final title?) {
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DifySheetHeader(title: title),
+          Flexible(child: content),
+        ],
+      );
+    }
+    Widget sheet = DifyPortalSheetFrame(
+      animation: _curved,
+      detents: w.sheetDetents,
+      onDismiss: w.dismissible ? () => _request(false) : null,
+      isOpen: () => mounted && _visible,
+      child: IgnorePointer(ignoring: !_visible, child: content),
+    );
+    for (final group in groups) {
+      sheet = TapRegion(groupId: group, child: sheet);
+    }
+    return sheet;
   }
 }
 

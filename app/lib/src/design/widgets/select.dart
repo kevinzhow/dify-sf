@@ -1,6 +1,8 @@
 /// dify-ui's Select (packages/dify-ui/src/select).
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -48,6 +50,7 @@ class DifySelect<T> extends StatefulWidget {
   final Set<T> disabledValues;
   final DifyPlacement placement;
   final double sideOffset, alignOffset;
+
   /// Extensible string enums reuse the canonical input and suggestion menu.
   final bool allowCustomValue;
   final ValueChanged<String>? onCustomValueChanged;
@@ -104,6 +107,9 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
     final w = widget;
     final all = [...w.options, for (final g in w.groups) ...g.options];
     final selected = all.where((o) => o.value == w.value).firstOrNull;
+    // A phone: a touch-high trigger, and the options open as a sheet of 48 px rows (DifyDropdownMenu).
+    final touch = DifyTouch.compactOf(context);
+    final height = math.max(w.large ? 36.0 : 32.0, touch ? DifyTouch.controlHeight : 0.0);
     return SizedBox(
       width: w.width,
       child: LayoutBuilder(
@@ -115,10 +121,11 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
           // The popup and trigger both use CSS border-box dimensions. The
           // shared floating layout owns viewport collision constraints.
           width: w.popupWidth ?? (c.maxWidth.isFinite ? c.maxWidth : 240),
+          sheetTitle: w.semanticLabel ?? w.placeholder,
           builder: (context, controller) => w.allowCustomValue
               ? DifyInput(
                   value: w.value?.toString() ?? '',
-                  height: w.large ? 36 : 32,
+                  height: height,
                   semanticLabel: w.semanticLabel,
                   placeholder: w.placeholder,
                   readOnly: w.readonly,
@@ -151,7 +158,7 @@ class _DifySelectState<T> extends State<DifySelect<T>> {
                             )
                           : null),
                   paddingX: w.large ? 16 : w.paddingX,
-                  height: w.large ? 36 : 32,
+                  height: height,
                   radius: w.large ? 10 : DifyRadius.lg,
                   semanticLabel: w.semanticLabel,
                   open: controller.isOpen,

@@ -13,6 +13,18 @@ import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 
+/// A field header's controls (its operations: add, refresh, a switch, a select) in a compact window (a phone): each
+/// in a 48 px touch box ([DifyTouchArea]), so the header row grows to a finger's size; as they are elsewhere. The
+/// one place the panel's field headers get their touch sizes.
+Widget fieldHeaderControls(BuildContext context, Widget controls) =>
+    DifyTouch.compactOf(context) ? DifyTouchArea(child: controls) : controls;
+
+/// One control of a field header (an icon button) in its own touch box on a phone, the box also its bounds for
+/// accessibility ([DifyTouchArea.accessibleBox]): a header with several controls gives each one its own, side by side
+/// without overlapping.
+Widget fieldHeaderControl(BuildContext context, Widget control) =>
+    DifyTouch.compactOf(context) ? DifyTouchArea(accessibleBox: true, child: control) : control;
+
 /// The title text of a [Field]: `system-sm-semibold-uppercase text-text-secondary`, or for a sub-title
 /// `system-xs-medium-uppercase text-text-tertiary`; [required] adds a destructive `*`, [warningDot] a 5 px warning
 /// dot 9 px to the left.
@@ -72,6 +84,10 @@ class _WarningDot extends StatelessWidget {
 /// Field (field.tsx): a 24 px title row (title, `*` when [required], an [DifyInfotip] for [tooltip]) with [operations]
 /// on the right, and [child] 4 px below. [supportFold] makes the row toggle the child (folded at first) with a
 /// chevron; [inline] puts the child beside the title.
+///
+/// In a compact window (a phone) the row is a touch row: its operations sit in 48 px touch boxes
+/// ([fieldHeaderControls]), a foldable or inline row is at least 48 px tall, and the child still takes the full width
+/// under the title.
 class Field extends StatefulWidget {
   const Field({
     super.key,
@@ -102,6 +118,7 @@ class _FieldState extends State<Field> {
   @override
   Widget build(BuildContext context) {
     final w = widget;
+    final touch = DifyTouch.compactOf(context);
     Widget header = JustifyBetween(
       lead: SizedBox(
         height: 24,
@@ -126,7 +143,7 @@ class _FieldState extends State<Field> {
       trail: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (w.operations != null) Flexible(child: w.operations!),
+          if (w.operations != null) Flexible(child: fieldHeaderControls(context, w.operations!)),
           if (w.supportFold)
             AnimatedRotation(
               turns: _fold ? -0.25 : 0,
@@ -136,6 +153,12 @@ class _FieldState extends State<Field> {
         ],
       ),
     );
+    if (touch && (w.supportFold || w.inline)) {
+      header = ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: DifyTouch.minTarget),
+        child: header,
+      );
+    }
     if (w.supportFold) {
       header = MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -147,12 +170,14 @@ class _FieldState extends State<Field> {
       );
     }
     final showChild = w.child != null && (!w.supportFold || !_fold);
+    // A picker in the field opens its phone sheet under the field's title.
+    final child = w.child == null ? null : DifyFieldLabel(label: w.title, child: w.child!);
     if (w.inline) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Flexible(child: header),
-          if (showChild) w.child!,
+          if (showChild) touch ? fieldHeaderControls(context, child!) : child!,
         ],
       );
     }
@@ -161,7 +186,7 @@ class _FieldState extends State<Field> {
       mainAxisSize: MainAxisSize.min,
       children: [
         header,
-        if (showChild) Padding(padding: const EdgeInsets.only(top: 4), child: w.child),
+        if (showChild) Padding(padding: const EdgeInsets.only(top: 4), child: child),
       ],
     );
   }
@@ -380,7 +405,7 @@ class _PanelCollapseState extends State<PanelCollapse> {
               ?w.afterTrigger,
             ],
           ),
-          trail: w.actions ?? const SizedBox.shrink(),
+          trail: w.actions == null ? const SizedBox.shrink() : fieldHeaderControls(context, w.actions!),
         ),
         if (_isOpen) w.child,
       ],
@@ -497,7 +522,7 @@ class _FieldTitleState extends State<FieldTitle> {
                         ],
                       ),
                     ),
-                    ?w.operation,
+                    if (w.operation case final op?) fieldHeaderControls(context, op),
                   ],
                 ),
               ),

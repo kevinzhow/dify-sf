@@ -82,9 +82,13 @@
         "app/tool/phone_gallery_main.dart",
         "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
         "app/test/dify_spec/dify_ui/sheet_behaviour_test.dart",
-        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/modal_layers_test.dart",
+        "app/test/dify_spec/dify_ui/nested_popover_sheet_test.dart"
       ],
-      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular."
+      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular. DifySheetPortal (batch 4a): the same sheet shown from a page's tree in the root overlay (keeps its scopes); DifyPortalSheetFrame; DifySheetHeader.titleWidget. Device check: DifyPortalSemantics keeps portal sheets in the platform's semantics tree (modal from the page side); DifySheetRecipe.contains. Batch 4a round 2: DifyModalLayer (a page, a portal sheet, a portal page) hides its whole content from accessibility while a modal layer opened from it is open and is that layer's semantics place, so only the topmost layer is read and it is never dropped; the portal sheet is a semantics boundary. The non-modal page sheet (DifyPersistentSheet) also slides in, dismisses (drag, controller) and moves only once its content has a single scroll view."
     },
     "bottom_toolbar.dart": {
       "kind": "text-composition",
@@ -103,9 +107,11 @@
         "app/test/design_widgets_test.dart",
         "app/test/control_optical_alignment_test.dart",
         "app/test/design/page_selection_test.dart",
-        "app/test/human_input/m1_second_review_test.dart"
+        "app/test/human_input/m1_second_review_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Batch 4a device check: touch-high (44 px) inside a sheet in a compact window, Dify's sizes elsewhere."
     },
     "button_style.dart": {
       "kind": "text-composition",
@@ -161,9 +167,10 @@
     "copy_feedback.dart": {
       "kind": "text-composition",
       "evidence": [
-        "app/test/design_typography_test.dart"
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. No dedicated direct construction test is claimed by this row."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. dify-sf phone layout: `touch: true` is the 44 px DifyTouchIconButton form for a phone sheet's header (Copy / Copied, no hover tooltip), constructed and tapped in touch_target_test.dart; the default form is unchanged."
     },
     "dashed_border.dart": {
       "kind": "layout-or-non-text",
@@ -252,9 +259,14 @@
         "app/test/dify_spec/dify_ui/popover_test.dart",
         "app/test/dify_spec/prompt_editor/shortcuts_popup_test.dart",
         "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
-        "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart"
+        "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/phone/phone_panel_pickers_test.dart",
+        "app/test/dify_spec/dify_ui/modal_layers_test.dart",
+        "app/test/dify_spec/dify_ui/nested_popover_sheet_test.dart"
       ],
-      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. sheetOnCompact (batch 4a): a picker opens as a bottom sheet in a compact window; DifyPopupSheetScope / DifyFloating.inSheet. Batch 4a follow-up: sheetOnCompact defaults to dismissible, focusing, trigger-anchored popups (pickers); DifyFloating.surface drops a popup's own surface in a sheet. DifyFieldLabel titles picker sheets from their field; DifyFloating.sheetRowInset is the sheets' one row inset. Round 2: sheetTitleFromField (only selects and menus of choices take the field's label as their sheet title, first letter capitalised; popup content is in no field)."
     },
     "font_notice.dart": {
       "kind": "text-composition",
@@ -310,9 +322,11 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: at least 44 px tall in a compact window."
     },
     "input_mode.dart": {
       "kind": "text-composition",
@@ -326,9 +340,11 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Round 2: no keycaps on a compact window (phones have no keyboard shortcuts)."
     },
     "keyboard_scroll_view.dart": {
       "kind": "layout-or-non-text",
@@ -373,9 +389,12 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/phone/phone_panel_pickers_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: a dropdown is a sheet on a phone only as a picker (select style, radio or checkbox items); action menus stay anchored."
     },
     "menu_items.dart": {
       "kind": "text-composition",
@@ -384,9 +403,11 @@
         "app/test/control_gallery_typography_test.dart",
         "app/test/design_widgets_test.dart",
         "app/test/workflow_editor/canvas_touch_test.dart",
-        "app/test/dify_spec/dify_ui/dropdown_menu_test.dart"
+        "app/test/dify_spec/dify_ui/dropdown_menu_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive."
+      "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive. Round 2: in a sheet the current radio item is highlighted with the accent check (every select sheet alike)."
     },
     "menu_submenu.dart": {
       "kind": "text-composition",
@@ -425,9 +446,11 @@
         "app/test/workflow_editor/mobile_start_list_test.dart",
         "app/test/workflow_editor/page_selection_canvas_test.dart",
         "app/test/workflow_editor/mobile_layout_test.dart",
-        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/dify_spec/dify_ui/modal_layers_test.dart"
       ],
-      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. DifyPage is a DifyModalLayer (batch 4a round 2): its sheets and picker sheets hide it for accessibility."
     },
     "page_route.dart": {
       "kind": "layout-or-non-text",
@@ -460,9 +483,19 @@
         "app/test/design_widgets_test.dart",
         "app/test/dify_spec/dify_ui/input_group_more_test.dart",
         "app/test/dify_spec/dify_ui/popover_test.dart",
-        "app/test/dify_spec/workflow/nodes_panel/entry/trigger_schedule/panel_test.dart"
+        "app/test/dify_spec/workflow/nodes_panel/entry/trigger_schedule/panel_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+    },
+    "portal_page.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/modal_layers_test.dart"
+      ],
+      "note": "dify-sf phone full-screen page shown from a widget's tree (the expanded code and prompt editors; no Dify counterpart): DifyTopAppBar over the content; tests cover the window-filling page, the content moving in and out with its state and scopes, and back. DifyPortalPageTitle names expanded editor pages after the step; modal for accessibility via DifyPortalSemantics. Round 2: a DifyModalLayer (a picker opened from the page hides it)."
     },
     "public_app_layout.dart": {
       "kind": "layout-or-non-text",
@@ -540,7 +573,9 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
@@ -615,7 +650,8 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
@@ -642,9 +678,10 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/tabs_touch_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery; the dify-sf touch size (DifyTabSize.touch, 44 px) is tested for styled and built tabs."
     },
     "tag_input.dart": {
       "kind": "gallery",
@@ -667,9 +704,11 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Round 2: the caret is the accent on a compact window, whatever the call site's desktop caret colour."
     },
     "text_input_scope.dart": {
       "kind": "layout-or-non-text",
@@ -738,9 +777,11 @@
         "app/test/dify_spec/dify_ui/segmented_control_touch_test.dart",
         "app/tool/phone_gallery_main.dart",
         "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
-        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Hit-area expansion and the icon-only touch button; no text of their own."
+      "note": "Hit-area expansion and the icon-only touch button (with its toggle state); no text of their own. DifyTouchArea (batch 4a): a small control in a real 48 px box with its target. Round 2: DifyTouchArea.accessibleBox makes the box the control's accessible bounds (MergeSemantics)."
     },
     "workspace_avatar.dart": {
       "kind": "text-composition",

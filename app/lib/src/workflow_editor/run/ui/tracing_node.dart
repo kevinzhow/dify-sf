@@ -13,6 +13,7 @@ import '../../../i18n/dify_i18n.dart';
 import '../../code_editor/code_editor.dart';
 import '../../node_panel/workflow_node_panel.dart' show hasRetryNode;
 import '../../panel_fields/node_config.dart' show ErrorHandleTip, ErrorHandleType;
+import '../../phone/panel_sheet_scope.dart';
 import '../../store/workflow_store.dart' show DifyJson;
 import '../../variable_inspect/value_content.dart' show LargeDataAlert;
 import 'log_widgets.dart';
@@ -326,7 +327,14 @@ class _RunNodePanelState extends State<RunNodePanel> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [header, if (!_collapsed && !widget.hideProcessDetail) body],
+            children: [
+              // dify-sf: a 44 px touch row in a phone sheet.
+              if (PanelSheetScope.maybeOf(context) != null)
+                ConstrainedBox(constraints: const BoxConstraints(minHeight: 44), child: header)
+              else
+                header,
+              if (!_collapsed && !widget.hideProcessDetail) body,
+            ],
           ),
         ),
       ),

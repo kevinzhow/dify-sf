@@ -13,6 +13,7 @@ import '../../../i18n/dify_i18n.dart';
 import '../../../editor/editor_controller.dart';
 import '../../../workflow/dify_json.dart' show difyDataOf;
 import '../../header/format.dart' as fmt;
+import '../../phone/panel_sheet_scope.dart';
 import '../../store/workflow_store.dart';
 import '../../store/workflow_store_scope.dart';
 import '../debug_chat.dart' show getThreadMessages;
@@ -198,10 +199,25 @@ class _ChatRecordState extends State<ChatRecord> {
     }
   }
 
+  Widget _chat() => DebugChat(
+    chatList: _thread,
+    noChatInput: true,
+    switchSibling: (id) => setState(() => _thread = getThreadMessages(_tree, id)),
+    // chat-record renders its UserInput without variables: nothing shows.
+    chatNode: const ChatRecordUserInput(),
+  );
+
   @override
   Widget build(BuildContext context) {
     final store = WorkflowStoreScope.of(context);
     final history = store.historyWorkflowData.value;
+    // dify-sf: in a phone sheet the sheet has the title and the close; the conversation fills it.
+    if (PanelSheetScope.maybeOf(context) != null) {
+      return DecoratedBox(
+        decoration: BoxDecoration(gradient: DifyGradients.chatbotBg),
+        child: !_fetched ? const RunLoading(color: Colors.transparent) : _chat(),
+      );
+    }
     return Container(
       width: DifyAdaptive.panelWidth(context, 420),
       decoration: BoxDecoration(
@@ -241,15 +257,7 @@ class _ChatRecordState extends State<ChatRecord> {
                     ],
                   ),
                 ),
-                Expanded(
-                  child: DebugChat(
-                    chatList: _thread,
-                    noChatInput: true,
-                    switchSibling: (id) => setState(() => _thread = getThreadMessages(_tree, id)),
-                    // chat-record renders its UserInput without variables: nothing shows.
-                    chatNode: const ChatRecordUserInput(),
-                  ),
-                ),
+                Expanded(child: _chat()),
               ],
             ),
     );

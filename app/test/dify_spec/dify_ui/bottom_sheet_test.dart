@@ -1,4 +1,6 @@
 // dify-sf phone layout (no Dify spec): bottom sheets on smooth_sheets (mockups 4-7).
+import 'dart:async';
+
 import 'phone_harness.dart';
 
 const _h = 915.0;
@@ -230,6 +232,186 @@ void main() {
       await t.pumpAndSettle();
       expect(_top(t), closeTo(_h - 120, 0.5));
     });
+    testWidgets('dismissible: slides in over an interactive page, a drag down or dismiss() slides it away and calls '
+        'onDismiss; an owner that keeps it sees it slide back', (t) async {
+      phoneView(t);
+      final controller = DifySheetController();
+      addTearDown(controller.dispose);
+      final shown = ValueNotifier(true);
+      addTearDown(shown.dispose);
+      var dismissed = 0, taps = 0;
+      var keep = false;
+      await pumpPhoneApp(
+        t,
+        DifyPage(
+          body: ValueListenableBuilder(
+            valueListenable: shown,
+            builder: (context, on, _) => Stack(
+              fit: StackFit.expand,
+              children: [
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: DifyButton(onPressed: () => taps++, child: const DifyTextLine('Behind')),
+                ),
+                if (on)
+                  DifyPersistentSheet(
+                    controller: controller,
+                    slideIn: true,
+                    detents: const [DifySheetDetent.half, DifySheetDetent.full],
+                    onDismiss: () {
+                      dismissed++;
+                      if (!keep) shown.value = false;
+                    },
+                    child: const Builder(builder: _list),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+      // It rises from the bottom edge to its first detent; the page behind stays interactive (no scrim).
+      await t.pump();
+      expect(_top(t), greaterThan(_h / 2 + 100));
+      await t.pumpAndSettle();
+      expect(_top(t), closeTo(_h / 2, 0.5));
+      expect(controller.detent, DifySheetDetent.half);
+      expect(find.byKey(const ValueKey('dify-sheet-scrim')), findsNothing);
+      await t.tap(find.text('Behind'));
+      expect(taps, 1);
+
+      // A drag down below its lowest detent slides it away and calls onDismiss.
+      final g = await t.startGesture(t.getCenter(find.byType(DifySheetGrabHandle)));
+      for (var i = 0; i < 20; i++) {
+        await g.moveBy(const Offset(0, 20));
+        await t.pump(const Duration(milliseconds: 16));
+      }
+      await g.up();
+      await t.pumpAndSettle();
+      expect(dismissed, 1);
+      expect(find.byType(DifySheetGrabHandle), findsNothing);
+
+      // dismiss() (what Back does); an owner that keeps the sheet sees it slide back to its detent.
+      shown.value = true;
+      await t.pumpAndSettle();
+      keep = true;
+      unawaited(controller.dismiss());
+      await t.pumpAndSettle();
+      expect(dismissed, 2);
+      expect(_top(t), closeTo(_h / 2, 0.5));
+      keep = false;
+      unawaited(controller.dismiss());
+      await t.pumpAndSettle();
+      expect(dismissed, 3);
+      expect(find.byType(DifySheetGrabHandle), findsNothing);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('content that gains its scroll view later keeps its state, and the sheet still moves', (t) async {
+      phoneView(t);
+      final controller = DifySheetController();
+      addTearDown(controller.dispose);
+      final loaded = ValueNotifier(false);
+      addTearDown(loaded.dispose);
+      await pumpPhoneApp(
+        t,
+        DifyPage(
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              DifyPersistentSheet(
+                controller: controller,
+                detents: const [DifySheetDetent.peek(120), DifySheetDetent.full],
+                child: Column(
+                  children: [
+                    const _Counter(),
+                    Expanded(
+                      child: ValueListenableBuilder(
+                        valueListenable: loaded,
+                        builder: (context, on, _) => on
+                            ? ListView(
+                                children: [
+                                  for (var i = 0; i < 40; i++) SizedBox(height: 48, child: DifyTextLine('Row $i')),
+                                ],
+                              )
+                            : const Center(child: DifyTextLine('Loading')),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      await t.tap(find.text('count 0'));
+      await t.pump();
+      expect(find.text('count 1'), findsOneWidget);
+      loaded.value = true;
+      await t.pump();
+      // The frame the list appears in: moving the sheet waits for the anchor to go, it does not assert.
+      unawaited(controller.animateTo(DifySheetDetent.full));
+      await t.pumpAndSettle();
+      expect(_top(t), closeTo(0, 0.5));
+      expect(find.text('count 1'), findsOneWidget, reason: 'the content kept its state');
+      await t.drag(find.byType(DifySheetGrabHandle), const Offset(0, 900));
+      await t.pumpAndSettle();
+      expect(_top(t), closeTo(_h - 120, 0.5));
+      expect(t.takeException(), isNull);
+    });
+  });
+
+  group('DifyPersistentSheet moves', () {
+    testWidgets('a move that is running when the content gains its scroll view lands at its detent '
+        '(device: a viewed run rose with a list arriving; Too many elements)', (t) async {
+      phoneView(t);
+      final controller = DifySheetController();
+      addTearDown(controller.dispose);
+      final loaded = ValueNotifier(false);
+      addTearDown(loaded.dispose);
+      await pumpPhoneApp(
+        t,
+        DifyPage(
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              DifyPersistentSheet(
+                controller: controller,
+                slideIn: true,
+                detents: const [DifySheetDetent.peek(120), DifySheetDetent.half, DifySheetDetent.full],
+                child: ValueListenableBuilder(
+                  valueListenable: loaded,
+                  builder: (context, on, _) => on
+                      ? ListView(
+                          children: [for (var i = 0; i < 40; i++) SizedBox(height: 48, child: DifyTextLine('Row $i'))],
+                        )
+                      : const Center(child: DifyTextLine('Loading')),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      // The sheet rises; halfway through, the content's list arrives.
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 16));
+      await t.pump(const Duration(milliseconds: 100));
+      loaded.value = true;
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      expect(_top(t), closeTo(_h - 120, 0.5), reason: 'it lands at its peek');
+
+      // The same while the controller moves it.
+      loaded.value = false;
+      await t.pumpAndSettle();
+      unawaited(controller.animateTo(DifySheetDetent.full));
+      await t.pump(const Duration(milliseconds: 16));
+      await t.pump(const Duration(milliseconds: 100));
+      loaded.value = true;
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      expect(_top(t), closeTo(0, 0.5), reason: 'it lands at full');
+    });
   });
 
   group('DifySheetHeader', () {
@@ -264,4 +446,18 @@ void main() {
       expect(DifySheetDetent.half, isNot(DifySheetDetent.full));
     });
   });
+}
+
+/// A tap counter: content state that must survive the sheet's anchor coming and going.
+class _Counter extends StatefulWidget {
+  const _Counter();
+  @override
+  State<_Counter> createState() => _CounterState();
+}
+
+class _CounterState extends State<_Counter> {
+  int _count = 0;
+  @override
+  Widget build(BuildContext context) =>
+      DifyButton(onPressed: () => setState(() => _count++), child: DifyTextLine('count $_count'));
 }

@@ -39,6 +39,11 @@ class PhoneEditorController extends ChangeNotifier {
   /// The Steps view's "add at the end of the flow" while it shows (it registers itself); the toolbar's Add uses it
   /// when no step is selected.
   Future<bool> Function()? stepsAddAtEnd;
+
+  /// The Steps view's reveal while it shows (it registers itself): the node settings sheet asks it to bring step
+  /// [nodeId] above the window's y [coveredFromY] (the sheet's top at half), with room at the list's end for it; both
+  /// null when the sheet closed (the room goes).
+  void Function(String? nodeId, double? coveredFromY)? stepsReveal;
   bool _viewChosen = false, _disposed = false;
   Future<SharedPreferences>? _prefs;
 
@@ -95,6 +100,21 @@ class PhoneEditorController extends ChangeNotifier {
   void closeSettings() {
     if (_settingsNodeId == null) return;
     _settingsNodeId = null;
+    notifyListeners();
+  }
+
+  /// How much of the canvas's bottom the phone's docked sheets cover (the run sheet's peek); the run reveals a running
+  /// node above it. Set by the phone editor's sheets.
+  double Function()? canvasCover;
+
+  String? _singleRunNodeId;
+
+  /// The node whose single-step run the run sheet shows (null: none); set when a step starts running, cleared when
+  /// that sheet closes.
+  String? get singleRunNodeId => _singleRunNodeId;
+  set singleRunNodeId(String? value) {
+    if (value == _singleRunNodeId) return;
+    _singleRunNodeId = value;
     notifyListeners();
   }
 

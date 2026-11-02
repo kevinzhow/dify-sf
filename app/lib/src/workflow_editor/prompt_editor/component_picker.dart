@@ -67,7 +67,8 @@ class _PromptMenuItemState extends State<PromptMenuItem> {
   Widget build(BuildContext context) {
     final w = widget;
     Widget row = Container(
-      height: 24,
+      // A 48 px touch row in a sheet (a phone).
+      height: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 24,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: _hovered || (w.isSelected && !w.disabled) ? DifyColors.stateBaseHover : null,
@@ -159,7 +160,7 @@ class _VariableMenuItemState extends State<VariableMenuItem> {
         behavior: HitTestBehavior.opaque,
         onTap: w.onClick,
         child: Container(
-          height: 24,
+          height: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 24,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: _hovered || w.isSelected ? DifyColors.stateBaseHover : null,
@@ -232,7 +233,46 @@ class ComponentPickerMenu extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    if (DifyFloating.inSheet(context)) return _sheet();
+    return _box();
+  }
+
+  /// In a sheet (a phone): the variables fill it, the options follow in 48 px rows, nothing has a surface of its own.
+  Widget _sheet() {
+    final rows = [
+      for (final (i, o) in options.indexed) ...[
+        if (i > 0 && options[i - 1].group != o.group) _divider(),
+        o.build(selectedIndex == i, queryString, () => onSelect(o), () => onHighlight(i)),
+      ],
+      ?footer,
+    ];
+    final variables = this.variables;
+    if (variables == null) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: rows),
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: variables),
+        if (rows.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: rows,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _box() => Container(
     width: 260,
     padding: const EdgeInsets.all(4),
     decoration: BoxDecoration(

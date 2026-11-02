@@ -25,12 +25,15 @@ class DifyPopoverSurface extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: width,
-    padding: padding,
-    decoration: decoration,
-    child: child,
-  );
+  Widget build(BuildContext context) => DifyFloating.inSheet(context)
+      // Shown as a sheet (a phone): the sheet is the surface, its width the content's.
+      ? Padding(padding: padding, child: child)
+      : Container(
+          width: width,
+          padding: padding,
+          decoration: decoration,
+          child: child,
+        );
 }
 
 /// dify-ui's Popover (Root + Trigger + PopoverContent): [builder] builds the trigger, which toggles the popup with
@@ -52,6 +55,8 @@ class DifyPopover extends StatelessWidget {
     this.initialFocus,
     this.surface = true,
     this.semanticLabel,
+    this.sheetOnCompact,
+    this.sheetTitle,
   });
 
   final DifyTriggerBuilder builder;
@@ -68,6 +73,11 @@ class DifyPopover extends StatelessWidget {
   /// The dialog's name (`PopoverTitle`).
   final String? semanticLabel;
 
+  /// In a compact window the popover opens as a bottom sheet ([DifyFloating.sheetOnCompact]; null: as a picker), under
+  /// [sheetTitle] when given.
+  final bool? sheetOnCompact;
+  final String? sheetTitle;
+
   @override
   Widget build(BuildContext context) => DifyFloating(
     builder: builder,
@@ -78,6 +88,8 @@ class DifyPopover extends StatelessWidget {
     sideOffset: sideOffset,
     alignOffset: alignOffset,
     initialFocus: initialFocus,
+    sheetOnCompact: sheetOnCompact,
+    sheetTitle: sheetTitle,
     popupBuilder: (context) => Semantics(
       container: true,
       role: SemanticsRole.dialog,

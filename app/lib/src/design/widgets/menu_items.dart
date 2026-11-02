@@ -77,12 +77,21 @@ class _MenuRowState extends State<_MenuRow> {
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = _node.hasFocus && !widget.disabled;
+    // In a menu shown as a sheet (a phone) every row is a 48 px touch row, wider apart from the sheet's edges.
+    final sheet = DifyFloating.inSheet(context);
+    // A sheet of choices marks the current one as a select does when it opens: highlighted, with the accent check
+    // (every select sheet alike, whether or not its row has the focus).
+    final current = sheet && widget.role == SemanticsRole.menuItemRadio && widget.checked == true;
+    final highlighted = (_node.hasFocus || current) && !widget.disabled;
+    final height = sheet ? DifyTouch.minTarget : 32.0;
     Widget row = Container(
-      height: widget.autoHeight ? null : 32,
-      constraints: widget.autoHeight ? const BoxConstraints(minHeight: 32) : null,
-      margin: widget.margin ? EdgeInsets.symmetric(horizontal: widget.marginX) : null,
-      padding: EdgeInsets.symmetric(horizontal: widget.paddingX, vertical: widget.autoHeight ? 4 : 0),
+      height: widget.autoHeight || sheet ? null : height,
+      constraints: widget.autoHeight || sheet ? BoxConstraints(minHeight: height) : null,
+      margin: widget.margin ? EdgeInsets.symmetric(horizontal: sheet ? 8 : widget.marginX) : null,
+      padding: EdgeInsets.symmetric(
+        horizontal: sheet ? DifyFloating.sheetRowInset - 8 : widget.paddingX,
+        vertical: widget.autoHeight || sheet ? 4 : 0,
+      ),
       decoration: BoxDecoration(
         color: highlighted ? (widget.destructive ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
         borderRadius: BorderRadius.circular(DifyRadius.lg),

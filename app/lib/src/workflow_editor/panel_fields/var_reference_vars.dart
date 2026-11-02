@@ -128,6 +128,10 @@ class _SearchBox extends StatelessWidget {
 
 /// VarReferenceVars: an optional search box, then the variables grouped by node (group titles in
 /// `system-xs-medium-uppercase`), "No variable" when nothing matches, and the RAG "manage input field" row.
+///
+/// Shown in a sheet ([DifyFloating.inSheet], a phone; mockup 5) it fills the sheet: a 44 px search field (it takes
+/// focus only when tapped), then the groups in the same order (the nearest node first), each under a 48 px header
+/// with the node's block icon ([nodeTypeOf] gives its type), and 48 px rows `{x} name … Type`.
 /// The first item is selected; ArrowUp / ArrowDown move the selection, Enter chooses it and Escape calls [onClose]
 /// (from the search box, or from anywhere with [hideSearch], as the prompt editor's slash menu). Object and file
 /// variables open their members to the left on hover (or a tap on the chevron).
@@ -148,11 +152,15 @@ class VarReferenceVars extends StatefulWidget {
     this.searchFocusNode,
     this.preferSchemaType = false,
     this.tapRegionGroup,
+    this.nodeTypeOf,
   });
 
   final List<VarGroup> vars;
   final VarSelected onChange;
   final bool hideSearch;
+
+  /// A group's node type (its block icon in a sheet); null or an unknown node: a variable-category icon.
+  final String? Function(String nodeId)? nodeTypeOf;
 
   /// Search text controlled from outside (the prompt editor's typed query).
   final String? searchText;
@@ -175,7 +183,26 @@ class VarReferenceVars extends StatefulWidget {
   State<VarReferenceVars> createState() => _VarReferenceVarsState();
 }
 
+/// One members page of the phone sheet: the variable [item] of node [nodeId] ([title]), the member path below it, and
+/// that level's schema.
+typedef _Members = ({String nodeId, String title, PickerVar item, List<String> path, Map<String, Object?> schema});
+
 class _VarReferenceVarsState extends State<VarReferenceVars> {
+  /// The phone sheet's member pages, newest last; back (the page's or Android's) returns to the one before.
+  final _members = <_Members>[];
+  late final _membersBack = DifyBackStep(onDismiss: _popMembers);
+
+  void _pushMembers(_Members page) {
+    setState(() => _members.add(page));
+    _membersBack.attach(context);
+  }
+
+  void _popMembers() {
+    if (_members.isEmpty) return;
+    setState(_members.removeLast);
+    _members.isEmpty ? _membersBack.detach() : _membersBack.attach(context);
+  }
+
   String _search = '';
   int _selected = -1;
   FocusNode? _ownFocus;
@@ -219,6 +246,7 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
 
   @override
   void dispose() {
+    _membersBack.detach();
     HardwareKeyboard.instance.removeHandler(_onGlobalKey);
     _focus.removeListener(_onFocus);
     _ownFocus?.dispose();
@@ -228,6 +256,8 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
   void _onFocus() {
     if (!_focus.hasFocus) widget.onBlur?.call();
   }
+
+  void _activate(int at) => setState(() => _selected = at);
 
   void _setSearch(String s) => setState(() {
     _search = s;
@@ -295,6 +325,7 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
 
   @override
   Widget build(BuildContext context) {
+    if (DifyFloating.inSheet(context)) return _sheet(context);
     final w = widget;
     final groups = _filtered;
     final selected = _effective;
@@ -384,6 +415,219 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
           ),
         if (w.showManageInputField) ManageInputField(onManage: w.onManageInputField ?? () {}),
       ],
+    );
+  }
+}
+
+extension on _VarReferenceVarsState {
+  /// The list in a sheet (a phone, mockup 5): search, then each group under its node's header, in 48 px rows.
+  Widget _sheet(BuildContext context) {
+    if (_members.isNotEmpty) return _membersPage(_members.last);
+    final w = widget;
+    final groups = _filtered;
+    final selected = _effective;
+    var index = 0;
+    final rows = <Widget>[];
+    for (final g in groups) {
+      if (!g.isFlat) {
+        rows.add(
+          _SheetGroupHeader(key: ValueKey('var-group-${g.nodeId}'), group: g, type: w.nodeTypeOf?.call(g.nodeId)),
+        );
+      }
+      for (final v in g.vars) {
+        final at = index++;
+        rows.add(
+          VarReferenceItem(
+            key: at == selected ? _selectedKey : null,
+            nodeId: g.nodeId,
+            title: g.title,
+            item: v,
+            onChange: w.onChange,
+            isSupportFileVar: w.isSupportFileVar,
+            isException: v.isException,
+            isLoopVar: g.isLoop,
+            isFlat: g.isFlat,
+            isInCodeGeneratorInstructionEditor: w.isInCodeGeneratorInstructionEditor,
+            preferSchemaType: w.preferSchemaType,
+            isSelected: false,
+            onActivate: () => _activate(at),
+            tapRegionGroup: w.tapRegionGroup,
+            onDrill: (schema) =>
+                _pushMembers((nodeId: g.nodeId, title: g.title, item: v, path: const [], schema: schema)),
+          ),
+        );
+      }
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!w.hideSearch)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: _SearchBox(
+              value: _search,
+              onChanged: _setSearch,
+              focusNode: _focus,
+              onKey: _onSearchKey,
+            ),
+          ),
+        Expanded(
+          child: groups.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: DifyText(
+                    DifyI18n.tr('workflow', 'common.noVar'),
+                    DifyType.systemSmRegular,
+                    color: DifyColors.textTertiary,
+                  ),
+                )
+              : ListView(primary: true, padding: const EdgeInsets.only(bottom: 12), children: rows),
+        ),
+        if (w.showManageInputField) ManageInputField(onManage: w.onManageInputField ?? () {}),
+      ],
+    );
+  }
+}
+
+extension on _VarReferenceVarsState {
+  /// A members page (a phone): back and "Node.variable.member" in a 48 px row, then the members in 48 px rows; a row
+  /// picks that member, a member object's chevron opens its own members.
+  Widget _membersPage(_Members page) {
+    final w = widget;
+    final props = (page.schema['properties'] as Map<String, Object?>?) ?? const {};
+    final title = [page.item.variable, ...page.path].join('.');
+    return Column(
+      key: ValueKey('var-members-page-$title'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 16, 4),
+          child: Row(
+            spacing: 4,
+            children: [
+              DifyAppBarBackButton(onPressed: _popMembers),
+              Expanded(
+                child: DifyText('${page.title}.$title', DifyType.systemSmSemibold, color: DifyColors.textSecondary),
+              ),
+              DifyText(page.item.schemaType ?? 'object', DifyType.systemXsRegular, color: DifyColors.textTertiary),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            primary: true,
+            padding: const EdgeInsets.only(bottom: 12),
+            children: [
+              for (final MapEntry(key: name, value: field) in props.entries)
+                if (field is Map<String, Object?>)
+                  _MemberRow(
+                    name: name,
+                    type: fieldTypeOf(field),
+                    onSelect: () => w.onChange([page.nodeId, page.item.variable, ...page.path, name], page.item),
+                    onDrill: field['type'] == 'object' && field['properties'] is Map
+                        ? () => _pushMembers((
+                            nodeId: page.nodeId,
+                            title: page.title,
+                            item: page.item,
+                            path: [...page.path, name],
+                            schema: field,
+                          ))
+                        : null,
+                  ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A member row of the phone sheet's members page: `{x} name … Type` in 48 px, a chevron to its own members.
+class _MemberRow extends StatelessWidget {
+  const _MemberRow({required this.name, required this.type, required this.onSelect, this.onDrill});
+  final String name, type;
+  final VoidCallback onSelect;
+  final VoidCallback? onDrill;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    child: GestureDetector(
+      key: ValueKey('var-member-$name'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onSelect,
+      child: Container(
+        height: DifyTouch.minTarget,
+        padding: EdgeInsets.only(left: 16, right: onDrill == null ? 16 : 8),
+        child: Row(
+          children: [
+            DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+            const SizedBox(width: 12),
+            Expanded(child: DifyText(name, DifyType.systemMdRegular, color: DifyColors.textPrimary)),
+            const SizedBox(width: 4),
+            DifyText(type, DifyType.systemXsRegular, color: DifyColors.textTertiary),
+            if (onDrill case final drill?)
+              DifyTouchArea(
+                child: DifyIconButton(
+                  label: name,
+                  onPressed: drill,
+                  icon: DifyIcon('vender/line/arrows/chevron-right', size: 16, color: DifyColors.textTertiary),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// A group's header in the sheet: the node's 24 px block icon (a variable-category icon for the environment,
+/// conversation, system and shared-input groups) and its title, in a 48 px row.
+class _SheetGroupHeader extends StatelessWidget {
+  const _SheetGroupHeader({super.key, required this.group, this.type});
+  final VarGroup group;
+  final String? type;
+
+  @override
+  Widget build(BuildContext context) {
+    final type = this.type;
+    final Widget icon;
+    if (type != null) {
+      icon = SmallBlockIcon(type: type, size: 24);
+    } else {
+      final category = switch (group.nodeId) {
+        'env' => 'environment',
+        'conversation' => 'conversation',
+        'rag' => 'rag',
+        _ => null,
+      };
+      final (glyph, color) = varIconAndColor(const ['sys', 'x'], category: category);
+      icon = Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: DifyColors.componentsIconBgMidnightSolid,
+          borderRadius: BorderRadius.circular(DifyRadius.md),
+        ),
+        child: Center(child: DifyIcon(glyph, size: 14, color: category == null ? color : DifyTailwind.white)),
+      );
+    }
+    return Semantics(
+      header: true,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: DifyTouch.minTarget),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.centerLeft,
+        child: Row(
+          spacing: 12,
+          children: [
+            icon,
+            Expanded(child: DifyText(group.title, DifyType.systemSmSemibold, color: DifyColors.textSecondary)),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -490,16 +734,21 @@ class VarReferenceItem extends StatefulWidget {
     this.isSelected = false,
     this.onActivate,
     this.tapRegionGroup,
+    this.onDrill,
   });
 
   final String nodeId, title;
   final PickerVar item;
+
+  /// In a sheet (a phone): opens the variable's members (an object's, a file's) as a page of the sheet, given their
+  /// schema; there is no hover panel there.
   final VarSelected onChange;
   final List<String> objPath;
   final bool isSupportFileVar, isException, isLoopVar, isFlat, isInCodeGeneratorInstructionEditor;
   final bool preferSchemaType, isSelected;
   final VoidCallback? onActivate;
   final Object? tapRegionGroup;
+  final ValueChanged<Map<String, Object?>>? onDrill;
 
   @override
   State<VarReferenceItem> createState() => _VarReferenceItemState();
@@ -602,6 +851,8 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
     final w = widget;
     final hovering = _itemHover || _childHover || _pinned;
     final type = w.preferSchemaType && _v.schemaType != null ? _v.schemaType : _v.type;
+    // In a sheet (a phone, mockup 5): a 48 px row under its group's icon, `{x} name … Type`.
+    final sheet = DifyFloating.inSheet(context);
     final row = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => _hover(true),
@@ -610,8 +861,10 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
         behavior: HitTestBehavior.opaque,
         onTap: _choose,
         child: Container(
-          height: 24,
-          padding: EdgeInsets.only(left: 12, right: _hasPanel ? 4 : 18),
+          height: sheet ? DifyTouch.minTarget : 24,
+          padding: sheet
+              ? EdgeInsets.only(left: w.isFlat ? 16 : 52, right: _hasPanel ? 8 : 16)
+              : EdgeInsets.only(left: 12, right: _hasPanel ? 4 : 18),
           decoration: BoxDecoration(
             color: hovering || w.isSelected
                 ? (_hasPanel ? DifyColors.componentsPanelOnPanelItemBgHover : DifyColors.stateBaseHover)
@@ -621,14 +874,30 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
           child: Row(
             children: [
               _icon(),
-              const SizedBox(width: 4),
-              Expanded(child: DifyText(_name, DifyType.systemSmMedium, color: DifyColors.textSecondary)),
+              SizedBox(width: sheet ? 12 : 4),
+              Expanded(
+                child: DifyText(
+                  _name,
+                  sheet ? DifyType.systemMdRegular : DifyType.systemSmMedium,
+                  color: sheet ? DifyColors.textPrimary : DifyColors.textSecondary,
+                ),
+              ),
               const SizedBox(width: 4),
               DifyTextLine(
                 cssCapitalize(type ?? ''),
                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
               ),
-              if (_hasPanel)
+              if (_hasPanel && sheet)
+                // A phone: the members open as a page of the sheet; a tap on the rest of the row picks the variable.
+                DifyTouchArea(
+                  child: DifyIconButton(
+                    key: ValueKey('var-members-${_v.variable}'),
+                    label: _v.variable,
+                    onPressed: () => w.onDrill?.call(_schema),
+                    icon: DifyIcon('vender/line/arrows/chevron-right', size: 16, color: DifyColors.textTertiary),
+                  ),
+                )
+              else if (_hasPanel)
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => setState(() => _pinned = !_pinned),
@@ -647,7 +916,7 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
       ),
     );
     final item = Semantics(selected: w.isSelected, button: true, child: row);
-    if (!_hasPanel) return item;
+    if (!_hasPanel || sheet) return item;
     return DifyFloating(
       open: hovering,
       placement: DifyPlacement.leftStart,
@@ -943,10 +1212,14 @@ class VarReferencePopup extends StatelessWidget {
     this.onManageInputField,
     this.onClose,
     this.tapRegionGroup,
+    this.nodeTypeOf,
   });
 
   final List<VarGroup> vars;
   final VarSelected onChange;
+
+  /// A group's node type (the sheet's group icons).
+  final String? Function(String nodeId)? nodeTypeOf;
 
   /// `assigned` / `toAssigned` (variable assigner).
   final String? popupFor;
@@ -962,15 +1235,19 @@ class VarReferencePopup extends StatelessWidget {
   Widget build(BuildContext context) {
     final empty = vars.isEmpty && popupFor != null;
     final toAssigned = popupFor == 'toAssigned';
+    // In a sheet (a phone) the sheet is the surface and the list fills it.
+    final sheet = DifyFloating.inSheet(context);
     return Container(
-      width: itemWidth ?? 228,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: DifyColors.componentsPanelBg,
-        borderRadius: BorderRadius.circular(DifyRadius.lg),
-        border: Border.all(color: DifyColors.componentsPanelBorder),
-        boxShadow: DifyShadows.lg,
-      ),
+      width: sheet ? null : itemWidth ?? 228,
+      padding: sheet ? EdgeInsets.zero : const EdgeInsets.all(4),
+      decoration: sheet
+          ? null
+          : BoxDecoration(
+              color: DifyColors.componentsPanelBg,
+              borderRadius: BorderRadius.circular(DifyRadius.lg),
+              border: Border.all(color: DifyColors.componentsPanelBorder),
+              boxShadow: DifyShadows.lg,
+            ),
       child: empty
           ? _ListEmpty(
               title: DifyI18n.tr(
@@ -992,6 +1269,7 @@ class VarReferencePopup extends StatelessWidget {
               onManageInputField: onManageInputField,
               onClose: onClose,
               tapRegionGroup: tapRegionGroup,
+              nodeTypeOf: nodeTypeOf,
             ),
     );
   }

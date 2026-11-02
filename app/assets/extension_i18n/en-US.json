@@ -137,6 +137,8 @@
     "nodesSelected": "{{count}} nodes selected",
     "connection": "Connection",
     "insertStep": "Insert step",
+    "insertVariable": "Insert variable",
+    "language": "Language",
     "deleteConnection": "Delete connection",
     "selectMode": "Select mode",
     "addAfter": "after {{name}} · connects automatically",
@@ -147,7 +149,11 @@
     "organize": "Organize",
     "zoom": "Zoom",
     "generate": "Generate with AI",
-    "connectionDetails": "Connection details"
+    "connectionDetails": "Connection details",
+    "runSucceeded": "Succeeded",
+    "runFailed": "Failed",
+    "runStopped": "Stopped",
+    "runPaused": "Paused"
   },
   "workflow": {
     "mobile.steps.addStep": "Add step",

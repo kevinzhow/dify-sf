@@ -204,9 +204,11 @@ void main() {
     await e.dispose();
   });
 
-  testWidgets('Steps view: Run this step from the long press opens the step\'s panel, which takes the request', (
+  testWidgets('Steps view: Run this step from the long press runs the step from the sheets, settings stay closed', (
     t,
   ) async {
+    // (Reviewer Winnie's reproduction; since batch 4b the phone's sheets take the request: the step's input form as a
+    // sheet when it needs values, otherwise its result in the run sheet. One tap no longer also opens the settings.)
     final e = await _pump(t);
     final card = find.byKey(const ValueKey('step-card-code'));
     await t.ensureVisible(card);
@@ -215,14 +217,24 @@ void main() {
     await settle(t, 600);
     await t.tap(find.text(DifyI18n.tr('workflow', 'panel.runThisStep')));
     await settle(t, 800);
-    expect(find.byType(WorkflowNodePanel), findsOneWidget);
-    expect(e.store.pendingSingleRun.value, isNull, reason: 'the panel consumed the run request');
+    expect(e.store.pendingSingleRun.value, isNull, reason: 'the run request was consumed');
+    expect(find.byType(WorkflowNodePanel), findsNothing, reason: 'no settings sheet opened');
+    expect(e.phone.settingsNodeId, isNull);
+    final form = find.byKey(const ValueKey('phone-step-input-sheet')).evaluate().isNotEmpty;
+    final result =
+        e.phone.singleRunNodeId == 'code' && find.byKey(const ValueKey('phone-run-sheet')).evaluate().isNotEmpty;
+    expect(form || result, isTrue, reason: 'the step\'s input form or its result in the run sheet');
+    expect(
+      e.store.nodeRunDataOf('code')['_singleRunningStatus'],
+      isNotNull,
+      reason: 'the step ran (or waits for its form)',
+    );
     expect(t.takeException(), isNull);
     await e.dispose();
   });
 
-  testWidgets('Steps view: Stop from the long press reaches the step\'s panel and stops the run', (t) async {
-    // (From the PR review's reproduction.)
+  testWidgets('Steps view: Stop from the long press stops the running step, settings stay closed', (t) async {
+    // (Reviewer Winnie's reproduction; since batch 4b the phone's sheets take the stop request, no panel needed.)
     final e = await _pump(t);
     e.store.setNodeRunData('code', {'_singleRunningStatus': 'running'});
     await settle(t, 300);
@@ -235,8 +247,10 @@ void main() {
     expect(find.text(stop), findsOneWidget);
     await t.tap(find.text(stop));
     await settle(t, 800);
-    expect(e.store.pendingSingleRun.value, isNull, reason: 'the panel consumed the stop request');
+    expect(e.store.pendingSingleRun.value, isNull, reason: 'the stop request was consumed');
     expect(e.store.nodeRunDataOf('code')['_singleRunningStatus'], 'stopped');
+    expect(find.byType(WorkflowNodePanel), findsNothing, reason: 'no settings sheet opened');
+    expect(e.phone.settingsNodeId, isNull);
     await e.dispose();
   });
 
@@ -333,19 +347,28 @@ void main() {
     await settle(t, 600);
     expect(find.byType(WorkflowNodePanel), findsOneWidget);
     expect(e.phone.settingsNodeId, 'code');
-    // The panel takes the area under the app bar: the canvas is not squeezed beside it.
-    final panels = t.getRect(find.byKey(const ValueKey('phone-panels')));
-    expect(panels.width, 411);
-    expect(panels.top, t.getRect(find.byKey(const ValueKey('phone-editor-app-bar'))).bottom);
+    // Batch 4a: the panel is a bottom sheet over the editor (half the window first), not squeezed beside the canvas.
+    final sheet = t.getRect(find.byKey(const Key('node-settings-sheet')));
+    expect(sheet.width, 411);
+    expect(sheet.top, greaterThan(t.getRect(find.byKey(const ValueKey('phone-editor-app-bar'))).bottom));
     expect(await systemBack(t), isTrue);
     expect(find.byType(WorkflowNodePanel), findsNothing);
     expect(e.c.selectedNodeId, 'code', reason: 'back closed the panel, the selection stays');
 
+    // Run step: the phone's sheets take the request (its form or its result as sheets, batch 4b; the demo's code step
+    // may also be refused by its check, with Dify's toast); the settings stay closed.
     await t.tap(find.byKey(const ValueKey('phone-node-run')));
     await settle(t, 600);
-    expect(e.phone.settingsNodeId, 'code', reason: 'the single run happens in the panel');
-    expect(find.byType(WorkflowNodePanel), findsOneWidget);
-    expect(await systemBack(t), isTrue);
+    expect(e.store.pendingSingleRun.value, isNull);
+    expect(e.phone.settingsNodeId, isNull);
+    expect(find.byType(WorkflowNodePanel), findsNothing);
+    if (find.byKey(const ValueKey('phone-step-input-sheet')).evaluate().isNotEmpty) {
+      expect(await systemBack(t), isTrue);
+      await settle(t, 600);
+      expect(find.byKey(const ValueKey('phone-step-input-sheet')), findsNothing);
+    }
+    e.phone.singleRunNodeId = null;
+    await settle(t, 300);
 
     // Add next: the picker names the anchor; the block is inserted after it and selected.
     final before = e.c.doc.nodes.keys.toSet();
@@ -590,21 +613,28 @@ void main() {
     ]) {
       expect(find.textContaining(label), findsOneWidget, reason: label);
     }
-    // The variable inspect panel opens as a page; back closes it.
+    // The variable inspect panel opens as a sheet (batch 4b); back closes it.
     await t.tap(find.text(_tw('debug.variableInspect.title')));
     await settle(t, 800);
     expect(e.store.showVariableInspectPanel.value, isTrue);
-    expect(find.byKey(const ValueKey('phone-variable-inspect')), findsOneWidget);
+    expect(find.byKey(const ValueKey('phone-inspect-sheet')), findsOneWidget);
     expect(await systemBack(t), isTrue);
+    await settle(t, 600);
     expect(e.store.showVariableInspectPanel.value, isFalse);
 
-    // Version history: the canvas browses versions with the restoring bars; back leaves it.
+    // Version history: the canvas browses versions with the restoring bars and the list as a sheet; back lowers the
+    // list to its peek, closes it, then leaves the versions.
     await t.tap(find.text(_tp('versions')));
     await settle(t, 800);
     expect(e.store.isRestoring.value, isTrue);
     expect(find.byKey(const ValueKey('phone-restoring-bar')), findsOneWidget);
     expect(find.byKey(const ValueKey('phone-restore')), findsOneWidget);
+    expect(find.byKey(const ValueKey('phone-versions-sheet')), findsOneWidget);
+    expect(await systemBack(t), isTrue, reason: 'lowers the version list to its peek');
+    await settle(t, 600);
     expect(await systemBack(t), isTrue, reason: 'closes the version list');
+    await settle(t, 600);
+    expect(find.byKey(const ValueKey('phone-versions-sheet')), findsNothing);
     expect(e.store.isRestoring.value, isTrue);
     expect(await systemBack(t), isTrue, reason: 'leaves the versions');
     expect(e.store.isRestoring.value, isFalse);
@@ -626,12 +656,13 @@ void main() {
     await settle(t, 600);
     await t.tap(find.byKey(const ValueKey('phone-node-settings')));
     await settle(t, 600);
-    await t.tap(find.byKey(const ValueKey('phone-editor-more')));
+    // Batch 4a: the settings are a modal sheet over the app bar; its own "…" opens an action sheet over it.
+    await t.tap(find.byKey(const Key('node-settings-more')));
     await settle(t, 800);
-    expect(find.byType(Scrollable), findsWidgets);
+    expect(find.text(_tw('panel.changeBlock')), findsOneWidget);
 
     expect(await systemBack(t), isTrue, reason: 'the sheet');
-    expect(find.text(_tp('connectionDetails')), findsNothing);
+    expect(find.text(_tw('panel.changeBlock')), findsNothing);
     expect(find.byType(WorkflowNodePanel), findsOneWidget);
     expect(await systemBack(t), isTrue, reason: 'the panel');
     expect(find.byType(WorkflowNodePanel), findsNothing);

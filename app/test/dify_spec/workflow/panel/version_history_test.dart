@@ -12,6 +12,7 @@
 //
 // The version history panel. Dify's mocked services (the version list query, restore / update requests, the
 // useWorkflowRun hooks) are the panel's VersionHistoryPanelData callbacks; the store is the real one.
+import 'dart:math' as math;
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
@@ -310,6 +311,52 @@ void main() {
         );
         expect(find.text('# 5'), findsOneWidget);
         expect(find.text('2024-01-01T00:00:00Z'), findsNothing);
+      });
+
+      // dify-sf (no Dify spec): the item's look as Dify lays it out, at the desktop panel's width. The Latest badge is
+      // `shrink-0` beside the truncated title (it hugs its word), and an empty `marked_comment` is an empty `div`: no
+      // line, only the column's two `gap-y-0.5` around it.
+      testWidgets('dify-sf: an unnamed latest version keeps Dify\'s look: the badge hugs its word, no blank line', (
+        t,
+      ) async {
+        await renderWorkflowComponent(
+          t,
+          Column(
+            children: [
+              _item(
+                _version(markedName: '', markedComment: '', versionNumber: 2),
+                latestVersionId: 'version-1',
+              ),
+            ],
+          ),
+        );
+        final word = find.text('WORKFLOW.VERSIONHISTORY.LATEST');
+        expect(word, findsOneWidget);
+        final badge = find.ancestor(of: word, matching: find.byType(Container)).first;
+        // The word, `px-1.25` and the 1 px border on each side (this suite's word is its long key: up to the 96 px
+        // cap), not the share of the row a flexible badge took.
+        final text = t.widget<Text>(word);
+        final natural = (TextPainter(
+          text: TextSpan(text: text.data, style: text.style),
+          textDirection: TextDirection.ltr,
+        )..layout()).width;
+        expect(t.getSize(badge).width, closeTo(math.min(natural + 12, 96), 1));
+        final title = find.ancestor(of: find.text('# 2'), matching: find.byType(SizedBox)).first;
+        final time = find.textContaining(RegExp(r'Alice$'));
+        expect(t.getTopLeft(time).dy - t.getBottomLeft(title).dy, closeTo(4, 0.5));
+        // A comment keeps its line.
+        await renderWorkflowComponent(
+          t,
+          Column(
+            children: [_item(_version(markedName: 'Release 1'), latestVersionId: 'version-1')],
+          ),
+        );
+        expect(find.text('Initial release'), findsOneWidget);
+        final named = find.ancestor(of: find.text('Release 1'), matching: find.byType(SizedBox)).first;
+        expect(
+          t.getTopLeft(find.textContaining(RegExp(r'Alice$'))).dy - t.getBottomLeft(named).dy,
+          greaterThan(4 + 12),
+        );
       });
 
       testWidgets('should show the environments deployed from the published version', (t) async {

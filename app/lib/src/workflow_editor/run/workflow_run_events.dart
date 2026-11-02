@@ -4,6 +4,8 @@
 /// ops. Ported one handler per Dify hook, quirks included (noted where they show).
 library;
 
+import 'dart:ui' show Rect;
+
 import '../../canvas/agent_progress_view.dart';
 import '../store/workflow_store.dart';
 import '../variable_inspect/value_content_helpers.dart' show getProcessedFilesFromResponse;
@@ -144,6 +146,10 @@ class WorkflowRunEvents {
   void _centre(RunGraphNode node, RunContainerSize container) {
     final v = viewport;
     if (v == null || node.parentId != null) return;
+    // dify-sf phones: reveal the node minimally, leave the view alone while it is in it.
+    if (v is CanvasRunViewport && v.phoneCover != null) {
+      return v.reveal(node.id, Rect.fromLTWH(node.x, node.y, node.width, node.height));
+    }
     final zoom = v.zoom;
     v.setViewport(
       (container.clientWidth - 400 - node.width * zoom) / 2 - node.x * zoom,

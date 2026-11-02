@@ -429,8 +429,14 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
   /// Sets a node's run status alone (tests, simulations).
   void setStatus(String id, String status) => setRun(id, NodeRunView(runningStatus: status == 'idle' ? null : status));
 
+  Offset? _viewportOrigin() {
+    final box = mounted ? context.findRenderObject() : null;
+    return box is RenderBox && box.hasSize && box.attached ? box.localToGlobal(Offset.zero) : null;
+  }
+
   @override
   void dispose() {
+    if (canvas.viewportOrigin == _viewportOrigin) canvas.viewportOrigin = null;
     c.removeListener(_documentChanged);
     canvas.nodeRun.removeListener(_runStatusChanged);
     canvas.edgeRun.removeListener(_edgeRunChanged);
@@ -452,6 +458,7 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
 
   @override
   Widget build(BuildContext context) {
+    canvas.viewportOrigin = _viewportOrigin;
     final scheme = Theme.of(context).colorScheme;
     // React Flow nodes are drag targets (user-select:none); embedded text editors
     // still own their EditableText selection. Page text outside the canvas is selectable.

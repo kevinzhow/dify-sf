@@ -6,6 +6,7 @@ import 'dart:collection';
 
 import 'package:collab_client/collab_client.dart' show Document, Node, VMap, VString;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Offset, Rect;
 
 import '../../canvas/canvas_controller.dart';
 import '../../editor/editor_controller.dart';
@@ -110,12 +111,37 @@ abstract interface class RunViewport {
 
 /// The canvas's viewport.
 class CanvasRunViewport implements RunViewport {
-  const CanvasRunViewport(this.canvas);
+  CanvasRunViewport(this.canvas);
   final CanvasController canvas;
   @override
   double get zoom => canvas.view.scale;
   @override
   void setViewport(double x, double y, double zoom) => canvas.setViewport(x, y, zoom);
+
+  /// dify-sf phones: the height of the canvas's bottom that a sheet covers (the run sheet's peek). When set, a node
+  /// that starts running is only revealed ([reveal]) instead of centred left of the desktop's 400 px run panel.
+  double Function()? phoneCover;
+
+  /// Pans the canvas as little as brings node [id] (its card, else [fallback] in canvas coordinates) whole into the
+  /// visible area (the canvas less [margin] and the covered bottom); does nothing while it is in view already.
+  void reveal(String id, Rect fallback, {double margin = 16}) {
+    final view = canvas.view;
+    final size = view.viewport;
+    if (size.isEmpty) return;
+    final area = Rect.fromLTRB(margin, margin, size.width - margin, size.height - (phoneCover?.call() ?? 0) - margin);
+    if (area.width <= 0 || area.height <= 0) return;
+    final r = view.rectToScreen(canvas.graph?[id]?.rect ?? fallback);
+    double shift(double lo, double hi, double min, double max) {
+      if (hi - lo > max - min) return min - lo; // larger than the area: its start in view
+      if (lo < min) return min - lo;
+      if (hi > max) return max - hi;
+      return 0;
+    }
+
+    final dx = shift(r.left, r.right, area.left, area.right), dy = shift(r.top, r.bottom, area.top, area.bottom);
+    if (dx == 0 && dy == 0) return;
+    view.center = view.center - Offset(dx, dy) / view.scale;
+  }
 }
 
 /// The container a node sits in (Dify keeps `parentId` in `_dify_node`).

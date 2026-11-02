@@ -18,8 +18,16 @@ ThemeData difyTheme({String? fontFamily, List<String>? fontFamilyFallback, Brigh
   return base.copyWith(
     textTheme: _untracked(base.textTheme).apply(fontFamilyFallback: fontFamilyFallback),
     primaryTextTheme: _untracked(base.primaryTextTheme).apply(fontFamilyFallback: fontFamilyFallback),
+    // The selection handles (phones) and the caret in Dify's accent, as the fields' own cursor (not the seed's indigo).
+    textSelectionTheme: const TextSelectionThemeData(
+      cursorColor: difySelectionAccent,
+      selectionHandleColor: difySelectionAccent,
+    ),
   );
 }
+
+/// Dify's accent for the caret and the text selection handles (`primary-600`, the fields' cursor colour).
+const difySelectionAccent = Color(0xFF155EEF);
 
 TextTheme _untracked(TextTheme t) {
   TextStyle? z(TextStyle? s) => s?.copyWith(letterSpacing: 0);

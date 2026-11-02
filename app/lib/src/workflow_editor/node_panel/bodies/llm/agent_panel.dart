@@ -392,12 +392,15 @@ class _AgentStrategySelectorState extends State<AgentStrategySelector> {
           ];
           return Container(
             width: 388,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: DifyColors.componentsPanelBgBlur,
-              borderRadius: BorderRadius.circular(DifyRadius.md),
-              border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-              boxShadow: DifyShadows.md,
+            clipBehavior: DifyFloating.inSheet(context) ? Clip.none : Clip.antiAlias,
+            decoration: DifyFloating.surface(
+              context,
+              BoxDecoration(
+                color: DifyColors.componentsPanelBgBlur,
+                borderRadius: BorderRadius.circular(DifyRadius.md),
+                border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+                boxShadow: DifyShadows.md,
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1005,11 +1008,14 @@ class _ToolSelectorPopupState extends State<_ToolSelectorPopup> {
     return Container(
       width: 361,
       padding: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: DifyColors.componentsPanelBgBlur,
-        borderRadius: BorderRadius.circular(DifyRadius.xl),
-        border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-        boxShadow: DifyShadows.lg,
+      decoration: DifyFloating.surface(
+        context,
+        BoxDecoration(
+          color: DifyColors.componentsPanelBgBlur,
+          borderRadius: BorderRadius.circular(DifyRadius.xl),
+          border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+          boxShadow: DifyShadows.lg,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

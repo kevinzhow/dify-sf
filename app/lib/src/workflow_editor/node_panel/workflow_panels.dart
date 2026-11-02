@@ -57,6 +57,12 @@ class NodePanelActions extends WorkflowActions {
 ///
 /// The node panel rebuilds when the document changes in a way it shows (the node, any node's title, type or config,
 /// the edges), not when nodes only move.
+///
+/// On a phone ([PhoneEditorScope]) the node panel is a modal bottom sheet over the whole editor ([DifySheetPortal]:
+/// it keeps the editor's scopes), open while the phone's settings node ([PhoneEditorController.settingsNodeId]) is the
+/// selected node: half the window first (the step or canvas above stays visible), pulled up to full; back, the scrim,
+/// a drag down and its close button close it (the selection stays). The other panels are the phone editor's sheets
+/// (`PhoneEditorSheets`): the phone's panel row has nothing else.
 class WorkflowPanels extends StatefulWidget {
   const WorkflowPanels({
     super.key,
@@ -86,6 +92,13 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
 
   /// What the node panel showed: the selected node, and per node its title, type and config, and the edges.
   Node? _node;
+
+  /// The node the phone's settings sheet showed last (it keeps showing it while it slides away).
+  Node? _sheetNode;
+
+  /// The settings sheet's position: once it rests at half, the Steps view reveals the step above it.
+  final _sheet = DifySheetController();
+  String? _revealed;
   final _nodes = <String, (String, String, Map<String, Value>)>{};
   final _edges = <String, Edge>{};
 
@@ -124,6 +137,7 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
 
   @override
   void dispose() {
+    _sheet.dispose();
     widget.controller.removeListener(_documentChanged);
     _store?.workflowCanvasWidth.removeListener(_limitPreviewWidth);
     _store?.previewPanelWidth.removeListener(_limitPreviewWidth);
@@ -190,13 +204,26 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
   Widget build(BuildContext context) {
     final node = _node;
     final store = _store!;
-    // On a phone a selected node shows its selection bar; its panel opens through the bar's Settings.
+    // On a phone a selected node shows its selection bar; its panel opens through the bar's Settings, as a sheet.
     final phone = PhoneEditorScope.maybeOf(context);
     // Only workflow blocks have a panel (not notes or container starts: Panel renders CUSTOM_NODE only).
-    final panelNode =
-        node != null && reactFlowTypeOf(node) == 'custom' && (phone == null || phone.settingsNodeId == node.id)
-        ? node
-        : null;
+    final custom = node != null && reactFlowTypeOf(node) == 'custom' ? node : null;
+    final panelNode = phone == null ? custom : null;
+    final sheetNode = phone != null && custom != null && phone.settingsNodeId == custom.id ? custom : null;
+    if (sheetNode != null) _sheetNode = sheetNode;
+    if (phone != null && sheetNode?.id != _revealed) {
+      final was = _revealed;
+      _revealed = sheetNode?.id;
+      if (sheetNode != null) {
+        _revealAbove(phone, sheetNode.id);
+      } else if (was != null) {
+        // Closed: the Steps view's room for it goes.
+        SchedulerBinding.instance.addPostFrameCallback((_) => phone.stepsReveal?.call(null, null));
+      }
+    }
+    final sheet = phone == null ? null : _settingsSheet(phone, sheetNode);
+    // On a phone the other panels are sheets of the phone editor (it gives this row none): only the settings sheet.
+    if (sheet != null) return sheet;
     return ListenableBuilder(
       listenable: Listenable.merge([
         store.showEnvPanel,
@@ -261,18 +288,54 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
             child: row,
           ),
         );
-        if (phone == null) return rail;
-        // The phone layout gives the panels the whole area under its app bar (the canvas is not squeezed beside
-        // them): an opaque page whose content keeps clear of the bottom inset.
-        return ColoredBox(
-          key: const ValueKey('phone-panels'),
-          color: DifyColors.backgroundBody,
-          child: Padding(
-            padding: EdgeInsets.only(top: 4, bottom: MediaQuery.paddingOf(context).bottom + 4),
-            child: MediaQuery.removePadding(context: context, removeBottom: true, child: rail),
-          ),
-        );
+        return rail;
       },
+    );
+  }
+
+  /// Once the sheet opened for [nodeId] is laid out (it shows a frame after it opens), the Steps view (when it shows)
+  /// brings that step above the sheet's top.
+  void _revealAbove(PhoneEditorController phone, String nodeId, [int frames = 0]) =>
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || phone.settingsNodeId != nodeId) return;
+        final offset = _sheet.offset;
+        if (offset == null) {
+          if (frames < 5) _revealAbove(phone, nodeId, frames + 1);
+          return;
+        }
+        final top = MediaQuery.sizeOf(context).height - offset;
+        // The Steps view brings the step above the sheet; the canvas pans the node above it if it is covered.
+        if (phone.view == PhoneEditorView.canvas) {
+          widget.canvas.revealAbove(nodeId, top);
+        } else {
+          phone.stepsReveal?.call(nodeId, top);
+        }
+      });
+
+  /// The phone's node settings: the node panel's content in a sheet, open while [open] is the settings node.
+  Widget _settingsSheet(PhoneEditorController phone, Node? open) {
+    final shown = open ?? _sheetNode;
+    return DifySheetPortal(
+      key: const ValueKey('phone-node-settings-sheet'),
+      open: open != null,
+      controller: _sheet,
+      onDismiss: phone.closeSettings,
+      detents: const [DifySheetDetent.half, DifySheetDetent.full],
+      barrierLabel: DifyI18n.tr('common', 'operation.close'),
+      builder: (context) => shown == null
+          ? const SizedBox.shrink()
+          : WorkflowRightPanelScope(
+              panelKey: _panelKey,
+              child: WorkflowNodePanel(
+                key: ValueKey('${shown.id}-${shown.type}'),
+                node: shown,
+                actions: _actions,
+                bodies: widget.bodies,
+                onSingleRun: widget.onSingleRun,
+                onStopSingleRun: widget.onStopSingleRun,
+                sheet: true,
+              ),
+            ),
     );
   }
 

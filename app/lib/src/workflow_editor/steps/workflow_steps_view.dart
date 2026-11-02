@@ -282,20 +282,50 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     _scroll.jumpTo((p.pixels + delta).clamp(p.minScrollExtent, p.maxScrollExtent));
   }
 
-  /// Whether row [key] is on screen whole, clear of the system bar and the chrome's toolbar at the bottom.
+  /// What covers the list's bottom besides the system bar and the toolbar during a reveal (the node settings sheet):
+  /// the window's y from which it is covered; and the room the list's end gets meanwhile, so even a short list can
+  /// scroll its last step above the sheet.
+  double? _coveredFromY;
+  double _coverRoom = 0;
+
+  /// The sheet over the list closed: its room goes.
+  void clearCover() {
+    if (_coveredFromY == null && _coverRoom == 0) return;
+    setState(() {
+      _coveredFromY = null;
+      _coverRoom = 0;
+    });
+  }
+
+  /// Whether row [key] is on screen whole, clear of the system bar and the chrome's toolbar at the bottom (and of a
+  /// sheet over the list, [_coveredFromY]).
   bool _fullyVisible(String key) {
     final box = _boxOf(key);
     final viewport = _scroll.position.context.storageContext.findRenderObject();
     if (box == null || viewport is! RenderBox) return false;
     final top = box.localToGlobal(Offset.zero, ancestor: viewport).dy;
-    final bottomCover = MediaQuery.paddingOf(context).bottom + widget.bottomInset;
+    // A sheet over the list covers the bars at the bottom too: the larger of the two, not their sum.
+    final bottomCover = math.max(MediaQuery.paddingOf(context).bottom + widget.bottomInset, _sheetCover(viewport));
     return top >= 0 && top + box.size.height <= _scroll.position.viewportDimension - bottomCover;
   }
 
+  /// How much of [viewport]'s bottom the sheet over the list covers.
+  double _sheetCover(RenderBox viewport) {
+    final y = _coveredFromY;
+    if (y == null) return 0;
+    return (viewport.localToGlobal(Offset(0, viewport.size.height)).dy - y).clamp(0.0, viewport.size.height);
+  }
+
   /// Scrolls node [id]'s row into view (lazily built rows are reached in a few jumps); [highlight] marks it for a
-  /// moment.
-  void revealNode(String id, {bool highlight = false}) {
+  /// moment. [coveredFromY]: a sheet covers the window from this y down (the phone's node settings at half), so the row
+  /// goes above it.
+  void revealNode(String id, {bool highlight = false, double? coveredFromY}) {
     if (!mounted) return;
+    _coveredFromY = coveredFromY;
+    final viewport = _scroll.hasClients ? _scroll.position.context.storageContext.findRenderObject() : null;
+    _coverRoom = viewport is RenderBox && viewport.hasSize
+        ? math.max(0.0, _sheetCover(viewport) - MediaQuery.paddingOf(context).bottom - widget.bottomInset)
+        : 0;
     _layout = _cache.layoutOf(_doc);
     final index = _layout.rowOfNode(id);
     if (index == null) return;
@@ -316,10 +346,15 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
       final ctx = _rows[key];
       if (ctx != null && ctx.mounted && _boxOf(key) != null) {
         if (_fullyVisible(key)) return;
+        final viewport = _scroll.position.context.storageContext.findRenderObject();
+        final visible = viewport is RenderBox && viewport.size.height > 0
+            ? 1 - _sheetCover(viewport) / viewport.size.height
+            : 1.0;
         unawaited(
           Scrollable.ensureVisible(
             ctx,
-            alignment: 0.3,
+            // Where a third of the uncovered list is.
+            alignment: 0.3 * visible,
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOutCubic,
           ),
@@ -446,11 +481,9 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
                 ? DifyI18n.tr('workflow', 'debug.variableInspect.trigger.stop')
                 : DifyI18n.tr('workflow', 'panel.runThisStep'),
             icon: RemixIcon(a.isSingleRunning(id) ? 'stop-circle-line' : 'play-circle-line', size: 20),
-            // The request (run or stop) is consumed by the step's node panel: open it, as the canvas's Run step does.
-            onTap: () {
-              a.runStep(id);
-              _open(id);
-            },
+            // The request (run or stop) is taken by the phone editor's sheets (the step's form or its result in the run
+            // sheet), or by the step's settings when they are open: one tap does not also open the settings.
+            onTap: () => a.runStep(id),
           ),
         if (_canInsert(row.before, data))
           DifyActionSheetAction(
@@ -511,6 +544,9 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     return RemixIcon(icon, key: ValueKey('step-status-${run.status}'), size: 20, color: color);
   }
 
+  /// The time each step of the shown run took (mockup 7: "words = 3 · 1.2 s"), from the run's tracing.
+  Map<String, num> _times = const {};
+
   Widget _card(StepRow row) {
     final n = _doc.nodes[row.nodeId]!;
     final run = widget.canvas.nodeRun.value[n.id] ?? NodeRunView.idle;
@@ -518,11 +554,19 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     final issue = _issues[n.id];
     final status = running ? (run.isLoading ? DifyColors.stateAccentSolid : statusBorderColor(run.status)) : null;
     final title = n.title.isEmpty ? blockName(n.type) : n.title;
+    final time = running && !run.isLoading ? _times[n.id] : null;
+    final summary = stepSummary(n, _doc);
     return DifyStepCard(
       key: ValueKey('step-card-${n.id}'),
       leading: FittedBox(child: BlockIcon(type: n.type)),
       title: title,
-      subtitle: issue != null && issue.message.isNotEmpty ? issue.message : stepSummary(n, _doc),
+      subtitle: issue != null && issue.message.isNotEmpty
+          ? issue.message
+          : time == null
+          ? summary
+          : summary.isEmpty
+          ? formatStepSeconds(time)
+          : '$summary · ${formatStepSeconds(time)}',
       subtitleColor: issue != null && issue.message.isNotEmpty ? DifyColors.textDestructive : null,
       statusColor: status ?? (issue != null ? DifyColors.stateDestructiveSolid : null),
       trailing: [
@@ -608,7 +652,9 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     final data = BlockSelectorScope.of(context);
     final insets = MediaQuery.paddingOf(context);
     final rows = _layout.rows;
-    final end = 24 + insets.bottom + widget.bottomInset;
+    // A browsed version's graph is not the run's: no times on it.
+    _times = _store?.isRestoring.value == true ? const {} : stepTimesOf(_store?.workflowRunningData.value);
+    final end = 24 + insets.bottom + widget.bottomInset + _coverRoom;
     if (rows.isEmpty) {
       return Padding(
         padding: EdgeInsets.only(bottom: end),

@@ -857,12 +857,15 @@ class _AgentSelectorContentState extends State<AgentSelectorContent> {
     final status = _status;
     return Container(
       width: 240,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: DifyColors.componentsPanelBgBlur,
-        borderRadius: BorderRadius.circular(DifyRadius.xl),
-        border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-        boxShadow: DifyShadows.lg,
+      clipBehavior: DifyFloating.inSheet(context) ? Clip.none : Clip.antiAlias,
+      decoration: DifyFloating.surface(
+        context,
+        BoxDecoration(
+          color: DifyColors.componentsPanelBgBlur,
+          borderRadius: BorderRadius.circular(DifyRadius.xl),
+          border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+          boxShadow: DifyShadows.lg,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

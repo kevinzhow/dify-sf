@@ -105,6 +105,8 @@
     "nodesSelected": "已選取 {{count}} 個節點",
     "connection": "連線",
     "insertStep": "插入步驟",
+    "insertVariable": "插入變數",
+    "language": "語言",
     "deleteConnection": "刪除連線",
     "selectMode": "框選模式",
     "addAfter": "在 {{name}} 之後 · 自動連線",
@@ -115,7 +117,11 @@
     "organize": "整理",
     "zoom": "縮放",
     "generate": "AI 生成",
-    "connectionDetails": "連線詳情"
+    "connectionDetails": "連線詳情",
+    "runSucceeded": "成功",
+    "runFailed": "失敗",
+    "runStopped": "已停止",
+    "runPaused": "已暫停"
   },
   "workflow": {
     "mobile.steps.addStep": "新增步驟",

@@ -13,6 +13,7 @@ import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../header/format.dart' as fmt;
 import '../../node_panel/resize_handle.dart';
+import '../../phone/panel_sheet_scope.dart';
 import '../../store/panel_width.dart' show getPreviewPanelMaxWidth;
 import '../../store/workflow_store.dart';
 import '../../store/workflow_store_scope.dart';
@@ -105,12 +106,18 @@ DifyTab runPanelTab({
 }
 
 /// The run panels' [DifyTabsList] (the tabs carry their own `mr-6`); tabs past the panel's edge are clipped (the
-/// browser lets them overflow).
-Widget runPanelTabs(List<Widget> tabs) => SingleChildScrollView(
+/// browser lets them overflow). [inSheet] (dify-sf: a phone's run sheet): the tabs take the tab component's touch
+/// size and are reached by swiping.
+Widget runPanelTabs(List<Widget> tabs, {bool inSheet = false}) => SingleChildScrollView(
   scrollDirection: Axis.horizontal,
-  physics: const NeverScrollableScrollPhysics(),
-  child: DifyTabsList(gap: 0, children: tabs),
+  physics: inSheet ? null : const NeverScrollableScrollPhysics(),
+  child: DifyTabsList(gap: 0, size: inSheet ? DifyTabSize.touch : DifyTabSize.regular, children: tabs),
 );
+
+/// dify-sf: lays a run panel's parts out somewhere else than its desktop panel (the phone editor's run sheet): [tabs]
+/// is the tab row (Input | Result | Detail | Tracing), [content] the selected tab's content, which fills the height it
+/// is given and scrolls itself.
+typedef RunPanelLayout = Widget Function(BuildContext context, Widget tabs, Widget content);
 
 /// Base Loading (`<Loading />`, [DifyLoading]) on the panel's background ([color]).
 class RunLoading extends StatelessWidget {
@@ -188,7 +195,8 @@ class InputsPanel extends StatelessWidget {
                       key: ValueKey('input-${v['variable']}'),
                       padding: EdgeInsets.only(bottom: i == variables.length - 1 ? 0 : 8),
                       child: RunFormItem(
-                        autoFocus: i == 0,
+                        // dify-sf: no keyboard pops up by itself in a phone's sheet.
+                        autoFocus: i == 0 && PanelSheetScope.maybeOf(context) == null,
                         payload: v,
                         value: initialInputs['${v['variable']}'],
                         onChange: (value) => change('${v['variable']}', value),
@@ -222,8 +230,15 @@ enum _Tab { input, result, detail, tracing }
 /// WorkflowPreview: "Test Run (time)" with the close button, the tabs and their content. Switches to INPUT when the
 /// inputs panel opens, DETAIL while listening or after a run that produced no text or files, RESULT when paused.
 class WorkflowPreview extends StatefulWidget {
-  const WorkflowPreview({super.key, this.panel = const RunPanelContext()});
+  const WorkflowPreview({super.key, this.panel = const RunPanelContext(), this.layout, this.openOnResult = false});
   final RunPanelContext panel;
+
+  /// dify-sf: opens on RESULT, the run having been started elsewhere (the phone's input sheet), instead of INPUT.
+  final bool openOnResult;
+
+  /// dify-sf: the tabs and the content laid out by the host (the phone's run sheet) instead of the panel's frame
+  /// ("Test Run (time)", close, the resize handle).
+  final RunPanelLayout? layout;
 
   @override
   State<WorkflowPreview> createState() => _WorkflowPreviewState();
@@ -231,7 +246,11 @@ class WorkflowPreview extends StatefulWidget {
 
 class _WorkflowPreviewState extends State<WorkflowPreview> {
   late final WorkflowStore store = WorkflowStoreScope.of(context);
-  late _Tab _tab = store.showInputsPanel.value ? _Tab.input : _Tab.tracing;
+  late _Tab _tab = widget.openOnResult
+      ? _Tab.result
+      : store.showInputsPanel.value
+      ? _Tab.input
+      : _Tab.tracing;
   late final Listenable _watched = Listenable.merge([
     store.showDebugAndPreviewPanel,
     store.showInputsPanel,
@@ -239,7 +258,9 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
     store.workflowRunningData,
   ]);
   bool _wasListening = false;
-  (bool, bool)? _shown;
+  late (bool, bool)? _shown = widget.openOnResult
+      ? (store.showDebugAndPreviewPanel.value, store.showInputsPanel.value)
+      : null;
   DifyJson? _lastData;
   double _dragFrom = 0;
 
@@ -317,22 +338,25 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
         bottom: BorderSide(color: DifyColors.dividerSubtle, width: Css.hairline),
       ),
     ),
-    child: runPanelTabs(
-      [
-        if (store.showInputsPanel.value)
-          runPanelTab(label: _tr('input'), active: _tab == _Tab.input, onTap: () => _switch(_Tab.input)),
-        for (final (tab, key) in const [(_Tab.result, 'result'), (_Tab.detail, 'detail'), (_Tab.tracing, 'tracing')])
-          runPanelTab(
-            label: _tr(key),
-            active: _tab == tab,
-            disabled: data == null,
-            onTap: () {
-              if (data == null) return;
-              _switch(tab);
-            },
-          ),
-      ],
-    ),
+    child: _tabRow(data),
+  );
+
+  Widget _tabRow(DifyJson? data) => runPanelTabs(
+    inSheet: widget.layout != null,
+    [
+      if (store.showInputsPanel.value)
+        runPanelTab(label: _tr('input'), active: _tab == _Tab.input, onTap: () => _switch(_Tab.input)),
+      for (final (tab, key) in const [(_Tab.result, 'result'), (_Tab.detail, 'detail'), (_Tab.tracing, 'tracing')])
+        runPanelTab(
+          label: _tr(key),
+          active: _tab == tab,
+          disabled: data == null,
+          onTap: () {
+            if (data == null) return;
+            _switch(tab);
+          },
+        ),
+    ],
   );
 
   Widget _content(DifyJson? data) {
@@ -434,6 +458,16 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
       final result = data == null ? null : resultOf(data);
       final width = DifyAdaptive.panelWidth(context, store.previewPanelWidth.value);
       final burn = _tab == _Tab.result || _tab == _Tab.tracing;
+      if (widget.layout case final layout?) {
+        return layout(
+          context,
+          _tabRow(data),
+          ColoredBox(
+            color: burn ? DifyColors.backgroundSectionBurn : DifyColors.componentsPanelBg,
+            child: _content(data),
+          ),
+        );
+      }
       return SizedBox(
         width: width,
         child: Stack(

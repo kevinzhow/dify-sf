@@ -49,6 +49,22 @@ void main() {
       await back();
     }
 
+    // Batch 4a: a sheet and a page shown from the page's tree, and a select as a sheet (a compact window).
+    for (final (label, finder) in [
+      ('Sheet portal', find.byKey(const ValueKey('dify-sheet-scrim'))),
+      ('Portal page', find.byKey(const ValueKey('dify-portal-page'))),
+      ('String', find.text('Number')),
+    ]) {
+      await t.scrollUntilVisible(find.text(label), 200, scrollable: find.byType(Scrollable).first);
+      await t.tap(find.text(label));
+      await t.pumpAndSettle();
+      expect(finder, findsWidgets, reason: label);
+      expect(t.takeException(), isNull, reason: label);
+      await back();
+      expect(find.byKey(const ValueKey('dify-sheet-scrim')), findsNothing, reason: label);
+      expect(find.byKey(const ValueKey('dify-portal-page')), findsNothing, reason: label);
+    }
+
     await t.tap(find.bySemanticsLabel('Theme'));
     await t.pumpAndSettle();
     expect(DifyColors.isDark, isTrue);

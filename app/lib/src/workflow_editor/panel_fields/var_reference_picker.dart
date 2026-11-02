@@ -222,6 +222,9 @@ class _VarReferencePickerState extends State<VarReferencePicker> {
       sideOffset: 4,
       tapRegionGroup: _group,
       initialFocus: _search,
+      // A phone: "Insert variable", a full-height sheet (mockup 5).
+      sheetOnCompact: true,
+      sheetTitle: DifyI18n.tr('phone-editor', 'insertVariable'),
       onOpenChange: (open) => w.onOpen?.call(open),
       builder: (context, controller) {
         void open() {
@@ -256,6 +259,7 @@ class _VarReferencePickerState extends State<VarReferencePicker> {
               type: type,
               showErrorIcon: hasValue && !meta.isValidVar,
               widths: widths,
+              touch: DifyTouch.compactOf(context) && !w.isJustShowValue && !w.isInTable,
               onJump: w.onJump == null ? null : () => w.onJump!(pickerOutputVarNodeId(hasValue, value)),
             );
             pill = switch (hover) {
@@ -299,6 +303,7 @@ class _VarReferencePickerState extends State<VarReferencePicker> {
               onManageInputField: w.onManageInputField,
               onClose: () => _popup.close(instant: true),
               tapRegionGroup: _group,
+              nodeTypeOf: (id) => scope.lookup(id)?.type,
             ),
     );
   }
@@ -359,8 +364,11 @@ class _Trigger extends StatelessWidget {
         : w.isSupportConstantValue
         ? null
         : DifyColors.componentsInputBgNormal;
+    // A phone: a touch-high box that grows with the variable's wrapped "Node / {x} name".
+    final touch = DifyTouch.compactOf(context) && !w.isJustShowValue && !w.isInTable;
     final box = Container(
-      height: w.isJustShowValue ? 24 : 32,
+      height: touch ? null : (w.isJustShowValue ? 24 : 32),
+      constraints: touch ? const BoxConstraints(minHeight: DifyTouch.controlHeight) : null,
       padding: w.isSupportConstantValue || w.isJustShowValue ? EdgeInsets.zero : const EdgeInsets.all(4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(DifyRadius.lg)),
       child: Stack(
@@ -505,7 +513,11 @@ class _Pill extends StatelessWidget {
     required this.showErrorIcon,
     required this.widths,
     this.onJump,
+    this.touch = false,
   });
+
+  /// A phone: nothing is cut; the node's and the variable's names wrap onto more lines if needed.
+  final bool touch;
 
   final bool hasValue, readonly, isLoading;
   final String placeholder;
@@ -549,6 +561,7 @@ class _Pill extends StatelessWidget {
         ),
       );
     }
+    if (touch) return _wrapped(spinner);
     Widget nodeLabel = ShrinkRow(
       children: [
         Padding(
@@ -615,6 +628,68 @@ class _Pill extends StatelessWidget {
             Padding(
               key: Key('var-reference-picker-error-icon'),
               padding: EdgeInsets.only(left: 2),
+              child: RemixIcon('error-warning-fill', size: 12, color: DifyColors.textDestructive),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+extension on _Pill {
+  /// The phone's pill: "Node / {x} name Type" in full, wrapping at the field's width.
+  Widget _wrapped(Widget spinner) {
+    final line3 = Padding(padding: const EdgeInsets.only(right: 2), child: _Pill._line3);
+    return Container(
+      key: const Key('var-reference-picker-pill'),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: DifyColors.componentsBadgeWhiteToDark,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 2,
+        children: [
+          if (showNodeName) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1),
+              child: nodeType == null
+                  ? const SizedBox(width: 12, height: 12)
+                  : DifyIcon(varBlockGlyph(nodeType!), size: 12, color: DifyColors.textPrimary),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: DifyText(
+                nodeTitle ?? '',
+                DifyType.systemXsMedium,
+                color: DifyColors.textSecondary,
+                maxLines: null,
+              ),
+            ),
+            line3,
+          ],
+          if (isShowAPart) ...[RemixIcon('more-line', size: 12, color: DifyColors.textSecondary), line3],
+          if (isLoading) spinner,
+          CategoryVarIcon(variables: value, category: category, isException: isException),
+          Padding(
+            padding: const EdgeInsets.only(left: 2),
+            child: DifyText(
+              varName,
+              DifyType.systemXsMedium,
+              color: isException ? DifyColors.textWarning : DifyColors.textAccent,
+              maxLines: null,
+            ),
+          ),
+          if (type != null && type!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: DifyText(cssCapitalize(type!), DifyType.systemXsRegular, color: DifyColors.textTertiary),
+            ),
+          if (showErrorIcon)
+            Padding(
+              key: const Key('var-reference-picker-error-icon'),
+              padding: const EdgeInsets.only(left: 2),
               child: RemixIcon('error-warning-fill', size: 12, color: DifyColors.textDestructive),
             ),
         ],

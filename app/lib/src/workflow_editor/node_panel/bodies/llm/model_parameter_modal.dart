@@ -263,6 +263,9 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
     return DifyFloating(
       open: _open,
       onOpenChange: _setOpen,
+      // A phone: the model and its parameters in a sheet, under the sheets' own header (title, 44 px close).
+      sheetOnCompact: true,
+      sheetTitle: DifyI18n.tr('common', 'modelProvider.modelSettings'),
       placement:
           w.placement ??
           (w.isInWorkflow
@@ -299,11 +302,11 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
               ),
             ),
           ),
-      popupBuilder: (context) => _content(value),
+      popupBuilder: (context) => _content(value, sheet: DifyFloating.inSheet(context)),
     );
   }
 
-  Widget _content(DefaultModel? value) {
+  Widget _content(DefaultModel? value, {bool sheet = false}) {
     final w = widget;
     final rules = _rules;
     final loading = _loading && w.provider.isNotEmpty && w.modelId.isNotEmpty;
@@ -316,35 +319,40 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
       explicitChildNodes: true,
       child: Container(
         width: w.popupWidth,
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBg,
-          border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-          borderRadius: BorderRadius.circular(DifyRadius.xxl),
-          boxShadow: DifyShadows.lg,
-        ),
-        clipBehavior: Clip.antiAlias,
+        // In a sheet (a phone) the sheet is the surface.
+        decoration: sheet
+            ? null
+            : BoxDecoration(
+                color: DifyColors.componentsPanelBg,
+                border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+                borderRadius: BorderRadius.circular(DifyRadius.xxl),
+                boxShadow: DifyShadows.lg,
+              ),
+        clipBehavior: sheet ? Clip.none : Clip.antiAlias,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 44, 4),
-                  child: DifyText(title, DifyType.systemXlSemibold),
-                ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: DifyIconButton(
-                    label: DifyI18n.tr('common', 'operation.close'),
-                    size: DifyIconButtonSize.lg,
-                    icon: const RemixIcon('close-line', size: 16),
-                    onPressed: () => _setOpen(false),
+            // A phone's sheet has the sheets' own header (DifyFloating.sheetTitle).
+            if (!sheet)
+              Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 44, 4),
+                    child: DifyText(title, DifyType.systemXlSemibold),
                   ),
-                ),
-              ],
-            ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: DifyIconButton(
+                      label: DifyI18n.tr('common', 'operation.close'),
+                      size: DifyIconButtonSize.lg,
+                      icon: const RemixIcon('close-line', size: 16),
+                      onPressed: () => _setOpen(false),
+                    ),
+                  ),
+                ],
+              ),
             Flexible(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 420),

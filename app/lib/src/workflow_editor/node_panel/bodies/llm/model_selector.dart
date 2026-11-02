@@ -218,6 +218,9 @@ class _ModelSelectorRootState extends State<ModelSelectorRoot> {
       placement: DifyPlacement.bottomStart,
       sideOffset: 8,
       constrainHeight: true,
+      // A phone: the model list in a sheet.
+      sheetOnCompact: true,
+      sheetTitle: configureModelLabel,
       builder: (context, controller) => LayoutBuilder(
         builder: (context, c) {
           if (c.maxWidth.isFinite) _anchorWidth = c.maxWidth;
@@ -289,22 +292,25 @@ class ModelSelectorPopupSurface extends StatelessWidget {
     role: SemanticsRole.dialog,
     label: configureModelLabel,
     explicitChildNodes: true,
-    child: ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: 624, maxWidth: 448, minWidth: width.clamp(0, 448)),
-      child: SizedBox(
-        width: width <= 0 ? 320 : width.clamp(0, 448),
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: DifyColors.componentsPanelBg,
-            border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-            borderRadius: BorderRadius.circular(DifyRadius.xl),
-            boxShadow: DifyShadows.lg,
+    // In a sheet (a phone) the sheet is the surface and the width.
+    child: DifyFloating.inSheet(context)
+        ? DifySurface(child: child)
+        : ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: 624, maxWidth: 448, minWidth: width.clamp(0, 448)),
+            child: SizedBox(
+              width: width <= 0 ? 320 : width.clamp(0, 448),
+              child: Container(
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: DifyColors.componentsPanelBg,
+                  border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+                  borderRadius: BorderRadius.circular(DifyRadius.xl),
+                  boxShadow: DifyShadows.lg,
+                ),
+                child: DifySurface(child: child),
+              ),
+            ),
           ),
-          child: DifySurface(child: child),
-        ),
-      ),
-    ),
   );
 }
 
@@ -633,7 +639,7 @@ class _ModelSelectorPopupState extends State<ModelSelectorPopup> {
               ),
             ),
             child: _GhostRow(
-              height: 32,
+              height: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 32,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               radius: DifyRadius.lg,
               leading: RemixIcon('equalizer-2-line', size: 16, color: DifyColors.textTertiary),
@@ -845,7 +851,8 @@ class _ModelSelectorPopupItemState extends State<ModelSelectorPopupItem> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            constraints: const BoxConstraints(minHeight: 22),
+            // A phone's sheet: the provider row is a touch row (its name toggles, its credential control opens).
+            constraints: BoxConstraints(minHeight: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 22),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             color: DifyColors.componentsPanelBg,
             child: LayoutBuilder(
@@ -853,32 +860,35 @@ class _ModelSelectorPopupItemState extends State<ModelSelectorPopupItem> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Flexible(
-                    child: DifyPressable(
-                      semanticLabel: label,
-                      onPressed: () => setState(() => _open = !_open),
-                      builder: (context, hovered, focused) => Semantics(
-                        expanded: _open,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: DifyTextLine(
-                                label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
+                    child: _touchInSheet(
+                      context,
+                      DifyPressable(
+                        semanticLabel: label,
+                        onPressed: () => setState(() => _open = !_open),
+                        builder: (context, hovered, focused) => Semantics(
+                          expanded: _open,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: DifyTextLine(
+                                  label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
+                                ),
                               ),
-                            ),
-                            AnimatedRotation(
-                              turns: _open ? 0 : -0.25,
-                              duration: difyTransitionDuration,
-                              child: DifyIcon(
-                                'vender/solid/general/arrow-down-round-fill',
-                                size: 16,
-                                color: DifyColors.textQuaternary,
+                              AnimatedRotation(
+                                turns: _open ? 0 : -0.25,
+                                duration: difyTransitionDuration,
+                                child: DifyIcon(
+                                  'vender/solid/general/arrow-down-round-fill',
+                                  size: 16,
+                                  color: DifyColors.textQuaternary,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -960,14 +970,19 @@ class _ProviderCredentialDropdownState extends State<_ProviderCredentialDropdown
       },
       placement: DifyPlacement.bottomEnd,
       sideOffset: 8,
+      // A phone: the provider's credentials in a sheet titled as what it manages.
+      sheetTitle: _c('modelProvider.auth.manageCredentials'),
       builder: (context, controller) => canOpen
-          ? DifyButton(
-              semanticLabel: widget.state.credentialName ?? _c('modelProvider.selector.configureRequired'),
-              variant: DifyButtonVariant.ghost,
-              size: DifyButtonSize.small,
-              paddingX: 6,
-              onPressed: controller.toggle,
-              child: _CredentialStatus(state: widget.state, showArrow: true),
+          ? _touchInSheet(
+              context,
+              DifyButton(
+                semanticLabel: widget.state.credentialName ?? _c('modelProvider.selector.configureRequired'),
+                variant: DifyButtonVariant.ghost,
+                size: DifyButtonSize.small,
+                paddingX: 6,
+                onPressed: controller.toggle,
+                child: _CredentialStatus(state: widget.state, showArrow: true),
+              ),
             )
           : _CredentialStatus(state: widget.state),
       popupBuilder: (context) => ModelProviderScope(
@@ -1091,7 +1106,8 @@ class ModelSelectorModelRow extends StatelessWidget {
       builder: (context, hovered, focused) => Semantics(
         selected: selected,
         child: Container(
-          height: 32,
+          // A 48 px touch row in a phone's sheet.
+          height: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 32,
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -1154,3 +1170,7 @@ class ModelSelectorModelRow extends StatelessWidget {
     );
   }
 }
+
+/// [child] with a 48 px hit area in a phone's sheet (its row is 48 px there).
+Widget _touchInSheet(BuildContext context, Widget child) =>
+    DifyFloating.inSheet(context) ? DifyTouchTarget(child: child) : child;

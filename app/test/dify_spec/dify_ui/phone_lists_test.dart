@@ -156,7 +156,8 @@ void main() {
       final bar = t.getRect(find.byType(DifyTopAppBar));
       expect(bar.top, 0);
       expect(bar.height, 32 + DifyTopAppBar.height);
-      expect(t.getSize(find.byType(DifySearchInput)).height, 40);
+      // Batch 4a: every text field is at least 44 px in a compact window (DifyInput), the 40 asked for included.
+      expect(t.getSize(find.byType(DifySearchInput)).height, 44);
       expect(t.getTopLeft(find.byType(DifySearchInput)).dy, greaterThan(32));
       await t.tap(find.byType(DifyAppBarBackButton));
       expect(closed, 1);

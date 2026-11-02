@@ -190,3 +190,22 @@ String laneLabel(Node owner, StepRow row, Document doc) {
       return handle;
   }
 }
+
+/// A run's time as the phone shows it on a step and in the run sheet (mockup 7's "1.2 s"): seconds with one decimal,
+/// minutes and whole seconds from a minute on.
+String formatStepSeconds(num seconds) {
+  if (seconds < 60) return '${seconds.toStringAsFixed(1)} s';
+  return '${seconds ~/ 60} m ${(seconds % 60).round()} s';
+}
+
+/// The time each step took in [workflowRunningData]'s tracing (the run's `node_finished` events: `elapsed_time` of
+/// a finished node), by node id; the latest entry of a node wins (a loop's or a retried node's last round).
+Map<String, num> stepTimesOf(Map<String, Object?>? workflowRunningData) {
+  final out = <String, num>{};
+  for (final t in jsList(workflowRunningData?['tracing'])) {
+    if (t is! Map) continue;
+    final id = t['node_id'], elapsed = t['elapsed_time'], status = t['status'];
+    if (id is String && elapsed is num && status != 'running' && status != 'waiting') out[id] = elapsed;
+  }
+  return out;
+}

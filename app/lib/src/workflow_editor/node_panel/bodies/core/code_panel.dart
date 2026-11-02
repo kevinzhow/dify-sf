@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../../../design/dify_icon.dart';
+import '../../../../i18n/dify_i18n.dart';
 import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';
 import '../../../../workflow/dify_json.dart';
@@ -366,20 +367,27 @@ class _CodePanelState extends State<_CodePanel> {
                     ? null
                     : Row(
                         mainAxisSize: MainAxisSize.min,
-                        spacing: 8,
+                        // A phone: each in its own touch box, side by side.
+                        spacing: DifyTouch.compactOf(context) ? 0 : 8,
                         children: [
-                          DifyTooltip(
-                            content: DifyTextLine(sync),
-                            child: _IconOperation(
-                              label: sync,
-                              icon: 'refresh-line',
-                              onPressed: c.handleSyncFunctionSignature,
+                          fieldHeaderControl(
+                            context,
+                            DifyTooltip(
+                              content: DifyTextLine(sync),
+                              child: _IconOperation(
+                                label: sync,
+                                icon: 'refresh-line',
+                                onPressed: c.handleSyncFunctionSignature,
+                              ),
                             ),
                           ),
-                          FieldAddButton(
-                            label: '${tc('operation.add')} $inputsTitle',
-                            onPressed: c.handleAddVariable,
-                            alone: false,
+                          fieldHeaderControl(
+                            context,
+                            FieldAddButton(
+                              label: '${tc('operation.add')} $inputsTitle',
+                              onPressed: c.handleAddVariable,
+                              alone: false,
+                            ),
                           ),
                         ],
                       ),
@@ -398,6 +406,7 @@ class _CodePanelState extends State<_CodePanel> {
                 isInNode: true,
                 readOnly: readOnly,
                 titleWidget: TypeSelector<String>(
+                  sheetTitle: DifyI18n.tr('phone-editor', 'language'),
                   triggerUppercase: true,
                   options: codeLanguageOptions,
                   value: language,
@@ -419,9 +428,9 @@ class _CodePanelState extends State<_CodePanel> {
           child: Field(
             title: outputsTitle,
             required: true,
-            operations: FieldAddButton(
-              label: '${tc('operation.add')} $outputsTitle',
-              onPressed: c.handleAddOutputVariable,
+            operations: fieldHeaderControl(
+              context,
+              FieldAddButton(label: '${tc('operation.add')} $outputsTitle', onPressed: c.handleAddOutputVariable),
             ),
             child: OutputVarList(
               readonly: readOnly,

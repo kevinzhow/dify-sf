@@ -63,7 +63,11 @@ class TypeSelector<T> extends StatefulWidget {
     this.sideOffset = 4,
     this.popupWidth = 120,
     this.onTriggerTap,
+    this.sheetTitle,
   });
+
+  /// The title of the sheet it opens as on a phone (else the field's label, if any).
+  final String? sheetTitle;
 
   final T? value;
   final List<SelectOption<T>> options;
@@ -100,6 +104,9 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
       placement: DifyPlacement.bottomStart,
       sideOffset: sideOffset,
       collision: DifyCollision.dropdown,
+      sheetOnCompact: true,
+      sheetTitle: widget.sheetTitle,
+      sheetTitleFromField: true,
       builder: (context, c) => MouseRegion(
         cursor: readonly ? SystemMouseCursors.basic : SystemMouseCursors.click,
         child: GestureDetector(
@@ -119,31 +126,53 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
               ),
         ),
       ),
-      popupBuilder: (context) => Container(
-        width: popupWidth,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBg,
-          borderRadius: BorderRadius.circular(DifyRadius.lg),
-          border: Border.all(color: DifyColors.componentsPanelBorder),
-          boxShadow: DifyShadows.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final o in options)
-              _TypeSelectorItem(
-                label: uppercase ? o.label.toUpperCase() : o.label,
-                checked: showChecked && o.value == value,
-                onTap: () {
+      popupBuilder: (context) => DifyFloating.inSheet(context)
+          // A phone: the select sheets' own rows (DifySelect's), the current value marked alike.
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: DifyMenuRadioGroup<T>(
+                value: value,
+                onValueChange: (v) {
                   _controller.close();
-                  onChanged(o.value);
+                  onChanged(v);
                 },
+                children: [
+                  for (final o in options)
+                    DifyMenuRadioItem<T>(
+                      value: o.value,
+                      child: DifyTextLine(
+                        uppercase ? o.label.toUpperCase() : o.label,
+                        style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
+                      ),
+                    ),
+                ],
               ),
-          ],
-        ),
-      ),
+            )
+          : Container(
+              width: popupWidth,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: DifyColors.componentsPanelBg,
+                borderRadius: BorderRadius.circular(DifyRadius.lg),
+                border: Border.all(color: DifyColors.componentsPanelBorder),
+                boxShadow: DifyShadows.lg,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final o in options)
+                    _TypeSelectorItem(
+                      label: uppercase ? o.label.toUpperCase() : o.label,
+                      checked: showChecked && o.value == value,
+                      onTap: () {
+                        _controller.close();
+                        onChanged(o.value);
+                      },
+                    ),
+                ],
+              ),
+            ),
     );
     if (trigger == null && !noLeft) selector = Transform.translate(offset: const Offset(-8, 0), child: selector);
     return selector;
