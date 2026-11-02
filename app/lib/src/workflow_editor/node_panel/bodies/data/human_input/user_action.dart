@@ -204,31 +204,41 @@ class _ButtonStyleDropdownState extends State<ButtonStyleDropdown> {
       placement: DifyPlacement.bottomEnd,
       sideOffset: 4,
       alignOffset: 44,
-      builder: (context, c) => DifyTouchArea.inPhoneSheet(
-        context,
-        DifyPressable(
-          semanticLabel: hi('userActions.chooseStyle'),
-          onPressed: w.readonly ? null : c.toggle,
-          builder: (context, hovered, _) => Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: (hovered && !w.readonly) || c.isOpen
-                  ? DifyColors.componentsButtonTertiaryBgHover
-                  : DifyColors.componentsButtonTertiaryBg,
-              borderRadius: BorderRadius.circular(DifyRadius.lg),
-            ),
-            child: IgnorePointer(
-              child: DifyButton(
-                size: DifyButtonSize.small,
-                paddingX: 4,
-                variant: buttonVariantOf(w.value),
-                onPressed: () {},
-                child: const RemixIcon('font-size', size: 16),
+      // A phone's sheet: a tertiary icon button like Delete beside it (the small sample button would sit as a narrow
+      // tile in the 44 dp box); the popup still shows the styles.
+      builder: (context, c) => DifyTouch.compactOf(context) && DifySheetRecipe.contains(context)
+          ? DifyIconButton(
+              label: hi('userActions.chooseStyle'),
+              size: DifyIconButtonSize.lg,
+              variant: DifyButtonVariant.tertiary,
+              onPressed: w.readonly ? null : c.toggle,
+              icon: const RemixIcon('font-size', size: 16),
+            )
+          : DifyTouchArea.inPhoneSheet(
+              context,
+              DifyPressable(
+                semanticLabel: hi('userActions.chooseStyle'),
+                onPressed: w.readonly ? null : c.toggle,
+                builder: (context, hovered, _) => Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: (hovered && !w.readonly) || c.isOpen
+                        ? DifyColors.componentsButtonTertiaryBgHover
+                        : DifyColors.componentsButtonTertiaryBg,
+                    borderRadius: BorderRadius.circular(DifyRadius.lg),
+                  ),
+                  child: IgnorePointer(
+                    child: DifyButton(
+                      size: DifyButtonSize.small,
+                      paddingX: 4,
+                      variant: buttonVariantOf(w.value),
+                      onPressed: () {},
+                      child: const RemixIcon('font-size', size: 16),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      ),
       popupBuilder: (context) => Container(
         padding: const EdgeInsets.all(16),
         decoration: DifyFloating.surface(

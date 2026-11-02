@@ -18,11 +18,14 @@ import 'package:dify_sf_app/src/workflow_editor/header/publisher/version_info_mo
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/human_input/delivery_method.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/human_input/email_config.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/human_input/human_input_kit.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/human_input/user_action.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/data_common.dart' show DataPanelHost;
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/kr_datasets.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/pe_params.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/next_step.dart';
+import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_editor.dart';
+import 'package:flutter/services.dart';
 import 'package:dify_sf_app/src/workflow_editor/steps/workflow_steps_view.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,7 +40,7 @@ String _tc(String key) => DifyI18n.tr('common', key);
 final _settings = find.byKey(const Key('node-settings-sheet'));
 final _dialogHeader = find.byWidgetPredicate((w) => w is DifySheetHeader && w.title != 'Start');
 
-/// The editor on a Start (query, request, attachment) → End (outputs query) flow.
+/// The editor on a Start (query, request, attachment) → Answer (an LLM) → End (outputs query) flow.
 Future<(EditorController, DemoBackend)> _editor(WidgetTester t, Size size) async {
   phoneWindow(t, size: size);
   final demo = DemoBackend(withBo: false);
@@ -69,6 +72,14 @@ Future<(EditorController, DemoBackend)> _editor(WidgetTester t, Size size) async
       {'variable': 'attachment', 'label': 'Attachment', 'type': 'file', 'required': false},
     ],
   });
+  add('n-llm', 'llm', 'Answer', {
+    'model': {'provider': 'openai', 'name': 'gpt-4o', 'mode': 'chat', 'completion_params': <String, Object?>{}},
+    'prompt_template': [
+      {'role': 'system', 'text': 'Summarize {{#n-start.query#}} in one sentence.'},
+    ],
+    'context': {'enabled': false, 'variable_selector': <Object?>[]},
+    'vision': {'enabled': false},
+  });
   add('n-end', 'end', 'End', {
     'outputs': [
       {
@@ -81,7 +92,10 @@ Future<(EditorController, DemoBackend)> _editor(WidgetTester t, Size size) async
     event: HistoryEvent.nodeAdd,
     removeNodes: [...c.doc.nodes.keys],
     addNodes: nodes,
-    addEdges: [Edge(id: 'e-0', source: 'n-start', target: 'n-end')],
+    addEdges: [
+      Edge(id: 'e-0', source: 'n-start', target: 'n-llm'),
+      Edge(id: 'e-1', source: 'n-llm', target: 'n-end'),
+    ],
   );
   c.selectNode(null);
   await settle(t, 800);
@@ -272,6 +286,56 @@ void main() {
     });
   }
 
+  testWidgets('a sheet opened over a focused field takes the focus: the prompt\'s insert-variable button while '
+      'typing closes the keyboard, the prompt behind gets no text, the list keeps its own nodes; a pick goes in at the '
+      'caret and the prompt has the focus back', (t) async {
+    final semantics = t.ensureSemantics();
+    final (_, demo) = await _editor(t, const Size(411, 914));
+    await t.tap(find.descendant(of: find.byType(WorkflowStepsView), matching: find.text('Answer')).first);
+    await settle(t, 800);
+    final editor = find.descendant(of: _settings, matching: find.byType(DifyPromptEditor)).first;
+    await _show(t, editor);
+    final state = t.state<DifyPromptEditorState>(editor);
+    final field = find.descendant(of: editor, matching: find.byType(EditableText)).first;
+    await t.tap(field);
+    await settle(t, 300);
+    state.controller.selection = const TextSelection.collapsed(offset: 10); // after "Summarize "
+    await settle(t, 100);
+    expect(t.testTextInput.isVisible, isTrue, reason: 'typing in the prompt');
+    final before = state.controller.prompt;
+
+    await t.tap(find.byKey(const Key('prompt-editor-insert')).first);
+    await settle(t, 800);
+    final sheet = find.byKey(const Key('prompt-editor-picker-sheet'));
+    expect(sheet, findsOneWidget);
+    expect(t.testTextInput.isVisible, isFalse, reason: 'the keyboard went down');
+    expect(t.testTextInput.hasAnyClients, isFalse, reason: 'typing no longer reaches the prompt');
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'DifyPortalSheetFrame',
+      reason: "the focus is in the sheet's scope",
+    );
+    await t.sendKeyEvent(LogicalKeyboardKey.keyX);
+    expect(state.controller.prompt, before);
+    final labels = platformLabels(t);
+    expect(labels.where((l) => l.contains('request')), isNotEmpty, reason: '$labels');
+    expect(
+      labels.where((l) => l.contains('Search variable') && l.contains('request')),
+      isEmpty,
+      reason: 'the list keeps its own nodes: $labels',
+    );
+
+    await t.tap(find.descendant(of: sheet, matching: find.text('request')).first);
+    await settle(t, 800);
+    expect(sheet, findsNothing);
+    expect(state.controller.prompt, 'Summarize {{#n-start.request#}}{{#n-start.query#}} in one sentence.');
+    expect(state.focusNode.hasFocus, isTrue, reason: 'the prompt has the focus back');
+    expect(state.controller.selection, const TextSelection.collapsed(offset: 11), reason: 'after the new block');
+    expect(t.takeException(), isNull);
+    semantics.dispose();
+    await _close(t, demo);
+  });
+
   testWidgets('Name this version is a sheet: its title in the header, the fields, Cancel / Save pinned and 44 px; '
       'above the keyboard; Save hands the name over', (t) async {
     VersionInfoUpdate? saved;
@@ -296,7 +360,7 @@ void main() {
     'Select reference Knowledge is a sheet: the list scrolls between the header and the pinned Cancel / Add',
     (t) async {
       List<Map<String, Object?>>? picked;
-      final nav = await _app(
+      await _app(
         t,
         LlmGroupScope(
           services: LlmGroupServices(
@@ -340,7 +404,7 @@ void main() {
   testWidgets('Email Configuration is a sheet; the member picker over it hides the form from assistive technology; '
       'Back closes the picker, then the dialog', (t) async {
     final semantics = t.ensureSemantics();
-    final nav = await _app(
+    await _app(
       t,
       DataPanelHost(
         child: HumanInputHost(
@@ -472,5 +536,46 @@ void main() {
     await t.tap(find.text('Disconnect'));
     await settle(t, 600);
     expect(log.last, 'disconnect n2');
+  });
+
+  testWidgets('recheck leftovers in a phone sheet: the email row\'s "Not configured" is a 44 dp button; the user '
+      'action\'s style control is a 44 dp tertiary icon button like Delete', (t) async {
+    final nav = await _app(t, const SizedBox.expand());
+    unawaited(
+      showDifyBottomSheet<void>(
+        nav.currentContext!,
+        (context) => DataPanelHost(
+          child: HumanInputHost(
+            userEmail: 'owner@example.com',
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  MethodItem(
+                    method: const {'id': 'm', 'type': 'email', 'enabled': false},
+                    onChange: (_) {},
+                    onDelete: (_) {},
+                    email: const EmailContext(nodeId: 'n'),
+                  ),
+                  Row(
+                    children: [
+                      ButtonStyleDropdown(text: 'Approve', value: 'primary', onChange: (_) {}),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await settle(t, 800);
+    final notConfigured = find.widgetWithText(DifyButton, 'Not configured');
+    expect(t.getSize(notConfigured).height, greaterThanOrEqualTo(44));
+    final style = find.descendant(of: find.byType(ButtonStyleDropdown), matching: find.byType(DifyIconButton));
+    expect(style, findsOneWidget);
+    expect(t.getSize(style), const Size(44, 44), reason: "Delete's 44 dp box");
+    expect(find.descendant(of: find.byType(ButtonStyleDropdown), matching: find.byType(DifyButton)), findsNothing);
   });
 }

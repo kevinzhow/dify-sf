@@ -841,7 +841,8 @@ class _AgentSelectorContentState extends State<AgentSelectorContent> {
     semanticLabel: label,
     onPressed: onPressed,
     builder: (context, hovered, focused) => Container(
-      height: 28,
+      // A phone's sheet: a 48 px touch row.
+      height: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 28,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: hovered ? DifyColors.stateBaseHover : null,
@@ -879,13 +880,16 @@ class _AgentSelectorContentState extends State<AgentSelectorContent> {
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
             child: Container(
-              height: 32,
+              // A phone's sheet: touch-high, as its inputs are.
+              height: DifyFloating.inSheet(context) ? DifyTouch.controlHeight : 32,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
                 color: DifyColors.componentsInputBgNormal,
                 borderRadius: BorderRadius.circular(DifyRadius.lg),
               ),
+              // The field's node is the box's height (a 44 dp target on a phone), the text centred in it.
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
                     padding: EdgeInsets.only(right: 2),
@@ -895,16 +899,19 @@ class _AgentSelectorContentState extends State<AgentSelectorContent> {
                     child: Semantics(
                       label: _a('roster.searchLabel'),
                       textField: true,
-                      child: DifySurface(
-                        child: DifyTextField(
-                          controller: _search,
-                          autofocus: true,
-                          onChanged: _onSearch,
-                          style: difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled),
-                          decoration: DifyFieldDecoration(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                            hintText: _a('roster.nodeSelector.searchPlaceholder'),
-                            hintStyle: difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextPlaceholder),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: DifySurface(
+                          child: DifyTextField(
+                            controller: _search,
+                            autofocus: true,
+                            onChanged: _onSearch,
+                            style: difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled),
+                            decoration: DifyFieldDecoration(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                              hintText: _a('roster.nodeSelector.searchPlaceholder'),
+                              hintStyle: difyStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextPlaceholder),
+                            ),
                           ),
                         ),
                       ),

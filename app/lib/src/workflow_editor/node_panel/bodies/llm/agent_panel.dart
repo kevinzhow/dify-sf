@@ -475,7 +475,16 @@ class _NoStrategies extends StatelessWidget {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const DifyIcon('vender/other/no-tool-placeholder', size: 64),
+        // The art is 204 x 36 (Dify draws it at that size); a square icon box shrank it to 64 px wide.
+        const SizedBox(
+          width: 204,
+          height: 36,
+          child: FittedBox(
+            fit: BoxFit.cover,
+            clipBehavior: Clip.hardEdge,
+            child: DifyIcon('vender/other/no-tool-placeholder', size: 204),
+          ),
+        ),
         const SizedBox(height: 8),
         DifyText(
           DifyI18n.tr('tools', 'addToolModal.agent.title'),

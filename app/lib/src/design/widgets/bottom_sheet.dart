@@ -1391,6 +1391,7 @@ class DifyPortalSheetFrame extends StatelessWidget {
     this.initialDetent,
     this.controller,
     this.barrierLabel,
+    this.takeFocus = true,
   });
 
   final Animation<double> animation;
@@ -1401,6 +1402,11 @@ class DifyPortalSheetFrame extends StatelessWidget {
   final DifySheetDetent? initialDetent;
   final DifySheetController? controller;
   final String? barrierLabel;
+
+  /// The sheet takes the focus when it opens over a focused field: the keyboard goes down and keys no longer reach
+  /// the field behind it; when the sheet closes with the focus still in it, the field gets it back (its caret where
+  /// it was). False for a sheet that follows what is typed in the field (the prompt editor's typed `{` / `/`).
+  final bool takeFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -1434,20 +1440,23 @@ class DifyPortalSheetFrame extends StatelessWidget {
                     container: true,
                     scopesRoute: true,
                     explicitChildNodes: true,
-                    child: _DifySheet(
-                      detents: detents,
-                      initialDetent: initialDetent,
-                      controller: controller,
-                      requestClose: dismiss == null
-                          ? null
-                          : () async {
-                              dismiss();
-                              await SchedulerBinding.instance.endOfFrame;
-                              return isOpen();
-                            },
-                      modalRoute: true,
-                      shadow: false,
-                      child: DifySelectionRegion(child: child),
+                    child: _SheetFocus(
+                      take: takeFocus,
+                      child: _DifySheet(
+                        detents: detents,
+                        initialDetent: initialDetent,
+                        controller: controller,
+                        requestClose: dismiss == null
+                            ? null
+                            : () async {
+                                dismiss();
+                                await SchedulerBinding.instance.endOfFrame;
+                                return isOpen();
+                              },
+                        modalRoute: true,
+                        shadow: false,
+                        child: DifySelectionRegion(child: child),
+                      ),
                     ),
                   ),
                 ),
@@ -1458,6 +1467,59 @@ class DifyPortalSheetFrame extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The focus of a sheet shown from a page's tree ([DifyPortalSheetFrame.takeFocus]): when it opens, the focus moves
+/// into the sheet unless it is there already (a portal's own scope around it), so a field behind it gives up the
+/// keyboard; the node that had the focus is remembered and, when the sheet goes with the focus still in it, gets it
+/// back after the frame (a text field keeps its selection, so an insert lands at its caret).
+class _SheetFocus extends StatefulWidget {
+  const _SheetFocus({required this.take, required this.child});
+
+  final bool take;
+  final Widget child;
+
+  @override
+  State<_SheetFocus> createState() => _SheetFocusState();
+}
+
+class _SheetFocusState extends State<_SheetFocus> {
+  final _scope = FocusScopeNode(debugLabel: 'DifyPortalSheetFrame');
+  FocusNode? _previous;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.take) return;
+    _previous = FocusManager.instance.primaryFocus;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final now = FocusManager.instance.primaryFocus;
+      if (now != null && (now == _scope || now.ancestors.contains(_scope))) return;
+      _scope.requestFocus();
+    });
+  }
+
+  @override
+  void deactivate() {
+    // Before the sheet's nodes are taken out: is the focus still in it?
+    final previous = _previous;
+    if (widget.take && previous != null && _scope.hasFocus) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (previous.context != null && previous.canRequestFocus) previous.requestFocus();
+      });
+    }
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _scope.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FocusScope(node: _scope, child: widget.child);
 }
 
 /// The scrim of a sheet shown from a page's tree: window-wide, taking every pointer; a tap calls [onDismiss] (none:
