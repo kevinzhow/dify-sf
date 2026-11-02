@@ -257,7 +257,7 @@ extension NodeInsertion on WorkflowActions {
     final bool startTab;
     // On a phone the selector is a bottom sheet whose header says where the block goes.
     final String where;
-    String tw(String key, Map<String, Object?> params) => DifyI18n.tr('workflow', key, params);
+    String tp(String key, Map<String, Object?> params) => DifyI18n.tr('phone-editor', key, params);
     var p = placement;
     switch (at) {
       case InsertAfter(:final nodeId):
@@ -266,19 +266,19 @@ extension NodeInsertion on WorkflowActions {
         types = availableBlocksOf(n, data).next;
         startTab = true;
         p ??= BlockSelectorPlacements.sourceHandle;
-        where = tw('mobile.addAfter', {'name': n.title});
+        where = tp('addAfter', {'name': n.title});
       case InsertBefore(:final nodeId):
         final n = doc.nodes[nodeId];
         if (n == null) return;
         types = availableBlocksOf(n, data).prev;
         startTab = true;
         p ??= BlockSelectorPlacements.targetHandle;
-        where = tw('mobile.addBefore', {'name': n.title});
+        where = tp('addBefore', {'name': n.title});
       case InsertOnEdge(:final edgeId):
         final e = doc.edges[edgeId];
         final s = e == null ? null : doc.nodes[e.source], t = e == null ? null : doc.nodes[e.target];
         if (s == null || t == null) return;
-        where = tw('mobile.addBetween', {'from': s.title, 'to': t.title});
+        where = tp('addBetween', {'from': s.title, 'to': t.title});
         // custom-edge.tsx: both ends' blocks under the edge's container (the target's flags, as edge data has).
         final inContainer = _inContainer(t);
         final all = availableNodeTypes(chatMode: data.chatMode, agentV2: data.agentV2);

@@ -67,7 +67,7 @@ Widget placeholderStepsView(BuildContext context, StepsViewHost host) => Center(
       children: [
         RemixIcon('list-unordered', size: 32, color: DifyColors.textQuaternary),
         DifyText(
-          DifyI18n.tr('workflow', 'mobile.stepsComing'),
+          DifyI18n.tr('phone-editor', 'stepsComing'),
           DifyType.systemSmRegular,
           color: DifyColors.textTertiary,
           align: TextAlign.center,

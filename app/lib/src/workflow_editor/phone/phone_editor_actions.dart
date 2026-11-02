@@ -33,6 +33,9 @@ import 'phone_editor_controller.dart';
 import 'steps_view_slot.dart';
 
 String _tw(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
+
+/// dify-sf's own phone editor strings (assets/extension_i18n, namespace `phone-editor`).
+String _tp(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('phone-editor', key, params);
 String _tc(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);
 
 /// What the phone chrome needs from the editor around it (the editor provides it; tests can build their own).
@@ -360,7 +363,7 @@ class PhoneEditorActions {
       String? picked;
       await showDifyActionSheet(
         context,
-        title: _tw('mobile.connectFrom', {'name': titleOf(n)}),
+        title: _tp('connectFrom', {'name': titleOf(n)}),
         actions: [
           for (final h in handles) DifyActionSheetAction(label: handleLabel(n, h), onTap: () => picked = h),
         ],
@@ -374,7 +377,7 @@ class PhoneEditorActions {
       context,
       (context) => scoped(
         _ConnectSheet(
-          title: _tw('mobile.connectTitle'),
+          title: _tp('connectTitle'),
           subtitle: handles.length > 1 ? '${titleOf(n)} · ${handleLabel(n, handle)}' : titleOf(n),
           targets: [
             for (final t in targets) (id: t.id, title: titleOf(t), type: t.type, icon: iconOf(t)),
@@ -483,19 +486,19 @@ class PhoneEditorActions {
           ),
         if (canAddAfter(n))
           DifyActionSheetAction(
-            label: _tw('mobile.addNext'),
+            label: _tp('addNext'),
             icon: const RemixIcon('add-circle-line', size: 20),
             onTap: () => unawaited(addAfter(nodeId)),
           ),
         if (canAddBefore(n))
           DifyActionSheetAction(
-            label: _tw('mobile.addBeforeAction'),
+            label: _tp('addBeforeAction'),
             icon: const RemixIcon('add-circle-line', size: 20),
             onTap: () => unawaited(insert(InsertBefore(nodeId))),
           ),
         if (canAddAfter(n))
           DifyActionSheetAction(
-            label: _tw('mobile.connect'),
+            label: _tp('connect'),
             icon: const RemixIcon('link', size: 20),
             onTap: () => unawaited(connect(nodeId)),
           ),
@@ -537,13 +540,13 @@ class PhoneEditorActions {
       title: edgeTitle(edgeId),
       actions: [
         DifyActionSheetAction(
-          label: _tw('mobile.insertStep'),
+          label: _tp('insertStep'),
           icon: const RemixIcon('add-circle-line', size: 20),
           enabled: !readOnly,
           onTap: () => unawaited(insert(InsertOnEdge(edgeId))),
         ),
         DifyActionSheetAction(
-          label: _tw('mobile.deleteConnection'),
+          label: _tp('deleteConnection'),
           icon: const RemixIcon('link-unlink', size: 20),
           destructive: true,
           enabled: !readOnly,
@@ -557,7 +560,7 @@ class PhoneEditorActions {
   String edgeTitle(String edgeId) {
     final e = doc.edges[edgeId];
     final s = e == null ? null : doc.nodes[e.source], t = e == null ? null : doc.nodes[e.target];
-    return s == null || t == null ? _tw('mobile.connection') : '${titleOf(s)} → ${titleOf(t)}';
+    return s == null || t == null ? _tp('connection') : '${titleOf(s)} → ${titleOf(t)}';
   }
 
   /// A box selection's actions.
@@ -566,7 +569,7 @@ class PhoneEditorActions {
     if (nodes.isEmpty) return;
     await showDifyActionSheet(
       context,
-      title: _tw('mobile.nodesSelected', {'count': nodes.length}),
+      title: _tp('nodesSelected', {'count': nodes.length}),
       actions: [
         DifyActionSheetAction(
           label: _tw('common.duplicate'),
@@ -752,7 +755,7 @@ class PhoneEditorActions {
             onTap: () => store.setShowFeaturesPanel(true),
           ),
         if (config.onGenerate case final generate?)
-          DifyActionSheetAction(label: _tw('mobile.generate'), icon: icon('sparkling-line'), onTap: generate),
+          DifyActionSheetAction(label: _tp('generate'), icon: icon('sparkling-line'), onTap: generate),
         if (d.isChatMode)
           DifyActionSheetAction(
             label: _tw('chatVariable.panelTitle'),
@@ -817,7 +820,7 @@ class PhoneEditorActions {
           ),
         ],
         DifyActionSheetAction(
-          label: _tw('mobile.zoom'),
+          label: _tp('zoom'),
           icon: icon('zoom-in-line'),
           onTap: () => unawaited(showZoomSheet()),
         ),
@@ -842,7 +845,7 @@ class PhoneEditorActions {
         ...host,
         if (config.sessionDetails != null)
           DifyActionSheetAction(
-            label: _tw('mobile.connectionDetails'),
+            label: _tp('connectionDetails'),
             icon: icon('cloud-line'),
             onTap: () => unawaited(showSessionSheet()),
           ),
@@ -878,7 +881,7 @@ class PhoneEditorActions {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DifySheetHeader(title: _tw('mobile.connectionDetails')),
+        DifySheetHeader(title: _tp('connectionDetails')),
         Flexible(child: SingleChildScrollView(child: config.sessionDetails!(sheet))),
       ],
     ),
@@ -886,7 +889,7 @@ class PhoneEditorActions {
 
   Future<void> showZoomSheet() => showDifyActionSheet(
     context,
-    title: _tw('mobile.zoom'),
+    title: _tp('zoom'),
     actions: [
       DifyActionSheetAction(label: _tw('operator.zoomIn'), onTap: () => operator.zoomBy(0.1)),
       DifyActionSheetAction(label: _tw('operator.zoomOut'), onTap: () => operator.zoomBy(-0.1)),
@@ -979,7 +982,7 @@ class _ConnectSheetState extends State<_ConnectSheet> {
               key: const ValueKey('phone-connect-search'),
               value: _query,
               height: 40,
-              placeholder: _tw('mobile.searchSteps'),
+              placeholder: _tp('searchSteps'),
               onValueChange: (v) => setState(() => _query = v),
             ),
           ),

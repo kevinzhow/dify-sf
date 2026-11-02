@@ -108,6 +108,9 @@ Future<_Editor> _pump(
 
 String _tw(String key) => DifyI18n.tr('workflow', key);
 
+/// dify-sf's own phone editor strings (assets/extension_i18n, namespace `phone-editor`).
+String _tp(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('phone-editor', key, params);
+
 void main() {
   setUpAll(() async {
     await DifyI18n.load('en-US');
@@ -138,7 +141,7 @@ void main() {
         t.getRect(find.byKey(const ValueKey('phone-add'))).bottom,
         lessThanOrEqualTo(w.size.height - w.insets.bottom),
       );
-      for (final label in [_tw('common.undo'), _tw('common.redo'), _tw('mobile.note'), _tw('mobile.versions')]) {
+      for (final label in [_tw('common.undo'), _tw('common.redo'), _tp('note'), _tp('versions')]) {
         expect(t.getRect(find.text(label)).bottom, lessThanOrEqualTo(w.size.height - w.insets.bottom), reason: label);
       }
       // No floating desktop chrome.
@@ -228,7 +231,7 @@ void main() {
 
     // Note: a note at a free spot, one undo step.
     final count = e.c.doc.nodes.length;
-    await t.tap(find.text(_tw('mobile.note')));
+    await t.tap(find.text(_tp('note')));
     await settle(t, 600);
     expect(e.c.doc.nodes.length, count + 1);
     final note = e.c.selectedNodeId!;
@@ -277,7 +280,7 @@ void main() {
     final before = e.c.doc.nodes.keys.toSet();
     await t.tap(find.byKey(const ValueKey('phone-node-add-next')));
     await settle(t, 800);
-    expect(find.text(DifyI18n.tr('workflow', 'mobile.addAfter', {'name': 'Post-process'})), findsOneWidget);
+    expect(find.text(DifyI18n.tr('phone-editor', 'addAfter', {'name': 'Post-process'})), findsOneWidget);
     await e.pick('Template');
     final added = e.c.doc.nodes.keys.toSet().difference(before).single;
     expect(e.c.doc.edges.values.any((x) => x.source == 'code' && x.target == added), isTrue);
@@ -372,7 +375,7 @@ void main() {
     await t.tapAt(t.getCenter(plus));
     await settle(t, 800);
     expect(find.byType(BlockSelectorCard), findsOneWidget);
-    expect(find.text(DifyI18n.tr('workflow', 'mobile.addAfter', {'name': 'Answer the question'})), findsOneWidget);
+    expect(find.text(DifyI18n.tr('phone-editor', 'addAfter', {'name': 'Answer the question'})), findsOneWidget);
     final before = e.c.doc.nodes.keys.toSet();
     await e.pick('Template');
     final added = e.c.doc.nodes.keys.toSet().difference(before).single;
@@ -421,8 +424,8 @@ void main() {
     for (final label in [
       DifyI18n.tr('common', 'operation.settings'),
       _tw('panel.runThisStep'),
-      _tw('mobile.addNext'),
-      _tw('mobile.connect'),
+      _tp('addNext'),
+      _tp('connect'),
       _tw('common.duplicate'),
       DifyI18n.tr('common', 'operation.delete'),
     ]) {
@@ -438,19 +441,19 @@ void main() {
     final e = await _pump(t);
     await t.tap(find.byKey(const ValueKey('phone-editor-more')));
     await settle(t, 800);
-    for (final key in [
-      'common.versionHistory',
-      'panel.checklist',
-      'env.envPanelTitle',
-      'globalVar.title',
-      'debug.variableInspect.title',
-      'panel.organizeBlocks',
-      'mobile.zoom',
-      'common.exportImage',
-      'changeHistory.title',
-      'mobile.connectionDetails',
+    for (final label in [
+      _tw('common.versionHistory'),
+      _tw('panel.checklist'),
+      _tw('env.envPanelTitle'),
+      _tw('globalVar.title'),
+      _tw('debug.variableInspect.title'),
+      _tw('panel.organizeBlocks'),
+      _tp('zoom'),
+      _tw('common.exportImage'),
+      _tw('changeHistory.title'),
+      _tp('connectionDetails'),
     ]) {
-      expect(find.textContaining(_tw(key)), findsOneWidget, reason: key);
+      expect(find.textContaining(label), findsOneWidget, reason: label);
     }
     // The variable inspect panel opens as a page; back closes it.
     await t.tap(find.text(_tw('debug.variableInspect.title')));
@@ -461,7 +464,7 @@ void main() {
     expect(e.store.showVariableInspectPanel.value, isFalse);
 
     // Version history: the canvas browses versions with the restoring bars; back leaves it.
-    await t.tap(find.text(_tw('mobile.versions')));
+    await t.tap(find.text(_tp('versions')));
     await settle(t, 800);
     expect(e.store.isRestoring.value, isTrue);
     expect(find.byKey(const ValueKey('phone-restoring-bar')), findsOneWidget);
@@ -493,7 +496,7 @@ void main() {
     expect(find.byType(Scrollable), findsWidgets);
 
     expect(await systemBack(t), isTrue, reason: 'the sheet');
-    expect(find.text(_tw('mobile.connectionDetails')), findsNothing);
+    expect(find.text(_tp('connectionDetails')), findsNothing);
     expect(find.byType(WorkflowNodePanel), findsOneWidget);
     expect(await systemBack(t), isTrue, reason: 'the panel');
     expect(find.byType(WorkflowNodePanel), findsNothing);

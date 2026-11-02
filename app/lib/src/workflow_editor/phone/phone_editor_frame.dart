@@ -32,6 +32,9 @@ import 'steps_view_slot.dart';
 export 'phone_editor_actions.dart' show PhoneEditorActions, PhoneEditorConfig;
 
 String _tw(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
+
+/// dify-sf's own phone editor strings (assets/extension_i18n, namespace `phone-editor`).
+String _tp(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('phone-editor', key, params);
 String _tc(String key) => DifyI18n.tr('common', key);
 
 /// The phone layout of the editor. Build it inside the editor's scopes (the store, the header's data, the block
@@ -284,7 +287,7 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
         actions: [
           DifyToolbarAction(
             icon: const RemixIcon('history-line', size: 22),
-            label: _tw('mobile.versions'),
+            label: _tp('versions'),
             onTap: a.versions,
           ),
           DifyToolbarAction(
@@ -342,13 +345,13 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
         ),
         DifyToolbarAction(
           icon: const RemixIcon('sticky-note-add-line', size: 22),
-          label: _tw('mobile.note'),
+          label: _tp('note'),
           enabled: editable,
           onTap: () => a.addNote(),
         ),
         DifyToolbarAction(
           icon: const RemixIcon('history-line', size: 22),
-          label: _tw('mobile.versions'),
+          label: _tp('versions'),
           enabled: a.data.canReleaseAndVersion,
           onTap: a.versions,
         ),
@@ -369,7 +372,7 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
       key: const ValueKey('phone-node-bar'),
       leading: a.iconOf(n),
       title: a.titleOf(n),
-      subtitle: _tw('mobile.selected'),
+      subtitle: _tp('selected'),
       onClose: a.clearSelection,
       actions: [
         DifyToolbarAction(
@@ -389,14 +392,14 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
         DifyToolbarAction(
           key: const ValueKey('phone-node-add-next'),
           icon: const RemixIcon('add-circle-line', size: 22),
-          label: _tw('mobile.addNext'),
+          label: _tp('addNext'),
           enabled: a.canAddAfter(n),
           onTap: () => unawaited(a.addAfter(n.id)),
         ),
         DifyToolbarAction(
           key: const ValueKey('phone-node-connect'),
           icon: const RemixIcon('link', size: 22),
-          label: _tw('mobile.connect'),
+          label: _tp('connect'),
           enabled: a.canAddAfter(n),
           onTap: () => unawaited(a.connect(n.id)),
         ),
@@ -428,14 +431,14 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
       DifyToolbarAction(
         key: const ValueKey('phone-edge-insert'),
         icon: const RemixIcon('add-circle-line', size: 22),
-        label: _tw('mobile.insertStep'),
+        label: _tp('insertStep'),
         enabled: !a.readOnly,
         onTap: () => unawaited(a.insert(InsertOnEdge(edgeId))),
       ),
       DifyToolbarAction(
         key: const ValueKey('phone-edge-delete'),
         icon: const RemixIcon('link-unlink', size: 22),
-        label: _tw('mobile.deleteConnection'),
+        label: _tp('deleteConnection'),
         destructive: true,
         enabled: !a.readOnly,
         onTap: () => a.actions.deleteEdge(edgeId),
@@ -446,7 +449,7 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
   Widget _groupBar(PhoneEditorActions a, List<Node> group) => DifySelectionBar(
     key: const ValueKey('phone-group-bar'),
     leading: RemixIcon('checkbox-multiple-line', size: 22, color: DifyColors.textTertiary),
-    title: _tw('mobile.nodesSelected', {'count': group.length}),
+    title: _tp('nodesSelected', {'count': group.length}),
     onClose: a.clearSelection,
     actions: [
       DifyToolbarAction(
@@ -459,7 +462,7 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
       DifyToolbarAction(
         key: const ValueKey('phone-group-organize'),
         icon: const RemixIcon('function-add-line', size: 22),
-        label: _tw('mobile.organize'),
+        label: _tp('organize'),
         enabled: !a.readOnly,
         onTap: () => unawaited(a.showAlignSheet()),
       ),
@@ -512,7 +515,7 @@ class _PhoneTopBar extends StatelessWidget {
     }.toList();
     if (others.isNotEmpty) {
       final names = others.length > 2 ? '${others.take(2).join(', ')} +${others.length - 2}' : others.join(', ');
-      parts.add(_tw('mobile.editingWith', {'names': names}));
+      parts.add(_tp('editingWith', {'names': names}));
     }
     return parts.isEmpty ? null : parts.join(' · ');
   }
@@ -572,7 +575,7 @@ class _PhoneTopBar extends StatelessWidget {
           size: DifyButtonSize.large,
           leading: const RemixIcon('stop-circle-line', size: 16),
           onPressed: actions.stopRun,
-          child: DifyTextLine(_tw('mobile.stop')),
+          child: DifyTextLine(_tp('stop')),
         ),
       );
     }
@@ -584,7 +587,7 @@ class _PhoneTopBar extends StatelessWidget {
         disabled: !data.canRun,
         leading: const RemixIcon('play-large-fill', size: 16),
         onPressed: () => unawaited(actions.run()),
-        child: DifyTextLine(data.isChatMode ? _tw('common.debugAndPreview') : _tw('mobile.run')),
+        child: DifyTextLine(data.isChatMode ? _tw('common.debugAndPreview') : _tp('run')),
       ),
     );
   }
@@ -603,10 +606,10 @@ class _ViewRow extends StatelessWidget {
     Widget issues(int count) => DifyFilterChip(
       key: const ValueKey('phone-issues'),
       label: count == 0
-          ? _tw('mobile.noIssues')
+          ? _tp('noIssues')
           : count == 1
-          ? _tw('mobile.issue')
-          : _tw('mobile.issues', {'count': count}),
+          ? _tp('issue')
+          : _tp('issues', {'count': count}),
       leading: count == 0
           ? RemixIcon('checkbox-circle-line', size: 16, color: DifyColors.textSuccess)
           : RemixIcon('error-warning-fill', size: 16, color: DifyColors.textWarning),
@@ -619,19 +622,19 @@ class _ViewRow extends StatelessWidget {
           DifySegmentedControl<PhoneEditorView>(
             key: const ValueKey('phone-view-switch'),
             size: DifySegmentedControlSize.touch,
-            semanticLabel: _tw('mobile.view'),
+            semanticLabel: _tp('view'),
             value: phone.view,
             onChanged: (v) => phone.view = v,
             segments: [
               (
                 value: PhoneEditorView.steps,
-                label: _tw('mobile.steps'),
-                child: DifySegmentLabel(icon: const RemixIcon('list-unordered', size: 16), text: _tw('mobile.steps')),
+                label: _tp('steps'),
+                child: DifySegmentLabel(icon: const RemixIcon('list-unordered', size: 16), text: _tp('steps')),
               ),
               (
                 value: PhoneEditorView.canvas,
-                label: _tw('mobile.canvas'),
-                child: DifySegmentLabel(icon: const RemixIcon('flow-chart', size: 16), text: _tw('mobile.canvas')),
+                label: _tp('canvas'),
+                child: DifySegmentLabel(icon: const RemixIcon('flow-chart', size: 16), text: _tp('canvas')),
               ),
             ],
           ),
@@ -662,7 +665,7 @@ class _CanvasButtons extends StatelessWidget {
     children: [
       DifyFloatingIconButton(
         key: const ValueKey('phone-canvas-mode'),
-        label: _tw('mobile.selectMode'),
+        label: _tp('selectMode'),
         selected: phone.selectMode,
         icon: RemixIcon(phone.selectMode ? 'cursor-line' : 'hand', size: 22),
         onPressed: () => phone.selectMode = !phone.selectMode,
