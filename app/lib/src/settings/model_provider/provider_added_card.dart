@@ -202,6 +202,57 @@ class _ProviderAddedCardState extends State<ProviderAddedCard> {
         ? _t('modelProvider.modelsNum', {'num': modelList.length})
         : _t('modelProvider.showModels');
 
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
+    final showModels = DifyPressable(
+      key: const ValueKey('provider-show-models'),
+      semanticLabel: _t('modelProvider.showModels'),
+      onPressed: () => _openModelList(env),
+      builder: (context, hovered, focused) => Container(
+        height: 24,
+        padding: const EdgeInsets.only(left: 4, right: 6),
+        decoration: BoxDecoration(
+          color: hovered ? DifyColors.componentsButtonGhostBgHover : null,
+          borderRadius: BorderRadius.circular(DifyRadius.lg),
+          border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DifyTextLine(
+              showModelsLabel,
+              style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
+            ),
+            if (!loading) RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),
+            if (loading)
+              Padding(
+                padding: EdgeInsets.only(left: 2),
+                child: DifySpinner(size: 12, color: DifyColors.textTertiary),
+              ),
+          ],
+        ),
+      ),
+    );
+    final tip = DifyTextLine(
+      _t('modelProvider.configureTip'),
+      style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary),
+    );
+    Widget configureTip({required bool phone}) => Container(
+      constraints: const BoxConstraints(minHeight: 24),
+      height: phone ? null : 24,
+      padding: const EdgeInsets.only(left: 4, right: 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: RemixIcon('information-2-fill', size: 16, color: DifyColors.textAccent),
+          ),
+          // A phone wraps the tip within the card (the Wrap bounds it); the desktop row keeps it on one line.
+          if (phone) Flexible(child: tip) else tip,
+        ],
+      ),
+    );
+
     return Container(
       key: const ValueKey('provider-added-card'),
       decoration: BoxDecoration(
@@ -247,67 +298,33 @@ class _ProviderAddedCardState extends State<ProviderAddedCard> {
               decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
               ),
-              child: Row(
-                children: [
-                  if (env.canSetPluginPreferences && (showModelProvider || !widget.notConfigured))
-                    DifyPressable(
-                      key: const ValueKey('provider-show-models'),
-                      semanticLabel: _t('modelProvider.showModels'),
-                      onPressed: () => _openModelList(env),
-                      builder: (context, hovered, focused) => Container(
-                        height: 24,
-                        padding: const EdgeInsets.only(left: 4, right: 6),
-                        decoration: BoxDecoration(
-                          color: hovered ? DifyColors.componentsButtonGhostBgHover : null,
-                          borderRadius: BorderRadius.circular(DifyRadius.lg),
-                          border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            DifyTextLine(
-                              showModelsLabel,
-                              style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textTertiary),
-                            ),
-                            if (!loading) RemixIcon('arrow-right-s-line', size: 16, color: DifyColors.textTertiary),
-                            if (loading)
-                              Padding(
-                                padding: EdgeInsets.only(left: 2),
-                                child: DifySpinner(size: 12, color: DifyColors.textTertiary),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  if (!showModelProvider && widget.notConfigured)
-                    Container(
-                      height: 24,
-                      padding: const EdgeInsets.only(left: 4, right: 6),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.only(right: 4),
-                            child: RemixIcon('information-2-fill', size: 16, color: DifyColors.textAccent),
-                          ),
-                          DifyTextLine(
-                            _t('modelProvider.configureTip'),
-                            style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (showCustomModelActions)
-                    Expanded(
-                      child: Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: LazyCustomModelActions(provider: p),
-                      ),
+              child: phone
+                  // A phone: the bar's parts wrap instead of overflowing, the tip text too (layout only).
+                  ? Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: 4,
+                      children: [
+                        if (env.canSetPluginPreferences && (showModelProvider || !widget.notConfigured)) showModels,
+                        if (!showModelProvider && widget.notConfigured) configureTip(phone: true),
+                        if (showCustomModelActions) LazyCustomModelActions(provider: p),
+                      ],
                     )
-                  else
-                    const Spacer(),
-                ],
-              ),
+                  : Row(
+                      children: [
+                        if (env.canSetPluginPreferences && (showModelProvider || !widget.notConfigured)) showModels,
+                        if (!showModelProvider && widget.notConfigured) configureTip(phone: false),
+                        if (showCustomModelActions)
+                          Expanded(
+                            child: Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: LazyCustomModelActions(provider: p),
+                            ),
+                          )
+                        else
+                          const Spacer(),
+                      ],
+                    ),
             ),
           if (!showCollapsed)
             ModelList(

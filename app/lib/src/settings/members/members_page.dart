@@ -238,9 +238,16 @@ class _MembersPageState extends State<MembersPage> {
       children: [
         header,
         LayoutBuilder(
-          // `min-w-120`: narrower than that, the table keeps its width (and is cut).
+          // `min-w-120`: narrower than that, the table keeps its width (and is cut). On a phone (a compact window) it
+          // scrolls sideways instead, so the role column and the row menus stay reachable.
           builder: (context, c) => c.maxWidth >= 480
               ? table
+              : DifyWindowClass.of(context) == DifyWindowClass.compact
+              ? SingleChildScrollView(
+                  key: const ValueKey('members-table-scroll'),
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(width: 480, child: table),
+                )
               : ClipRect(
                   child: OverflowBox(
                     alignment: AlignmentDirectional.topStart,

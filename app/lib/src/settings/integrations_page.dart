@@ -31,21 +31,36 @@ enum IntegrationSection { provider }
 /// The docs page of the Model Provider section's "Learn more".
 const modelProviderDocsUrl = 'https://docs.dify.ai/en/use-dify/workspace/model-providers';
 
-/// Opens the integrations settings modal on [section] (Dify's settings destination); resolves when it closes.
+/// Opens the integrations settings modal on [section] (Dify's settings destination); resolves when it closes. On a
+/// phone (a compact window) the same page is pushed as a full-screen page with a back button instead.
 Future<void> showIntegrationsSetting(
   BuildContext context, {
   required ModelProviderEnv env,
   IntegrationSection section = IntegrationSection.provider,
-}) => showDifyDialog<void>(
-  context,
-  barrierLabel: 'Dismiss',
-  barrierColor: Colors.transparent,
-  transition: DifyDialogTransition.fade,
-  builder: (context) => ModelProviderScope(
-    env: env,
-    child: IntegrationsSettingModal(section: section),
-  ),
-);
+}) => DifyWindowClass.of(context) == DifyWindowClass.compact
+    ? Navigator.of(context).push<void>(
+        difyPageRoute<void>(
+          edgeToEdge: true,
+          builder: (context) => DifyPage(
+            edgeToEdge: true,
+            backgroundColor: DifyColors.componentsPanelBg,
+            body: ModelProviderScope(
+              env: env,
+              child: IntegrationsPage(section: section),
+            ),
+          ),
+        ),
+      )
+    : showDifyDialog<void>(
+        context,
+        barrierLabel: 'Dismiss',
+        barrierColor: Colors.transparent,
+        transition: DifyDialogTransition.fade,
+        builder: (context) => ModelProviderScope(
+          env: env,
+          child: IntegrationsSettingModal(section: section),
+        ),
+      );
 
 /// Opens the model provider settings for a member with [role] over [models], then refetches what the editor reads.
 Future<void> showModelProviderSettings(BuildContext context, {required WorkspaceModels models, String? role}) async {
@@ -164,9 +179,73 @@ class IntegrationsPage extends StatefulWidget {
 class _IntegrationsPageState extends State<IntegrationsPage> {
   String _providerSearch = '';
 
+  /// The phone layout (compact windows; the Integrations tab): its own large app bar, then one scrolling column with
+  /// the Model Provider section's header, the toolbar and the provider cards. Dify's section sidebar is left out:
+  /// dify-sf has the one section.
+  Widget _phone(BuildContext context, ModelProviderEnv env) {
+    final sectionTitle = _t('settings.provider');
+    return ProviderIconScope(
+      source: env.models.icons,
+      child: ColoredBox(
+        color: DifyColors.componentsPanelBg,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The Integrations tab's large title; a pushed page (the editor's model settings) gets a back button.
+            if (ModalRoute.of(context)?.impliesAppBarDismissal ?? false)
+              DifyTopAppBar(title: _t('settings.integrations'), backgroundColor: DifyColors.componentsPanelBg)
+            else
+              DifyTopAppBar.large(title: _t('settings.integrations')),
+            Expanded(
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: ModelProviderPage(
+                  phone: true,
+                  hideSystemModelSelectorProviderSettingsFooter: true,
+                  searchText: _providerSearch,
+                  onSearchTextChange: (v) => setState(() => _providerSearch = v),
+                  layout: (context, toolbar, body) => Semantics(
+                    container: true,
+                    label: sectionTitle,
+                    child: SingleChildScrollView(
+                      key: const ValueKey('integrations-scroll'),
+                      padding: EdgeInsets.fromLTRB(16, 4, 16, 24 + MediaQuery.paddingOf(context).bottom),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: 12,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            spacing: 2,
+                            children: [
+                              DifyTextLine(
+                                sectionTitle,
+                                key: const ValueKey('integrations-section-title'),
+                                style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
+                              ),
+                              _DescriptionWithLearnMore(text: _t('modelProvider.pageDesc'), href: modelProviderDocsUrl),
+                            ],
+                          ),
+                          toolbar,
+                          body,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final env = ModelProviderScope.of(context);
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) return _phone(context, env);
     final sectionTitle = _t('settings.provider');
     return ProviderIconScope(
       source: env.models.icons,

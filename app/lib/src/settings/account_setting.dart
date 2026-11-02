@@ -14,6 +14,7 @@ import 'package:flutter/widgets.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
+import '../shell/phone_page.dart';
 import 'members/members_page.dart';
 import 'preference_page.dart';
 import 'settings_kit.dart';
@@ -71,19 +72,26 @@ final accountSettingItems = <AccountSettingItem>[
   ),
 ];
 
-/// Opens the account setting on [tab] (Dify's `?settings=<tab>`); resolves when it closes.
+/// Opens the account setting on [tab] (Dify's `?settings=<tab>`); resolves when it closes. On a phone (a compact
+/// window) the two-pane modal is not used: the tab's page is pushed as a full-screen page with a back button.
 Future<void> showAccountSetting(
   BuildContext context, {
   required WorkspaceMembers members,
   AccountSettingTab tab = AccountSettingTab.members,
-}) => showDifyDialog<void>(
-  context,
-  // Escape closes it (the content covers the transparent backdrop, so nothing else can be clicked outside).
-  barrierLabel: 'Dismiss',
-  barrierColor: Colors.transparent,
-  transition: DifyDialogTransition.fade,
-  builder: (context) => AccountSetting(members: members, initialTab: tab),
-);
+}) => DifyWindowClass.of(context) == DifyWindowClass.compact
+    ? pushPhonePage<void>(
+        context,
+        title: accountSettingItems.firstWhere((i) => i.tab == tab).name(context),
+        builder: (context) => accountSettingItems.firstWhere((i) => i.tab == tab).page(context, members),
+      )
+    : showDifyDialog<void>(
+        context,
+        // Escape closes it (the content covers the transparent backdrop, so nothing else can be clicked outside).
+        barrierLabel: 'Dismiss',
+        barrierColor: Colors.transparent,
+        transition: DifyDialogTransition.fade,
+        builder: (context) => AccountSetting(members: members, initialTab: tab),
+      );
 
 /// AccountSetting in MenuDialog: the whole screen on `bg-background-sidenav-bg backdrop-blur-md`, the close button
 /// (`xl` tertiary IconButton, `top-6 right-6`, "ESC" below it), and `mx-auto flex h-screen max-w-270 px-4`: the
