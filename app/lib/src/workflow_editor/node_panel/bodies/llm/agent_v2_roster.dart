@@ -418,7 +418,8 @@ class _AgentRosterFieldState extends State<AgentRosterField> {
           spacing: 4,
           children: [
             SizedBox(
-              height: 24,
+              // A phone's sheet: touch-high, for "Change"'s touch box.
+              height: DifyTouchArea.appliesIn(context) ? DifyTouch.controlHeight : 24,
               child: Row(
                 spacing: 8,
                 children: [
@@ -436,22 +437,26 @@ class _AgentRosterFieldState extends State<AgentRosterField> {
                       sideOffset: 4,
                       builder: (context, c) => Opacity(
                         opacity: w.isPending ? 0.5 : 1,
-                        child: DifyPressable(
-                          semanticLabel: _w('nodes.agent.roster.change'),
-                          disabled: w.isPending,
-                          onPressed: c.toggle,
-                          builder: (context, hovered, focused) => Container(
-                            height: 24,
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: hovered && !w.isPending ? DifyColors.stateBaseHover : null,
-                              borderRadius: BorderRadius.circular(DifyRadius.md),
-                            ),
-                            child: DifyText(
-                              _w('nodes.agent.roster.change'),
-                              DifyType.systemXsMedium,
-                              color: hovered && !w.isPending ? DifyColors.textSecondary : DifyColors.textTertiary,
+                        // A phone's sheet: "Change" in a 44 px touch box (it is 24 px).
+                        child: DifyTouchArea.inPhoneSheet(
+                          context,
+                          DifyPressable(
+                            semanticLabel: _w('nodes.agent.roster.change'),
+                            disabled: w.isPending,
+                            onPressed: c.toggle,
+                            builder: (context, hovered, focused) => Container(
+                              height: 24,
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: hovered && !w.isPending ? DifyColors.stateBaseHover : null,
+                                borderRadius: BorderRadius.circular(DifyRadius.md),
+                              ),
+                              child: DifyText(
+                                _w('nodes.agent.roster.change'),
+                                DifyType.systemXsMedium,
+                                color: hovered && !w.isPending ? DifyColors.textSecondary : DifyColors.textTertiary,
+                              ),
                             ),
                           ),
                         ),

@@ -47,6 +47,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/app_fonts.dart';
 import '../support/platform_semantics.dart';
+import '../support/touch_targets.dart';
 import 'phone_harness.dart';
 
 class _Backend extends DemoBackend {
@@ -1273,6 +1274,8 @@ void main() {
     // Dify's intent: the book button folds the tips (a collapsible); the tips have no close of their own.
     final tips = find.descendant(of: header, matching: find.bySemanticsLabel(_tw('chatVariable.tips')));
     expect(tips, findsOneWidget);
+    // The header's boxes (Tips; Close is the sheet's touch button): 44 dp, all of them hittable.
+    await expectTouchTarget(t, tips.evaluate().single, 'Tips');
     expect(find.descendant(of: sheet, matching: find.text('TIPS')), findsOneWidget);
     await t.tap(tips);
     await settle(t, 400);
@@ -1302,6 +1305,7 @@ void main() {
       expect(card, findsOneWidget, reason: type);
       final node = t.getSemantics(card);
       expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$type ${node.rect}');
+      expectHittable(t, card.evaluate().single, node, type);
     }
     expect(t.takeException(), isNull);
     semantics.dispose();
@@ -1366,6 +1370,8 @@ void main() {
       expect(node.rect.width, greaterThanOrEqualTo(44), reason: '$what: accessible width ${node.rect}');
       expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$what: accessible height ${node.rect}');
       expect(t.getSize(area), const Size(44, 44), reason: '$what: the box');
+      // All of it hittable: a tap 2 dp inside each edge reaches the control.
+      expectHittable(t, area.evaluate().single, node, what);
     }
 
     // Comment mode: the comment list at its peek; back ends comment mode.

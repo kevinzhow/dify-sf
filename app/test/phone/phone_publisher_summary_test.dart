@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/app_fonts.dart';
+import '../support/touch_targets.dart';
 import 'phone_harness.dart';
 
 String _w(String key) => DifyI18n.tr('workflow', key);
@@ -60,13 +61,14 @@ void main() {
     testWidgets('$name: "Name it" and the edit pencil are 44 dp targets for touch and accessibility', (t) async {
       final semantics = t.ensureSemantics();
       await _pump(t, _summary(), size: size);
-      final nameIt = t.getSemantics(find.bySemanticsLabel(_w('versionHistory.nameIt')));
-      expect(nameIt.rect.width, greaterThanOrEqualTo(44), reason: '${nameIt.rect}');
-      expect(nameIt.rect.height, greaterThanOrEqualTo(44), reason: '${nameIt.rect}');
+      // 44 dp nodes, all of each hittable (a tap 2 dp inside each edge reaches it).
+      await expectTouchTarget(t, find.bySemanticsLabel(_w('versionHistory.nameIt')).evaluate().single, 'Name it');
       await _pump(t, _summary(name: 'v1 slow count'), size: size);
-      final pencil = t.getSemantics(find.bySemanticsLabel(_w('versionHistory.editVersionInfo')));
-      expect(pencil.rect.width, greaterThanOrEqualTo(44), reason: '${pencil.rect}');
-      expect(pencil.rect.height, greaterThanOrEqualTo(44), reason: '${pencil.rect}');
+      await expectTouchTarget(
+        t,
+        find.bySemanticsLabel(_w('versionHistory.editVersionInfo')).evaluate().single,
+        'the pencil',
+      );
       expect(t.takeException(), isNull);
       semantics.dispose();
     });

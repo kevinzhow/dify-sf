@@ -222,6 +222,9 @@ class _InputAddonState extends State<_InputAddon> {
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: widget.focusInput,
+        // The tap only focuses the field, which a screen reader reaches itself: an addon (a search icon) is no
+        // unlabelled button of its own; an interactive addon (a clear button) keeps its own semantics.
+        excludeFromSemantics: true,
         child: TextFieldTapRegion(child: widget.child),
       ),
     ),

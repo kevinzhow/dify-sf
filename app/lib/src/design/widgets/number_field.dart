@@ -170,51 +170,55 @@ class _DifyNumberFieldState extends State<DifyNumberField> with DifyControlledTe
         disabled: w.disabled,
         readOnly: w.readOnly,
         invalid: w.invalid,
-        child: Row(
-          children: [
-            Expanded(
-              child: Focus(
-                onKeyEvent: _key,
-                canRequestFocus: false,
-                skipTraversal: true,
-                child: difyTextField(
-                  context: context,
-                  controller: controller,
-                  focusNode: _focus,
-                  style: style,
-                  padding: EdgeInsets.fromLTRB(12, 7, w.inputPaddingRight, 7),
-                  readOnly: w.readOnly,
-                  disabled: w.disabled,
-                  onSubmitted: (_) => _commit(),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                ),
-              ),
-            ),
-            if (w.unit != null)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                // Units are short ("times", "ms"); a long one is cut rather than squeezing the number.
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 56),
-                  child: DifyTextLine(
-                    w.unit!,
-                    centerCap: true,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.clip,
-                    style: style.copyWith(color: DifyColors.textTertiary),
+        // A phone: touch-high, as a DifyInput is there (DifyTouch.controlHeight, the border included).
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: DifyTouch.compactOf(context) ? DifyTouch.controlHeight - 2 : 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Focus(
+                  onKeyEvent: _key,
+                  canRequestFocus: false,
+                  skipTraversal: true,
+                  child: difyTextField(
+                    context: context,
+                    controller: controller,
+                    focusNode: _focus,
+                    style: style,
+                    padding: EdgeInsets.fromLTRB(12, 7, w.inputPaddingRight, 7),
+                    readOnly: w.readOnly,
+                    disabled: w.disabled,
+                    onSubmitted: (_) => _commit(),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                   ),
                 ),
               ),
-            if (w.showControls)
-              Container(
-                height: 30,
-                decoration: BoxDecoration(
-                  border: Border(left: BorderSide(color: DifyColors.dividerSubtle)),
+              if (w.unit != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  // Units are short ("times", "ms"); a long one is cut rather than squeezing the number.
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 56),
+                    child: DifyTextLine(
+                      w.unit!,
+                      centerCap: true,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.clip,
+                      style: style.copyWith(color: DifyColors.textTertiary),
+                    ),
+                  ),
                 ),
-                child: Column(children: [_control(1), _control(-1)]),
-              ),
-          ],
+              if (w.showControls)
+                Container(
+                  height: 30,
+                  decoration: BoxDecoration(
+                    border: Border(left: BorderSide(color: DifyColors.dividerSubtle)),
+                  ),
+                  child: Column(children: [_control(1), _control(-1)]),
+                ),
+            ],
+          ),
         ),
       ),
     );

@@ -68,22 +68,25 @@ class _HumanInputPanelState extends State<HumanInputPanel> {
       required String icon,
       required bool active,
       required VoidCallback onTap,
-    }) => DifyPressable(
-      semanticLabel: label,
-      onPressed: onTap,
-      builder: (context, hovered, _) => Container(
-        width: 24,
-        height: 24,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: active
-              ? DifyColors.stateAccentActive
-              : hovered
-              ? DifyColors.componentsButtonGhostBgHover
-              : null,
-          borderRadius: BorderRadius.circular(DifyRadius.md),
+    }) => DifyTouchArea.inPhoneSheet(
+      context,
+      DifyPressable(
+        semanticLabel: label,
+        onPressed: onTap,
+        builder: (context, hovered, _) => Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active
+                ? DifyColors.stateAccentActive
+                : hovered
+                ? DifyColors.componentsButtonGhostBgHover
+                : null,
+            borderRadius: BorderRadius.circular(DifyRadius.md),
+          ),
+          child: RemixIcon(icon, size: 16, color: active ? DifyColors.textAccent : DifyColors.textSecondary),
         ),
-        child: RemixIcon(icon, size: 16, color: active ? DifyColors.textAccent : DifyColors.textSecondary),
       ),
     );
     final content = FormContent(

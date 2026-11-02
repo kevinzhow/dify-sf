@@ -327,9 +327,10 @@
         "app/test/control_gallery_typography_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
         "app/test/dify_spec/dify_ui/phone_lists_test.dart",
-        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart",
+        "app/test/phone/phone_body_targets_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: at least 44 px tall in a compact window. Polish (after batch 4): difyTextField (DifyInput and the fields built on it) ignores autofocus in a picker sheet, as DifyTextField does."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: at least 44 px tall in a compact window. Polish (after batch 4): difyTextField (DifyInput and the fields built on it) ignores autofocus in a picker sheet, as DifyTextField does. Polish recheck (PR #89): an addon's focusing tap is excluded from semantics (a search icon is no unlabelled button; an interactive addon keeps its own)."
     },
     "input_mode.dart": {
       "kind": "text-composition",
@@ -439,9 +440,10 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Polish recheck (PR #89): touch-high (44 px) on a phone, as DifyInput."
     },
     "page.dart": {
       "kind": "layout-or-non-text",

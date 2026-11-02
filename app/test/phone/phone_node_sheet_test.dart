@@ -40,6 +40,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/app_fonts.dart';
 import '../support/platform_semantics.dart';
+import '../support/touch_targets.dart';
 import 'phone_harness.dart';
 
 /// The editor on the demo document (Start → "Answer the question" (LLM) → "Post-process" (code) → Answer).
@@ -194,6 +195,44 @@ void _difyWorkflow(EditorController c) {
   c.selectNode(null);
 }
 
+/// Start → "Review" (Human Input: a form, an Approve action, a 3-day timeout) → End.
+void _humanInputWorkflow(EditorController c) {
+  final nodes = <Node>[];
+  void add(String id, String type, String title, Map<String, Object?> data) => nodes.add(
+    nodeFromDify(
+      {
+        'id': id,
+        'position': {'x': nodes.length * 300, 'y': 0},
+        'data': {'type': type, 'title': title, ...data},
+      },
+      Document(nodes: nodes),
+      id: id,
+    ),
+  );
+  add('h-start', 'start', 'Start', {'variables': <Object?>[]});
+  add('h-review', 'human-input', 'Review', {
+    'delivery_methods': <Object?>[],
+    'user_actions': [
+      {'id': 'approve', 'title': 'Approve', 'button_style': 'primary'},
+    ],
+    'form_content': 'Please review the request.',
+    'inputs': <Object?>[],
+    'timeout': 3,
+    'timeout_unit': 'day',
+  });
+  add('h-end', 'end', 'End', {'outputs': <Object?>[]});
+  c.applyGraphChange(
+    event: HistoryEvent.nodeAdd,
+    removeNodes: [...c.doc.nodes.keys],
+    addNodes: nodes,
+    addEdges: [
+      Edge(id: 'he-0', source: 'h-start', target: 'h-review'),
+      Edge(id: 'he-1', source: 'h-review', target: 'h-end'),
+    ],
+  );
+  c.selectNode(null);
+}
+
 final _sheet = find.byKey(const Key('node-settings-sheet'));
 final _header = find.byKey(const Key('node-settings-header'));
 final _scrims = find.byKey(const ValueKey('dify-sheet-scrim'));
@@ -254,117 +293,6 @@ void _markedAsSelect(WidgetTester t, String label, String what) {
   );
   final decoration = t.widget<Container>(row).decoration as BoxDecoration?;
   expect(decoration?.color, DifyColors.stateBaseHover, reason: '$what: the current row highlighted');
-}
-
-/// [n]'s rectangle in the window (a semantics node's rect is in its parent's coordinates).
-Rect _globalRect(SemanticsNode n) {
-  var r = n.rect;
-  for (SemanticsNode? x = n; x != null; x = x.parent) {
-    if (x.transform case final m?) r = MatrixUtils.transformRect(m, r);
-  }
-  return r;
-}
-
-/// The semantics node control [el] is for the platform: the first node its render objects form (a node merged into
-/// a parent: that parent), else the node it is part of.
-SemanticsNode _nodeOf(WidgetTester t, Element el) {
-  final queue = <RenderObject>[el.renderObject!];
-  while (queue.isNotEmpty) {
-    final r = queue.removeAt(0);
-    if (r.debugSemantics case final n?) {
-      var m = n;
-      while (m.isMergedIntoParent && m.parent != null) {
-        m = m.parent!;
-      }
-      return m;
-    }
-    r.visitChildren(queue.add);
-  }
-  return t.getSemantics(find.byElementPredicate((x) => x == el));
-}
-
-/// [el], scrolled to the middle of its scroll view, is for the platform a node at least 44 dp square (what TalkBack
-/// focuses and an accessibility scanner measures); returns that node's rectangle in the scroll view's content (to
-/// compare controls measured at different scroll offsets) and its name.
-Future<(Rect, String)> _touchTarget(WidgetTester t, Element el, String what) async {
-  await Scrollable.ensureVisible(el, alignment: 0.5);
-  await settle(t, 300);
-  final node = _nodeOf(t, el);
-  final data = node.getSemanticsData();
-  final name = '${el.widget.runtimeType} ${data.label}${data.value.isEmpty ? '' : ' (${data.value})'}'.replaceAll(
-    '\n',
-    ' ',
-  );
-  expect(node.rect.width, greaterThanOrEqualTo(44), reason: '$what: "$name" accessible width ${node.rect}');
-  expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$what: "$name" accessible height ${node.rect}');
-  _hittable(t, el, node, '$what: "$name"');
-  final scroll = Scrollable.maybeOf(el);
-  final shift = scroll == null
-      ? Offset.zero
-      : scroll.position.axis == Axis.vertical
-      ? Offset(0, scroll.position.pixels)
-      : Offset(scroll.position.pixels, 0);
-  return (_globalRect(node).shift(shift), name);
-}
-
-/// The bounds [node] reports are all hittable: a tap at their centre and 2 dp inside each edge reaches a pointer
-/// listener (a gesture detector) of the control that forms the node, not padding or a border around it, nor a
-/// neighbour (the platform sends a touch there to the control).
-void _hittable(WidgetTester t, Element el, SemanticsNode node, String what) {
-  // The render object that forms the node (the control's own, or the box it is merged into).
-  RenderObject? owner = el.renderObject;
-  final queue = <RenderObject>[owner!];
-  while (queue.isNotEmpty && owner?.debugSemantics != node) {
-    final r = queue.removeAt(0);
-    if (r.debugSemantics == node) {
-      owner = r;
-      break;
-    }
-    r.visitChildren(queue.add);
-  }
-  if (owner?.debugSemantics != node) {
-    for (RenderObject? r = el.renderObject; r != null; r = r.parent) {
-      if (r.debugSemantics == node) {
-        owner = r;
-        break;
-      }
-    }
-  }
-  expect(owner?.debugSemantics, node, reason: '$what: the node\'s render object');
-  final listeners = <RenderObject>{};
-  void collect(RenderObject r) {
-    if (r is RenderPointerListener) listeners.add(r);
-    r.visitChildren(collect);
-  }
-
-  collect(owner!);
-  final r = _globalRect(node);
-  for (final p in [
-    r.center,
-    Offset(r.center.dx, r.top + 2),
-    Offset(r.center.dx, r.bottom - 2),
-    Offset(r.left + 2, r.center.dy),
-    Offset(r.right - 2, r.center.dy),
-  ]) {
-    final path = t.hitTestOnBinding(p).path.map((e) => e.target);
-    expect(
-      path.any(listeners.contains),
-      isTrue,
-      reason: '$what: a tap at $p in its bounds $r reaches no gesture of it',
-    );
-  }
-}
-
-/// No two of [targets] overlap.
-void _apart(List<(Rect, String)> targets, String what) {
-  for (var i = 0; i < targets.length; i++) {
-    for (var j = i + 1; j < targets.length; j++) {
-      final (a, an) = targets[i];
-      final (b, bn) = targets[j];
-      final o = a.intersect(b);
-      expect(o.width > 0.5 && o.height > 0.5, isFalse, reason: '$what: "$an" $a and "$bn" $b overlap');
-    }
-  }
 }
 
 void main() {
@@ -1093,7 +1021,7 @@ void main() {
       // An icon button the platform reads (its own name in its node; not one shown only on hover).
       bool read(Element el) =>
           el.widget is! DifyIconButton ||
-          _nodeOf(t, el).getSemanticsData().label.contains((el.widget as DifyIconButton).label);
+          semanticsNodeOf(t, el).getSemanticsData().label.contains((el.widget as DifyIconButton).label);
       Iterable<Element> controls() => [
         for (final type in [DifyIconButton, FieldAddButton, DifySwitch, ModelSettingsTrigger, ModelSelectorButton])
           ..._inSheet(find.byType(type)).evaluate(),
@@ -1110,8 +1038,8 @@ void main() {
         await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
         final found = controls().toList();
         expect(found, isNotEmpty, reason: step);
-        final targets = [for (final el in found) await _touchTarget(t, el, step)];
-        _apart(targets, step);
+        final targets = [for (final el in found) await expectTouchTarget(t, el, step)];
+        expectApart(targets, step);
         // The brief's controls are among them.
         final names = [for (final x in targets) x.$2].join(' | ');
         final expected = switch (step) {
@@ -1132,11 +1060,51 @@ void main() {
       await _scrollTo(t, trigger);
       await t.tap(trigger);
       await settle(t, 800);
-      await _touchTarget(t, find.byKey(const ValueKey('var-members-attachment')).evaluate().single, 'the chevron');
+      await expectTouchTarget(t, find.byKey(const ValueKey('var-members-attachment')).evaluate().single, 'the chevron');
       expect(t.takeException(), isNull);
       semantics.dispose();
       await e.dispose();
     });
+  }
+
+  for (final size in phoneSizes) {
+    final name = '${size.width.toInt()}x${size.height.toInt()}';
+    testWidgets(
+      '$name: touch targets in the Human Input settings (recheck 3): the form content\'s Copy and Expand, the '
+      'timeout field and its Days / Hours, a user action\'s button style and Delete; each a 44 dp node, all of it '
+      'hittable, none overlapping',
+      (t) async {
+        final semantics = t.ensureSemantics();
+        final e = await _pump(t, size: size);
+        _humanInputWorkflow(e.c);
+        await settle(t, 800);
+        await _openFromSteps(t, 'Review');
+        await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+        String h(String key) => DifyI18n.tr('workflow', 'nodes.humanInput.$key');
+        final labels = [
+          _tc('operation.copy'),
+          DifyI18n.tr('share', 'chat.expand'),
+          h('timeout.days'),
+          h('timeout.hours'),
+          h('userActions.chooseStyle'),
+          _tc('operation.delete'),
+        ];
+        final targets = <(Rect, String)>[];
+        for (final label in labels) {
+          final f = _inSheet(find.bySemanticsLabel(label));
+          expect(f, findsWidgets, reason: label);
+          targets.add(await expectTouchTarget(t, f.evaluate().first, 'Human Input'));
+        }
+        // The timeout field: touch-high (as a DifyInput on a phone).
+        final timeout = _inSheet(find.byType(DifyNumberField)).first;
+        await _scrollTo(t, timeout);
+        expect(t.getSize(timeout).height, greaterThanOrEqualTo(44));
+        expectApart(targets, 'Human Input');
+        expect(t.takeException(), isNull);
+        semantics.dispose();
+        await e.dispose();
+      },
+    );
   }
 
   testWidgets('the prompt is read as one text with each variable\'s name in its place (polish 3): "Summarize Start '

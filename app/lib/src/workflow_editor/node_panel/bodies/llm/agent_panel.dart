@@ -345,7 +345,8 @@ class _AgentStrategySelectorState extends State<AgentStrategySelector> {
         disabled: widget.disabled,
         onPressed: c.toggle,
         builder: (context, hovered, focused) => Container(
-          height: 32,
+          // A phone: touch-high, as a select's trigger is there.
+          height: DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 32,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: hovered ? DifyColors.stateBaseHoverAlt : DifyColors.componentsInputBgNormal,

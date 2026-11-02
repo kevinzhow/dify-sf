@@ -114,9 +114,13 @@ class _UserActionItemState extends State<UserActionItem> {
       builder: (context, constraints) {
         // The Input's grow wrapper has CSS min-width:auto; the delete IconButton alone can shrink. Letting
         // Expanded take all remaining space incorrectly shrinks the input below its HTML min-content width.
-        const fixed = 120 + 32 + 12; // id, button style, three gaps
+        // A phone: the button style and Delete are touch-size (44 px).
+        final touch = DifyTouch.compactOf(context);
+        final fixed = 120 + (touch ? DifyTouch.controlHeight : 32) + 12; // id, button style, three gaps
         final deleteWidth = w.readonly
             ? 0.0
+            : touch
+            ? DifyTouch.controlHeight
             : (constraints.maxWidth - fixed - Css.inputMinContentWidth).clamp(28.0, 32.0);
         return Row(
           spacing: 4,
@@ -200,24 +204,27 @@ class _ButtonStyleDropdownState extends State<ButtonStyleDropdown> {
       placement: DifyPlacement.bottomEnd,
       sideOffset: 4,
       alignOffset: 44,
-      builder: (context, c) => DifyPressable(
-        semanticLabel: hi('userActions.chooseStyle'),
-        onPressed: w.readonly ? null : c.toggle,
-        builder: (context, hovered, _) => Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: (hovered && !w.readonly) || c.isOpen
-                ? DifyColors.componentsButtonTertiaryBgHover
-                : DifyColors.componentsButtonTertiaryBg,
-            borderRadius: BorderRadius.circular(DifyRadius.lg),
-          ),
-          child: IgnorePointer(
-            child: DifyButton(
-              size: DifyButtonSize.small,
-              paddingX: 4,
-              variant: buttonVariantOf(w.value),
-              onPressed: () {},
-              child: const RemixIcon('font-size', size: 16),
+      builder: (context, c) => DifyTouchArea.inPhoneSheet(
+        context,
+        DifyPressable(
+          semanticLabel: hi('userActions.chooseStyle'),
+          onPressed: w.readonly ? null : c.toggle,
+          builder: (context, hovered, _) => Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: (hovered && !w.readonly) || c.isOpen
+                  ? DifyColors.componentsButtonTertiaryBgHover
+                  : DifyColors.componentsButtonTertiaryBg,
+              borderRadius: BorderRadius.circular(DifyRadius.lg),
+            ),
+            child: IgnorePointer(
+              child: DifyButton(
+                size: DifyButtonSize.small,
+                paddingX: 4,
+                variant: buttonVariantOf(w.value),
+                onPressed: () {},
+                child: const RemixIcon('font-size', size: 16),
+              ),
             ),
           ),
         ),
@@ -333,6 +340,8 @@ class TimeoutInput extends StatelessWidget {
         DifySegmentedControl<String>(
           value: unit,
           disabled: readonly,
+          // A phone: the design's touch control (its items 44 px targets).
+          size: DifyTouch.compactOf(context) ? DifySegmentedControlSize.touch : DifySegmentedControlSize.regular,
           onChanged: (u) => onChange(timeout, u),
           itemPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           textColor: DifyColors.textTertiary,

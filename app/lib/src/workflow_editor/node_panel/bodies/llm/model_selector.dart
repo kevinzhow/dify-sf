@@ -1181,6 +1181,7 @@ class ModelSelectorModelRow extends StatelessWidget {
   }
 }
 
-/// [child] with a 48 px hit area in a phone's sheet (its row is 48 px there).
-Widget _touchInSheet(BuildContext context, Widget child) =>
-    DifyFloating.inSheet(context) ? DifyTouchTarget(child: child) : child;
+/// [child] in a phone's sheet: in a 44 px box that is its hit area and its accessible bounds (its row is 48 px there).
+Widget _touchInSheet(BuildContext context, Widget child) => DifyFloating.inSheet(context)
+    ? DifyTouchArea(minSize: DifyTouch.controlHeight, accessibleBox: true, child: child)
+    : child;
