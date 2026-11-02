@@ -20,6 +20,7 @@ import '../../i18n/dify_i18n.dart';
 import '../block_selector/selector_widgets.dart' show SelectorBlockIcon, SelectorIconSize;
 import '../node_panel/resize_handle.dart';
 import '../panel_fields/var_reference_vars.dart' show CategoryVarIcon;
+import '../phone/panel_sheet_scope.dart';
 import '../store/store.dart';
 import 'inspect_vars.dart';
 import 'value_content.dart';
@@ -207,29 +208,33 @@ class _InspectPanelState extends State<InspectPanel> {
         store.bottomPanelWidth,
       ]),
       builder: (context, _) {
-        Widget headed(Widget body) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
-              child: Row(
+        // dify-sf: in a phone sheet the sheet's header has the title and the close.
+        final inSheet = PanelSheetScope.maybeOf(context) != null;
+        Widget headed(Widget body) => inSheet
+            ? Padding(padding: const EdgeInsets.all(8), child: body)
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: DifyText(_tw('debug.variableInspect.title'), DifyType.systemSmSemiboldUppercase),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: DifyText(_tw('debug.variableInspect.title'), DifyType.systemSmSemiboldUppercase),
+                        ),
+                        DifyIconButton(
+                          label: _close(),
+                          icon: const RemixIcon('close-line', size: 16),
+                          onPressed: () => store.setShowVariableInspectPanel(false),
+                        ),
+                      ],
+                    ),
                   ),
-                  DifyIconButton(
-                    label: _close(),
-                    icon: const RemixIcon('close-line', size: 16),
-                    onPressed: () => store.setShowVariableInspectPanel(false),
+                  Expanded(
+                    child: Padding(padding: const EdgeInsets.all(8), child: body),
                   ),
                 ],
-              ),
-            ),
-            Expanded(
-              child: Padding(padding: const EdgeInsets.all(8), child: body),
-            ),
-          ],
-        );
+              );
         if (store.isListening.value) return headed(Listening(onStop: () => scope.onStop?.call()));
         if (!crud.hasVars) return headed(const InspectEmpty());
 

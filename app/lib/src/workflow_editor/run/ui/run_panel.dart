@@ -21,7 +21,7 @@ import 'result_panel.dart';
 import 'run_widgets.dart';
 import 'status.dart';
 import 'tracing_panel.dart';
-import 'workflow_preview.dart' show RunLoading, runPanelTab, runPanelTabs;
+import 'workflow_preview.dart' show RunLoading, RunPanelLayout, runPanelTab, runPanelTabs;
 
 String _tr(String key) => DifyI18n.tr('run-log', key);
 
@@ -40,9 +40,13 @@ class RunPanel extends StatefulWidget {
     this.fetchTracingList,
     this.observeService,
     this.toast,
+    this.layout,
   });
 
   final String runId;
+
+  /// dify-sf: the tabs and the content laid out by the host (the phone's run sheet).
+  final RunPanelLayout? layout;
   final bool hideResult;
   final RunPanelTabType activeTab;
   final ValueChanged<DifyJson>? getResultCallback;
@@ -72,12 +76,8 @@ class _RunPanelState extends State<RunPanel> {
   void _releaseProjection() {
     final store = _store;
     if (!_projected || store == null) return;
-    final beforeNodes = _beforeNodes!,
-        beforeEdges = _beforeEdges!,
-        beforeRunning = _beforeRunning;
-    final lastNodes = _lastNodes,
-        lastEdges = _lastEdges,
-        lastRunning = _lastRunning;
+    final beforeNodes = _beforeNodes!, beforeEdges = _beforeEdges!, beforeRunning = _beforeRunning;
+    final lastNodes = _lastNodes, lastEdges = _lastEdges, lastRunning = _lastRunning;
     _projected = false;
     // Unmount and run-ID changes happen while the widget tree is locked. Other editor listeners remain alive.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -280,6 +280,99 @@ class _RunPanelState extends State<RunPanel> {
     final listening = _store?.isListening.value ?? false;
     final seen = <Object?>{};
     final agents = _list.reversed.where((n) => n['node_type'] == 'agent' && seen.add(n['node_id'])).toList();
+    final tabs = runPanelTabs(
+      scrollable: widget.layout != null,
+      [
+        if (agents.isNotEmpty)
+          runPanelTab(
+            label: DifyI18n.tr('agent-v-2', 'inline.progressDetails'),
+            active: _tab == RunPanelTabType.progress,
+            onTap: () => _switchTab(RunPanelTabType.progress),
+          ),
+        if (!widget.hideResult)
+          runPanelTab(
+            uppercaseStyle: true,
+            label: _tr('result'),
+            active: _tab == RunPanelTabType.result,
+            onTap: () => _switchTab(RunPanelTabType.result),
+          ),
+        runPanelTab(
+          uppercaseStyle: true,
+          label: _tr('detail'),
+          active: _tab == RunPanelTabType.detail,
+          onTap: () => _switchTab(RunPanelTabType.detail),
+        ),
+        runPanelTab(
+          uppercaseStyle: true,
+          label: _tr('tracing'),
+          active: _tab == RunPanelTabType.tracing,
+          onTap: () => _switchTab(RunPanelTabType.tracing),
+        ),
+      ],
+    );
+    final content = ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(DifyRadius.xl)),
+      child: ColoredBox(
+        color: DifyColors.componentsPanelBg,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (_loading) return const RunLoading();
+            switch (_tab) {
+              case RunPanelTabType.result:
+                if (d == null) return const SizedBox.shrink();
+                return SingleChildScrollView(
+                  child: OutputPanel(
+                    outputs: d['outputs'],
+                    error: d['error'] as String?,
+                    height: constraints.maxHeight - 16 - 16 - 2 - 1,
+                  ),
+                );
+              case RunPanelTabType.detail:
+                if (d == null) {
+                  return listening
+                      ? const SingleChildScrollView(child: StatusPanel(status: 'running', isListening: true))
+                      : const SizedBox.shrink();
+                }
+                return SingleChildScrollView(
+                  child: ResultPanel.fromJson(
+                    d,
+                    createdBy: _executor,
+                    isListening: listening,
+                    onOpenTracingTab: () => _switchTab(RunPanelTabType.tracing),
+                  ),
+                );
+              case RunPanelTabType.tracing:
+                return TracingPanel(
+                  list: _list,
+                  background: DifyColors.backgroundSectionBurn,
+                  scrollable: true,
+                );
+              case RunPanelTabType.progress:
+                return ListView(
+                  children: [
+                    for (final node in agents)
+                      AgentCanvasProgress(
+                        nodeId: '${node['node_id']}',
+                        progress:
+                            AgentProgressView.finished(
+                              null,
+                              AgentProgressView.map(node['execution_metadata']),
+                            ) ??
+                            AgentProgressView(run: '${node['id']}', cursor: 0),
+                      ),
+                  ],
+                );
+            }
+          },
+        ),
+      ),
+    );
+    if (widget.layout case final layout?) {
+      return WorkflowStoreScope(
+        store: _viewStore,
+        child: Builder(builder: (context) => layout(context, tabs, content)),
+      );
+    }
     return WorkflowStoreScope(
       store: _viewStore,
       child: Column(
@@ -292,95 +385,9 @@ class _RunPanelState extends State<RunPanel> {
                 bottom: BorderSide(color: DifyColors.dividerSubtle, width: Css.hairline),
               ),
             ),
-            child: runPanelTabs(
-              [
-                if (agents.isNotEmpty)
-                  runPanelTab(
-                    label: DifyI18n.tr('agent-v-2', 'inline.progressDetails'),
-                    active: _tab == RunPanelTabType.progress,
-                    onTap: () => _switchTab(RunPanelTabType.progress),
-                  ),
-                if (!widget.hideResult)
-                  runPanelTab(
-                    uppercaseStyle: true,
-                    label: _tr('result'),
-                    active: _tab == RunPanelTabType.result,
-                    onTap: () => _switchTab(RunPanelTabType.result),
-                  ),
-                runPanelTab(
-                  uppercaseStyle: true,
-                  label: _tr('detail'),
-                  active: _tab == RunPanelTabType.detail,
-                  onTap: () => _switchTab(RunPanelTabType.detail),
-                ),
-                runPanelTab(
-                  uppercaseStyle: true,
-                  label: _tr('tracing'),
-                  active: _tab == RunPanelTabType.tracing,
-                  onTap: () => _switchTab(RunPanelTabType.tracing),
-                ),
-              ],
-            ),
+            child: tabs,
           ),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(DifyRadius.xl)),
-              child: ColoredBox(
-                color: DifyColors.componentsPanelBg,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (_loading) return const RunLoading();
-                    switch (_tab) {
-                      case RunPanelTabType.result:
-                        if (d == null) return const SizedBox.shrink();
-                        return SingleChildScrollView(
-                          child: OutputPanel(
-                            outputs: d['outputs'],
-                            error: d['error'] as String?,
-                            height: constraints.maxHeight - 16 - 16 - 2 - 1,
-                          ),
-                        );
-                      case RunPanelTabType.detail:
-                        if (d == null) {
-                          return listening
-                              ? const SingleChildScrollView(child: StatusPanel(status: 'running', isListening: true))
-                              : const SizedBox.shrink();
-                        }
-                        return SingleChildScrollView(
-                          child: ResultPanel.fromJson(
-                            d,
-                            createdBy: _executor,
-                            isListening: listening,
-                            onOpenTracingTab: () => _switchTab(RunPanelTabType.tracing),
-                          ),
-                        );
-                      case RunPanelTabType.tracing:
-                        return TracingPanel(
-                          list: _list,
-                          background: DifyColors.backgroundSectionBurn,
-                          scrollable: true,
-                        );
-                      case RunPanelTabType.progress:
-                        return ListView(
-                          children: [
-                            for (final node in agents)
-                              AgentCanvasProgress(
-                                nodeId: '${node['node_id']}',
-                                progress:
-                                    AgentProgressView.finished(
-                                      null,
-                                      AgentProgressView.map(node['execution_metadata']),
-                                    ) ??
-                                    AgentProgressView(run: '${node['id']}', cursor: 0),
-                              ),
-                          ],
-                        );
-                    }
-                  },
-                ),
-              ),
-            ),
-          ),
+          Expanded(child: content),
         ],
       ),
     );

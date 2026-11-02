@@ -9,6 +9,7 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
+import '../phone/panel_sheet_scope.dart';
 
 String tw(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
 String tc(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('common', key, params);
@@ -25,7 +26,29 @@ class VariablePanelShell extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    // dify-sf: in a phone sheet the sheet is the frame; the title and the actions other than close go in its header,
+    // whose close button is the sheet's.
+    if (PanelSheetScope.maybeOf(context) case final sheet?) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DifySheetHeader(
+            title: title,
+            onClose: sheet.onClose,
+            actions: [
+              for (final a in actions)
+                if (a is! PanelCloseButton) DifyTouchTarget(child: a),
+            ],
+          ),
+          ...children,
+        ],
+      );
+    }
+    return _desktop(context);
+  }
+
+  Widget _desktop(BuildContext context) => Container(
     width: DifyAdaptive.panelWidth(context, 420),
     decoration: BoxDecoration(
       color: DifyColors.componentsPanelBgAlt,

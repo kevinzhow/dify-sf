@@ -12,6 +12,7 @@ import '../../design/dify_icon.dart';
 import '../../design/dify_tokens.g.dart';
 import '../../design/widgets/widgets.dart';
 import '../header/format.dart' as fmt;
+import '../phone/panel_sheet_scope.dart';
 import '../store/workflow_store.dart';
 import '../store/workflow_store_scope.dart';
 import 'comment_icon.dart' show UserAvatarList;
@@ -95,56 +96,118 @@ class _CommentsPanelBodyState extends State<CommentsPanelBody> {
             if ((showResolved || !c.resolved) && (!_onlyMine || c.createdBy == me)) c,
         ];
         final hasFilter = _onlyMine || !showResolved;
-        final header = Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: DifyTextLine(
-                  tw('comments.panelTitle'),
-                  style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
-                ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                spacing: 8,
-                children: [
-                  DifyPressable(
-                    semanticLabel: tw('comments.aria.filterComments'),
-                    onPressed: () => setState(() => _showFilter = !_showFilter),
-                    builder: (context, hovered, focused) => Container(
-                      width: 24,
-                      height: 24,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: hovered || hasFilter ? DifyColors.stateAccentActive : null,
-                        borderRadius: BorderRadius.circular(DifyRadius.md),
-                      ),
-                      child: RemixIcon(
-                        'filter-3-line',
-                        size: 16,
-                        color: hovered || hasFilter ? DifyColors.textAccent : DifyColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  const DifyDivider.vertical(length: 14, margin: EdgeInsets.zero),
-                  DifyPressable(
-                    semanticLabel: tw('comments.aria.closeComment'),
-                    onPressed: () {
-                      store
-                        ..setControlMode(ControlMode.pointer)
-                        ..setActiveCommentId(null);
-                    },
-                    builder: (context, hovered, focused) => SizedBox.square(
-                      dimension: 24,
-                      child: Center(child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        final sheet = PanelSheetScope.maybeOf(context);
+        final filterButton = DifyPressable(
+          semanticLabel: tw('comments.aria.filterComments'),
+          onPressed: () => setState(() => _showFilter = !_showFilter),
+          builder: (context, hovered, focused) => Container(
+            width: 24,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: hovered || hasFilter ? DifyColors.stateAccentActive : null,
+              borderRadius: BorderRadius.circular(DifyRadius.md),
+            ),
+            child: RemixIcon(
+              'filter-3-line',
+              size: 16,
+              color: hovered || hasFilter ? DifyColors.textAccent : DifyColors.textSecondary,
+            ),
           ),
         );
+        // dify-sf: in a phone sheet its header has the title, the filter and the sheet's close.
+        final header = sheet != null
+            ? DifySheetHeader(
+                title: tw('comments.panelTitle'),
+                onClose: sheet.onClose,
+                actions: [DifyTouchTarget(child: filterButton)],
+              )
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: DifyTextLine(
+                        tw('comments.panelTitle'),
+                        style: difyTextStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: 8,
+                      children: [
+                        filterButton,
+                        const DifyDivider.vertical(length: 14, margin: EdgeInsets.zero),
+                        DifyPressable(
+                          semanticLabel: tw('comments.aria.closeComment'),
+                          onPressed: () {
+                            store
+                              ..setControlMode(ControlMode.pointer)
+                              ..setActiveCommentId(null);
+                          },
+                          builder: (context, hovered, focused) => SizedBox.square(
+                            dimension: 24,
+                            child: Center(child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+        final body = Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                header,
+                Expanded(
+                  child: list.isEmpty
+                      ? (source.loading && !source.loaded
+                            ? const SizedBox.shrink()
+                            : Padding(
+                                padding: const EdgeInsets.only(top: 24),
+                                child: DifyTextLine(
+                                  tw('comments.noComments'),
+                                  textAlign: TextAlign.center,
+                                  style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
+                                ),
+                              ))
+                      : ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          children: [
+                            for (final c in list)
+                              _CommentCard(
+                                key: ValueKey(c.id),
+                                comment: c,
+                                source: source,
+                                active: store.activeCommentId.value == c.id,
+                                formatTimeFromNow: widget.formatTimeFromNow,
+                                onSelect: () => _actions.open(c),
+                                onResolve: () => _resolve(c),
+                              ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+            if (_showFilter)
+              Positioned(
+                top: sheet != null ? 52 : 16 + 36,
+                right: sheet != null ? 60 : 16 + 40,
+                child: _FilterMenu(
+                  onlyMine: _onlyMine,
+                  showResolved: showResolved,
+                  onOnlyMine: (v) => setState(() {
+                    _onlyMine = v;
+                    _showFilter = false;
+                  }),
+                  onShowResolved: store.setShowResolvedComments,
+                ),
+              ),
+          ],
+        );
+        if (sheet != null) return body;
         return Container(
           width: DifyAdaptive.panelWidth(context, 420),
           decoration: BoxDecoration(
@@ -152,58 +215,7 @@ class _CommentsPanelBodyState extends State<CommentsPanelBody> {
             border: Border.all(color: DifyColors.componentsPanelBorder),
             borderRadius: const BorderRadius.horizontal(left: Radius.circular(DifyRadius.xxl)),
           ),
-          child: Stack(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  header,
-                  Expanded(
-                    child: list.isEmpty
-                        ? (source.loading && !source.loaded
-                              ? const SizedBox.shrink()
-                              : Padding(
-                                  padding: const EdgeInsets.only(top: 24),
-                                  child: DifyTextLine(
-                                    tw('comments.noComments'),
-                                    textAlign: TextAlign.center,
-                                    style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textTertiary),
-                                  ),
-                                ))
-                        : ListView(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            children: [
-                              for (final c in list)
-                                _CommentCard(
-                                  key: ValueKey(c.id),
-                                  comment: c,
-                                  source: source,
-                                  active: store.activeCommentId.value == c.id,
-                                  formatTimeFromNow: widget.formatTimeFromNow,
-                                  onSelect: () => _actions.open(c),
-                                  onResolve: () => _resolve(c),
-                                ),
-                            ],
-                          ),
-                  ),
-                ],
-              ),
-              if (_showFilter)
-                Positioned(
-                  top: 16 + 36,
-                  right: 16 + 40,
-                  child: _FilterMenu(
-                    onlyMine: _onlyMine,
-                    showResolved: showResolved,
-                    onOnlyMine: (v) => setState(() {
-                      _onlyMine = v;
-                      _showFilter = false;
-                    }),
-                    onShowResolved: store.setShowResolvedComments,
-                  ),
-                ),
-            ],
-          ),
+          child: body,
         );
       },
     );

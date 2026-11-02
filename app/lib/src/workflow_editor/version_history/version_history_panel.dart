@@ -20,6 +20,7 @@ import '../header/publisher/summary_section.dart' show PublishedWorkflowInfo;
 import '../header/publisher/utils.dart' show getWorkflowVersionName;
 import '../header/publisher/version_info_modal.dart' show showVersionInfoModal, VersionInfoUpdate;
 import '../header/titles.dart' show workflowVersionDraft;
+import '../phone/panel_sheet_scope.dart';
 import '../store/store.dart';
 
 String _w(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
@@ -1030,6 +1031,55 @@ class VersionHistoryPanelState extends State<VersionHistoryPanel> {
   Widget build(BuildContext context) {
     final store = WorkflowStoreScope.of(context);
     final items = [for (final p in _pages) ...p];
+    final filter = VersionHistoryFilter(
+      filterValue: _filterValue,
+      isOnlyShowNamedVersions: _onlyNamed,
+      onClickFilterItem: _setFilter,
+      handleSwitch: _setOnlyNamed,
+    );
+    final list = Expanded(
+      child: ValueListenableBuilder(
+        valueListenable: store.currentVersion,
+        builder: (context, current, _) => ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          children: [
+            if (_isFetching && _pages.isEmpty)
+              const VersionHistoryLoading()
+            else ...[
+              for (final (i, item) in items.indexed)
+                VersionHistoryItem(
+                  key: ValueKey('${item['id']}'),
+                  item: item,
+                  currentVersion: current,
+                  latestVersionId: _data.latestVersionId ?? '',
+                  onClick: _onVersionClick,
+                  handleClickActionMenuItem: (a) => _onAction(item, a),
+                  canImportExportDsl: _data.canImportExportDsl,
+                  isPipeline: _data.isPipeline,
+                  isLast: i == items.length - 1,
+                ),
+              if (!_isFetching && items.isEmpty) VersionHistoryEmpty(onResetFilter: _resetFilter),
+            ],
+          ],
+        ),
+      ),
+    );
+    // dify-sf: in a phone sheet the sheet is the frame; its header has the title, the filter and the sheet's close
+    // (the list hides; browsing goes on, as Back does).
+    if (PanelSheetScope.maybeOf(context) case final sheet?) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DifySheetHeader(
+            title: _w('versionHistory.title'),
+            onClose: sheet.onClose,
+            actions: [DifyTouchTarget(child: filter)],
+          ),
+          list,
+          if (_hasNextPage) _loadMore(),
+        ],
+      );
+    }
     return Container(
       width: DifyAdaptive.panelWidth(context, 268),
       decoration: BoxDecoration(
@@ -1060,12 +1110,7 @@ class VersionHistoryPanelState extends State<VersionHistoryPanel> {
                     ),
                   ),
                 ),
-                VersionHistoryFilter(
-                  filterValue: _filterValue,
-                  isOnlyShowNamedVersions: _onlyNamed,
-                  onClickFilterItem: _setFilter,
-                  handleSwitch: _setOnlyNamed,
-                ),
+                filter,
                 Container(
                   width: 1,
                   height: 14,
@@ -1089,75 +1134,51 @@ class VersionHistoryPanelState extends State<VersionHistoryPanel> {
               ],
             ),
           ),
-          Expanded(
-            child: ValueListenableBuilder(
-              valueListenable: store.currentVersion,
-              builder: (context, current, _) => ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                children: [
-                  if (_isFetching && _pages.isEmpty)
-                    const VersionHistoryLoading()
-                  else ...[
-                    for (final (i, item) in items.indexed)
-                      VersionHistoryItem(
-                        key: ValueKey('${item['id']}'),
-                        item: item,
-                        currentVersion: current,
-                        latestVersionId: _data.latestVersionId ?? '',
-                        onClick: _onVersionClick,
-                        handleClickActionMenuItem: (a) => _onAction(item, a),
-                        canImportExportDsl: _data.canImportExportDsl,
-                        isPipeline: _data.isPipeline,
-                        isLast: i == items.length - 1,
-                      ),
-                    if (!_isFetching && items.isEmpty) VersionHistoryEmpty(onResetFilter: _resetFilter),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          if (_hasNextPage)
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: DifyPressable(
-                semanticLabel: _w('common.loadMore'),
-                disabled: _isFetching,
-                onPressed: _nextPage,
-                builder: (context, hovered, focused) => Container(
-                  decoration: BoxDecoration(
-                    color: hovered ? DifyColors.stateBaseHover : null,
-                    borderRadius: BorderRadius.circular(DifyRadius.sm),
-                  ),
-                  child: Row(
-                    spacing: 4,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(2),
-                        child: RemixIcon(
-                          _isFetching ? 'loader-2-line' : 'arrow-down-double-line',
-                          size: 14,
-                          color: DifyColors.textAccent,
-                        ),
-                      ),
-                      Flexible(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 1),
-                          child: DifyText(
-                            _w('common.loadMore').toUpperCase(),
-                            DifyType.systemXsMediumUppercase,
-                            color: DifyColors.textAccent,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          list,
+          if (_hasNextPage) _loadMore(),
         ],
       ),
     );
   }
+
+  /// "Load more" while there are more versions.
+  Widget _loadMore() => Padding(
+    padding: const EdgeInsets.all(8),
+    child: DifyPressable(
+      semanticLabel: _w('common.loadMore'),
+      disabled: _isFetching,
+      onPressed: _nextPage,
+      builder: (context, hovered, focused) => Container(
+        decoration: BoxDecoration(
+          color: hovered ? DifyColors.stateBaseHover : null,
+          borderRadius: BorderRadius.circular(DifyRadius.sm),
+        ),
+        child: Row(
+          spacing: 4,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(2),
+              child: RemixIcon(
+                _isFetching ? 'loader-2-line' : 'arrow-down-double-line',
+                size: 14,
+                color: DifyColors.textAccent,
+              ),
+            ),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                child: DifyText(
+                  _w('common.loadMore').toUpperCase(),
+                  DifyType.systemXsMediumUppercase,
+                  color: DifyColors.textAccent,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// The version history panel while the store says it is shown (`showWorkflowVersionHistoryPanel`).

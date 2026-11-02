@@ -14,6 +14,7 @@ import '../../../design/widgets/widgets.dart';
 import '../../../i18n/dify_i18n.dart';
 import '../../code_editor/code_editor.dart';
 import '../../panel_fields/field.dart' show PanelSplit;
+import '../../phone/panel_sheet_scope.dart';
 import '../../store/workflow_store.dart' show DifyJson;
 import '../../store/workflow_store_scope.dart';
 
@@ -240,7 +241,8 @@ typedef RunFilePicker = Future<DifyJson?> Function(String transferMethod);
 class RunFilePickerScope extends InheritedWidget {
   const RunFilePickerScope({super.key, required this.pickFile, required super.child});
   final RunFilePicker? pickFile;
-  static RunFilePicker? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<RunFilePickerScope>()?.pickFile;
+  static RunFilePicker? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<RunFilePickerScope>()?.pickFile;
   @override
   bool updateShouldNotify(RunFilePickerScope oldWidget) => pickFile != oldWidget.pickFile;
 }
@@ -593,7 +595,14 @@ class RunBoolInput extends StatelessWidget {
 /// FileUploaderInAttachmentWrapper: "Upload from computer" and "Paste file link" (disabled at the limit or without a
 /// [pickFile]), then the files with remove buttons.
 class RunFileInput extends StatefulWidget {
-  const RunFileInput({super.key, required this.files, required this.limit, required this.onChange, this.pickFile, this.allowedMethods = const []});
+  const RunFileInput({
+    super.key,
+    required this.files,
+    required this.limit,
+    required this.onChange,
+    this.pickFile,
+    this.allowedMethods = const [],
+  });
   final List<DifyJson> files;
   final int limit;
   final List<String> allowedMethods;
@@ -603,6 +612,7 @@ class RunFileInput extends StatefulWidget {
   @override
   State<RunFileInput> createState() => _RunFileInputState();
 }
+
 class _RunFileInputState extends State<RunFileInput> {
   bool _busy = false;
   @override
@@ -971,7 +981,21 @@ class RunPanelWrap extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    // dify-sf: in a phone sheet the sheet is the frame and its header has the title and the close.
+    if (PanelSheetScope.maybeOf(context) != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DifySheetHeader(title: '${_tw('singleRun.testRun')} $nodeName', onClose: onHide),
+          Expanded(child: child),
+        ],
+      );
+    }
+    return _desktop();
+  }
+
+  Widget _desktop() => Container(
     decoration: BoxDecoration(
       color: DifyColors.backgroundOverlayAlt,
       borderRadius: BorderRadius.circular(DifyRadius.xxl),
