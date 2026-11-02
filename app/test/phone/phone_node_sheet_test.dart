@@ -19,6 +19,9 @@ import 'package:dify_sf_app/src/workflow_editor/header/publisher/app_publisher.d
 import 'package:collab_client/collab_client.dart' show Document, Edge, Node;
 import 'package:dify_sf_app/src/editor/undo_manager.dart' show HistoryEvent;
 import 'package:dify_sf_app/src/workflow_editor/context_menu/clipboard.dart' show nodeFromDify;
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/core_kit.dart' show FieldAddButton;
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart'
+    show ModelSettingsTrigger;
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_selector.dart' show ModelSelectorButton;
 import 'package:dify_sf_app/src/workflow_editor/node_panel/title_description_input.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
@@ -251,6 +254,68 @@ void _markedAsSelect(WidgetTester t, String label, String what) {
   );
   final decoration = t.widget<Container>(row).decoration as BoxDecoration?;
   expect(decoration?.color, DifyColors.stateBaseHover, reason: '$what: the current row highlighted');
+}
+
+/// [n]'s rectangle in the window (a semantics node's rect is in its parent's coordinates).
+Rect _globalRect(SemanticsNode n) {
+  var r = n.rect;
+  for (SemanticsNode? x = n; x != null; x = x.parent) {
+    if (x.transform case final m?) r = MatrixUtils.transformRect(m, r);
+  }
+  return r;
+}
+
+/// The semantics node control [el] is for the platform: the first node its render objects form (a node merged into
+/// a parent: that parent), else the node it is part of.
+SemanticsNode _nodeOf(WidgetTester t, Element el) {
+  final queue = <RenderObject>[el.renderObject!];
+  while (queue.isNotEmpty) {
+    final r = queue.removeAt(0);
+    if (r.debugSemantics case final n?) {
+      var m = n;
+      while (m.isMergedIntoParent && m.parent != null) {
+        m = m.parent!;
+      }
+      return m;
+    }
+    r.visitChildren(queue.add);
+  }
+  return t.getSemantics(find.byElementPredicate((x) => x == el));
+}
+
+/// [el], scrolled to the middle of its scroll view, is for the platform a node at least 44 dp square (what TalkBack
+/// focuses and an accessibility scanner measures); returns that node's rectangle in the scroll view's content (to
+/// compare controls measured at different scroll offsets) and its name.
+Future<(Rect, String)> _touchTarget(WidgetTester t, Element el, String what) async {
+  await Scrollable.ensureVisible(el, alignment: 0.5);
+  await settle(t, 300);
+  final node = _nodeOf(t, el);
+  final data = node.getSemanticsData();
+  final name = '${el.widget.runtimeType} ${data.label}${data.value.isEmpty ? '' : ' (${data.value})'}'.replaceAll(
+    '\n',
+    ' ',
+  );
+  expect(node.rect.width, greaterThanOrEqualTo(44), reason: '$what: "$name" accessible width ${node.rect}');
+  expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$what: "$name" accessible height ${node.rect}');
+  final scroll = Scrollable.maybeOf(el);
+  final shift = scroll == null
+      ? Offset.zero
+      : scroll.position.axis == Axis.vertical
+      ? Offset(0, scroll.position.pixels)
+      : Offset(scroll.position.pixels, 0);
+  return (_globalRect(node).shift(shift), name);
+}
+
+/// No two of [targets] overlap.
+void _apart(List<(Rect, String)> targets, String what) {
+  for (var i = 0; i < targets.length; i++) {
+    for (var j = i + 1; j < targets.length; j++) {
+      final (a, an) = targets[i];
+      final (b, bn) = targets[j];
+      final o = a.intersect(b);
+      expect(o.width > 0.5 && o.height > 0.5, isFalse, reason: '$what: "$an" $a and "$bn" $b overlap');
+    }
+  }
 }
 
 void main() {
@@ -833,9 +898,18 @@ void main() {
     await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
     final panel = _inSheet(find.byType(DifyPromptEditorPanel)).first;
     await _scrollTo(t, panel);
+    // The header's boxes, side by side (Generate and the Jinja switch have theirs too since the polish round).
     final boxes = find.descendant(of: panel, matching: find.byType(DifyTouchArea));
-    expect(boxes, findsNWidgets(2));
-    final rects = [for (final b in boxes.evaluate()) t.getRect(find.byWidget(b.widget))];
+    final outer = [
+      for (final b in boxes.evaluate())
+        if (find
+            .ancestor(of: find.byElementPredicate((x) => x == b), matching: find.byType(DifyTouchArea))
+            .evaluate()
+            .isEmpty)
+          b,
+    ];
+    expect(outer.length, 4, reason: 'Generate, Jinja, insert, "…"');
+    final rects = [for (final b in outer) t.getRect(find.byElementPredicate((x) => x == b))];
     for (final r in rects) {
       expect(r.width, greaterThanOrEqualTo(44));
       expect(r.height, greaterThanOrEqualTo(44));
@@ -953,6 +1027,84 @@ void main() {
     final python = find.text('Python3').last;
     expect(t.getRect(python).left, closeTo(typeInset, 0.5), reason: 'one row inset');
     expect(typeInset, closeTo(16, 0.5));
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  // ----- polish after batch 4 (brief-polish.md) -----
+
+  for (final size in phoneSizes) {
+    final name = '${size.width.toInt()}x${size.height.toInt()}';
+    testWidgets('$name: touch targets (polish 1): the small controls of the Start, LLM, Code and End settings, the '
+        'field headers\' icon buttons, "+", switches, fold rows and the model\'s Variable / Constant, Remove, Model '
+        'Settings and the model, Generate, the code language, each a 44 dp node for touch and accessibility, none '
+        'overlapping', (t) async {
+      final semantics = t.ensureSemantics();
+      final e = await _pump(t, size: size);
+      // An icon button the platform reads (its own name in its node; not one shown only on hover).
+      bool read(Element el) =>
+          el.widget is! DifyIconButton ||
+          _nodeOf(t, el).getSemanticsData().label.contains((el.widget as DifyIconButton).label);
+      Iterable<Element> controls() => [
+        for (final type in [DifyIconButton, FieldAddButton, DifySwitch, ModelSettingsTrigger, ModelSelectorButton])
+          ..._inSheet(find.byType(type)).evaluate(),
+        // The default trigger of a TypeSelector (the code language): its text.
+        ..._inSheet(find.text('PYTHON3')).evaluate(),
+        // A collapse's fold row (output variables, error handling).
+        ..._inSheet(find.byType(PanelCollapse)).evaluate(),
+        // The model field's Variable / Constant switch: each item.
+        for (final key in ['variable', 'input'])
+          ..._inSheet(find.bySemanticsLabel(_tw('nodes.common.typeSwitch.$key'))).evaluate(),
+      ].where(read);
+      for (final step in [_llmTitle, 'Count words', 'Start', 'End']) {
+        await _openFromSteps(t, step);
+        await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+        final found = controls().toList();
+        expect(found, isNotEmpty, reason: step);
+        final targets = [for (final el in found) await _touchTarget(t, el, step)];
+        _apart(targets, step);
+        // The brief's controls are among them.
+        final names = [for (final x in targets) x.$2].join(' | ');
+        final expected = switch (step) {
+          _llmTitle => ['Generate', 'Model Settings', 'ModelSelectorButton', 'Use variable', 'Input value', 'Jinja'],
+          'Count words' => ['Remove', 'PYTHON3', 'Add Input Variables', 'retry on failure'],
+          'Start' => ['Add Input Field'],
+          _ => ['Remove', 'Add output variable'],
+        };
+        for (final name in expected) {
+          expect(names, contains(name), reason: '$step: $names');
+        }
+        expect(await systemBack(t), isTrue);
+      }
+      // A variable's drill chevron in the variable sheet (End's output: Start's file variable has members).
+      await _openFromSteps(t, 'End');
+      await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+      final trigger = _inSheet(find.byKey(const Key('var-reference-picker-trigger'))).first;
+      await _scrollTo(t, trigger);
+      await t.tap(trigger);
+      await settle(t, 800);
+      await _touchTarget(t, find.byKey(const ValueKey('var-members-attachment')).evaluate().single, 'the chevron');
+      expect(t.takeException(), isNull);
+      semantics.dispose();
+      await e.dispose();
+    });
+  }
+
+  testWidgets('"…" → Publish: with the keycaps hidden on a phone, the Publish button\'s label is centred (polish 5)', (
+    t,
+  ) async {
+    final e = await _pump(t);
+    await t.tap(find.byKey(const ValueKey('phone-editor-more')));
+    await settle(t, 800);
+    await t.tap(find.text(_tw('common.publish')).last);
+    await settle(t, 1200);
+    final label = find.descendant(of: find.byType(AppPublisher), matching: find.text(_tw('common.publish'))).last;
+    final button = find.ancestor(of: label, matching: find.byType(DifyButton)).first;
+    expect(
+      t.getCenter(label).dx,
+      closeTo(t.getCenter(button).dx, 0.5),
+      reason: 'label ${t.getRect(label)} in button ${t.getRect(button)}',
+    );
     expect(t.takeException(), isNull);
     await e.dispose();
   });

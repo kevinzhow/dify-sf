@@ -262,7 +262,8 @@ class _TypeCard extends StatelessWidget {
         builder: (context, hovered, focused) {
           final hover = hovered && !disabled;
           return Container(
-            height: 32,
+            // A phone: touch-high, as the form's fields are (DifyTouch.controlHeight).
+            height: DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 32,
             padding: EdgeInsets.fromLTRB(8, 0, tip == null ? 8 : 20, 0),
             alignment: Alignment.center,
             decoration: BoxDecoration(

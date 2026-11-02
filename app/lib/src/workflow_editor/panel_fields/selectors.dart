@@ -107,25 +107,45 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
       sheetOnCompact: true,
       sheetTitle: widget.sheetTitle,
       sheetTitleFromField: true,
-      builder: (context, c) => MouseRegion(
-        cursor: readonly ? SystemMouseCursors.basic : SystemMouseCursors.click,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {
-            onTriggerTap?.call();
-            if (!readonly) c.toggle();
-          },
-          child:
-              trigger ??
-              _DefaultTrigger(
-                label: noValue ? placeholder : item?.label ?? '',
-                noValue: noValue,
-                uppercase: uppercase || widget.triggerUppercase,
-                readonly: readonly,
-                open: c.isOpen,
-              ),
-        ),
-      ),
+      builder: (context, c) {
+        void tap() {
+          onTriggerTap?.call();
+          if (!readonly) c.toggle();
+        }
+
+        Widget button = MouseRegion(
+          cursor: readonly ? SystemMouseCursors.basic : SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: tap,
+            child:
+                trigger ??
+                _DefaultTrigger(
+                  label: noValue ? placeholder : item?.label ?? '',
+                  noValue: noValue,
+                  uppercase: uppercase || widget.triggerUppercase,
+                  readonly: readonly,
+                  open: c.isOpen,
+                ),
+          ),
+        );
+        // A phone: the 20 px default trigger (a code editor's language, a prompt's role) in a touch box that is also
+        // its accessible bounds, read as a button that opens the select's sheet.
+        if (trigger == null && DifyTouch.compactOf(context)) {
+          button = DifyTouchArea(
+            minSize: DifyTouch.controlHeight,
+            accessibleBox: true,
+            child: Semantics(
+              button: true,
+              expanded: c.isOpen,
+              enabled: !readonly,
+              onTap: readonly ? null : tap,
+              child: button,
+            ),
+          );
+        }
+        return button;
+      },
       popupBuilder: (context) => DifyFloating.inSheet(context)
           // A phone: the select sheets' own rows (DifySelect's), the current value marked alike.
           ? Padding(
@@ -294,7 +314,9 @@ class FormInputTypeSwitch extends StatelessWidget {
     value: value,
     onChanged: onChanged,
     disabled: readonly,
-    tooltip: true,
+    // A phone: the design's touch control (its items 44 px targets); no hover tooltips there.
+    size: DifyTouch.compactOf(context) ? DifySegmentedControlSize.touch : DifySegmentedControlSize.regular,
+    tooltip: !DifyTouch.compactOf(context),
     bordered: false,
     itemPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     textColor: DifyColors.textTertiary,

@@ -519,6 +519,7 @@ class _ClassListState extends State<ClassList> {
                         enabled: c == null,
                         child: DifyIconButton(
                           key: ValueKey('class-sort-handle-$position'),
+                          touchBox: false, // A drag handle shown on hover.
                           focusNode: _handle(id),
                           label: label,
                           icon: const RemixIcon('draggable', size: 12),

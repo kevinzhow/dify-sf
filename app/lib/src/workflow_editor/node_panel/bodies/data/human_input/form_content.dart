@@ -790,9 +790,7 @@ class _InputFieldEditorState extends State<InputFieldEditor> {
                         onPressed: _save,
                         trailing: w.isEdit
                             ? null
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                spacing: 2,
+                            : DifyKbdGroup(
                                 children: [
                                   DifyKbd(modKeyLabel, color: DifyKbdColor.white),
                                   const DifyKbd('↵', color: DifyKbdColor.white),

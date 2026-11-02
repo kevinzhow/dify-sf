@@ -54,14 +54,21 @@ Map<ShortcutActivator, VoidCallback> modEnter(VoidCallback? run) => run == null
         const SingleActivator(LogicalKeyboardKey.enter, meta: true): run,
       };
 
-/// A primary button's label with the Mod+Enter keycaps.
-Widget labelWithModEnter(String label, {bool disabled = false}) => Row(
-  mainAxisSize: MainAxisSize.min,
-  spacing: 4,
-  children: [
-    Flexible(child: DifyTextLine(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
-    DifyShortcutKbd(hotkey: 'Mod+Enter', color: DifyKbdColor.white),
-  ],
+/// A primary button's label with the Mod+Enter keycaps; a phone shows no keycaps, and no gap for them (the label
+/// stays centred).
+Widget labelWithModEnter(String label, {bool disabled = false}) => Builder(
+  builder: (context) {
+    final text = DifyTextLine(label, maxLines: 1, overflow: TextOverflow.ellipsis);
+    if (!DifyKbd.shownIn(context)) return text;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 4,
+      children: [
+        Flexible(child: text),
+        DifyShortcutKbd(hotkey: 'Mod+Enter', color: DifyKbdColor.white),
+      ],
+    );
+  },
 );
 
 /// Takes the focus when the dialog opens (Base UI's initial focus), so its keyboard shortcuts work at once.

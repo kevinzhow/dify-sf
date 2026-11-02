@@ -21,12 +21,16 @@ enum DifyKbdColor {
   };
 }
 
+/// Keycaps (a [DifyKbd], a [DifyKbdGroup], a [DifyShortcutKbd]): a phone shows none ([DifyKbd.shownIn]). A
+/// [DifyButton] leaves a hidden keycap out of its row, with the gap before it, so its label stays centred.
+abstract interface class DifyKeycaps implements Widget {}
+
 /// dify-ui's Kbd keycap: `inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-px system-kbd
 /// capitalize`; disabled is `opacity-30`. Decorative: no pointer events, no semantics of its own beyond its text.
 ///
 /// A phone (a compact window, [DifyTouch.compactOf]) has no keyboard shortcuts: keycaps and their groups show nothing
 /// there.
-class DifyKbd extends StatelessWidget {
+class DifyKbd extends StatelessWidget implements DifyKeycaps {
   const DifyKbd(this.text, {super.key, this.color = DifyKbdColor.gray, this.textColor, this.disabled = false});
 
   final String text;
@@ -36,9 +40,12 @@ class DifyKbd extends StatelessWidget {
   final Color? textColor;
   final bool disabled;
 
+  /// Whether keycaps show in [context]'s window: not on a phone (a compact window), which has no keyboard shortcuts.
+  static bool shownIn(BuildContext context) => !DifyTouch.compactOf(context);
+
   @override
   Widget build(BuildContext context) {
-    if (DifyTouch.compactOf(context)) return const SizedBox.shrink();
+    if (!shownIn(context)) return const SizedBox.shrink();
     Widget key = IgnorePointer(
       child: Container(
         height: 16,
@@ -66,7 +73,7 @@ class DifyKbd extends StatelessWidget {
 }
 
 /// KbdGroup: keycaps side by side, `inline-flex items-center gap-0.5`; [semanticLabel] names the chord.
-class DifyKbdGroup extends StatelessWidget {
+class DifyKbdGroup extends StatelessWidget implements DifyKeycaps {
   const DifyKbdGroup({super.key, required this.children, this.semanticLabel});
 
   final List<Widget> children;
@@ -75,7 +82,7 @@ class DifyKbdGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // A phone: no keyboard shortcuts to show (see [DifyKbd]).
-    if (DifyTouch.compactOf(context)) return const SizedBox.shrink();
+    if (!DifyKbd.shownIn(context)) return const SizedBox.shrink();
     final row = Row(mainAxisSize: MainAxisSize.min, spacing: 2, children: children);
     if (semanticLabel == null) return row;
     return Semantics(

@@ -432,6 +432,7 @@ class _ConfigPromptState extends State<ConfigPrompt> {
                             enabled: !w.readOnly && c == null,
                             child: DifyIconButton(
                               key: ValueKey('sort-handle-$index'),
+                              touchBox: false, // A drag handle shown on hover.
                               focusNode: _handle(key),
                               label: label,
                               icon: const DifyIcon('vender/line/others/drag-handle', size: 14),

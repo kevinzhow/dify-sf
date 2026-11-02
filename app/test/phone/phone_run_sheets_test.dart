@@ -1243,6 +1243,24 @@ void main() {
     await e.dispose();
   });
 
+  testWidgets('the environment variable form\'s type cards (String, Number, Secret, LLM) are touch-high: 44 dp for '
+      'touch and accessibility (polish 1)', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+    await overflow(t, _tw('env.envPanelTitle'));
+    await t.tap(find.text(_tw('env.envPanelButton')));
+    await settle(t, 800);
+    for (final type in ['String', 'Number', 'Secret']) {
+      final card = find.bySemanticsLabel(type);
+      expect(card, findsOneWidget, reason: type);
+      final node = t.getSemantics(card);
+      expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$type ${node.rect}');
+    }
+    expect(t.takeException(), isNull);
+    semantics.dispose();
+    await e.dispose();
+  });
+
   testWidgets('touch sizes: Start Run, the environment variable form and its cards\' actions', (t) async {
     final e = await _pump(t);
     // Start Run: 44 px, the design's button height in a phone sheet.

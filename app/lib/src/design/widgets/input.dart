@@ -141,7 +141,9 @@ TextField difyTextField({
 }) => TextField(
   controller: controller,
   focusNode: focusNode,
-  autofocus: autofocus,
+  // A picker shown as a sheet (a phone) keeps the focus on itself (DifyFloating): a field in it (a search) opens the
+  // keyboard only when tapped, also one that asks to take the focus at once.
+  autofocus: autofocus && !DifyFloating.inSheet(context),
   readOnly: readOnly,
   enabled: !disabled,
   obscureText: obscureText,

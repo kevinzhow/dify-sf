@@ -8,6 +8,7 @@ import '../dify_tokens.g.dart';
 import '../css_metrics.dart';
 import '../dify_fonts.dart';
 import '../dify_theme.dart' show difySelectionAccent;
+import 'floating.dart' show DifyFloating;
 import 'input.dart';
 import 'responsive.dart' show DifyTouch;
 import 'text.dart';
@@ -147,7 +148,9 @@ class _DifyTextFieldState extends State<DifyTextField> {
       onTap: w.onTap,
       enabled: w.enabled,
       readOnly: w.readOnly,
-      autofocus: w.autofocus,
+      // A picker shown as a sheet (a phone) keeps the focus on itself (DifyFloating): a field in it (a search) opens
+      // the keyboard only when tapped, also one that asks to take the focus at once.
+      autofocus: w.autofocus && !DifyFloating.inSheet(context),
       autocorrect: w.autocorrect,
       enableSuggestions: w.enableSuggestions,
       expands: w.expands,

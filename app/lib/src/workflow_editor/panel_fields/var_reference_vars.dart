@@ -570,6 +570,7 @@ class _MemberRow extends StatelessWidget {
             DifyText(type, DifyType.systemXsRegular, color: DifyColors.textTertiary),
             if (onDrill case final drill?)
               DifyTouchArea(
+                accessibleBox: true,
                 child: DifyIconButton(
                   label: name,
                   onPressed: drill,
@@ -889,7 +890,9 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
               ),
               if (_hasPanel && sheet)
                 // A phone: the members open as a page of the sheet; a tap on the rest of the row picks the variable.
+                // The chevron's touch box is also its accessible bounds.
                 DifyTouchArea(
+                  accessibleBox: true,
                   child: DifyIconButton(
                     key: ValueKey('var-members-${_v.variable}'),
                     label: _v.variable,

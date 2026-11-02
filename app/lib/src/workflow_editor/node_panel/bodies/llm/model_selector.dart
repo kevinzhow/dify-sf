@@ -464,7 +464,8 @@ class ModelSelectorButton extends StatelessWidget {
       builder: (context, hovered, focused) => Semantics(
         expanded: open,
         child: Container(
-          height: medium ? 32 : 24,
+          // A phone: touch-high, as a select's trigger is there.
+          height: medium ? (DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 32) : 24,
           padding: EdgeInsets.all(medium ? 4 : 2),
           decoration: BoxDecoration(
             color: background(hovered),

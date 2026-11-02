@@ -219,19 +219,22 @@ class FieldAddButton extends StatelessWidget {
   final bool alone;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.only(bottom: alone ? Css.inlineButtonLineGap : 0),
-    child: DifyPressable(
-      semanticLabel: label,
-      onPressed: onPressed,
-      builder: (context, hovered, focused) => Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: hovered ? DifyColors.stateBaseHover : null,
-          borderRadius: BorderRadius.circular(DifyRadius.md),
-          border: focused ? Border.all(color: DifyColors.componentsInputBorderActive) : null,
+  Widget build(BuildContext context) => DifyTouchArea.inPhoneSheet(
+    context,
+    Padding(
+      padding: EdgeInsets.only(bottom: alone ? Css.inlineButtonLineGap : 0),
+      child: DifyPressable(
+        semanticLabel: label,
+        onPressed: onPressed,
+        builder: (context, hovered, focused) => Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: hovered ? DifyColors.stateBaseHover : null,
+            borderRadius: BorderRadius.circular(DifyRadius.md),
+            border: focused ? Border.all(color: DifyColors.componentsInputBorderActive) : null,
+          ),
+          child: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
         ),
-        child: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
       ),
     ),
   );

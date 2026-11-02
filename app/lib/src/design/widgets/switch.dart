@@ -42,8 +42,9 @@ class DifySwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final control = _control(context);
-    // A phone: a 48 px hit area around the track (where the row around it has the room), the layout unchanged.
-    return DifyTouch.compactOf(context) ? DifyTouchTarget(child: control) : control;
+    // A phone: a 48 px hit area around the track (where the row around it has the room), the layout unchanged; the
+    // hit area is also the switch's accessible bounds (the platform reports a 48 px target, not the 28 x 16 track).
+    return DifyTouch.compactOf(context) ? DifyTouchTarget(accessible: true, child: control) : control;
   }
 
   Widget _control(BuildContext context) => Semantics(
