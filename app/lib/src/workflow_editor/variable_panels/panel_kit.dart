@@ -38,7 +38,7 @@ class VariablePanelShell extends StatelessWidget {
             onClose: sheet.onClose,
             actions: [
               for (final a in actions)
-                if (a is! PanelCloseButton) DifyTouchTarget(child: a),
+                if (a is! PanelCloseButton) DifyTouchArea(minSize: 44, accessibleBox: true, child: a),
             ],
           ),
           ...children,

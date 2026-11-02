@@ -1088,7 +1088,7 @@ class VersionHistoryPanelState extends State<VersionHistoryPanel> {
                   : versionHistoryName(current),
               subtitle: current == null ? null : _w('versionHistory.title'),
               onClose: sheet.onClose,
-              actions: [DifyTouchTarget(child: filter)],
+              actions: [DifyTouchArea(minSize: 44, accessibleBox: true, child: filter)],
             ),
           ),
           list,

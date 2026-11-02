@@ -45,6 +45,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/app_fonts.dart';
+import '../support/platform_semantics.dart';
 import 'phone_harness.dart';
 
 class _Backend extends DemoBackend {
@@ -203,20 +204,6 @@ String _tc(String key) => DifyI18n.tr('common', key);
 String _tr(String key) => DifyI18n.tr('run-log', key);
 
 const _windows = [Size(411, 914), Size(360, 780)];
-
-/// The labels of the semantics tree as the platform gets it (traversal order), what TalkBack and uiautomator read.
-List<String> _platformLabels(WidgetTester t) {
-  final out = <String>[];
-  void walk(SemanticsNode n) {
-    if (n.label.isNotEmpty) out.add(n.label);
-    n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder).forEach(walk);
-  }
-
-  for (final view in t.binding.renderViews) {
-    if (view.owner?.semanticsOwner?.rootSemanticsNode case final root?) walk(root);
-  }
-  return out;
-}
 
 /// The close button of the sheet header in [of].
 Finder _close(Finder of) => find.descendant(
@@ -456,7 +443,7 @@ void main() {
       await settle(t, 3000);
       expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.succeeded);
       // Read once (the chip shows one of its forms; the platform's tree has only that one).
-      expect(_platformLabels(t).where((l) => l == _tp('runSucceeded')), hasLength(1));
+      expect(platformLabels(t).where((l) => l == _tp('runSucceeded')), hasLength(1));
       // At 360 dp its short form is its time beside the outcome's icon, never a bare check like the issues chip's.
       final label = t.widget<DifyFilterChip>(runChip()).label;
       if (size.width < 400) {
@@ -1025,23 +1012,45 @@ void main() {
     await e.dispose();
   });
 
+  testWidgets('touch sizes: the small controls in the version and comment sheets\' headers (their filters) are 44 px '
+      'boxes for touch and accessibility', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+    void box(String what, Finder header) {
+      final area = find.descendant(of: header, matching: find.byType(DifyTouchArea));
+      expect(area, findsOneWidget, reason: what);
+      // One node, the box: the control's name merged into it (what the platform gets).
+      final node = t.getSemantics(area);
+      expect(node.getSemanticsData().label, isNotEmpty, reason: '$what: named');
+      expect(node.rect.width, greaterThanOrEqualTo(44), reason: '$what: accessible width ${node.rect}');
+      expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$what: accessible height ${node.rect}');
+      expect(t.getSize(area), const Size(44, 44), reason: '$what: the box');
+    }
+
+    // Comment mode: the comment list at its peek; back ends comment mode.
+    await t.tap(find.byKey(const ValueKey('phone-editor-more')));
+    await settle(t, 600);
+    await t.ensureVisible(find.text(_tw('common.commentMode')));
+    await t.tap(find.text(_tw('common.commentMode')));
+    await settle(t, 800);
+    box('comments', find.descendant(of: e.sheet('phone-comments-sheet'), matching: find.byType(DifySheetHeader)));
+    expect(await systemBack(t), isTrue);
+    await settle(t, 600);
+    // Versions: the list's header.
+    await t.tap(find.text(_tp('versions')));
+    await settle(t, 800);
+    box('versions', find.byKey(const ValueKey('version-sheet-header')));
+    expect(t.takeException(), isNull);
+    semantics.dispose();
+    await e.dispose();
+  });
+
   testWidgets('accessibility: the run form (modal) exposes its controls and hides the editor; the run sheet at its '
       'peek (non-modal) is read with the editor', (t) async {
     final semantics = t.ensureSemantics();
     final e = await _pump(t);
     e.mock.scenario = const MockRunScenario(stepDelay: Duration(seconds: 2));
-    List<String> labels() {
-      final out = <String>[];
-      void walk(SemanticsNode n) {
-        if (n.label.isNotEmpty) out.add(n.label);
-        n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder).forEach(walk);
-      }
-
-      for (final view in t.binding.renderViews) {
-        if (view.owner?.semanticsOwner?.rootSemanticsNode case final root?) walk(root);
-      }
-      return out;
-    }
+    List<String> labels() => platformLabels(t);
 
     bool has(List<String> l, String label) => l.any((x) => x.contains(label));
     // The editor's own labels, matched whole ("Run" is also in the form's "Test Run").
@@ -1214,24 +1223,12 @@ void main() {
   testWidgets(
     'accessibility: Add / Edit Environment Variable exposes the form\'s fields and buttons and hides the '
     'variables sheet behind it',
-    // The form is a DifyPopover shown as a sheet over the variables sheet (a DifySheetPortal): on this base the
-    // nested portal leaves the platform an empty tree (batch 4a fixes nested portals; checked again after the rebase).
-    skip: true,
+    // The form is a DifyPopover shown as a sheet over the variables sheet (a DifySheetPortal): only the topmost modal
+    // layer is read (batch 4a's DifyModalLayer).
     (t) async {
       final semantics = t.ensureSemantics();
       final e = await _pump(t);
-      List<String> labels() {
-        final out = <String>[];
-        void walk(SemanticsNode n) {
-          if (n.label.isNotEmpty) out.add(n.label);
-          n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder).forEach(walk);
-        }
-
-        for (final view in t.binding.renderViews) {
-          if (view.owner?.semanticsOwner?.rootSemanticsNode case final root?) walk(root);
-        }
-        return out;
-      }
+      List<String> labels() => platformLabels(t);
 
       await overflow(t, _tw('env.envPanelTitle'));
       await settle(t, 800);

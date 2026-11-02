@@ -120,7 +120,7 @@ class _CommentsPanelBodyState extends State<CommentsPanelBody> {
             ? DifySheetHeader(
                 title: tw('comments.panelTitle'),
                 onClose: sheet.onClose,
-                actions: [DifyTouchTarget(child: filterButton)],
+                actions: [DifyTouchArea(minSize: 44, accessibleBox: true, child: filterButton)],
               )
             : Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
