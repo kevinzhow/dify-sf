@@ -7,7 +7,8 @@
       "evidence": [
         "app/test/dify_spec/dify_ui/action_sheet_test.dart",
         "app/tool/phone_gallery_main.dart",
-        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_behaviour_test.dart"
       ],
       "note": "dify-sf phone action sheet (no Dify counterpart): DifyText rows in DifyType/DifyPhoneType styles; functional tests cover row height, colours, close-then-act, Cancel/scrim/back, scrolling."
     },
@@ -70,9 +71,10 @@
         "app/test/dify_spec/dify_ui/bottom_sheet_test.dart",
         "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
         "app/tool/phone_gallery_main.dart",
-        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_behaviour_test.dart"
       ],
-      "note": "dify-sf phone sheets on smooth_sheets (no Dify counterpart): detents, scrim, dismissal, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular."
+      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular."
     },
     "bottom_toolbar.dart": {
       "kind": "text-composition",
