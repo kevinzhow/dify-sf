@@ -12,6 +12,7 @@ Future<T?> pushPhonePage<T>(
   BuildContext context, {
   required String title,
   required WidgetBuilder builder,
+  String? subtitle,
   bool scrollable = true,
   RouteSettings? settings,
 }) => Navigator.of(context).push<T>(
@@ -20,6 +21,7 @@ Future<T?> pushPhonePage<T>(
     settings: settings,
     builder: (context) => PhonePage(
       title: title,
+      subtitle: subtitle,
       scrollable: scrollable,
       child: Builder(builder: builder),
     ),
@@ -34,11 +36,15 @@ class PhonePage extends StatelessWidget {
     super.key,
     required this.title,
     required this.child,
+    this.subtitle,
     this.scrollable = true,
     this.actions = const [],
   });
 
   final String title;
+
+  /// The app bar's second line (the opened app's name on its pages).
+  final String? subtitle;
   final Widget child;
   final bool scrollable;
   final List<Widget> actions;
@@ -52,7 +58,12 @@ class PhonePage extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DifyTopAppBar(title: title, actions: actions, backgroundColor: DifyColors.componentsPanelBg),
+          DifyTopAppBar(
+            title: title,
+            subtitle: subtitle,
+            actions: actions,
+            backgroundColor: DifyColors.componentsPanelBg,
+          ),
           Expanded(
             child: MediaQuery.removePadding(
               context: context,

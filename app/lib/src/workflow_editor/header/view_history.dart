@@ -46,21 +46,8 @@ class _ViewHistoryState extends State<ViewHistory> {
     );
   }
 
-  void _pick(DifyJson item, WorkflowHeaderData data, WorkflowStore store) {
-    store
-      ..historyWorkflowData.value = item
-      ..showInputsPanel.value = false
-      ..showEnvPanel.value = false;
-    data.closeAllInputFieldPanels?.call();
-    data.handleBackupDraft?.call();
-    _setOpen(false);
-    data.handleNodesCancelSelected?.call();
-    // useWorkflowInteractions' handleCancelDebugAndPreviewPanel.
-    store
-      ..showDebugAndPreviewPanel.value = false
-      ..workflowRunningData.value = null;
-    store.setControlMode(ControlMode.hand);
-  }
+  void _pick(DifyJson item, WorkflowHeaderData data, WorkflowStore store) =>
+      _pickRun(item, data, store, close: () => _setOpen(false));
 
   @override
   Widget build(BuildContext context) {
@@ -146,6 +133,98 @@ class _ViewHistoryState extends State<ViewHistory> {
   }
 }
 
+/// A run picked from the history: shown read-only on the canvas (the draft is backed up), the run panels close.
+void _pickRun(DifyJson item, WorkflowHeaderData data, WorkflowStore store, {required VoidCallback close}) {
+  store
+    ..historyWorkflowData.value = item
+    ..showInputsPanel.value = false
+    ..showEnvPanel.value = false;
+  data.closeAllInputFieldPanels?.call();
+  data.handleBackupDraft?.call();
+  close();
+  data.handleNodesCancelSelected?.call();
+  // useWorkflowInteractions' handleCancelDebugAndPreviewPanel.
+  store
+    ..showDebugAndPreviewPanel.value = false
+    ..workflowRunningData.value = null;
+  store.setControlMode(ControlMode.hand);
+}
+
+/// The run history in a bottom sheet (dify-sf: the phone editor's overflow menu): the popover's runs and rows,
+/// fetched when it opens; picking a run shows it as the popover's rows do and closes the sheet. [context] is inside
+/// the editor (its header and store scopes).
+Future<void> showRunHistorySheet(BuildContext context) async {
+  final data = WorkflowHeaderScope.of(context);
+  final canvas = WorkflowHeaderScope.canvasOf(context);
+  final store = WorkflowStoreScope.of(context);
+  data.onClearLogAndMessageModal?.call();
+  await showDifyBottomSheet<void>(
+    context,
+    (context) => WorkflowStoreScope(
+      store: store,
+      child: WorkflowHeaderScope(data: data, canvas: canvas, child: const _RunHistorySheet()),
+    ),
+    detents: const [DifySheetDetent.half, DifySheetDetent.full],
+  );
+}
+
+class _RunHistorySheet extends StatefulWidget {
+  const _RunHistorySheet();
+
+  @override
+  State<_RunHistorySheet> createState() => _RunHistorySheetState();
+}
+
+class _RunHistorySheetState extends State<_RunHistorySheet> {
+  List<DifyJson>? _history;
+  bool _fetched = false;
+
+  // The header scope is an inherited widget: read it once the element is in the tree, not in initState.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_fetched) return;
+    _fetched = true;
+    final fetch = WorkflowHeaderScope.of(context).fetchRunHistory;
+    if (fetch == null) {
+      _history = const [];
+      return;
+    }
+    fetch().then(
+      (runs) {
+        if (mounted) setState(() => _history = runs);
+      },
+      onError: (Object _) {
+        if (mounted) setState(() => _history = const []);
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = WorkflowHeaderScope.of(context);
+    final store = WorkflowStoreScope.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DifySheetHeader(title: _tr('common.runHistory')),
+        Flexible(
+          child: _HistoryPanel(
+            history: _history,
+            chatMode: data.isChatMode,
+            formatters: data,
+            onClose: () => Navigator.of(context).maybePop(),
+            selectedId: store.historyWorkflowData,
+            onPick: (item) => _pickRun(item, data, store, close: () => Navigator.of(context).pop()),
+            sheet: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _HistoryPanel extends StatelessWidget {
   const _HistoryPanel({
     required this.history,
@@ -154,7 +233,11 @@ class _HistoryPanel extends StatelessWidget {
     required this.onClose,
     required this.selectedId,
     required this.onPick,
+    this.sheet = false,
   });
+
+  /// In [showRunHistorySheet]: the sheet's width and header, no card of its own.
+  final bool sheet;
 
   /// Null while loading.
   final List<DifyJson>? history;
@@ -166,10 +249,10 @@ class _HistoryPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 240,
-    constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 2 / 3),
-    decoration: headerPopupDecoration(),
-    clipBehavior: Clip.antiAlias,
+    width: sheet ? null : 240,
+    constraints: sheet ? null : BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 2 / 3),
+    decoration: sheet ? null : headerPopupDecoration(),
+    clipBehavior: sheet ? Clip.none : Clip.antiAlias,
     child: Builder(
       builder: (context) {
         final loading = history == null;
@@ -179,23 +262,24 @@ class _HistoryPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // `sticky top-0 flex items-center justify-between px-4 pt-3 text-base font-semibold text-text-primary`
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: DifyTextLine(
-                      _tr('common.runHistory'),
-                      style: difyTextStyle(
-                        DifyType.systemXlSemibold,
-                        DifyColors.textPrimary,
-                      ), // text-base font-semibold
+            if (!sheet)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: DifyTextLine(
+                        _tr('common.runHistory'),
+                        style: difyTextStyle(
+                          DifyType.systemXlSemibold,
+                          DifyColors.textPrimary,
+                        ), // text-base font-semibold
+                      ),
                     ),
-                  ),
-                  HeaderCloseButton(onPressed: onClose, label: DifyI18n.tr('common', 'operation.close')),
-                ],
+                    HeaderCloseButton(onPressed: onClose, label: DifyI18n.tr('common', 'operation.close')),
+                  ],
+                ),
               ),
-            ),
             if (loading)
               const SizedBox(height: 40, child: DifyLoading())
             else

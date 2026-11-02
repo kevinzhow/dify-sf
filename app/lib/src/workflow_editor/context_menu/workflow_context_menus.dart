@@ -5,9 +5,11 @@ import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_controller.dart';
 import '../../canvas/canvas_graph.dart';
+import '../../canvas/canvas_input.dart' show CanvasInput;
 import '../../canvas/edge_curve.dart';
 import '../../design/widgets/widgets.dart';
 import '../../editor/editor_controller.dart';
+import '../phone/phone_editor_controller.dart';
 import '../store/store.dart';
 import 'menus.dart';
 import 'node_control.dart';
@@ -176,7 +178,38 @@ class _WorkflowContextMenusState extends State<WorkflowContextMenus> {
     return best;
   }
 
+  /// A long press on a phone: what is under the finger goes to the phone chrome's action sheets (no menu, no store
+  /// target, the clipboard is read when the sheet offers Paste).
+  bool _phoneLongPress(Offset local) {
+    final handler = PhoneEditorScope.read(context)?.onCanvasLongPress;
+    if (handler == null) return false;
+    final g = widget.canvas.graph, view = widget.canvas.view, selection = widget.canvas.selection;
+    final c = view.toCanvas(local);
+    WorkflowContextMenuTarget target = WorkflowContextMenuTarget.panel;
+    if (g != null) {
+      Rect? box;
+      if (selection.nodes.length > 1) {
+        for (final s in selection.nodes) {
+          final n = g.slots.elementAtOrNull(s);
+          if (n != null) box = box?.expandToInclude(n.visual) ?? n.visual;
+        }
+      }
+      final node = _nodeAt(g, c);
+      final edge = node == null ? _edgeAt(g, c, CanvasInput.touchTargetPx / 2 / view.scale) : null;
+      if (box != null && box.contains(c)) {
+        target = WorkflowContextMenuTarget.selection;
+      } else if (node != null) {
+        target = NodeContextMenuTarget(node.id);
+      } else if (edge != null) {
+        target = EdgeContextMenuTarget(edge.id);
+      }
+    }
+    handler(target, c);
+    return true;
+  }
+
   void _openAt(Offset local, Offset global) {
+    if (_phoneLongPress(local)) return;
     _opening = true;
     final target = _hit(local);
     final items = target == null ? const <Widget>[] : _items(target, widget.canvas.view.toCanvas(local));
@@ -234,7 +267,8 @@ class _WorkflowContextMenusState extends State<WorkflowContextMenus> {
   List<Widget> _bars() {
     _barsShown = false;
     final g = widget.canvas.graph, view = widget.canvas.view, selection = widget.canvas.selection;
-    if (g == null || actions.nodesReadOnly) return const [];
+    // A phone shows the selected node's actions in its selection bar instead.
+    if (g == null || actions.nodesReadOnly || PhoneEditorScope.maybeOf(context) != null) return const [];
     final ids = <String>{};
     void add(CanvasNode? n, {required bool hover}) {
       if (n == null || hasNoNodeMenu(n.node.value)) return;

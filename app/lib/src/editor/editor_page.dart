@@ -30,6 +30,7 @@ import '../session_factory.dart';
 import '../workflow/workspace_models.dart';
 import '../workflow_editor/dify_editor.dart';
 import '../workflow_editor/dsl/update_dsl_modal.dart' show WorkflowImport;
+import '../workflow_editor/phone/steps_view_slot.dart';
 import '../workflow_editor/run/server_run_service.dart' show ServerWorkflowRuntime;
 import 'notice_overlay.dart';
 import 'editor_controller.dart';
@@ -56,7 +57,11 @@ class EditorPage extends StatefulWidget {
     this.appName,
     this.onImportAvailable,
     this.onAppChanged,
+    this.stepsView,
   });
+
+  /// The phone layout's Steps view (compact windows); null: [workflowStepsView].
+  final StepsViewBuilder? stepsView;
 
   /// The app changed on the server (protocol 1.11 `event: app`, Dify's `app_meta_update`: renamed, new icon, site or
   /// switches), or the stream reconnected and may have missed such a notice: the host refetches the app.
@@ -340,7 +345,14 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final c = _controller;
-    return DifyPage(body: _body(context, c));
+    // On a phone the editor's own bars reach under the system bars (dify-sf's phone layout); until the document is
+    // shown, its states keep to the safe area.
+    // The SafeArea stays in the tree (only its sides change), so a rotation keeps the editor's state.
+    final edge = DifyWindowClass.of(context) == DifyWindowClass.compact && _error == null && (c?.ready ?? false);
+    return DifyPage(
+      edgeToEdge: true,
+      body: SafeArea(left: !edge, top: !edge, right: !edge, bottom: !edge, child: _body(context, c)),
+    );
   }
 
   /// Shows the current state as a Dify workflow file, ready to copy into Dify's "Import DSL".
@@ -535,6 +547,7 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       // Unsupported remote execution reports an error; only the explicit demo uses simulated runs.
       serverRuntime: widget.serverRuntime ?? AppDetailContext.maybeOf(context)?.service<ServerWorkflowRuntime>(),
       publisher: _publisherHost(context),
+      stepsView: widget.stepsView,
     );
   }
 

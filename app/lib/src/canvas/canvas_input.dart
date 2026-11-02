@@ -42,6 +42,8 @@ class CanvasInput {
     this.connectEnd,
     this.connectMove,
     this.connectDrop,
+    this.handleTap,
+    this.touchMarquee = _never,
   });
 
   static bool _never() => false;
@@ -65,6 +67,12 @@ class CanvasInput {
   final VoidCallback? Function()? connectEnd;
   final void Function(String, String, String?, Offset)? Function()? connectMove;
   final void Function(String, String, String, Offset)? Function()? connectDrop;
+
+  /// A finger tapped a node's source handle without dragging ([CanvasController.onHandleTap]).
+  final void Function(String nodeId, String handle)? Function()? handleTap;
+
+  /// Whether one finger on empty canvas draws a selection box instead of panning ([CanvasController.touchSelect]).
+  final bool Function() touchMarquee;
 
   /// Dify's `nodesReadOnly`: nodes are selected but not dragged, handles do not connect, Delete does nothing.
   final bool Function() readOnly;
@@ -119,6 +127,11 @@ class CanvasInput {
   static const _portSlackPx = 4.0;
   static const _edgeRadiusPx = 6.0;
 
+  /// A finger's targets on screen on the phone editor's canvas (dify-sf, where [handleTap] is set): a source handle's
+  /// hit area is at least this wide and tall, reaching out of the card (not into it, where a press still moves the
+  /// node), and an edge is hit within half of it.
+  static const touchTargetPx = 44.0;
+
   // ----- hit testing -----
 
   /// The top-most node at [c]: selected nodes lie above the others, later nodes above earlier ones.
@@ -144,9 +157,11 @@ class CanvasInput {
       ? n.order - (1 << 50)
       : (n.depth << 44) + (selection.nodes.contains(n.slot) ? 1 << 40 : 0) + n.order;
 
-  /// The node and source handle whose box is under [c] (a little larger when zoomed out).
-  (CanvasNode, String)? outPortAt(Offset c) {
+  /// The node and source handle whose box is under [c] (a little larger when zoomed out). For a finger ([touch]) the
+  /// box grows to [touchTargetPx] on screen, outwards from the card, and the nearest handle wins.
+  (CanvasNode, String)? outPortAt(Offset c, {bool touch = false}) {
     final slack = max(0.0, _portSlackPx / view.scale - 2);
+    if (touch) return _touchPortAt(c, slack);
     for (final slot in graph.grid.near(Rect.fromCenter(center: c, width: 40, height: 40))) {
       final n = graph.slots[slot];
       if (n == null) continue;
@@ -157,8 +172,40 @@ class CanvasInput {
     return null;
   }
 
-  CanvasEdge? edgeAt(Offset c) {
-    final r = _edgeRadiusPx / view.scale;
+  /// A source handle's area for a finger: its box (with [slack]), and at least [touchTargetPx] square on screen from
+  /// the box's inner side outwards, centred on the handle's height.
+  static Rect touchHandleArea(Rect box, double scale, {double slack = 0}) {
+    final reach = touchTargetPx / 2 / scale;
+    return box
+        .inflate(slack)
+        .expandToInclude(Rect.fromLTRB(box.left, box.center.dy - reach, box.left + 2 * reach, box.center.dy + reach));
+  }
+
+  (CanvasNode, String)? _touchPortAt(Offset c, double slack) {
+    final reach = touchTargetPx / view.scale;
+    // A card's own taps and drags win over a neighbour's enlarged handle area: zoomed out, that area reaches over the
+    // next card; only the handle's own box may still be hit there.
+    final card = nodeAt(c);
+    (CanvasNode, String)? best;
+    var bestD = double.infinity;
+    for (final slot in graph.grid.near(Rect.fromCenter(center: c, width: 40 + 2 * reach, height: 40 + 2 * reach))) {
+      final n = graph.slots[slot];
+      if (n == null) continue;
+      for (final (id, box) in n.outHandles) {
+        if (!touchHandleArea(box, view.scale, slack: slack).contains(c)) continue;
+        if (card != null && card.slot != n.slot && !box.inflate(slack).contains(c)) continue;
+        final d = (c - box.center).distanceSquared;
+        if (d < bestD) {
+          best = (n, id);
+          bestD = d;
+        }
+      }
+    }
+    return best;
+  }
+
+  CanvasEdge? edgeAt(Offset c, {bool touch = false}) {
+    final r = (touch ? touchTargetPx / 2 : _edgeRadiusPx) / view.scale;
     CanvasEdge? best;
     var bestD = r;
     for (final e in graph.edges) {
@@ -176,6 +223,9 @@ class CanvasInput {
 
   // ----- pointer -----
 
+  /// A finger on the phone editor's canvas (it takes handle taps): handles and edges get finger-sized targets.
+  bool _phoneTouch(PointerEvent e) => e.kind == PointerDeviceKind.touch && handleTap?.call() != null;
+
   void down(PointerDownEvent e, {bool touchPan = false, bool recognizeDoubleTap = true}) {
     if (claimed(e)) return;
     _downLocal = e.localPosition;
@@ -191,7 +241,7 @@ class CanvasInput {
     // Comment mode: nodes neither select nor drag, nothing connects; clicks are the comment layer's.
     if (mode == ControlMode.comment) return;
     final locked = readOnly();
-    final port = locked ? null : outPortAt(c), hit = _clickTarget(c);
+    final port = locked ? null : outPortAt(c, touch: _phoneTouch(e)), hit = _clickTarget(c);
     if (port == null && recognizeDoubleTap) _doubleClick.addPointer(e);
     if (port != null) {
       _gesture = 'connect';
@@ -267,7 +317,7 @@ class CanvasInput {
         {
           // A click on empty canvas: select the edge under it, or clear the selection.
           marquee.value = null;
-          final edge = edgeAt(c);
+          final edge = edgeAt(c, touch: _phoneTouch(e));
           selection.selectEdge(edge?.id);
           if (edge != null) {
             controller.selectEdge(edge.id);
@@ -283,6 +333,25 @@ class CanvasInput {
         connectLine.value = null;
         final target = nodeAt(c);
         final (from, handle) = _connectFrom!;
+        if (!_moved && _phoneTouch(e)) {
+          // A finger's tap (no drag) in a handle's area: on the selected node, the host's "add the next node here";
+          // on another node the area only grows the handle for dragging, so the tap selects the edge under it (an
+          // edge leaves every handle) or else the node.
+          _connectFrom = null;
+          connectEnd?.call()?.call();
+          _gesture = 'none';
+          if (selection.nodes.length == 1 && selection.nodes.contains(from.slot)) {
+            handleTap?.call()?.call(from.id, handle);
+          } else if (edgeAt(view.toCanvas(_downLocal), touch: true) case final edge?) {
+            selection.selectEdge(edge.id);
+            controller.selectEdge(edge.id);
+          } else {
+            selection.selectNodes([from.slot]);
+            controller.selectNode(from.id);
+          }
+          onApplied?.call('select');
+          return;
+        }
         if (target != null &&
             target.slot != from.slot &&
             target.layout.target &&

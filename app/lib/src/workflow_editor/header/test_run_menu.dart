@@ -123,11 +123,15 @@ List<ShortcutMapping> buildShortcutMappings(TestRunOptions options) {
 /// `getNormalizedShortcutKey`: the key a press typed, with the backtick read as `~`.
 String getNormalizedShortcutKey(String key) => key == '`' ? '~' : key;
 
-List<TriggerOption> _enabledOptions(TestRunOptions o) => [
+/// The options a run can start from, in the menu's order (the user input, run all, each trigger), without the
+/// disabled ones.
+List<TriggerOption> enabledTestRunOptions(TestRunOptions o) => [
   ?o.userInput,
   ?o.runAll,
   ...o.triggers,
 ].where((x) => x.enabled).toList();
+
+List<TriggerOption> _enabledOptions(TestRunOptions o) => enabledTestRunOptions(o);
 
 /// Lets the owner open or close the menu (Dify's `TestRunMenuRef.toggle`).
 class TestRunMenuController {

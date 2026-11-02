@@ -80,6 +80,9 @@ import 'node_insertion/insert_block.dart';
 import 'canvas_plus/container_child_size.dart';
 import 'canvas_plus/node_resizers.dart';
 import 'version_history/version_history_panel.dart';
+import 'phone/phone_editor_controller.dart';
+import 'phone/phone_editor_frame.dart';
+import 'phone/steps_view_slot.dart';
 import 'workflow_editor.dart';
 import '../design/widgets/widgets.dart';
 
@@ -171,7 +174,11 @@ class DifyWorkflowEditor extends StatefulWidget {
     this.openModelProviderSettings,
     this.versions,
     this.publisher = const EditorPublisherHost(),
+    this.stepsView,
   });
+
+  /// The phone layout's Steps view (compact windows); null: [workflowStepsView].
+  final StepsViewBuilder? stepsView;
 
   /// Publishing and the version history on the server (protocol 1.11); null (the demo, `--doc`, tests): the publisher
   /// publishes nothing and the version history shows the current draft alone.
@@ -624,6 +631,45 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                           ],
                         ),
                       ),
+                      // Compact windows: the phone layout around the canvas (dify-sf).
+                      phone: (context, canvas, body) => _BoundHeader(
+                        controller: controller,
+                        models: widget.models,
+                        agentComposer: widget.agentComposer,
+                        canvas: canvas,
+                        meta: meta,
+                        access: widget.access,
+                        user: widget.user,
+                        versions: _versions,
+                        publisher: widget.publisher,
+                        session: (anchor) => anchor,
+                        phone: (data, featuresTrigger) => PhoneEditorConfig(
+                          controller: controller,
+                          canvas: canvas,
+                          menuOptions: menuOptions,
+                          appName: meta.appName,
+                          body: body,
+                          onPlace: _place,
+                          noteCandidate: () => noteCandidate(
+                            author: controller.session.displayName ?? '',
+                            showAuthor:
+                                WorkflowStoreScope.preferencesOf(context)?.workflowNoteShowAuthor.value != 'false',
+                          ),
+                          operator: options,
+                          onGenerate: widget.helpers != null && widget.access.canEdit && widget.onImportDsl != null
+                              ? () => unawaited(_generateWorkflow())
+                              : null,
+                          sessionDetails: (context) => SessionDetails(
+                            controller: controller,
+                            serverLabel: serverLabel,
+                            actions: actions,
+                            reconnect: true,
+                            documents: false,
+                          ),
+                          publisher: (context, close) => featuresTrigger(close),
+                          stepsView: widget.stepsView,
+                        ),
+                      ),
                       // A block picked from Add Node follows the pointer until a click places it (candidate-node.tsx).
                       overlay: (context, canvas) {
                         _inner = context;
@@ -687,8 +733,14 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                             services: _inspectServices(context, canvas),
                             nodes: () => controller.doc.nodes.values,
                             onViewNode: (nodeId) {
-                              WorkflowStoreScope.of(context).setInitShowLastRunTab(true);
+                              final store = WorkflowStoreScope.of(context);
+                              store.setInitShowLastRunTab(true);
                               controller.selectNode(nodeId);
+                              // A phone shows one panel at a time: the node's, on its last run.
+                              if (PhoneEditorScope.read(context) case final phone?) {
+                                store.setShowVariableInspectPanel(false);
+                                phone.openSettings(nodeId);
+                              }
                             },
                             onStop: () => _runHost.currentState?.emitWorkflowStop(),
                             child: Builder(
@@ -1012,10 +1064,15 @@ class _BoundHeader extends StatefulWidget {
     this.agentComposer,
     this.versions,
     this.publisher = const EditorPublisherHost(),
+    this.phone,
   });
   final EditorController controller;
   final CanvasController canvas;
   final EditorVersions? versions;
+
+  /// The phone layout (compact windows): the header's data and its publisher feed [PhoneEditorFrame] instead of
+  /// Dify's header row. Given the header's data and the publisher's panel (built with the close of its sheet).
+  final PhoneEditorConfig Function(WorkflowHeaderData data, Widget Function(VoidCallback close) featuresTrigger)? phone;
   final EditorPublisherHost publisher;
   final WorkspaceModels? models;
   final AgentComposerApi? agentComposer;
@@ -1201,40 +1258,52 @@ class _BoundHeaderState extends State<_BoundHeader> {
     final b = _binding!;
     final versions = widget.versions;
     final run = WorkflowRunScope.maybeOf(context)?.run;
-    return WorkflowHeader(
-      canvas: widget.canvas,
-      data: WorkflowHeaderData(
-        formatters: HeaderFormatters(formatTime: AccountTime.of(context).formatTime),
-        graph: b.graph,
-        onRun: run?.handleStartRunFromOption,
-        onRunInChatflow: run?.handleWorkflowStartRunInChatflow,
-        onStopRun: run?.handleStopRun,
-        fetchRunHistory: run?.fetchRunHistory,
-        invalidAllLastRun: run?.invalidAllLastRun,
-        isChatMode: widget.meta.isChatflow,
-        onlineUsers: EditorPresenceScope.maybeOf(context)?.onlineUsers ?? _users,
-        cursorOf: EditorPresenceScope.maybeOf(context)?.cursorOf,
-        currentUserId: widget.user?.id ?? widget.controller.session.clientId,
-        canEdit: widget.access.canEdit,
-        canRun: widget.access.canRun,
-        canReleaseAndVersion: widget.access.canReleaseAndVersion,
-        handleNodeSelect: (id, {cancelSelection = false}) =>
-            cancelSelection ? cancelNodesSelectedOn(widget.canvas, widget.controller) : b.selectNode(id),
-        handleNodesCancelSelected: () => cancelNodesSelectedOn(widget.canvas, widget.controller),
-        title: widget.session(const EditingTitle()),
-        left: widget.left,
-        // Browsing versions: the version on the canvas, the draft again, the restore (protocol 1.11).
-        restoreWorkflow: versions?.restore,
-        handleLoadBackupDraft: versions?.showDraft,
-        handleRefreshWorkflowDraft: versions?.showDraft,
-        middle: versions == null
-            ? _featuresTrigger(b, null)
-            : ListenableBuilder(
-                listenable: versions,
-                builder: (context, _) => _featuresTrigger(b, versions),
-              ),
-      ),
+    final data = WorkflowHeaderData(
+      formatters: HeaderFormatters(formatTime: AccountTime.of(context).formatTime),
+      graph: b.graph,
+      onRun: run?.handleStartRunFromOption,
+      onRunInChatflow: run?.handleWorkflowStartRunInChatflow,
+      onStopRun: run?.handleStopRun,
+      fetchRunHistory: run?.fetchRunHistory,
+      invalidAllLastRun: run?.invalidAllLastRun,
+      isChatMode: widget.meta.isChatflow,
+      onlineUsers: EditorPresenceScope.maybeOf(context)?.onlineUsers ?? _users,
+      cursorOf: EditorPresenceScope.maybeOf(context)?.cursorOf,
+      currentUserId: widget.user?.id ?? widget.controller.session.clientId,
+      canEdit: widget.access.canEdit,
+      canRun: widget.access.canRun,
+      canReleaseAndVersion: widget.access.canReleaseAndVersion,
+      handleNodeSelect: (id, {cancelSelection = false}) =>
+          cancelSelection ? cancelNodesSelectedOn(widget.canvas, widget.controller) : b.selectNode(id),
+      handleNodesCancelSelected: () => cancelNodesSelectedOn(widget.canvas, widget.controller),
+      title: widget.session(const EditingTitle()),
+      left: widget.left,
+      // Browsing versions: the version on the canvas, the draft again, the restore (protocol 1.11).
+      restoreWorkflow: versions?.restore,
+      handleLoadBackupDraft: versions?.showDraft,
+      handleRefreshWorkflowDraft: versions?.showDraft,
+      middle: versions == null
+          ? _featuresTrigger(b, null)
+          : ListenableBuilder(
+              listenable: versions,
+              builder: (context, _) => _featuresTrigger(b, versions),
+            ),
     );
+    if (widget.phone case final phone?) {
+      // The publisher's panel alone, in the phone's sheet.
+      Widget publisher(VoidCallback close) => versions == null
+          ? _featuresTrigger(b, null, onClose: close)
+          : ListenableBuilder(
+              listenable: versions,
+              builder: (context, _) => _featuresTrigger(b, versions, onClose: close),
+            );
+      return WorkflowHeaderScope(
+        data: data,
+        canvas: widget.canvas,
+        child: PhoneEditorFrame(config: phone(data, publisher)),
+      );
+    }
+    return WorkflowHeader(canvas: widget.canvas, data: data);
   }
 
   /// Publishes; a refusal is toasted with the server's message (Dify's request layer toasts failed calls), then
@@ -1248,8 +1317,9 @@ class _BoundHeaderState extends State<_BoundHeader> {
     }
   }
 
-  /// The Features and Publish buttons, publishing through [versions] (null: publishing has no effect).
-  Widget _featuresTrigger(EditorHeaderBinding b, EditorVersions? versions) {
+  /// The Features and Publish buttons, publishing through [versions] (null: publishing has no effect); with
+  /// [onClose], the publisher's panel alone (the phone's publish sheet, which [onClose] closes).
+  Widget _featuresTrigger(EditorHeaderBinding b, EditorVersions? versions, {VoidCallback? onClose}) {
     final host = widget.publisher;
     final tools = WorkflowToolsScope.of(context);
     final tool = tools?.workflows.where((t) => t['workflow_app_id'] == widget.controller.docId).firstOrNull;
@@ -1294,6 +1364,8 @@ class _BoundHeaderState extends State<_BoundHeader> {
       onUpdateVersionInfo: versions == null
           ? null
           : (u) => versions.updateVersion(u.id ?? '', title: u.title, releaseNotes: u.releaseNotes),
+      panelOnly: onClose != null,
+      onClose: onClose,
     );
   }
 }
@@ -1327,7 +1399,7 @@ class SessionBadge extends StatelessWidget {
 
   static TextStyle get _small => difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary);
 
-  (Color, String) _link(SessionStatus s) => switch (s.link) {
+  static (Color, String) _link(SessionStatus s) => switch (s.link) {
     LinkState.live => (DifyColors.textSuccess, 'Live'),
     LinkState.connecting => (DifyColors.textWarning, 'Connecting…'),
     LinkState.reconnecting => (DifyColors.textWarning, 'Reconnecting…'),
@@ -1358,53 +1430,7 @@ class SessionBadge extends StatelessWidget {
           if (menu)
             Flexible(
               child: DifyDropdownMenu(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            DifySolidDot(size: 8, color: color, key: const Key('link-dot')),
-                            const SizedBox(width: 6),
-                            DifyTextLine(label, key: const Key('link-state'), style: _small),
-                            const SizedBox(width: 12),
-                            DifyTextLine(
-                              s.pending == 0
-                                  ? 'All edits saved'
-                                  : '${s.pending} unsaved edit${s.pending == 1 ? '' : 's'}',
-                              key: const Key('pending-count'),
-                              style: s.pending == 0 ? _small : _small.copyWith(color: DifyColors.textWarning),
-                            ),
-                            const SizedBox(width: 12),
-                            DifyTextLine('seq ${s.lastSeq}', key: const Key('last-seq'), style: _small),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        DifyTextLine(
-                          '${controller.journaled ? 'journaled' : 'volatile'} · ${controller.session.clientId} · '
-                          '${controller.docId} · $serverLabel',
-                          style: _small,
-                        ),
-                        if (s.lastError != null)
-                          DifyTextLine(s.lastError!, style: _small.copyWith(color: DifyColors.textDestructive)),
-                        if (actions.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, children: actions),
-                        // Back to the document list (Dify leaves this to its app sidebar, which the editor does not have).
-                        if (ModalRoute.of(context)?.canPop ?? false)
-                          DifyButton(
-                            key: const Key('back-to-documents'),
-                            variant: DifyButtonVariant.ghost,
-                            size: DifyButtonSize.small,
-                            leading: const RemixIcon('arrow-left-line', size: 16),
-                            onPressed: () => Navigator.of(context).maybePop(),
-                            child: const DifyTextLine('Documents'),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
+                children: [SessionDetails(controller: controller, serverLabel: serverLabel, actions: actions)],
                 builder: (context, menu) => anchor != null
                     ? GestureDetector(
                         key: const Key('session-menu'),
@@ -1429,6 +1455,88 @@ class SessionBadge extends StatelessWidget {
               ),
             ),
         ],
+      );
+    },
+  );
+}
+
+/// The session menu's content: the link state, unsaved edits, the last seq, this client's identity, the last error,
+/// the host's actions and (on a pushed page) "Documents". Also the phone editor's connection sheet.
+class SessionDetails extends StatelessWidget {
+  const SessionDetails({
+    super.key,
+    required this.controller,
+    this.serverLabel = '',
+    this.actions = const [],
+    this.reconnect = false,
+    this.documents = true,
+  });
+
+  final EditorController controller;
+  final String serverLabel;
+  final List<Widget> actions;
+
+  /// "Reconnect now" while the link is not live (the phone's sheet; the desktop has it in the offline pill).
+  final bool reconnect;
+
+  /// "Documents" back to the document list when the page was pushed (not in the phone's sheet).
+  final bool documents;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: controller,
+    builder: (context, _) {
+      final s = controller.status;
+      final (color, label) = SessionBadge._link(s);
+      final small = SessionBadge._small;
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DifySolidDot(size: 8, color: color, key: const Key('link-dot')),
+                const SizedBox(width: 6),
+                DifyTextLine(label, key: const Key('link-state'), style: small),
+                const SizedBox(width: 12),
+                DifyTextLine(
+                  s.pending == 0 ? 'All edits saved' : '${s.pending} unsaved edit${s.pending == 1 ? '' : 's'}',
+                  key: const Key('pending-count'),
+                  style: s.pending == 0 ? small : small.copyWith(color: DifyColors.textWarning),
+                ),
+                const SizedBox(width: 12),
+                DifyTextLine('seq ${s.lastSeq}', key: const Key('last-seq'), style: small),
+              ],
+            ),
+            const SizedBox(height: 6),
+            DifyTextLine(
+              '${controller.journaled ? 'journaled' : 'volatile'} · ${controller.session.clientId} · '
+              '${controller.docId} · $serverLabel',
+              style: small,
+            ),
+            if (s.lastError != null) DifyTextLine(s.lastError!, style: small.copyWith(color: DifyColors.textDestructive)),
+            if (reconnect && s.link != LinkState.live)
+              DifyButton(
+                variant: DifyButtonVariant.ghostAccent,
+                size: DifyButtonSize.small,
+                onPressed: controller.reconnectNow,
+                child: const DifyTextLine('Reconnect now'),
+              ),
+            if (actions.isNotEmpty) Row(mainAxisSize: MainAxisSize.min, children: actions),
+            // Back to the document list (Dify leaves this to its app sidebar, which the editor does not have).
+            if (documents && (ModalRoute.of(context)?.canPop ?? false))
+              DifyButton(
+                key: const Key('back-to-documents'),
+                variant: DifyButtonVariant.ghost,
+                size: DifyButtonSize.small,
+                leading: const RemixIcon('arrow-left-line', size: 16),
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: const DifyTextLine('Documents'),
+              ),
+          ],
+        ),
       );
     },
   );

@@ -163,6 +163,8 @@ class WorkflowCanvasState extends State<WorkflowCanvas> with SingleTickerProvide
       connectEnd: () => canvas.onConnectEnd,
       connectMove: () => canvas.onConnectMove,
       connectDrop: () => canvas.onConnectDrop,
+      handleTap: () => canvas.onHandleTap,
+      touchMarquee: () => canvas.touchSelect.value,
     );
     input.onApplied = (_) => canvas.visualChanges.changed();
     a11y = CanvasA11y(

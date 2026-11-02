@@ -598,10 +598,14 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
         ),
       ),
     );
-    if (_anchor) {
-      content = Stack(
-        children: [
-          content,
+    // Always the same Stack around the content, the anchor only added or removed beside it: wrapping the content in a
+    // Stack only while anchored would rebuild the content's subtree (and its State) each time the anchor flips, which
+    // a content that loads (no scroll view, then a list) does over and over.
+    content = Stack(
+      fit: StackFit.passthrough,
+      children: [
+        content,
+        if (_anchor)
           Positioned(
             left: 0,
             top: 0,
@@ -613,9 +617,8 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
               child: const SizedBox.shrink(),
             ),
           ),
-        ],
-      );
-    }
+      ],
+    );
     // The content's body scroll view is the sheet's scrollable.
     content = PrimaryScrollController(controller: scroll, child: content);
     // The insets are the sheet's: nested SafeAreas and Scaffolds in the content must not add them again.
