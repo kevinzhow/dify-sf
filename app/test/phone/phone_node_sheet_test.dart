@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:dify_sf_app/src/canvas/canvas_controller.dart';
 import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
+import 'package:dify_sf_app/src/design/dify_icon.dart';
 import 'package:dify_sf_app/src/design/dify_theme.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/editor/editor_controller.dart';
@@ -268,8 +269,11 @@ void main() {
       // Half the window: the step list above stays visible (its first card is above the sheet).
       final half = _sheetTop(t);
       expect(half, closeTo(size.height - size.height / 2 - gestureInsets.bottom, 2));
-      final start = t.getRect(find.descendant(of: find.byType(WorkflowStepsView), matching: find.text('Start')).first);
-      expect(start.bottom, lessThan(half));
+      // The tapped step is above the sheet (revealed if it was under it).
+      final card = t.getRect(
+        find.descendant(of: find.byType(WorkflowStepsView), matching: find.text('Count words')).first,
+      );
+      expect(card.bottom, lessThanOrEqualTo(half));
       // Edge to edge: the sheet reaches the window's bottom and sides; its content keeps clear of the gesture bar.
       expect(t.getRect(_sheet).width, size.width);
       expect(t.getRect(_sheet).bottom, closeTo(size.height - gestureInsets.bottom, 1));
@@ -335,6 +339,9 @@ void main() {
     await t.tap(find.byKey(const Key('node-settings-tab-lastRun')));
     await settle(t, 400);
     expect(find.byType(NodeLastRun), findsOneWidget);
+    // Buttons in a sheet are touch-high on a phone: the empty tab's "Run this node".
+    final runNode = find.ancestor(of: find.text(_tw('debug.noData.runThisNode')), matching: find.byType(DifyButton));
+    expect(t.getSize(runNode).height, greaterThanOrEqualTo(44));
     await t.tap(find.byKey(const Key('node-settings-tab-settings')));
     await settle(t, 400);
     expect(find.byType(NodeLastRun), findsNothing);
@@ -747,6 +754,82 @@ void main() {
     await settle(t, 1200);
     expect(nodeRect().bottom, lessThanOrEqualTo(_sheetTop(t)), reason: 'above the sheet');
     expect(nodeRect().top, greaterThanOrEqualTo(t.getTopLeft(e.canvasFinder).dy), reason: 'still in the canvas');
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('the prompt editor\'s header: separate 48 px boxes (insert, "…" with Expand and Copy); its expanded page '
+      'and the code editor\'s are named after the step', (t) async {
+    final e = await _pump(t);
+    await _openFromSteps(t, _llmTitle);
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final panel = _inSheet(find.byType(DifyPromptEditorPanel)).first;
+    await _scrollTo(t, panel);
+    final boxes = find.descendant(of: panel, matching: find.byType(DifyTouchArea));
+    expect(boxes, findsNWidgets(2));
+    final rects = [for (final b in boxes.evaluate()) t.getRect(find.byWidget(b.widget))];
+    for (final r in rects) {
+      expect(r.width, greaterThanOrEqualTo(44));
+      expect(r.height, greaterThanOrEqualTo(44));
+    }
+    for (var i = 0; i + 1 < rects.length; i++) {
+      expect(rects[i].right, lessThanOrEqualTo(rects[i + 1].left + 0.5), reason: 'no overlap');
+    }
+    await t.tap(find.byKey(const Key('prompt-editor-more')));
+    await settle(t, 800);
+    expect(find.text(DifyI18n.tr('common', 'operation.copy')), findsOneWidget);
+    // Expanded from "…": a page titled with the step.
+    await t.tap(find.text(DifyI18n.tr('share', 'chat.expand')).last);
+    await settle(t, 800);
+    final page = find.byKey(const ValueKey('dify-portal-page'));
+    expect(find.descendant(of: page, matching: find.text(_llmTitle)), findsOneWidget);
+    expect(await systemBack(t), isTrue);
+    expect(await systemBack(t), isTrue);
+    // The code editor's page: "Count words" over "Code".
+    await _openFromSteps(t, 'Count words');
+    final expand = _inSheet(find.bySemanticsLabel(DifyI18n.tr('share', 'chat.expand'))).first;
+    await _scrollTo(t, expand);
+    await t.tap(expand);
+    await settle(t, 800);
+    final bar = find.descendant(of: page, matching: find.byType(DifyTopAppBar));
+    expect(find.descendant(of: bar, matching: find.text('Count words')), findsOneWidget);
+    expect(find.descendant(of: bar, matching: find.text(_tw('blocks.code'))), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('select sheets: titled from the field, the current value marked, one row inset', (t) async {
+    final e = await _pump(t);
+    await _openFromSteps(t, 'Count words');
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    // The output type select: the field's title, "Number" marked.
+    final type = _inSheet(find.byType(VarTypePicker)).first;
+    await _scrollTo(t, type);
+    await t.tap(type);
+    await settle(t, 800);
+    expect(
+      find.descendant(of: find.byType(DifySheetHeader).last, matching: find.text(_tw('nodes.code.outputVars'))),
+      findsOneWidget,
+    );
+    final number = find.text('Number').last;
+    final typeInset = t.getRect(number).left;
+    expect(await systemBack(t), isTrue);
+    // The language selector: "Language", the current one checked, the same inset.
+    final language = _inSheet(find.byWidgetPredicate((w) => w is TypeSelector)).first;
+    await _scrollTo(t, language);
+    await t.tap(language);
+    await settle(t, 800);
+    expect(
+      find.descendant(
+        of: find.byType(DifySheetHeader).last,
+        matching: find.text(DifyI18n.tr('phone-editor', 'language')),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byWidgetPredicate((w) => w is DifyIcon && w.name == 'vender/line/general/check'), findsOneWidget);
+    final python = find.text('Python3').last;
+    expect(t.getRect(python).left, closeTo(typeInset, 0.5), reason: 'one row inset');
+    expect(typeInset, closeTo(16, 0.5));
     expect(t.takeException(), isNull);
     await e.dispose();
   });

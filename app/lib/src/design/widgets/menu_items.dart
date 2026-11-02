@@ -86,7 +86,7 @@ class _MenuRowState extends State<_MenuRow> {
       constraints: widget.autoHeight || sheet ? BoxConstraints(minHeight: height) : null,
       margin: widget.margin ? EdgeInsets.symmetric(horizontal: sheet ? 8 : widget.marginX) : null,
       padding: EdgeInsets.symmetric(
-        horizontal: sheet ? 12 : widget.paddingX,
+        horizontal: sheet ? DifyFloating.sheetRowInset - 8 : widget.paddingX,
         vertical: widget.autoHeight || sheet ? 4 : 0,
       ),
       decoration: BoxDecoration(

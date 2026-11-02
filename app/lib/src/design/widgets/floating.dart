@@ -150,6 +150,9 @@ class DifyFloating extends StatefulWidget {
   /// Where the sheet rests: its content's height by default (up to the top safe area).
   final List<DifySheetDetent> sheetDetents;
 
+  /// The text inset of a picker sheet's rows from the sheet's edges: menus, type lists and lists of strategies share it.
+  static const sheetRowInset = 16.0;
+
   /// Whether a popup that opens as a sheet on compact windows ([sheetOnCompact]) does so in [context]'s window: below
   /// 600 dp ([DifyWindowClass.compact]). The single compact switch of the pickers.
   static bool presentsAsSheet(BuildContext context, {bool sheetOnCompact = true}) =>
@@ -166,6 +169,19 @@ class DifyFloating extends StatefulWidget {
 
   @override
   State<DifyFloating> createState() => _DifyFloatingState();
+}
+
+/// The label of the form field a control belongs to (a field's title): a picker sheet opened from the control is
+/// titled with it when the picker names none ([DifyFloating.sheetTitle]).
+class DifyFieldLabel extends InheritedWidget {
+  const DifyFieldLabel({super.key, required this.label, required super.child});
+
+  final String label;
+
+  static String? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<DifyFieldLabel>()?.label;
+
+  @override
+  bool updateShouldNotify(DifyFieldLabel oldWidget) => label != oldWidget.label;
 }
 
 /// Marks the content of a popup shown as a bottom sheet ([DifyFloating.inSheet]): [DifyFloating] puts it there, and
@@ -405,7 +421,8 @@ extension on _DifyFloatingState {
         child: DifyPopupSheetScope(child: Builder(builder: w.popupBuilder)),
       ),
     );
-    if (w.sheetTitle case final title?) {
+    // Titled with the picker's own title, else the label of the field it belongs to.
+    if ((w.sheetTitle ?? DifyFieldLabel.of(context)) case final title?) {
       content = Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

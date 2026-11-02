@@ -359,7 +359,14 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ValueListenableBuilder(valueListenable: store.nodeRunData, builder: (context, _, _) => _sheetHeader()),
-            Expanded(child: body),
+            // An editor expanded to a full-screen page is named after this step.
+            Expanded(
+              child: DifyPortalPageTitle(
+                title: widget.node.title,
+                subtitle: _tw('blocks.${widget.node.type}'),
+                child: body,
+              ),
+            ),
           ],
         ),
       ),

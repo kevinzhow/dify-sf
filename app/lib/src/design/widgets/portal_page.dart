@@ -194,3 +194,18 @@ class _Absorb extends StatelessWidget {
     child: Listener(behavior: HitTestBehavior.opaque, child: SizedBox.expand()),
   );
 }
+
+/// Names the full-screen pages ([DifyPortalPage]) opened inside it: an editor expanded from a node's settings takes
+/// the node's [title] and [subtitle] (its type) rather than a generic one.
+class DifyPortalPageTitle extends InheritedWidget {
+  const DifyPortalPageTitle({super.key, required this.title, this.subtitle, required super.child});
+
+  final String title;
+  final String? subtitle;
+
+  static DifyPortalPageTitle? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DifyPortalPageTitle>();
+
+  @override
+  bool updateShouldNotify(DifyPortalPageTitle oldWidget) => title != oldWidget.title || subtitle != oldWidget.subtitle;
+}

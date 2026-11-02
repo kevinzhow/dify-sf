@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../../../design/dify_icon.dart';
+import '../../../../i18n/dify_i18n.dart';
 import '../../../../design/dify_tokens.g.dart';
 import '../../../../design/widgets/widgets.dart';
 import '../../../../workflow/dify_json.dart';
@@ -398,6 +399,7 @@ class _CodePanelState extends State<_CodePanel> {
                 isInNode: true,
                 readOnly: readOnly,
                 titleWidget: TypeSelector<String>(
+                  sheetTitle: DifyI18n.tr('phone-editor', 'language'),
                   triggerUppercase: true,
                   options: codeLanguageOptions,
                   value: language,

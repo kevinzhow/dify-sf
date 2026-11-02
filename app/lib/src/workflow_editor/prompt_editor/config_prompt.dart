@@ -119,9 +119,12 @@ class PromptRoleTitle extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (r == PromptRole.system)
-            Transform.translate(
-              offset: const Offset(-4, 0),
-              child: DifyTextLine('SYSTEM', style: style),
+            // A narrow header (a phone's touch-size buttons beside it) cuts the title rather than overflowing.
+            Flexible(
+              child: Transform.translate(
+                offset: const Offset(-4, 0),
+                child: DifyTextLine('SYSTEM', style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
             )
           else
             Transform.translate(

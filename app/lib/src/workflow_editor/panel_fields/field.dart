@@ -164,12 +164,14 @@ class _FieldState extends State<Field> {
       );
     }
     final showChild = w.child != null && (!w.supportFold || !_fold);
+    // A picker in the field opens its phone sheet under the field's title.
+    final child = w.child == null ? null : DifyFieldLabel(label: w.title, child: w.child!);
     if (w.inline) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Flexible(child: header),
-          if (showChild) touch ? fieldHeaderControls(context, w.child!) : w.child!,
+          if (showChild) touch ? fieldHeaderControls(context, child!) : child!,
         ],
       );
     }
@@ -178,7 +180,7 @@ class _FieldState extends State<Field> {
       mainAxisSize: MainAxisSize.min,
       children: [
         header,
-        if (showChild) Padding(padding: const EdgeInsets.only(top: 4), child: w.child),
+        if (showChild) Padding(padding: const EdgeInsets.only(top: 4), child: child),
       ],
     );
   }

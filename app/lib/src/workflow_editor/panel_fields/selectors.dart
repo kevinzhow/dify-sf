@@ -63,7 +63,11 @@ class TypeSelector<T> extends StatefulWidget {
     this.sideOffset = 4,
     this.popupWidth = 120,
     this.onTriggerTap,
+    this.sheetTitle,
   });
+
+  /// The title of the sheet it opens as on a phone (else the field's label, if any).
+  final String? sheetTitle;
 
   final T? value;
   final List<SelectOption<T>> options;
@@ -101,6 +105,7 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
       sideOffset: sideOffset,
       collision: DifyCollision.dropdown,
       sheetOnCompact: true,
+      sheetTitle: widget.sheetTitle,
       builder: (context, c) => MouseRegion(
         cursor: readonly ? SystemMouseCursors.basic : SystemMouseCursors.click,
         child: GestureDetector(
@@ -122,7 +127,8 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
       ),
       popupBuilder: (context) => Container(
         width: popupWidth,
-        padding: const EdgeInsets.all(4),
+        // A sheet: its rows reach its edges (their text at the sheets' common inset).
+        padding: DifyFloating.inSheet(context) ? const EdgeInsets.only(bottom: 12) : const EdgeInsets.all(4),
         // As a sheet (a phone) the sheet is the surface.
         decoration: DifyFloating.inSheet(context)
             ? null
@@ -139,7 +145,8 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
             for (final o in options)
               _TypeSelectorItem(
                 label: uppercase ? o.label.toUpperCase() : o.label,
-                checked: showChecked && o.value == value,
+                // A phone's sheet always marks the current value.
+                checked: (showChecked || DifyFloating.inSheet(context)) && o.value == value,
                 onTap: () {
                   _controller.close();
                   onChanged(o.value);
@@ -232,7 +239,7 @@ class _TypeSelectorItemState extends State<_TypeSelectorItem> {
           // A 48 px touch row in a sheet (a phone).
           height: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 30,
           constraints: const BoxConstraints(minWidth: 44),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: DifyFloating.inSheet(context) ? DifyFloating.sheetRowInset : 12),
           decoration: BoxDecoration(
             color: _hovered ? DifyColors.stateBaseHover : null,
             borderRadius: BorderRadius.circular(DifyRadius.lg),

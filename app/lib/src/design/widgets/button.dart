@@ -1,8 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 
 import '../dify_tokens.g.dart';
 import 'button_style.dart';
+import 'bottom_sheet.dart' show DifySheetRecipe;
 import 'loading.dart' show DifySpinner;
+import 'responsive.dart';
 
 /// Button sizes (button/index.tsx): height, gap, radius, horizontal padding, text.
 enum DifyButtonSize {
@@ -67,6 +71,10 @@ class DifyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final off = disabled || loading;
+    // In a sheet on a phone a button is touch-high (44 px), as the fields there are; elsewhere Dify's sizes.
+    final height = DifyTouch.compactOf(context) && DifySheetRecipe.contains(context)
+        ? math.max(size.height, DifyTouch.controlHeight)
+        : size.height;
     // compound variant: primary + small is `gap-0.75 px-2`.
     final primarySmall = variant == DifyButtonVariant.primary && size == DifyButtonSize.small;
     return DifyPressable(
@@ -84,7 +92,7 @@ class DifyButton extends StatelessWidget {
           radius: size.radius,
           focused: focused,
           child: SizedBox(
-            height: size.height,
+            height: height,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: paddingX ?? (primarySmall ? 8 : size.paddingX)),
               child: DefaultTextStyle.merge(

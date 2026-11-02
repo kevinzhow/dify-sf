@@ -16,7 +16,7 @@ import '../../i18n/dify_i18n.dart';
 import '../../workflow/var_types.dart' show plainOf;
 import '../code_editor/code_editor.dart';
 import '../node_panel/bodies/llm/group_host.dart' show LlmGroupScope, modelPluginInstalledIn;
-import '../panel_fields/field.dart' show ToggleExpandBtn, fieldHeaderControls;
+import '../panel_fields/field.dart' show ToggleExpandBtn;
 import '../panel_fields/var_picker_model.dart';
 import 'prompt_editor.dart';
 
@@ -221,43 +221,88 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
             margin: const EdgeInsets.symmetric(horizontal: 8),
             color: DifyColors.dividerRegular,
           ),
-          fieldHeaderControls(
-            context,
-            Row(
-              spacing: 2,
-              children: [
-                if (w.isSupportJinja) _jinjaSwitch(),
-                if (!w.readOnly)
-                  DifyTooltip(
-                    content: DifyTextLine(DifyI18n.tr('workflow', 'common.insertVarTip')),
-                    child: DifyIconButton(
-                      label: DifyI18n.tr('workflow', 'common.insertVarTip'),
-                      onPressed: _insertVariable,
-                      icon: const DifyIcon('vender/solid/development/variable-02', size: 16),
+          _controls(),
+        ],
+      ),
+    );
+  }
+
+  void _copy() {
+    Clipboard.setData(ClipboardData(text: widget.value));
+    setState(() => _isCopied = true);
+  }
+
+  /// The header's buttons. On a phone each has its own 48 px touch box: insert variable shows, expand, copy and
+  /// remove are under "…" (an action sheet; the title keeps its room); elsewhere Dify's row of 24 px buttons.
+  Widget _controls() {
+    final w = widget;
+    final insert = DifyTooltip(
+      content: DifyTextLine(DifyI18n.tr('workflow', 'common.insertVarTip')),
+      child: DifyIconButton(
+        label: DifyI18n.tr('workflow', 'common.insertVarTip'),
+        onPressed: _insertVariable,
+        icon: const DifyIcon('vender/solid/development/variable-02', size: 16),
+      ),
+    );
+    final expand = ToggleExpandBtn(isExpand: _isExpand, onExpandChange: _setExpand);
+    if (_asPage) {
+      final copy = DifyI18n.tr('common', 'operation.copy'), remove = DifyI18n.tr('common', 'operation.remove');
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (w.isSupportJinja) _jinjaSwitch(),
+          if (!w.readOnly) DifyTouchArea(minSize: DifyTouch.controlHeight, child: insert),
+          DifyTouchArea(
+            minSize: DifyTouch.controlHeight,
+            child: DifyIconButton(
+              key: const Key('prompt-editor-more'),
+              label: DifyI18n.tr('common', 'operation.more'),
+              icon: const RemixIcon('more-fill', size: 16),
+              onPressed: () => showDifyActionSheet(
+                context,
+                actions: [
+                  DifyActionSheetAction(
+                    label: DifyI18n.tr('share', 'chat.expand'),
+                    icon: const RemixIcon('expand-diagonal-line', size: 20),
+                    onTap: () => _setExpand(true),
+                  ),
+                  DifyActionSheetAction(
+                    label: copy,
+                    icon: const DifyIcon('vender/line/files/copy', size: 20),
+                    onTap: _copy,
+                  ),
+                  if (w.showRemove && w.onRemove != null)
+                    DifyActionSheetAction(
+                      label: remove,
+                      icon: const RemixIcon('delete-bin-line', size: 20),
+                      destructive: true,
+                      onTap: w.onRemove!,
                     ),
-                  ),
-                if (w.showRemove)
-                  DifyIconButton(
-                    label: DifyI18n.tr('common', 'operation.remove'),
-                    onPressed: w.onRemove,
-                    icon: const RemixIcon('delete-bin-line', size: 16),
-                  ),
-                DifyIconButton(
-                  label: DifyI18n.tr('common', 'operation.copy'),
-                  onPressed: _isCopied
-                      ? null
-                      : () {
-                          Clipboard.setData(ClipboardData(text: w.value));
-                          setState(() => _isCopied = true);
-                        },
-                  icon: DifyIcon(_isCopied ? 'vender/line/files/copy-check' : 'vender/line/files/copy', size: 16),
-                ),
-                ToggleExpandBtn(isExpand: _isExpand, onExpandChange: _setExpand),
-              ],
+                ],
+              ),
             ),
           ),
         ],
-      ),
+      );
+    }
+    return Row(
+      spacing: 2,
+      children: [
+        if (w.isSupportJinja) _jinjaSwitch(),
+        if (!w.readOnly) insert,
+        if (w.showRemove)
+          DifyIconButton(
+            label: DifyI18n.tr('common', 'operation.remove'),
+            onPressed: w.onRemove,
+            icon: const RemixIcon('delete-bin-line', size: 16),
+          ),
+        DifyIconButton(
+          label: DifyI18n.tr('common', 'operation.copy'),
+          onPressed: _isCopied ? null : _copy,
+          icon: DifyIcon(_isCopied ? 'vender/line/files/copy-check' : 'vender/line/files/copy', size: 16),
+        ),
+        expand,
+      ],
     );
   }
 
@@ -431,12 +476,15 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
   @override
   Widget build(BuildContext context) {
     if (_asPage) {
-      final title = widget.title;
+      // Named after the step whose settings hold the editor, the prompt's own title below it.
+      final named = DifyPortalPageTitle.maybeOf(context);
+      final title = widget.title is String ? widget.title as String : null;
       return DifyPortalPage(
         key: const Key('prompt-editor-page'),
         open: _isExpand,
         onClose: () => _setExpand(false),
-        title: title is String ? title : DifyI18n.tr('share', 'chat.expand'),
+        title: named?.title ?? title ?? DifyI18n.tr('share', 'chat.expand'),
+        subtitle: named == null ? null : title ?? named.subtitle,
         builder: (context) => Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: KeyedSubtree(key: _contentKey, child: _content(expand: true)),

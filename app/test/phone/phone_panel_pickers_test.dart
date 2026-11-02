@@ -10,13 +10,14 @@ import 'package:dify_sf_app/src/workflow/workspace_models.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/kr_metadata.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/llm_json_schema.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_selector.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/tool_picker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../dify_spec/dify_test_i18n.dart';
-import '../dify_spec/workflow/nodes_panel/llm/model_fixtures.dart' show makeModel, named;
+import '../dify_spec/workflow/nodes_panel/llm/model_fixtures.dart' show catalogOf, makeModel, makeModelItem, named;
 import '../support/code_editor_input.dart';
 import '../support/model_fakes.dart';
 import 'phone_harness.dart' hide settle;
@@ -155,6 +156,9 @@ void main() {
     await _frames(t);
     _isSheet(t, 'model list');
     expect(_scrims, findsOneWidget);
+    // Touch rows: models 48 px; the provider row's credential control touch-high (a button in a sheet).
+    expect(t.getSize(find.byType(ModelSelectorModelRow).first).height, 48);
+    expect(t.getSize(named('Primary key')).height, greaterThanOrEqualTo(44));
     await t.tap(named('Primary key'));
     await _frames(t);
     expect(find.byType(DropdownContent), findsOneWidget);
@@ -169,7 +173,12 @@ void main() {
 
   testWidgets('the LLM\'s JSON schema importer opens as a sheet; its editor submits and closes it', (t) async {
     final submitted = <Object?>[];
-    await _pump(t, Center(child: JsonImporter(onSubmit: submitted.add, isEditing: () => false)));
+    await _pump(
+      t,
+      Center(
+        child: JsonImporter(onSubmit: submitted.add, isEditing: () => false),
+      ),
+    );
     await t.tap(find.bySemanticsLabel('workflow.nodes.llm.jsonSchema.import'));
     await _frames(t);
     _isSheet(t, 'JSON importer');
@@ -181,6 +190,45 @@ void main() {
     expect(submitted, [
       {'foo': 'bar'},
     ]);
+    expect(_scrims, findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('Model Settings as a sheet: the sheets\' own header and 44 px close', (t) async {
+    await _pump(
+      t,
+      ModelParameterModal(
+        provider: 'openai',
+        modelId: 'gpt-3.5-turbo',
+        completionParams: const {'temperature': 0.7},
+        onModelChange: (_) {},
+        onCompletionParamsChange: (_) {},
+      ),
+      services: LlmGroupServices(
+        models: catalogOf([
+          makeModel(
+            provider: 'openai',
+            models: [
+              makeModelItem(
+                model: 'gpt-3.5-turbo',
+                label: const {'en_US': 'GPT-3.5'},
+                modelProperties: const {'mode': 'chat'},
+              ),
+            ],
+          ),
+        ]),
+        parameterRules: (p, m) => Future.value(const <Map<String, Object?>>[]),
+      ),
+    );
+    await t.tap(named('common.modelProvider.modelSettings'));
+    await _frames(t);
+    _isSheet(t, 'model settings');
+    final header = find.byType(DifySheetHeader);
+    expect(find.descendant(of: header, matching: find.text('common.modelProvider.modelSettings')), findsOneWidget);
+    final close = find.descendant(of: header, matching: find.byType(DifyTouchIconButton));
+    expect(t.getSize(close).height, 44);
+    await t.tap(close);
+    await _frames(t);
     expect(_scrims, findsNothing);
     expect(t.takeException(), isNull);
   });

@@ -106,6 +106,7 @@
     "connection": "連線",
     "insertStep": "插入步驟",
     "insertVariable": "插入變數",
+    "language": "語言",
     "deleteConnection": "刪除連線",
     "selectMode": "框選模式",
     "addAfter": "在 {{name}} 之後 · 自動連線",

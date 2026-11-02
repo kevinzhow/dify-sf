@@ -86,7 +86,7 @@
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular. DifySheetPortal (batch 4a): the same sheet shown from a page's tree in the root overlay (keeps its scopes); DifyPortalSheetFrame; DifySheetHeader.titleWidget."
+      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular. DifySheetPortal (batch 4a): the same sheet shown from a page's tree in the root overlay (keeps its scopes); DifyPortalSheetFrame; DifySheetHeader.titleWidget. Device check: DifyPortalSemantics keeps portal sheets in the platform's semantics tree (modal from the page side); DifySheetRecipe.contains."
     },
     "bottom_toolbar.dart": {
       "kind": "text-composition",
@@ -105,9 +105,11 @@
         "app/test/design_widgets_test.dart",
         "app/test/control_optical_alignment_test.dart",
         "app/test/design/page_selection_test.dart",
-        "app/test/human_input/m1_second_review_test.dart"
+        "app/test/human_input/m1_second_review_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Batch 4a device check: touch-high (44 px) inside a sheet in a compact window, Dify's sizes elsewhere."
     },
     "button_style.dart": {
       "kind": "text-composition",
@@ -259,7 +261,7 @@
         "app/test/phone/phone_node_sheet_test.dart",
         "app/test/phone/phone_panel_pickers_test.dart"
       ],
-      "note": "Does not define a distinct text face; supplied children use the shared typography contract. sheetOnCompact (batch 4a): a picker opens as a bottom sheet in a compact window; DifyPopupSheetScope / DifyFloating.inSheet. Batch 4a follow-up: sheetOnCompact defaults to dismissible, focusing, trigger-anchored popups (pickers); DifyFloating.surface drops a popup's own surface in a sheet."
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. sheetOnCompact (batch 4a): a picker opens as a bottom sheet in a compact window; DifyPopupSheetScope / DifyFloating.inSheet. Batch 4a follow-up: sheetOnCompact defaults to dismissible, focusing, trigger-anchored popups (pickers); DifyFloating.surface drops a popup's own surface in a sheet. DifyFieldLabel titles picker sheets from their field; DifyFloating.sheetRowInset is the sheets' one row inset."
     },
     "font_notice.dart": {
       "kind": "text-composition",
@@ -481,7 +483,7 @@
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "dify-sf phone full-screen page shown from a widget's tree (the expanded code and prompt editors; no Dify counterpart): DifyTopAppBar over the content; tests cover the window-filling page, the content moving in and out with its state and scopes, and back."
+      "note": "dify-sf phone full-screen page shown from a widget's tree (the expanded code and prompt editors; no Dify counterpart): DifyTopAppBar over the content; tests cover the window-filling page, the content moving in and out with its state and scopes, and back. DifyPortalPageTitle names expanded editor pages after the step; modal for accessibility via DifyPortalSemantics."
     },
     "public_app_layout.dart": {
       "kind": "layout-or-non-text",

@@ -106,6 +106,7 @@
     "connection": "接続",
     "insertStep": "ステップを挿入",
     "insertVariable": "変数を挿入",
+    "language": "言語",
     "deleteConnection": "接続を削除",
     "selectMode": "選択モード",
     "addAfter": "{{name}} の後 · 自動で接続",

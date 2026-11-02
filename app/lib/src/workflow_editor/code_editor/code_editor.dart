@@ -377,12 +377,15 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
     ];
     final panelWidth = inNode ? context.getInheritedWidgetOfExactType<WorkflowStoreScope>()?.store.panelWidth : null;
     if (_asPage) {
+      // Named after the step whose settings hold the editor (its type below), else the editor's own title.
+      final named = DifyPortalPageTitle.maybeOf(context);
       final title = widget.title ?? '';
       return DifyPortalPage(
         key: const Key('code-editor-page'),
         open: _isExpand,
         onClose: () => _setExpand(false),
-        title: title.isEmpty ? DifyI18n.tr('share', 'chat.expand') : title,
+        title: named?.title ?? (title.isEmpty ? DifyI18n.tr('share', 'chat.expand') : title),
+        subtitle: named == null ? null : (title.isEmpty ? named.subtitle : title),
         builder: (context) => LayoutBuilder(
           builder: (context, c) => _box(
             // The page's body less the touch-high title bar (`useToggleExpend` counts Dify's 28 px one).

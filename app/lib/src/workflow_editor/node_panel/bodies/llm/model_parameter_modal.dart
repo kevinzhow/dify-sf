@@ -332,24 +332,28 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 44, 4),
-                  child: DifyText(title, DifyType.systemXlSemibold),
-                ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: DifyIconButton(
-                    label: DifyI18n.tr('common', 'operation.close'),
-                    size: DifyIconButtonSize.lg,
-                    icon: const RemixIcon('close-line', size: 16),
-                    onPressed: () => _setOpen(false),
+            // A phone's sheet: the sheets' own header (title, 44 px close).
+            if (sheet)
+              DifySheetHeader(title: title, onClose: () => _setOpen(false))
+            else
+              Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 44, 4),
+                    child: DifyText(title, DifyType.systemXlSemibold),
                   ),
-                ),
-              ],
-            ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: DifyIconButton(
+                      label: DifyI18n.tr('common', 'operation.close'),
+                      size: DifyIconButtonSize.lg,
+                      icon: const RemixIcon('close-line', size: 16),
+                      onPressed: () => _setOpen(false),
+                    ),
+                  ),
+                ],
+              ),
             Flexible(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 420),

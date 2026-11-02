@@ -59,6 +59,10 @@ abstract final class DifySheetRecipe {
   /// A sheet shown from a page's tree ([DifySheetPortal]) slides in and out over this (the framework sheet route's
   /// 250 ms).
   static const openDuration = Duration(milliseconds: 250);
+
+  /// Whether [context] is inside a bottom sheet's content (a sheet route, a [DifySheetPortal], a
+  /// [DifyPersistentSheet], a picker sheet).
+  static bool contains(BuildContext context) => _SheetDragScope.of(context) != null;
 }
 
 enum _DetentKind { peek, half, full }

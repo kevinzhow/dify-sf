@@ -304,7 +304,8 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     final viewport = _scroll.position.context.storageContext.findRenderObject();
     if (box == null || viewport is! RenderBox) return false;
     final top = box.localToGlobal(Offset.zero, ancestor: viewport).dy;
-    final bottomCover = MediaQuery.paddingOf(context).bottom + widget.bottomInset + _sheetCover(viewport);
+    // A sheet over the list covers the bars at the bottom too: the larger of the two, not their sum.
+    final bottomCover = math.max(MediaQuery.paddingOf(context).bottom + widget.bottomInset, _sheetCover(viewport));
     return top >= 0 && top + box.size.height <= _scroll.position.viewportDimension - bottomCover;
   }
 
@@ -322,7 +323,9 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     if (!mounted) return;
     _coveredFromY = coveredFromY;
     final viewport = _scroll.hasClients ? _scroll.position.context.storageContext.findRenderObject() : null;
-    _coverRoom = viewport is RenderBox && viewport.hasSize ? _sheetCover(viewport) : 0;
+    _coverRoom = viewport is RenderBox && viewport.hasSize
+        ? math.max(0.0, _sheetCover(viewport) - MediaQuery.paddingOf(context).bottom - widget.bottomInset)
+        : 0;
     _layout = _cache.layoutOf(_doc);
     final index = _layout.rowOfNode(id);
     if (index == null) return;

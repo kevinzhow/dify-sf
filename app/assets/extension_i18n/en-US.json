@@ -138,6 +138,7 @@
     "connection": "Connection",
     "insertStep": "Insert step",
     "insertVariable": "Insert variable",
+    "language": "Language",
     "deleteConnection": "Delete connection",
     "selectMode": "Select mode",
     "addAfter": "after {{name}} · connects automatically",

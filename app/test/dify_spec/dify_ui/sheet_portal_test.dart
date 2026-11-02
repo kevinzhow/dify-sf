@@ -2,6 +2,10 @@
 // inherited state), pickers as sheets in a compact window (the one switch: DifyFloating.sheetOnCompact), the touch
 // box of a small control, and the sheet header's title widget.
 
+import 'dart:async';
+
+import 'package:dify_sf_app/src/design/dify_theme.dart';
+
 import 'phone_harness.dart';
 
 /// Something only the page provides: content shown from the page's tree must still see it.
@@ -446,5 +450,61 @@ void main() {
     expect(page, findsNothing);
     expect(t.state(find.byType(EditableText)), same(state));
     expect(t.takeException(), isNull);
+  });
+
+  testWidgets('buttons in a sheet are touch-high (44 px) in a compact window; outside a sheet, and in a sheet on a '
+      'wide window, Dify\'s sizes', (t) async {
+    Future<Map<String, double>> heights(Size size) async {
+      phoneView(t, size: size);
+      final nav = await pumpPhoneApp(
+        t,
+        DifyPage(
+          body: Center(
+            child: DifyButton(size: DifyButtonSize.small, onPressed: () {}, child: const DifyTextLine('Page')),
+          ),
+        ),
+      );
+      unawaited(
+        showDifyBottomSheet<void>(
+          nav.currentContext!,
+          (_) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DifyButton(size: DifyButtonSize.small, onPressed: () {}, child: const DifyTextLine('Small')),
+                DifyButton(onPressed: () {}, child: const DifyTextLine('Medium')),
+                DifyButton(size: DifyButtonSize.large, onPressed: () {}, child: const DifyTextLine('Large')),
+              ],
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      double h(String text) => t.getSize(find.ancestor(of: find.text(text), matching: find.byType(DifyButton))).height;
+      return {
+        for (final b in ['Page', 'Small', 'Medium', 'Large']) b: h(b),
+      };
+    }
+
+    expect(await heights(const Size(411, 914)), {'Page': 24, 'Small': 44, 'Medium': 44, 'Large': 44});
+    expect(await heights(const Size(1280, 800)), {'Page': 24, 'Small': 24, 'Medium': 32, 'Large': 36});
+  });
+
+  testWidgets('text selection handles and the caret use Dify\'s accent, not the seed\'s indigo', (t) async {
+    final theme = difyTheme();
+    expect(theme.textSelectionTheme.selectionHandleColor, const Color(0xFF155EEF));
+    expect(theme.textSelectionTheme.cursorColor, const Color(0xFF155EEF));
+    phoneView(t);
+    await pumpPhoneApp(
+      t,
+      const DifyPage(
+        body: Center(
+          child: DifyInput(key: ValueKey('f'), value: 'hello world'),
+        ),
+      ),
+    );
+    final context = t.element(find.byKey(const ValueKey('f')));
+    expect(TextSelectionTheme.of(context).selectionHandleColor, const Color(0xFF155EEF));
+    expect(difyTheme(brightness: Brightness.dark).textSelectionTheme.selectionHandleColor, const Color(0xFF155EEF));
   });
 }
