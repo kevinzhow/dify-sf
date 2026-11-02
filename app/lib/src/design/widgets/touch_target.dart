@@ -76,6 +76,26 @@ class RenderDifyTouchTarget extends RenderProxyBox {
   }
 }
 
+/// A small control in a box of at least [minSize] square, centred, with the hit area of a [DifyTouchTarget]: where the
+/// row around the control is only as tall as the control (a 24 px field header), this is the "real 48 px box" the
+/// target needs. The control keeps its own size and look; only the slot around it grows.
+class DifyTouchArea extends StatelessWidget {
+  const DifyTouchArea({super.key, this.minSize = DifyTouch.minTarget, required this.child});
+
+  final double minSize;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: BoxConstraints(minWidth: minSize, minHeight: minSize),
+    child: Center(
+      widthFactor: 1,
+      heightFactor: 1,
+      child: DifyTouchTarget(minSize: minSize, child: child),
+    ),
+  );
+}
+
 /// The phone chrome's icon button (the mockups' `.ibtn`): a [size] square (44 px) with `rounded-[10px]`, an icon
 /// (22 px by convention) in text-secondary, state-base-hover while pressed or hovered, and at least a 48 px hit area.
 /// [label] is its accessible name (there are no tooltips on touch). [destructive] tints it text-destructive.

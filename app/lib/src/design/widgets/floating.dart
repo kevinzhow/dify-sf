@@ -7,8 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'back_dismiss.dart';
+import 'bottom_sheet.dart';
 import 'page.dart' show DifyWindowInsets;
 import 'placement.dart';
+import 'responsive.dart';
 import 'text.dart';
 
 /// Opens and closes a [DifyFloating] (its `open` state when uncontrolled; a request to `onOpenChange` otherwise).
@@ -62,6 +64,14 @@ enum DifyFloatingTransition { scaleFade, fade }
 /// collision rules, animated, dismissed on outside tap and Escape, and returns focus to the trigger on close. A
 /// [dismissible] popup also closes on Android back before the page under it does (a [DifyBackStep] on the trigger's
 /// route while it is open).
+///
+/// A picker ([sheetOnCompact]: selects, the variable and model pickers, popovers) opens as a bottom sheet in a compact
+/// window instead (dify-sf's phones; raft-flutter's picker policy: a sheet below the breakpoint, a popover above). This
+/// is the one switch every picker goes through ([presentsAsSheet]): the same popup content, in the same overlay (it
+/// keeps the trigger's inherited state), over a window-wide scrim, under an optional [sheetTitle] header, full width
+/// and without its own surface ([inSheet] tells the content so: menus and lists grow their rows to 48 px). Its focus
+/// stays on the sheet itself, so a search field in it does not open the keyboard until it is tapped. The scrim, a
+/// drag down, Escape and Android back close it.
 class DifyFloating extends StatefulWidget {
   const DifyFloating({
     super.key,
@@ -83,6 +93,9 @@ class DifyFloating extends StatefulWidget {
     this.constrainHeight = false,
     this.instantTransition,
     this.pointAnchor = false,
+    this.sheetOnCompact = false,
+    this.sheetTitle,
+    this.sheetDetents = const [DifySheetDetent.full],
   });
 
   /// Builds the trigger (the anchor), which opens the popup through the controller.
@@ -123,8 +136,37 @@ class DifyFloating extends StatefulWidget {
   /// origin (Base UI's initial context-menu anchor).
   final bool pointAnchor;
 
+  /// A picker: in a compact window it opens as a bottom sheet ([presentsAsSheet]).
+  final bool sheetOnCompact;
+
+  /// The sheet's header title (a [DifySheetHeader] with a close button); none: the sheet starts with its grab handle.
+  final String? sheetTitle;
+
+  /// Where the sheet rests: its content's height by default (up to the top safe area).
+  final List<DifySheetDetent> sheetDetents;
+
+  /// Whether a popup that opens as a sheet on compact windows ([sheetOnCompact]) does so in [context]'s window: below
+  /// 600 dp ([DifyWindowClass.compact]). The single compact switch of the pickers.
+  static bool presentsAsSheet(BuildContext context, {bool sheetOnCompact = true}) =>
+      sheetOnCompact && DifyWindowClass.of(context) == DifyWindowClass.compact;
+
+  /// Whether [context] is inside a popup shown as a bottom sheet: its content drops its own surface and fixed width,
+  /// and its rows take touch height (48 px).
+  static bool inSheet(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DifyPopupSheetScope>() != null;
+
   @override
   State<DifyFloating> createState() => _DifyFloatingState();
+}
+
+/// Marks the content of a popup shown as a bottom sheet ([DifyFloating.inSheet]): [DifyFloating] puts it there, and
+/// so does a popup host of its own that presents its content in a sheet on a phone (the prompt editor's `{` / `/`
+/// picker, through [DifyPortalSheetFrame]).
+class DifyPopupSheetScope extends InheritedWidget {
+  const DifyPopupSheetScope({super.key, required super.child});
+
+  @override
+  bool updateShouldNotify(DifyPopupSheetScope oldWidget) => false;
 }
 
 class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderStateMixin {
@@ -212,8 +254,13 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
 
   bool _instant(bool requested) => requested || _reduceMotion;
 
+  /// Whether the popup shows as a sheet (read live: the window's class).
+  bool get _sheet => mounted && DifyFloating.presentsAsSheet(context, sheetOnCompact: widget.sheetOnCompact);
+
   void _show({required bool instant, bool rebuild = true}) {
     _visible = true;
+    // Opened from initState the window cannot be read yet; the duration follows from the next opening.
+    if (rebuild) _anim.duration = _sheet ? DifySheetRecipe.openDuration : difyTransitionDuration;
     _portal.show();
     if (widget.dismissible) {
       // Opened from initState (no inherited lookups yet): after the first frame.
@@ -233,7 +280,8 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
     if (widget.focusPopup) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_visible) return;
-        (widget.initialFocus ?? _scope).requestFocus();
+        // A sheet keeps the focus on itself: a search field in it would open the keyboard over the list.
+        (_sheet ? _scope : widget.initialFocus ?? _scope).requestFocus();
       });
     }
     if (rebuild) setState(() {});
@@ -275,6 +323,7 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
         // Portal descendants are inside every ancestor popup, not only the
         // immediate parent. Keep the complete tree in the same tap regions.
         final groups = <Object>{...?_FloatingGroup.of(context), _group};
+        if (_sheet) return _sheetPopup(groups);
         final anchor = widget.pointAnchor
             ? (_point ?? Offset.zero) & Size.zero
             : MatrixUtils.transformRect(info.childPaintTransform, Offset.zero & info.childSize);
@@ -314,6 +363,50 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
       },
       child: trigger,
     );
+  }
+}
+
+extension on _DifyFloatingState {
+  /// The popup as a bottom sheet: the scrim closes it (not an outside tap: the sheet's own handle is outside the
+  /// content), and the whole frame is inside the popup's tap regions, so a popup it opens keeps it open.
+  Widget _sheetPopup(Set<Object> groups) {
+    final w = widget;
+    Widget content = FocusScope(
+      node: _scope,
+      skipTraversal: !w.focusPopup,
+      onKeyEvent: (node, e) {
+        if (w.dismissible && e is KeyDownEvent && e.logicalKey == LogicalKeyboardKey.escape) {
+          _request(false, instant: true);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: _FloatingGroup(
+        groups: groups,
+        child: DifyPopupSheetScope(child: Builder(builder: w.popupBuilder)),
+      ),
+    );
+    if (w.sheetTitle case final title?) {
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DifySheetHeader(title: title),
+          Flexible(child: content),
+        ],
+      );
+    }
+    Widget sheet = DifyPortalSheetFrame(
+      animation: _curved,
+      detents: w.sheetDetents,
+      onDismiss: w.dismissible ? () => _request(false) : null,
+      isOpen: () => mounted && _visible,
+      child: IgnorePointer(ignoring: !_visible, child: content),
+    );
+    for (final group in groups) {
+      sheet = TapRegion(groupId: group, child: sheet);
+    }
+    return sheet;
   }
 }
 

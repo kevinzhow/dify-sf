@@ -51,16 +51,27 @@ class DifyPage extends StatelessWidget {
 /// page puts in the root overlay (popups, editor drawers) is laid out against the whole window: it reads these
 /// insets instead ([DifyFloating], [DifyOverlaySafeArea]).
 class DifyWindowInsets extends InheritedWidget {
-  const DifyWindowInsets({super.key, required this.padding, required super.child});
+  const DifyWindowInsets({super.key, required this.padding, this.viewInsets = EdgeInsets.zero, required super.child});
 
   final EdgeInsets padding;
+
+  /// The window's view insets (the soft keyboard): a page's Scaffold resizes the page for the keyboard and removes
+  /// it from the page's `MediaQuery.viewInsets`, but a sheet the page shows in the root overlay ([DifySheetPortal])
+  /// sits on the keyboard itself.
+  final EdgeInsets viewInsets;
 
   /// The window's insets; without a [DifyApplication] above (tests, tools), the context's `MediaQuery.padding`.
   static EdgeInsets of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<DifyWindowInsets>()?.padding ?? MediaQuery.paddingOf(context);
 
+  /// The window's view insets (the keyboard); without a [DifyApplication] above, the context's
+  /// `MediaQuery.viewInsets`.
+  static EdgeInsets viewInsetsOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DifyWindowInsets>()?.viewInsets ?? MediaQuery.viewInsetsOf(context);
+
   @override
-  bool updateShouldNotify(DifyWindowInsets oldWidget) => padding != oldWidget.padding;
+  bool updateShouldNotify(DifyWindowInsets oldWidget) =>
+      padding != oldWidget.padding || viewInsets != oldWidget.viewInsets;
 }
 
 /// Lays [child] out in the root overlay's safe area: inside the [DifyWindowInsets], in a Stack that fills it, so
@@ -149,6 +160,7 @@ class DifyApplication extends StatelessWidget {
             ),
             child: DifyWindowInsets(
               padding: MediaQuery.paddingOf(context),
+              viewInsets: MediaQuery.viewInsetsOf(context),
               child: Builder(builder: (context) => builder?.call(context, child) ?? child!),
             ),
           ),

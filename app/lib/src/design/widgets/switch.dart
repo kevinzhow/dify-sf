@@ -40,7 +40,13 @@ class DifySwitch extends StatelessWidget {
   final String? semanticLabel;
 
   @override
-  Widget build(BuildContext context) => Semantics(
+  Widget build(BuildContext context) {
+    final control = _control(context);
+    // A phone: a 48 px hit area around the track (where the row around it has the room), the layout unchanged.
+    return DifyTouch.compactOf(context) ? DifyTouchTarget(child: control) : control;
+  }
+
+  Widget _control(BuildContext context) => Semantics(
     container: true,
     toggled: checked,
     enabled: !_disabled,

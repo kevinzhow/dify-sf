@@ -22,7 +22,8 @@ import '../dify_icon.dart';
 import '../dify_phone_tokens.dart';
 import '../dify_tokens.g.dart';
 import '../../i18n/dify_i18n.dart';
-import 'page.dart' show DifySurface;
+import 'back_dismiss.dart';
+import 'page.dart' show DifySurface, DifyWindowInsets;
 import 'responsive.dart';
 import 'selection.dart';
 import 'text.dart';
@@ -54,6 +55,10 @@ abstract final class DifySheetRecipe {
 
   /// The settle animation after a drag (raft-flutter: 200 ms, ease-out).
   static const settleDuration = Duration(milliseconds: 200);
+
+  /// A sheet shown from a page's tree ([DifySheetPortal]) slides in and out over this (the framework sheet route's
+  /// 250 ms).
+  static const openDuration = Duration(milliseconds: 250);
 }
 
 enum _DetentKind { peek, half, full }
@@ -127,14 +132,17 @@ class DifySheetController extends ChangeNotifier {
   }
 }
 
-/// Marks the content of a modal sheet route, so [DifySheetHeader]'s close button can pop it by default.
+/// Marks the content of a modal sheet (a route, or a [DifySheetPortal]), so [DifySheetHeader]'s close button closes
+/// it by default: [close] (a portal's dismissal), or the route's [Navigator.maybePop] when null.
 class _ModalSheetScope extends InheritedWidget {
-  const _ModalSheetScope({required super.child});
+  const _ModalSheetScope({this.close, required super.child});
 
-  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<_ModalSheetScope>() != null;
+  final VoidCallback? close;
+
+  static _ModalSheetScope? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<_ModalSheetScope>();
 
   @override
-  bool updateShouldNotify(_ModalSheetScope oldWidget) => false;
+  bool updateShouldNotify(_ModalSheetScope oldWidget) => close != oldWidget.close;
 }
 
 /// Pushes a bottom sheet route showing [builder]'s content (usually a [DifySheetHeader] over a body; a scrolling body
@@ -177,7 +185,12 @@ Future<T?> showDifyBottomSheet<T>(
           detents: detents,
           initialDetent: initialDetent,
           controller: controller,
-          route: dismissible ? route : null,
+          requestClose: dismissible
+              ? () async {
+                  await Navigator.of(context).maybePop();
+                  return route.isActive;
+                }
+              : null,
           modalRoute: true,
           shadow: !modal,
           child: DifySelectionRegion(child: Builder(builder: builder)),
@@ -274,7 +287,7 @@ class DifyPersistentSheet extends StatelessWidget {
     detents: detents,
     initialDetent: initialDetent,
     controller: controller,
-    route: null,
+    requestClose: null,
     modalRoute: false,
     shadow: true,
     child: child,
@@ -328,7 +341,7 @@ class _DifySheet extends StatefulWidget {
     required this.detents,
     required this.initialDetent,
     required this.controller,
-    required this.route,
+    required this.requestClose,
     required this.modalRoute,
     required this.shadow,
     required this.child,
@@ -338,8 +351,10 @@ class _DifySheet extends StatefulWidget {
   final DifySheetDetent? initialDetent;
   final DifySheetController? controller;
 
-  /// The route a drag to the bottom asks to close; null when the sheet cannot be dragged away.
-  final ModalRoute<Object?>? route;
+  /// Asks the sheet's owner to close it (a drag to the bottom), the way Back and Escape do: a route's
+  /// [Navigator.maybePop], a [DifySheetPortal]'s dismissal. Completes with whether the sheet is still open afterwards
+  /// (a veto: it slides back to its detent). Null when the sheet cannot be dragged away.
+  final Future<bool> Function()? requestClose;
   final bool modalRoute, shadow;
   final Widget child;
 
@@ -367,7 +382,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
   List<double> _snaps = const [], _sheetSnaps = const [];
   double _min = 0, _max = 1;
 
-  bool get _canClose => widget.route != null && _keyboard == 0;
+  bool get _canClose => widget.requestClose != null && _keyboard == 0;
 
   double? get _offset => _sheet.isAttached ? _sheet.pixels + _keyboard : null;
 
@@ -489,14 +504,14 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
     _animateTo(target);
   }
 
-  /// A drag to the bottom asks the route to close, the way Back and Escape do; a veto slides the sheet back.
+  /// A drag to the bottom asks the owner to close the sheet, the way Back and Escape do; a veto slides it back.
   void _close() {
-    final route = widget.route;
-    if (route == null || _asking) return;
+    final request = widget.requestClose;
+    if (request == null || _asking) return;
     _asking = true;
-    Navigator.of(context).maybePop().then((_) {
+    request().then((stillOpen) {
       _asking = false;
-      if (mounted && route.isActive) _animateTo(_resting);
+      if (mounted && stillOpen) _animateTo(_resting);
     });
   }
 
@@ -732,12 +747,16 @@ class DifySheetGrabHandle extends StatelessWidget {
 /// Under it, an optional [tabs] row (`px-4`) over a divider-subtle line. The header drags the sheet with any pointer.
 ///
 /// The close button shows when [onClose] is given, or inside [showDifyBottomSheet]'s content, where it pops the
-/// route by default (through [Navigator.maybePop], so a non-dismissible sheet needs its own [onClose]). Hide it with
-/// [showClose].
+/// route by default (through [Navigator.maybePop], so a non-dismissible sheet needs its own [onClose]), and inside a
+/// [DifySheetPortal], where it dismisses the portal. Hide it with [showClose].
+///
+/// [titleWidget] replaces the title's text with another widget in the same place (an editable title: the node
+/// settings sheet's); [title] still names the sheet.
 class DifySheetHeader extends StatelessWidget {
   const DifySheetHeader({
     super.key,
     required this.title,
+    this.titleWidget,
     this.subtitle,
     this.leading,
     this.actions = const [],
@@ -748,6 +767,7 @@ class DifySheetHeader extends StatelessWidget {
   });
 
   final String title;
+  final Widget? titleWidget;
   final String? subtitle;
   final Widget? leading;
   final List<Widget> actions;
@@ -760,9 +780,10 @@ class DifySheetHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scope = _ModalSheetScope.of(context);
     final close = !showClose
         ? null
-        : onClose ?? (_ModalSheetScope.of(context) ? () => Navigator.maybePop(context) : null);
+        : onClose ?? (scope == null ? null : scope.close ?? () => Navigator.maybePop(context));
     final buttons = [
       ...actions,
       if (close != null)
@@ -792,10 +813,11 @@ class DifySheetHeader extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Semantics(
-                          header: true,
-                          child: DifyText(title, DifyPhoneType.title, color: DifyColors.textPrimary),
-                        ),
+                        titleWidget ??
+                            Semantics(
+                              header: true,
+                              child: DifyText(title, DifyPhoneType.title, color: DifyColors.textPrimary),
+                            ),
                         if (subtitle case final s?)
                           DifyText(s, DifyType.systemXsRegular, color: DifyColors.textTertiary),
                       ],
@@ -815,6 +837,237 @@ class DifySheetHeader extends StatelessWidget {
               child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: t),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// A modal bottom sheet a page shows from its own tree (dify-sf: the phone editor's node settings): the scrim and the
+/// sheet are laid out in the root overlay over the whole window (the app bar included), while the content keeps the
+/// page's inherited state (its stores and scopes, which a sheet route pushed on the navigator would lose), like
+/// [DifyDrawerPortal] for drawers.
+///
+/// While [open], the sheet shows [builder]'s content (usually a [DifySheetHeader] over a scrolling body) at
+/// [initialDetent] (the first of [detents]) and snaps between [detents]; it slides in and out. When [dismissible], a
+/// tap on the scrim, a drag below the lowest detent, the header's close button, Escape and Android back (a
+/// [DifyBackStep] on the page's route, newest layer first) call [onDismiss]; the owner closes it by setting [open] to
+/// false (not doing so is a veto: the sheet slides back). While it closes, the last content stays.
+///
+/// Edge to edge like [showDifyBottomSheet]: it measures itself against the window's insets and keyboard
+/// ([DifyWindowInsets]), so it paints to the bottom and side edges, keeps its content clear of the system bars, stops
+/// at the top safe area, and rises with the keyboard (the keyboard's height replaces the bottom inset).
+class DifySheetPortal extends StatefulWidget {
+  const DifySheetPortal({
+    super.key,
+    required this.open,
+    required this.onDismiss,
+    required this.builder,
+    this.child = const SizedBox.shrink(),
+    this.detents = const [DifySheetDetent.half, DifySheetDetent.full],
+    this.initialDetent,
+    this.controller,
+    this.dismissible = true,
+    this.barrierLabel,
+  });
+
+  final bool open;
+  final VoidCallback onDismiss;
+  final WidgetBuilder builder;
+
+  /// What the portal shows in the page's tree (nothing by default).
+  final Widget child;
+  final List<DifySheetDetent> detents;
+  final DifySheetDetent? initialDetent;
+  final DifySheetController? controller;
+  final bool dismissible;
+  final String? barrierLabel;
+
+  @override
+  State<DifySheetPortal> createState() => _DifySheetPortalState();
+}
+
+class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProviderStateMixin {
+  final _portal = OverlayPortalController();
+  final _scope = FocusScopeNode(debugLabel: 'DifySheetPortal');
+  late final _anim = AnimationController(vsync: this, duration: DifySheetRecipe.openDuration)
+    ..addStatusListener((s) {
+      if (s == AnimationStatus.dismissed && !widget.open && _portal.isShowing) {
+        _portal.hide();
+        _content = null;
+        if (mounted) setState(() {});
+      }
+    });
+  late final _curved = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+  late final _back = DifyBackStep(onDismiss: () => widget.onDismiss());
+
+  /// The content the sheet shows: rebuilt while open, kept while it closes.
+  Widget? _content;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.open) _sync();
+  }
+
+  @override
+  void didUpdateWidget(DifySheetPortal old) {
+    super.didUpdateWidget(old);
+    if (old.open != widget.open || old.dismissible != widget.dismissible) _sync();
+  }
+
+  @override
+  void dispose() {
+    _back.detach();
+    _curved.dispose();
+    _anim.dispose();
+    _scope.dispose();
+    super.dispose();
+  }
+
+  /// The overlay cannot be shown or hidden while building: after the frame.
+  void _sync() {
+    if (!widget.open) _back.detach();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+      if (widget.open) {
+        final opening = !_portal.isShowing || _anim.status == AnimationStatus.reverse;
+        if (!_portal.isShowing) _portal.show();
+        if (widget.dismissible) {
+          _back.attach(context);
+        } else {
+          _back.detach();
+        }
+        reduce ? _anim.value = 1 : _anim.forward();
+        // Modal: the focus moves into the sheet (Escape reaches it; a field of the page under it lets the keyboard go).
+        if (opening) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (mounted && widget.open && !_scope.hasFocus) _scope.requestFocus();
+          });
+        }
+        setState(() {});
+      } else if (_portal.isShowing) {
+        _back.detach();
+        reduce ? _anim.value = 0 : _anim.reverse();
+      }
+    });
+  }
+
+  void _dismiss() {
+    if (widget.open && widget.dismissible) widget.onDismiss();
+  }
+
+  @override
+  Widget build(BuildContext context) => OverlayPortal(
+    controller: _portal,
+    overlayLocation: OverlayChildLocation.rootOverlay,
+    overlayChildBuilder: (context) {
+      if (widget.open) _content = Builder(builder: widget.builder);
+      return Shortcuts(
+        shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
+        child: Actions(
+          actions: {
+            DismissIntent: CallbackAction<DismissIntent>(
+              onInvoke: (_) {
+                _dismiss();
+                return null;
+              },
+            ),
+          },
+          child: FocusScope(
+            node: _scope,
+            child: DifyPortalSheetFrame(
+              animation: _curved,
+              detents: widget.detents,
+              initialDetent: widget.initialDetent,
+              controller: widget.controller,
+              onDismiss: widget.dismissible ? _dismiss : null,
+              isOpen: () => mounted && widget.open,
+              barrierLabel: widget.barrierLabel,
+              child: IgnorePointer(ignoring: !widget.open, child: _content ?? const SizedBox.shrink()),
+            ),
+          ),
+        ),
+      );
+    },
+    child: widget.child,
+  );
+}
+
+/// The scrim and the sheet of a modal sheet shown in the root overlay from a page's tree ([DifySheetPortal]; a
+/// [DifyFloating] picker in a compact window): the window-wide scrim fades and the sheet slides with [animation]
+/// (0 closed, 1 open). The sheet is the same as [showDifyBottomSheet]'s ([detents], the grab handle, the header's
+/// default close), measured against the window's insets and keyboard ([DifyWindowInsets]) since the overlay child
+/// inherits the page's consumed ones. [onDismiss] (null: not dismissible) is called by a scrim tap, a drag below the
+/// lowest detent and the header's close; [isOpen] tells, a frame later, whether the owner vetoed it.
+class DifyPortalSheetFrame extends StatelessWidget {
+  const DifyPortalSheetFrame({
+    super.key,
+    required this.animation,
+    required this.child,
+    required this.isOpen,
+    this.onDismiss,
+    this.detents = const [DifySheetDetent.full],
+    this.initialDetent,
+    this.controller,
+    this.barrierLabel,
+  });
+
+  final Animation<double> animation;
+  final Widget child;
+  final bool Function() isOpen;
+  final VoidCallback? onDismiss;
+  final List<DifySheetDetent> detents;
+  final DifySheetDetent? initialDetent;
+  final DifySheetController? controller;
+  final String? barrierLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final dismiss = onDismiss;
+    return MediaQuery(
+      data: media.copyWith(padding: DifyWindowInsets.of(context), viewInsets: DifyWindowInsets.viewInsetsOf(context)),
+      child: _ModalSheetScope(
+        close: dismiss ?? () {},
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            FadeTransition(
+              opacity: animation,
+              child: ModalBarrier(
+                key: const ValueKey('dify-sheet-scrim'),
+                color: DifySheetRecipe.scrim,
+                dismissible: dismiss != null,
+                onDismiss: dismiss,
+                semanticsLabel: barrierLabel ?? DifyI18n.tr('common', 'operation.close'),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SlideTransition(
+                position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(animation),
+                child: BlockSemantics(
+                  child: _DifySheet(
+                    detents: detents,
+                    initialDetent: initialDetent,
+                    controller: controller,
+                    requestClose: dismiss == null
+                        ? null
+                        : () async {
+                            dismiss();
+                            await SchedulerBinding.instance.endOfFrame;
+                            return isOpen();
+                          },
+                    modalRoute: true,
+                    shadow: false,
+                    child: DifySelectionRegion(child: child),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

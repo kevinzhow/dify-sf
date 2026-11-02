@@ -12,6 +12,7 @@ import '../dify_icon.dart';
 import '../dify_tokens.g.dart';
 import 'floating.dart';
 import 'placement.dart';
+import 'responsive.dart';
 import 'surface.dart';
 import 'text.dart';
 
@@ -199,7 +200,32 @@ class _DifyMenuPopupState extends State<DifyMenuPopup> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: widget.children,
     );
-    column = SingleChildScrollView(padding: const EdgeInsets.symmetric(vertical: 4), child: column);
+    // Shown as a sheet (a phone): the sheet is the surface; the rows take its width and scroll in it.
+    final sheet = DifyFloating.inSheet(context);
+    column = SingleChildScrollView(
+      padding: sheet ? const EdgeInsets.only(top: 4, bottom: 12) : const EdgeInsets.symmetric(vertical: 4),
+      child: column,
+    );
+    if (sheet) {
+      return _MenuScope(
+        popup: this,
+        child: Semantics(
+          container: true,
+          role: SemanticsRole.menu,
+          label: widget.semanticLabel,
+          explicitChildNodes: true,
+          child: Focus(
+            focusNode: _node,
+            onKeyEvent: _onKey,
+            child: DefaultTextStyle.merge(
+              textAlign: TextAlign.start,
+              style: TextStyle(fontSize: 14, height: 20 / 14, color: DifyColors.textSecondary),
+              child: column,
+            ),
+          ),
+        ),
+      );
+    }
     Widget surface = DifyBlurredBox(
       blur: widget.style == DifyMenuPopupStyle.select ? 0 : 5,
       borderRadius: r,
@@ -262,6 +288,8 @@ class DifyDropdownMenu extends StatefulWidget {
     this.width,
     this.semanticLabel,
     this.popupStyle = DifyMenuPopupStyle.menu,
+    this.sheetOnCompact = true,
+    this.sheetTitle,
   });
 
   final DifyTriggerBuilder builder;
@@ -275,6 +303,11 @@ class DifyDropdownMenu extends StatefulWidget {
   final double? width;
   final String? semanticLabel;
   final DifyMenuPopupStyle popupStyle;
+
+  /// In a compact window the menu opens as a bottom sheet of 48 px rows ([DifyFloating.sheetOnCompact]), under
+  /// [sheetTitle] when given.
+  final bool sheetOnCompact;
+  final String? sheetTitle;
 
   @override
   State<DifyDropdownMenu> createState() => _DifyDropdownMenuState();
@@ -303,6 +336,8 @@ class _DifyDropdownMenuState extends State<DifyDropdownMenu> {
       collision: DifyCollision.dropdown,
       constrainHeight: true,
       initialFocus: _popupNode,
+      sheetOnCompact: widget.sheetOnCompact,
+      sheetTitle: widget.sheetTitle,
       builder: widget.builder,
       popupBuilder: (context) => DifyMenuPopup._(
         root: _MenuRoot(controller, contextMenu: false),

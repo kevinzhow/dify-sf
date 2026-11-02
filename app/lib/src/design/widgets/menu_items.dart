@@ -78,11 +78,17 @@ class _MenuRowState extends State<_MenuRow> {
   @override
   Widget build(BuildContext context) {
     final highlighted = _node.hasFocus && !widget.disabled;
+    // In a menu shown as a sheet (a phone) every row is a 48 px touch row, wider apart from the sheet's edges.
+    final sheet = DifyFloating.inSheet(context);
+    final height = sheet ? DifyTouch.minTarget : 32.0;
     Widget row = Container(
-      height: widget.autoHeight ? null : 32,
-      constraints: widget.autoHeight ? const BoxConstraints(minHeight: 32) : null,
-      margin: widget.margin ? EdgeInsets.symmetric(horizontal: widget.marginX) : null,
-      padding: EdgeInsets.symmetric(horizontal: widget.paddingX, vertical: widget.autoHeight ? 4 : 0),
+      height: widget.autoHeight || sheet ? null : height,
+      constraints: widget.autoHeight || sheet ? BoxConstraints(minHeight: height) : null,
+      margin: widget.margin ? EdgeInsets.symmetric(horizontal: sheet ? 8 : widget.marginX) : null,
+      padding: EdgeInsets.symmetric(
+        horizontal: sheet ? 12 : widget.paddingX,
+        vertical: widget.autoHeight || sheet ? 4 : 0,
+      ),
       decoration: BoxDecoration(
         color: highlighted ? (widget.destructive ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
         borderRadius: BorderRadius.circular(DifyRadius.lg),

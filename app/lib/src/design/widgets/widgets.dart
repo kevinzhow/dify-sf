@@ -76,6 +76,7 @@ export 'filter_chip.dart';
 export 'keyboard_scroll_view.dart';
 export 'list_row.dart';
 export 'navigation_bar.dart';
+export 'portal_page.dart';
 export 'refresh_indicator.dart';
 export 'responsive.dart';
 export 'step_list.dart';
