@@ -386,7 +386,7 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
         DifyToolbarAction(
           key: const ValueKey('phone-node-run'),
           icon: RemixIcon(running ? 'stop-circle-line' : 'play-large-line', size: 22),
-          label: _tw(running ? 'mobile.stop' : 'mobile.runStep'),
+          label: _tp(running ? 'stop' : 'runStep'),
           enabled: a.canRunStep(n),
           onTap: () => a.runStep(n.id),
         ),

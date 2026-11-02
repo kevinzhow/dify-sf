@@ -997,7 +997,7 @@ class _ConnectSheetState extends State<_ConnectSheet> {
               ? Padding(
                   padding: const EdgeInsets.all(24),
                   child: DifyText(
-                    _tw(widget.targets.isEmpty ? 'mobile.noTargets' : 'tabs.noResult'),
+                    widget.targets.isEmpty ? _tp('noTargets') : _tw('tabs.noResult'),
                     DifyType.systemSmRegular,
                     color: DifyColors.textTertiary,
                     align: TextAlign.center,
