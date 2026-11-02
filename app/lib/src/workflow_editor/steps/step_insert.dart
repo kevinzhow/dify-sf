@@ -1,7 +1,9 @@
 /// How the Steps view inserts a block: through the canvas's insertion ([NodeInsertion.addNodeAt] and its block
-/// selector) for a "+" on an edge or after a handle, and, where branches meet, the same insertion on one edge into
-/// the join with the join's other incoming edges moved onto the new node, as one undo step
-/// ([EditorController.applyGraphChange] through [applyGraphChangeTo]).
+/// selector) after a handle, and on an edge through Dify's handleNodeAdd for that edge. Two additions, each in the
+/// same undo step ([EditorController.applyGraphChange] through [applyGraphChangeTo]): where branches meet, the join's
+/// other incoming edges move onto the new node; and a branching block (IF/ELSE, question classifier, human input,
+/// which handleNodeAdd leaves unconnected onward) gets an edge from each of its handles to the edge's target, so the
+/// flow continues after it. The canvas's own "+" keeps Dify's behaviour.
 ///
 /// Where new steps go on the canvas: exactly where the canvas's own insertion puts them (Dify's handleNodeAdd: on
 /// an edge at the next node's place with the nodes after it moved one node width plus 60 px right; after a handle
@@ -16,6 +18,8 @@ import 'package:flutter/widgets.dart';
 
 import '../../canvas/canvas_graph.dart';
 import '../../cards/dify_cards.dart';
+import '../../cards/node_extras.dart';
+import '../../i18n/dify_i18n.dart';
 import '../../ids.dart';
 import '../../workflow/dify_json.dart';
 import '../block_selector/block_selector.dart';
@@ -118,11 +122,16 @@ extension StepsInsertion on WorkflowActions {
     }
   }
 
-  /// Opens the block selector for [insert] at [anchor] (global), as the canvas's "+" does, and inserts the block
-  /// picked. Completes when the selector closes.
+  /// Opens the block selector for [insert] at [anchor] (global), as the canvas's "+" does (a bottom sheet on a
+  /// phone), and inserts the block picked ([insertStep]). Completes when the selector closes.
   Future<void> showStepBlockSelector(BuildContext context, StepInsert insert, {Rect? anchor}) async {
     if (nodesReadOnly) return;
-    if (!insert.isJoin) return showInsertBlockSelector(context, insert.at, anchor: anchor);
+    final at = insert.at;
+    // After a handle (nothing follows) or before a node: the canvas's own selector and insertion.
+    if (at is! InsertOnEdge) return showInsertBlockSelector(context, at, anchor: anchor);
+    final e = doc.edges[at.edgeId];
+    final s = e == null ? null : doc.nodes[e.source], t = e == null ? null : doc.nodes[e.target];
+    if (s == null || t == null) return;
     final data = BlockSelectorScope.of(context);
     final p = BlockSelectorPlacements.sourceHandle;
     await BlockSelector(
@@ -132,17 +141,26 @@ extension StepsInsertion on WorkflowActions {
       availableBlocksTypes: stepBlocksAt(insert, data),
       onSelect: (type, defaults, {toolDefaultValue}) =>
           insertStep(insert, type, defaults, toolDefaultValue: toolDefaultValue),
-    ).show(context, anchor: anchor);
+    ).show(
+      context,
+      anchor: anchor,
+      sheetSubtitle: DifyI18n.tr('phone-editor', 'addBetween', {'from': s.title, 'to': t.title}),
+    );
   }
 
-  /// Inserts a [type] block at [insert]: [addNodeAt] its point; at a join, on the first edge into the join with the
-  /// others ([StepInsert.retarget]) moved onto the new node, in the same undo step. The new node is selected.
+  /// Inserts a [type] block at [insert]. After a handle or before a node: [addNodeAt], as the canvas. On an edge
+  /// (between two steps, "Add step before", where branches meet), Dify's handleNodeAdd on that edge, and in the same
+  /// undo step (one graph change):
+  /// - at a join, the join's other incoming edges ([StepInsert.retarget]) move onto the new node;
+  /// - a block handleNodeAdd does not connect onward (IF/ELSE, question classifier, human input) gets an edge from
+  ///   each of its source handles (every case and ELSE, every class, every action and the timeout; not a fail
+  ///   branch) to the edge's target, so the flow goes on after it: in the Steps view the user put it between two
+  ///   steps. The canvas's own insertion keeps Dify's behaviour.
+  /// Otherwise (a block that continues the flow, not at a join) it is [addNodeAt] itself. The new node is selected.
   void insertStep(StepInsert insert, String type, DifyJson? defaults, {DifyJson? toolDefaultValue}) {
     if (nodesReadOnly) return;
     final at = insert.at;
-    if (!insert.isJoin || at is! InsertOnEdge) {
-      return addNodeAt(at, type, defaults, toolDefaultValue: toolDefaultValue);
-    }
+    if (at is! InsertOnEdge) return addNodeAt(at, type, defaults, toolDefaultValue: toolDefaultValue);
     final first = doc.edges[at.edgeId];
     if (first == null) return;
     final g = reactFlowGraphOf(doc, sizeOf: sizeOf, selectedNodeId: controller.selectedNodeId);
@@ -159,7 +177,17 @@ extension StepsInsertion on WorkflowActions {
       nextNodeTargetHandle: difyHandle(first.targetHandle),
       id: id,
     );
-    if (base == null) return;
+    final added = base?.newNode;
+    if (base == null || added == null) return;
+    final continues = base.addEdges.any((e) => e['source'] == id);
+    if (continues && !insert.isJoin) return addNodeAt(at, type, defaults, toolDefaultValue: toolDefaultValue);
+    final next = first.target, nextHandle = difyHandle(first.targetHandle);
+    final onward = continues
+        ? const <String>[]
+        : [
+            for (final h in stepHandlesOf(nodeFromDify(added, doc, id: id)))
+              if (h != NodeExtras.failBranch) h,
+          ];
     final others = [
       for (final edgeId in insert.retarget)
         if (doc.edges[edgeId] case final e? when e.target == first.target && e.id != first.id) e,
@@ -177,6 +205,14 @@ extension StepsInsertion on WorkflowActions {
             'sourceHandle': e.sourceHandle,
             'target': id,
             'targetHandle': 'target',
+          },
+        for (final h in onward)
+          {
+            'id': '$id-$h-$next-$nextHandle',
+            'source': id,
+            'sourceHandle': h,
+            'target': next,
+            'targetHandle': nextHandle,
           },
       ],
       moveNodes: base.moveNodes,

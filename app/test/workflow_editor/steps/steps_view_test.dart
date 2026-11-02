@@ -1,7 +1,10 @@
 // The Steps view (WorkflowStepsView) at 411x914 with gesture-navigation insets: cards, the panel opener, "+"
 // insertion through the canvas's operations (one undo step each), the long-press sheet, "continues at", live updates,
 // run and checklist markers, read-only, a 300-step workflow, and the standalone preview.
+import 'dart:math';
+
 import 'package:collab_client/collab_client.dart';
+import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/canvas/run_view.dart';
 import 'package:dify_sf_app/src/editor/undo_manager.dart' show HistoryEvent;
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
@@ -448,6 +451,145 @@ void main() {
     final copies = s.doc.nodes.values.where((n) => n.title.startsWith('b (')).toList();
     expect(copies.map((n) => n.x).toSet(), {s.doc.nodes['b']!.x}, reason: 'straight below the original');
     await s.dispose(t);
+  });
+
+  group('a branching block inserted between two steps continues the flow', () {
+    /// start → count → end, laid out left to right.
+    Graph chain() => Graph()
+      ..add('start', 'start')
+      ..add('count', 'code', title: 'Count Android')
+      ..add('end', 'end', title: 'End')
+      ..chain(['start', 'count', 'end']);
+
+    testWidgets('IF/ELSE on an edge: its case and ELSE lead to the next step; one undo step; a collaborator sees it', (
+      t,
+    ) async {
+      final s = await _start(t, chain().doc);
+      await _pump(t, s);
+      final head = s.demo.server.head;
+      await t.tap(_plus('c:count-source-end'));
+      await _settle(t);
+      await _pick(t, 'if-else');
+      final branch = _added(s, 'if-else');
+      final edges = _edges(s);
+      expect(
+        edges,
+        containsAll({('count', 'source', branch.id), (branch.id, 'true', 'end'), (branch.id, 'false', 'end')}),
+      );
+      expect(edges, isNot(contains(('count', 'source', 'end'))));
+      final layout = computeStepsLayout(s.doc);
+      expect(layout.rows.where((r) => r.kind == StepRowKind.section), isEmpty, reason: 'End is still reached');
+      expect(find.text('NOT CONNECTED'), findsNothing);
+      expect(outline(layout), [
+        'start',
+        '+',
+        'count',
+        '+',
+        branch.id,
+        '  [true]',
+        '  add',
+        '  [false]',
+        '  add',
+        '+join',
+        'end',
+        '+end',
+      ]);
+      expect(s.controller.undo.past, hasLength(1));
+      expect(s.controller.undo.past.single.event, HistoryEvent.nodeAdd);
+
+      // Another client sees the whole change: the node and its three edges, the old edge gone.
+      final bo = CollabSession(
+        clientId: 'bo-test',
+        transport: FakeTransport(s.demo.server, network: FakeNetwork(random: Random(9))),
+        store: MemoryStore(),
+      );
+      await bo.start();
+      for (var i = 0; i < 50 && !bo.view.nodes.containsKey(branch.id); i++) {
+        await t.pump(const Duration(milliseconds: 100));
+      }
+      final seen = {for (final e in bo.view.edges.values) (e.source, difyHandle(e.sourceHandle), e.target)};
+      expect(
+        seen,
+        containsAll({('count', 'source', branch.id), (branch.id, 'true', 'end'), (branch.id, 'false', 'end')}),
+      );
+      expect(seen, isNot(contains(('count', 'source', 'end'))));
+      expect(s.demo.server.log.skip(head).map((e) => e.client).toSet(), {'me-abc123'}, reason: 'one client\'s edit');
+
+      s.controller.undo.undo();
+      await _settle(t, 1000);
+      expect(s.doc.nodes.containsKey(branch.id), isFalse);
+      expect(s.doc.edges.values.where((e) => e.source == branch.id || e.target == branch.id), isEmpty);
+      expect(_edges(s), contains(('count', 'source', 'end')));
+      for (var i = 0; i < 50 && bo.view.nodes.containsKey(branch.id); i++) {
+        await t.pump(const Duration(milliseconds: 100));
+      }
+      expect(bo.view.nodes.containsKey(branch.id), isFalse, reason: 'the undo reaches the collaborator');
+      await bo.stop();
+      await s.dispose(t);
+    });
+
+    testWidgets('a question classifier through "Add step before": every class leads to the step', (t) async {
+      final s = await _start(t, chain().doc);
+      await _pump(t, s);
+      await t.longPress(_card('end'));
+      await _settle(t);
+      await t.tap(find.text('Add step before'));
+      await _settle(t);
+      await _pick(t, 'question-classifier');
+      final classifier = _added(s, 'question-classifier');
+      expect(
+        _edges(s),
+        containsAll({('count', 'source', classifier.id), (classifier.id, '1', 'end'), (classifier.id, '2', 'end')}),
+      );
+      expect(computeStepsLayout(s.doc).rows.where((r) => r.kind == StepRowKind.section), isEmpty);
+      expect(s.controller.undo.past, hasLength(1));
+      s.controller.undo.undo();
+      await _settle(t);
+      expect(s.doc.nodes.containsKey(classifier.id), isFalse);
+      expect(_edges(s), {('start', 'source', 'count'), ('count', 'source', 'end')});
+      await s.dispose(t);
+    });
+
+    testWidgets('an IF/ELSE where branches meet: the lanes lead to it, its case and ELSE to the next step', (t) async {
+      final s = await _start(t, previewDocument('mockup'));
+      await _pump(t, s);
+      await t.tap(_plus('j:end'));
+      await _settle(t);
+      await _pick(t, 'if-else');
+      final branch = s.doc.nodes.values.singleWhere((n) => n.type == 'if-else' && n.id != 'check');
+      expect(
+        _edges(s),
+        containsAll({
+          ('summarize', 'source', branch.id),
+          ('empty', 'source', branch.id),
+          (branch.id, 'true', 'end'),
+          (branch.id, 'false', 'end'),
+        }),
+      );
+      expect(_edges(s).where((e) => e.$3 == 'end').map((e) => e.$1).toSet(), {branch.id});
+      expect(s.controller.undo.past, hasLength(1));
+      await s.dispose(t);
+    });
+
+    testWidgets('a block that continues the flow is inserted exactly as the canvas inserts it', (t) async {
+      final s = await _start(t, chain().doc);
+      await _pump(t, s);
+      await t.tap(_plus('c:count-source-end'));
+      await _settle(t);
+      await _pick(t, 'llm');
+      final llm = _added(s, 'llm');
+      expect(_edges(s), {('start', 'source', 'count'), ('count', 'source', llm.id), (llm.id, 'source', 'end')});
+      await s.dispose(t);
+    });
+
+    testWidgets('the canvas\'s own insertion on an edge keeps Dify\'s behaviour (no edge onward)', (t) async {
+      final s = await _start(t, chain().doc);
+      s.actions().addNodeAt(const InsertOnEdge('count-source-end'), 'if-else', blockDefaults('if-else'));
+      final branch = _added(s, 'if-else');
+      expect(_edges(s), {('start', 'source', 'count'), ('count', 'source', branch.id)});
+      expect(computeStepsLayout(s.doc).rows.where((r) => r.kind == StepRowKind.section), hasLength(1));
+      await s.dispose(t);
+    });
   });
 
   testWidgets('long press: Settings, Run this step, Add step before and after, Duplicate, Delete', (t) async {
