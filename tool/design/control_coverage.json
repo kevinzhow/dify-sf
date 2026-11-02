@@ -65,7 +65,8 @@
     "bottom_sheet.dart": {
       "kind": "text-composition",
       "evidence": [
-        "app/test/dify_spec/dify_ui/bottom_sheet_test.dart"
+        "app/test/dify_spec/dify_ui/bottom_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "dify-sf phone sheets on smooth_sheets (no Dify counterpart): detents, scrim, dismissal, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular."
     },
@@ -165,7 +166,8 @@
       "evidence": [
         "app/test/design_typography_test.dart",
         "app/test/design/page_selection_test.dart",
-        "app/test/dify_spec/dify_ui/dialog_test.dart"
+        "app/test/dify_spec/dify_ui/dialog_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
     },
@@ -183,7 +185,8 @@
       "evidence": [
         "app/test/design_typography_test.dart",
         "app/test/dify_spec/dify_ui/drawer_test.dart",
-        "app/test/dify_spec/features/new_feature_panel/feature_panel_drawer_test.dart"
+        "app/test/dify_spec/features/new_feature_panel/feature_panel_drawer_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
     },
@@ -215,7 +218,8 @@
         "app/test/design_widgets_test.dart",
         "app/test/dify_spec/dify_ui/dropdown_menu_test.dart",
         "app/test/dify_spec/dify_ui/popover_test.dart",
-        "app/test/dify_spec/prompt_editor/shortcuts_popup_test.dart"
+        "app/test/dify_spec/prompt_editor/shortcuts_popup_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract."
     },
@@ -345,7 +349,8 @@
     "navigation_bar.dart": {
       "kind": "text-composition",
       "evidence": [
-        "app/test/dify_spec/dify_ui/navigation_bar_test.dart"
+        "app/test/dify_spec/dify_ui/navigation_bar_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "dify-sf bottom navigation (no Dify counterpart): system-xs labels through DifyText, count badge text-[11px]; selection, badges, semantics and insets are tested."
     },
@@ -364,14 +369,16 @@
         "app/test/design/page_selection_test.dart",
         "app/test/workflow_editor/mobile_start_list_test.dart",
         "app/test/workflow_editor/page_selection_canvas_test.dart",
-        "app/test/workflow_editor/mobile_layout_test.dart"
+        "app/test/workflow_editor/mobile_layout_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract."
     },
     "page_route.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
-        "app/test/design_typography_test.dart"
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract. No dedicated direct construction test is claimed by this row."
     },
@@ -622,7 +629,8 @@
         "app/test/editor_export_toast_test.dart",
         "app/test/toast_wiring_test.dart",
         "app/test/account_page_test.dart",
-        "app/test/design/app_icon_picker_test.dart"
+        "app/test/design/app_icon_picker_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
     },
@@ -637,7 +645,8 @@
     "top_app_bar.dart": {
       "kind": "text-composition",
       "evidence": [
-        "app/test/dify_spec/dify_ui/top_app_bar_test.dart"
+        "app/test/dify_spec/dify_ui/top_app_bar_test.dart",
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
       ],
       "note": "dify-sf phone app bar (no Dify counterpart): DifyPhoneType title / large title and system-xs-regular subtitle through DifyText; height, ellipsis, back and insets are tested."
     },
