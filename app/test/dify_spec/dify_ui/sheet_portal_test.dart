@@ -507,4 +507,48 @@ void main() {
     expect(TextSelectionTheme.of(context).selectionHandleColor, const Color(0xFF155EEF));
     expect(difyTheme(brightness: Brightness.dark).textSelectionTheme.selectionHandleColor, const Color(0xFF155EEF));
   });
+
+  testWidgets('a phone: every caret is the accent, also a field with a desktop caret colour of its own (the prompt '
+      'editor\'s text colour); a wide window keeps that colour', (t) async {
+    const slate = Color(0xFF354052);
+    for (final (size, expected) in [(const Size(411, 914), const Color(0xFF155EEF)), (const Size(1280, 800), slate)]) {
+      phoneView(t, size: size);
+      final text = TextEditingController(text: 'prompt');
+      addTearDown(text.dispose);
+      await pumpPhoneApp(
+        t,
+        DifyPage(
+          body: Center(
+            child: SizedBox(
+              width: 200,
+              child: DifyTextField(controller: text, cursorColor: slate),
+            ),
+          ),
+        ),
+      );
+      expect(t.widget<EditableText>(find.byType(EditableText)).cursorColor, expected, reason: '$size');
+    }
+  });
+
+  testWidgets('a phone shows no keyboard shortcut keycaps (no keyboard); a wide window does', (t) async {
+    for (final (size, shown) in [(const Size(411, 914), false), (const Size(1280, 800), true)]) {
+      phoneView(t, size: size);
+      await pumpPhoneApp(
+        t,
+        const DifyPage(
+          body: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DifyShortcutKbd(hotkey: 'Ctrl+Shift+P', platform: DifyPlatform.windows),
+                DifyKbd('Esc'),
+              ],
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Shift').evaluate().isNotEmpty, shown, reason: '$size');
+      expect(find.text('Esc').evaluate().isNotEmpty, shown, reason: '$size');
+    }
+  });
 }

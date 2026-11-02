@@ -13,6 +13,7 @@ import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/llm_json_s
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_selector.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/tool_picker.dart';
+import 'package:dify_sf_app/src/workflow_editor/panel_fields/field.dart' show Field;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -143,7 +144,11 @@ void main() {
     await models.refreshSummary();
     await _pump(
       t,
-      ModelSelector(value: null, models: [makeModel()]),
+      // In the LLM panel's "model" field, as on the device.
+      Field(
+        title: 'model',
+        child: ModelSelector(value: null, models: [makeModel()]),
+      ),
       services: LlmGroupServices(
         models: ModelCatalog(providers: models.providers),
         modelProviderEnv: ModelProviderEnv(
@@ -164,6 +169,13 @@ void main() {
     expect(find.byType(DropdownContent), findsOneWidget);
     expect(find.text('Backup key'), findsOneWidget);
     expect(_scrims, findsNWidgets(2), reason: 'the credentials sheet over the model list sheet');
+    // Its own title, not the label of the field the model selector is in.
+    final headers = find.byType(DifySheetHeader);
+    expect(
+      find.descendant(of: headers.last, matching: find.text('common.modelProvider.auth.manageCredentials')),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: headers, matching: find.text('model')), findsNothing);
     expect(await t.binding.handlePopRoute(), isTrue);
     await _frames(t);
     expect(find.byType(DropdownContent), findsNothing);
@@ -194,15 +206,19 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('Model Settings as a sheet: the sheets\' own header and 44 px close', (t) async {
+  testWidgets('Model Settings as a sheet: one header, the sheets\' own (its title, a 44 px close), also in the "model" '
+      'field', (t) async {
     await _pump(
       t,
-      ModelParameterModal(
-        provider: 'openai',
-        modelId: 'gpt-3.5-turbo',
-        completionParams: const {'temperature': 0.7},
-        onModelChange: (_) {},
-        onCompletionParamsChange: (_) {},
+      Field(
+        title: 'model',
+        child: ModelParameterModal(
+          provider: 'openai',
+          modelId: 'gpt-3.5-turbo',
+          completionParams: const {'temperature': 0.7},
+          onModelChange: (_) {},
+          onCompletionParamsChange: (_) {},
+        ),
       ),
       services: LlmGroupServices(
         models: catalogOf([
@@ -224,6 +240,7 @@ void main() {
     await _frames(t);
     _isSheet(t, 'model settings');
     final header = find.byType(DifySheetHeader);
+    expect(header, findsOneWidget, reason: 'one header (not the field\'s label over the sheet\'s own)');
     expect(find.descendant(of: header, matching: find.text('common.modelProvider.modelSettings')), findsOneWidget);
     final close = find.descendant(of: header, matching: find.byType(DifyTouchIconButton));
     expect(t.getSize(close).height, 44);

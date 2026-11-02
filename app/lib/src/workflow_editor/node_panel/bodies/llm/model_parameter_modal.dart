@@ -263,8 +263,9 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
     return DifyFloating(
       open: _open,
       onOpenChange: _setOpen,
-      // A phone: the model and its parameters in a sheet.
+      // A phone: the model and its parameters in a sheet, under the sheets' own header (title, 44 px close).
       sheetOnCompact: true,
+      sheetTitle: DifyI18n.tr('common', 'modelProvider.modelSettings'),
       placement:
           w.placement ??
           (w.isInWorkflow
@@ -332,10 +333,8 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // A phone's sheet: the sheets' own header (title, 44 px close).
-            if (sheet)
-              DifySheetHeader(title: title, onClose: () => _setOpen(false))
-            else
+            // A phone's sheet has the sheets' own header (DifyFloating.sheetTitle).
+            if (!sheet)
               Stack(
                 children: [
                   Padding(

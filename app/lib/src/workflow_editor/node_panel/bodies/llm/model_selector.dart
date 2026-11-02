@@ -970,6 +970,8 @@ class _ProviderCredentialDropdownState extends State<_ProviderCredentialDropdown
       },
       placement: DifyPlacement.bottomEnd,
       sideOffset: 8,
+      // A phone: the provider's credentials in a sheet titled as what it manages.
+      sheetTitle: _c('modelProvider.auth.manageCredentials'),
       builder: (context, controller) => canOpen
           ? _touchInSheet(
               context,

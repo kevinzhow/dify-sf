@@ -281,7 +281,7 @@ class _CodeEditorBaseState extends State<CodeEditorBase> {
     final focus = widget.isFocus;
     // A phone: a touch-high title bar whose buttons have 48 px boxes.
     final touch = DifyTouch.compactOf(context);
-    Widget button(Widget b) => touch ? DifyTouchArea(child: b) : b;
+    Widget button(Widget b) => touch ? DifyTouchArea(accessibleBox: true, child: b) : b;
     final title =
         widget.titleWidget ?? DifyTextLine(difyTransform(DifyType.systemXsSemiboldUppercase, widget.title ?? ''));
     // `<div className="ml-1">` around an inline button (the generator's, the expand toggle's): the div's text line

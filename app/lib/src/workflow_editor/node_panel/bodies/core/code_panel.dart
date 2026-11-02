@@ -367,20 +367,27 @@ class _CodePanelState extends State<_CodePanel> {
                     ? null
                     : Row(
                         mainAxisSize: MainAxisSize.min,
-                        spacing: 8,
+                        // A phone: each in its own touch box, side by side.
+                        spacing: DifyTouch.compactOf(context) ? 0 : 8,
                         children: [
-                          DifyTooltip(
-                            content: DifyTextLine(sync),
-                            child: _IconOperation(
-                              label: sync,
-                              icon: 'refresh-line',
-                              onPressed: c.handleSyncFunctionSignature,
+                          fieldHeaderControl(
+                            context,
+                            DifyTooltip(
+                              content: DifyTextLine(sync),
+                              child: _IconOperation(
+                                label: sync,
+                                icon: 'refresh-line',
+                                onPressed: c.handleSyncFunctionSignature,
+                              ),
                             ),
                           ),
-                          FieldAddButton(
-                            label: '${tc('operation.add')} $inputsTitle',
-                            onPressed: c.handleAddVariable,
-                            alone: false,
+                          fieldHeaderControl(
+                            context,
+                            FieldAddButton(
+                              label: '${tc('operation.add')} $inputsTitle',
+                              onPressed: c.handleAddVariable,
+                              alone: false,
+                            ),
                           ),
                         ],
                       ),
@@ -421,9 +428,9 @@ class _CodePanelState extends State<_CodePanel> {
           child: Field(
             title: outputsTitle,
             required: true,
-            operations: FieldAddButton(
-              label: '${tc('operation.add')} $outputsTitle',
-              onPressed: c.handleAddOutputVariable,
+            operations: fieldHeaderControl(
+              context,
+              FieldAddButton(label: '${tc('operation.add')} $outputsTitle', onPressed: c.handleAddOutputVariable),
             ),
             child: OutputVarList(
               readonly: readOnly,

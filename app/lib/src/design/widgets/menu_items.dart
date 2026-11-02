@@ -77,9 +77,12 @@ class _MenuRowState extends State<_MenuRow> {
 
   @override
   Widget build(BuildContext context) {
-    final highlighted = _node.hasFocus && !widget.disabled;
     // In a menu shown as a sheet (a phone) every row is a 48 px touch row, wider apart from the sheet's edges.
     final sheet = DifyFloating.inSheet(context);
+    // A sheet of choices marks the current one as a select does when it opens: highlighted, with the accent check
+    // (every select sheet alike, whether or not its row has the focus).
+    final current = sheet && widget.role == SemanticsRole.menuItemRadio && widget.checked == true;
+    final highlighted = (_node.hasFocus || current) && !widget.disabled;
     final height = sheet ? DifyTouch.minTarget : 32.0;
     Widget row = Container(
       height: widget.autoHeight || sheet ? null : height,

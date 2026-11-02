@@ -19,6 +19,12 @@ import '../../i18n/dify_i18n.dart';
 Widget fieldHeaderControls(BuildContext context, Widget controls) =>
     DifyTouch.compactOf(context) ? DifyTouchArea(child: controls) : controls;
 
+/// One control of a field header (an icon button) in its own touch box on a phone, the box also its bounds for
+/// accessibility ([DifyTouchArea.accessibleBox]): a header with several controls gives each one its own, side by side
+/// without overlapping.
+Widget fieldHeaderControl(BuildContext context, Widget control) =>
+    DifyTouch.compactOf(context) ? DifyTouchArea(accessibleBox: true, child: control) : control;
+
 /// The title text of a [Field]: `system-sm-semibold-uppercase text-text-secondary`, or for a sub-title
 /// `system-xs-medium-uppercase text-text-tertiary`; [required] adds a destructive `*`, [warningDot] a 5 px warning
 /// dot 9 px to the left.

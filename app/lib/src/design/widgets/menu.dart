@@ -311,10 +311,12 @@ class DifyDropdownMenu extends StatefulWidget {
   final bool? sheetOnCompact;
   final String? sheetTitle;
 
-  bool get _picker =>
-      sheetOnCompact ??
-      (popupStyle == DifyMenuPopupStyle.select ||
-          children.any((c) => c is DifyMenuRadioGroup || c is DifyMenuRadioItem || c is DifyMenuCheckboxItem));
+  bool get _picker => sheetOnCompact ?? _choices;
+
+  /// A select or a menu of choices (its sheet is titled with the field's label when it names none).
+  bool get _choices =>
+      popupStyle == DifyMenuPopupStyle.select ||
+      children.any((c) => c is DifyMenuRadioGroup || c is DifyMenuRadioItem || c is DifyMenuCheckboxItem);
 
   @override
   State<DifyDropdownMenu> createState() => _DifyDropdownMenuState();
@@ -345,6 +347,7 @@ class _DifyDropdownMenuState extends State<DifyDropdownMenu> {
       initialFocus: _popupNode,
       sheetOnCompact: widget._picker,
       sheetTitle: widget.sheetTitle,
+      sheetTitleFromField: widget._choices,
       builder: widget.builder,
       popupBuilder: (context) => DifyMenuPopup._(
         root: _MenuRoot(controller, contextMenu: false),

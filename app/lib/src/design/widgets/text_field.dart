@@ -7,7 +7,9 @@ import 'package:flutter/services.dart';
 import '../dify_tokens.g.dart';
 import '../css_metrics.dart';
 import '../dify_fonts.dart';
+import '../dify_theme.dart' show difySelectionAccent;
 import 'input.dart';
+import 'responsive.dart' show DifyTouch;
 import 'text.dart';
 import 'selection.dart';
 
@@ -158,7 +160,9 @@ class _DifyTextFieldState extends State<DifyTextField> {
       inputFormatters: w.inputFormatters,
       textAlign: w.textAlign,
       textAlignVertical: w.textAlignVertical,
-      cursorColor: w.cursorColor ?? DifyColors.primary600,
+      // A phone: every caret is the accent, as the selection handles are (a call site's own caret colour is the
+      // desktop's, e.g. the prompt editor's text colour).
+      cursorColor: DifyTouch.compactOf(context) ? difySelectionAccent : w.cursorColor ?? DifyColors.primary600,
       cursorWidth: w.cursorWidth,
       contextMenuBuilder: w.contextMenuBuilder ?? difySelectionToolbar,
       decoration: InputDecoration(

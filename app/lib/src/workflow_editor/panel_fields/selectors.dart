@@ -106,6 +106,7 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
       collision: DifyCollision.dropdown,
       sheetOnCompact: true,
       sheetTitle: widget.sheetTitle,
+      sheetTitleFromField: true,
       builder: (context, c) => MouseRegion(
         cursor: readonly ? SystemMouseCursors.basic : SystemMouseCursors.click,
         child: GestureDetector(
@@ -125,36 +126,53 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
               ),
         ),
       ),
-      popupBuilder: (context) => Container(
-        width: popupWidth,
-        // A sheet: its rows reach its edges (their text at the sheets' common inset).
-        padding: DifyFloating.inSheet(context) ? const EdgeInsets.only(bottom: 12) : const EdgeInsets.all(4),
-        // As a sheet (a phone) the sheet is the surface.
-        decoration: DifyFloating.inSheet(context)
-            ? null
-            : BoxDecoration(
+      popupBuilder: (context) => DifyFloating.inSheet(context)
+          // A phone: the select sheets' own rows (DifySelect's), the current value marked alike.
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: DifyMenuRadioGroup<T>(
+                value: value,
+                onValueChange: (v) {
+                  _controller.close();
+                  onChanged(v);
+                },
+                children: [
+                  for (final o in options)
+                    DifyMenuRadioItem<T>(
+                      value: o.value,
+                      child: DifyTextLine(
+                        uppercase ? o.label.toUpperCase() : o.label,
+                        style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
+                      ),
+                    ),
+                ],
+              ),
+            )
+          : Container(
+              width: popupWidth,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
                 color: DifyColors.componentsPanelBg,
                 borderRadius: BorderRadius.circular(DifyRadius.lg),
                 border: Border.all(color: DifyColors.componentsPanelBorder),
                 boxShadow: DifyShadows.lg,
               ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final o in options)
-              _TypeSelectorItem(
-                label: uppercase ? o.label.toUpperCase() : o.label,
-                // A phone's sheet always marks the current value.
-                checked: (showChecked || DifyFloating.inSheet(context)) && o.value == value,
-                onTap: () {
-                  _controller.close();
-                  onChanged(o.value);
-                },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final o in options)
+                    _TypeSelectorItem(
+                      label: uppercase ? o.label.toUpperCase() : o.label,
+                      checked: showChecked && o.value == value,
+                      onTap: () {
+                        _controller.close();
+                        onChanged(o.value);
+                      },
+                    ),
+                ],
               ),
-          ],
-        ),
-      ),
+            ),
     );
     if (trigger == null && !noLeft) selector = Transform.translate(offset: const Offset(-8, 0), child: selector);
     return selector;
@@ -236,10 +254,9 @@ class _TypeSelectorItemState extends State<_TypeSelectorItem> {
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         child: Container(
-          // A 48 px touch row in a sheet (a phone).
-          height: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 30,
+          height: 30,
           constraints: const BoxConstraints(minWidth: 44),
-          padding: EdgeInsets.symmetric(horizontal: DifyFloating.inSheet(context) ? DifyFloating.sheetRowInset : 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: _hovered ? DifyColors.stateBaseHover : null,
             borderRadius: BorderRadius.circular(DifyRadius.lg),

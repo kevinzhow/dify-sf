@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../dify_tokens.g.dart';
+import 'responsive.dart' show DifyTouch;
 import 'text.dart';
 
 /// Kbd colours: `gray` (`bg-components-kbd-bg-gray text-text-tertiary`) and `white`
@@ -22,6 +23,9 @@ enum DifyKbdColor {
 
 /// dify-ui's Kbd keycap: `inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-px system-kbd
 /// capitalize`; disabled is `opacity-30`. Decorative: no pointer events, no semantics of its own beyond its text.
+///
+/// A phone (a compact window, [DifyTouch.compactOf]) has no keyboard shortcuts: keycaps and their groups show nothing
+/// there.
 class DifyKbd extends StatelessWidget {
   const DifyKbd(this.text, {super.key, this.color = DifyKbdColor.gray, this.textColor, this.disabled = false});
 
@@ -34,6 +38,7 @@ class DifyKbd extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (DifyTouch.compactOf(context)) return const SizedBox.shrink();
     Widget key = IgnorePointer(
       child: Container(
         height: 16,
@@ -69,6 +74,8 @@ class DifyKbdGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A phone: no keyboard shortcuts to show (see [DifyKbd]).
+    if (DifyTouch.compactOf(context)) return const SizedBox.shrink();
     final row = Row(mainAxisSize: MainAxisSize.min, spacing: 2, children: children);
     if (semanticLabel == null) return row;
     return Semantics(

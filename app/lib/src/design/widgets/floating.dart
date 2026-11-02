@@ -97,6 +97,7 @@ class DifyFloating extends StatefulWidget {
     this.pointAnchor = false,
     this.sheetOnCompact,
     this.sheetTitle,
+    this.sheetTitleFromField = false,
     this.sheetDetents = const [DifySheetDetent.full],
   });
 
@@ -147,6 +148,10 @@ class DifyFloating extends StatefulWidget {
   /// The sheet's header title (a [DifySheetHeader] with a close button); none: the sheet starts with its grab handle.
   final String? sheetTitle;
 
+  /// A select's sheet (a list of choices): without a [sheetTitle] it is titled with the label of the form field it is
+  /// in ([DifyFieldLabel]), first letter capitalised. Other popups (forms, popups with their own header) never are.
+  final bool sheetTitleFromField;
+
   /// Where the sheet rests: its content's height by default (up to the top safe area).
   final List<DifySheetDetent> sheetDetents;
 
@@ -171,14 +176,22 @@ class DifyFloating extends StatefulWidget {
   State<DifyFloating> createState() => _DifyFloatingState();
 }
 
-/// The label of the form field a control belongs to (a field's title): a picker sheet opened from the control is
-/// titled with it when the picker names none ([DifyFloating.sheetTitle]).
+/// The label of the form field a control belongs to (a field's title): a select's sheet opened from the control is
+/// titled with it when the select names none ([DifyFloating.sheetTitleFromField]). A popup's content is in no field
+/// (null), so a select in a popup is not titled with the label of the field the popup's trigger is in.
 class DifyFieldLabel extends InheritedWidget {
   const DifyFieldLabel({super.key, required this.label, required super.child});
 
-  final String label;
+  final String? label;
 
   static String? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<DifyFieldLabel>()?.label;
+
+  /// [label] as a sheet's title: its first letter capitalised (Dify writes some field labels in lower case, e.g.
+  /// "model", and shows them capitalised).
+  static String? titleOf(BuildContext context) => switch (of(context)) {
+    final l? when l.isNotEmpty => l[0].toUpperCase() + l.substring(1),
+    _ => null,
+  };
 
   @override
   bool updateShouldNotify(DifyFieldLabel oldWidget) => label != oldWidget.label;
@@ -374,7 +387,7 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
           },
           child: _FloatingGroup(
             groups: groups,
-            child: Builder(builder: widget.popupBuilder),
+            child: DifyFieldLabel(label: null, child: Builder(builder: widget.popupBuilder)),
           ),
         );
         for (final group in groups) {
@@ -418,11 +431,13 @@ extension on _DifyFloatingState {
       },
       child: _FloatingGroup(
         groups: groups,
-        child: DifyPopupSheetScope(child: Builder(builder: w.popupBuilder)),
+        child: DifyPopupSheetScope(
+          child: DifyFieldLabel(label: null, child: Builder(builder: w.popupBuilder)),
+        ),
       ),
     );
-    // Titled with the picker's own title, else the label of the field it belongs to.
-    if ((w.sheetTitle ?? DifyFieldLabel.of(context)) case final title?) {
+    // Titled with the picker's own title, else (a select) the label of the field it belongs to.
+    if ((w.sheetTitle ?? (w.sheetTitleFromField ? DifyFieldLabel.titleOf(context) : null)) case final title?) {
       content = Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

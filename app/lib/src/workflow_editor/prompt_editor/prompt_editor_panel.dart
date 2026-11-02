@@ -251,9 +251,21 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (w.isSupportJinja) _jinjaSwitch(),
-          if (!w.readOnly) DifyTouchArea(minSize: DifyTouch.controlHeight, child: insert),
+          // A phone: no tooltip (no hover), and the button is named for what it does, not the desktop's "/" tip.
+          if (!w.readOnly)
+            DifyTouchArea(
+              minSize: DifyTouch.controlHeight,
+              accessibleBox: true,
+              child: DifyIconButton(
+                key: const Key('prompt-editor-insert'),
+                label: DifyI18n.tr('phone-editor', 'insertVariable'),
+                onPressed: _insertVariable,
+                icon: const DifyIcon('vender/solid/development/variable-02', size: 16),
+              ),
+            ),
           DifyTouchArea(
             minSize: DifyTouch.controlHeight,
+            accessibleBox: true,
             child: DifyIconButton(
               key: const Key('prompt-editor-more'),
               label: DifyI18n.tr('common', 'operation.more'),

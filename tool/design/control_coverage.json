@@ -261,9 +261,11 @@
         "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
-        "app/test/phone/phone_panel_pickers_test.dart"
+        "app/test/phone/phone_panel_pickers_test.dart",
+        "app/test/dify_spec/dify_ui/modal_layers_test.dart",
+        "app/test/dify_spec/dify_ui/nested_popover_sheet_test.dart"
       ],
-      "note": "Does not define a distinct text face; supplied children use the shared typography contract. sheetOnCompact (batch 4a): a picker opens as a bottom sheet in a compact window; DifyPopupSheetScope / DifyFloating.inSheet. Batch 4a follow-up: sheetOnCompact defaults to dismissible, focusing, trigger-anchored popups (pickers); DifyFloating.surface drops a popup's own surface in a sheet. DifyFieldLabel titles picker sheets from their field; DifyFloating.sheetRowInset is the sheets' one row inset."
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. sheetOnCompact (batch 4a): a picker opens as a bottom sheet in a compact window; DifyPopupSheetScope / DifyFloating.inSheet. Batch 4a follow-up: sheetOnCompact defaults to dismissible, focusing, trigger-anchored popups (pickers); DifyFloating.surface drops a popup's own surface in a sheet. DifyFieldLabel titles picker sheets from their field; DifyFloating.sheetRowInset is the sheets' one row inset. Round 2: sheetTitleFromField (only selects and menus of choices take the field's label as their sheet title, first letter capitalised; popup content is in no field)."
     },
     "font_notice.dart": {
       "kind": "text-composition",
@@ -337,9 +339,11 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Round 2: no keycaps on a compact window (phones have no keyboard shortcuts)."
     },
     "keyboard_scroll_view.dart": {
       "kind": "layout-or-non-text",
@@ -386,7 +390,8 @@
         "app/tool/control_gallery.dart",
         "app/test/control_gallery_typography_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
-        "app/test/phone/phone_node_sheet_test.dart"
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/phone/phone_panel_pickers_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: a dropdown is a sheet on a phone only as a picker (select style, radio or checkbox items); action menus stay anchored."
     },
@@ -397,9 +402,11 @@
         "app/test/control_gallery_typography_test.dart",
         "app/test/design_widgets_test.dart",
         "app/test/workflow_editor/canvas_touch_test.dart",
-        "app/test/dify_spec/dify_ui/dropdown_menu_test.dart"
+        "app/test/dify_spec/dify_ui/dropdown_menu_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive."
+      "note": "Picker or menu implementation/part: shared text primitive plus existing functional tests; browser states are not exhaustive. Round 2: in a sheet the current radio item is highlighted with the accent check (every select sheet alike)."
     },
     "menu_submenu.dart": {
       "kind": "text-composition",
@@ -695,9 +702,11 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Round 2: the caret is the accent on a compact window, whatever the call site's desktop caret colour."
     },
     "text_input_scope.dart": {
       "kind": "layout-or-non-text",
@@ -770,7 +779,7 @@
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Hit-area expansion and the icon-only touch button; no text of their own. DifyTouchArea (batch 4a): a small control in a real 48 px box with its target."
+      "note": "Hit-area expansion and the icon-only touch button; no text of their own. DifyTouchArea (batch 4a): a small control in a real 48 px box with its target. Round 2: DifyTouchArea.accessibleBox makes the box the control's accessible bounds (MergeSemantics)."
     },
     "workspace_avatar.dart": {
       "kind": "text-composition",

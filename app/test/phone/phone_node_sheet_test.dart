@@ -8,6 +8,7 @@ import 'package:dify_sf_app/src/canvas/canvas_controller.dart';
 import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/design/dify_icon.dart';
+import 'package:dify_sf_app/src/design/dify_tokens.g.dart' show DifyColors;
 import 'package:dify_sf_app/src/design/dify_theme.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/editor/editor_controller.dart';
@@ -234,6 +235,22 @@ void _whole(WidgetTester t, Finder field, String text) {
 Future<void> _scrollTo(WidgetTester t, Finder f) async {
   await t.ensureVisible(f);
   await settle(t, 300);
+}
+
+/// The select sheets' one way of marking the current value: [label]'s row is highlighted and has the accent check,
+/// and it is the only checked row.
+void _markedAsSelect(WidgetTester t, String label, String what) {
+  final checks = find.byWidgetPredicate((w) => w is RemixIcon && w.name == 'check-line');
+  expect(checks, findsOneWidget, reason: '$what: one check');
+  expect(t.widget<RemixIcon>(checks).color, DifyColors.textAccent, reason: '$what: the accent check');
+  final row = find.ancestor(of: find.text(label).last, matching: find.byType(Container)).first;
+  expect(
+    find.descendant(of: row, matching: checks),
+    findsOneWidget,
+    reason: '$what: on the current row',
+  );
+  final decoration = t.widget<Container>(row).decoration as BoxDecoration?;
+  expect(decoration?.color, DifyColors.stateBaseHover, reason: '$what: the current row highlighted');
 }
 
 void main() {
@@ -497,7 +514,7 @@ void main() {
     await settle(t, 400);
     final button = find.descendant(
       of: _inSheet(find.byType(DifyPromptEditorPanel)).first,
-      matching: find.bySemanticsLabel(_tw('common.insertVarTip')),
+      matching: find.byKey(const Key('prompt-editor-insert')),
     );
     await t.tap(button.first);
     await settle(t, 800);
@@ -629,7 +646,7 @@ void main() {
     final sheet = find.byKey(const Key('prompt-editor-picker-sheet'));
     final button = find.descendant(
       of: _inSheet(find.byType(DifyPromptEditorPanel)).first,
-      matching: find.bySemanticsLabel(_tw('common.insertVarTip')),
+      matching: find.byKey(const Key('prompt-editor-insert')),
     );
     Future<void> open() async {
       // The caret after "sentence.", where a typed "/" would not open anything.
@@ -724,7 +741,7 @@ void main() {
     // The prompt's insert-variable picker.
     final insert = find.descendant(
       of: _inSheet(find.byType(DifyPromptEditorPanel)).first,
-      matching: find.bySemanticsLabel(_tw('common.insertVarTip')),
+      matching: find.byKey(const Key('prompt-editor-insert')),
     );
     await _scrollTo(t, insert.first);
     await t.tap(insert.first);
@@ -757,6 +774,14 @@ void main() {
     expect(t.takeException(), isNull);
     expect(find.byType(AppPublisher), findsOneWidget);
     expect(find.byType(ErrorWidget), findsNothing);
+    // No keyboard shortcut keycaps on a phone (the Publish button's Ctrl Shift P).
+    for (final key in ['Ctrl', 'Shift', 'P']) {
+      expect(
+        find.descendant(of: find.byType(AppPublisher), matching: find.text(key)),
+        findsNothing,
+        reason: key,
+      );
+    }
     expect(await systemBack(t), isTrue);
     expect(find.byType(AppPublisher), findsNothing);
     await e.dispose();
@@ -841,7 +866,61 @@ void main() {
     await e.dispose();
   });
 
-  testWidgets('select sheets: titled from the field, the current value marked, one row inset', (t) async {
+  testWidgets('header controls are 44 px targets for touch and accessibility, side by side: the code step\'s input '
+      'variables (sync, add) and code editor (Generate, Copy, Expand), the prompt\'s ({x}, "…"); {x} is named "Insert '
+      'variable"; the prompt\'s caret is the accent', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+
+    /// Each of [labels] (an accessible name) is one node at least 44 px square, and they do not overlap.
+    void targets(List<Pattern> labels, String what, {Finder? within}) {
+      final rects = <Rect>[];
+      for (final label in labels) {
+        final f = find.descendant(of: within ?? _sheet, matching: find.bySemanticsLabel(label)).first;
+        final node = t.getSemantics(f);
+        expect(node.rect.width, greaterThanOrEqualTo(44), reason: '$what: "$label" accessible width');
+        expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$what: "$label" accessible height');
+        // Its touch box (the accessible node's bounds).
+        rects.add(t.getRect(find.ancestor(of: f, matching: find.byType(DifyTouchArea)).first));
+      }
+      rects.sort((a, b) => a.left.compareTo(b.left));
+      for (var i = 0; i + 1 < rects.length; i++) {
+        expect(rects[i].right, lessThanOrEqualTo(rects[i + 1].left + 0.5), reason: '$what: no overlap $rects');
+      }
+    }
+
+    await _openFromSteps(t, 'Count words');
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final add = DifyI18n.tr('common', 'operation.add');
+    targets([
+      RegExp(RegExp.escape(_tw('nodes.code.syncFunctionSignature'))),
+      '$add ${_tw('nodes.code.inputVars')}',
+    ], 'input variables');
+    final expand = _inSheet(find.bySemanticsLabel(DifyI18n.tr('share', 'chat.expand'))).first;
+    await _scrollTo(t, expand);
+    targets([
+      DifyI18n.tr('app-debug', 'operation.automatic'),
+      DifyI18n.tr('common', 'operation.copy'),
+      DifyI18n.tr('share', 'chat.expand'),
+    ], 'the code editor');
+    expect(await systemBack(t), isTrue);
+    // The LLM's prompt: {x} named for what it does; its caret.
+    await _openFromSteps(t, _llmTitle);
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final panel = _inSheet(find.byType(DifyPromptEditorPanel)).first;
+    await _scrollTo(t, panel);
+    targets([_insertVariable, DifyI18n.tr('common', 'operation.more')], 'the prompt', within: panel);
+    final labels = platformLabels(t);
+    expect(labels, contains(_insertVariable));
+    expect(labels, isNot(contains(_tw('common.insertVarTip'))), reason: 'not the desktop\'s "/" tip');
+    final editable = find.descendant(of: panel, matching: find.byType(EditableText)).first;
+    expect(t.widget<EditableText>(editable).cursorColor, const Color(0xFF155EEF), reason: 'the accent caret');
+    semantics.dispose();
+    await e.dispose();
+  });
+
+  testWidgets('select sheets: titled from the field, the current value marked alike (the select\'s accent check on '
+      'its highlighted row), one row inset', (t) async {
     final e = await _pump(t);
     await _openFromSteps(t, 'Count words');
     await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
@@ -856,6 +935,7 @@ void main() {
     );
     final number = find.text('Number').last;
     final typeInset = t.getRect(number).left;
+    _markedAsSelect(t, 'Number', 'the type select');
     expect(await systemBack(t), isTrue);
     // The language selector: "Language", the current one checked, the same inset.
     final language = _inSheet(find.byWidgetPredicate((w) => w is TypeSelector)).first;
@@ -869,7 +949,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.byWidgetPredicate((w) => w is DifyIcon && w.name == 'vender/line/general/check'), findsOneWidget);
+    _markedAsSelect(t, 'Python3', 'the language select');
     final python = find.text('Python3').last;
     expect(t.getRect(python).left, closeTo(typeInset, 0.5), reason: 'one row inset');
     expect(typeInset, closeTo(16, 0.5));
