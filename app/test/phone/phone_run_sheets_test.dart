@@ -8,6 +8,7 @@
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
+import 'package:dify_sf_app/src/design/dify_icon.dart' show RemixIcon;
 import 'package:dify_sf_app/src/design/dify_theme.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/editor/editor_controller.dart';
@@ -1240,6 +1241,52 @@ void main() {
     expect(end.right, closeTo(size.width - 16, 1), reason: 'brought in from the right, no further');
     expect(end.bottom, lessThanOrEqualTo(size.height - 72 - 16 + 0.5), reason: 'above the run sheet');
     expect(e.canvas.view.scale, 1, reason: 'the zoom stays');
+    await e.dispose();
+  });
+
+  testWidgets('the conversation variables sheet\'s header has one Close, the sheet\'s; the tips fold with their own '
+      '"Tips" button (polish 2)', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t, chat: true);
+    await overflow(t, _tw('chatVariable.panelTitle'));
+    final sheet = e.sheet('phone-variables-sheet');
+    expect(find.descendant(of: sheet, matching: find.byType(ChatVariablePanel)), findsOneWidget);
+    final header = find.descendant(of: sheet, matching: find.byType(DifySheetHeader));
+    expect(find.descendant(of: header, matching: find.text(_tw('chatVariable.panelTitle'))), findsOneWidget);
+    // One close in the header, on screen and for the platform: the sheet's (the panel's own Dify close was a second
+    // "×" beside it). The platform reads the header as title, Tips, Close (the scrim, which closes the sheet too, is
+    // the design's for every sheet and is not part of the header).
+    final closes = find.descendant(
+      of: header,
+      matching: find.byWidgetPredicate((w) => w is RemixIcon && w.name == 'close-line'),
+    );
+    expect(closes, findsOneWidget);
+    final labels = platformLabels(t);
+    final title = labels.indexOf(_tw('chatVariable.panelTitle'));
+    expect(title, isNot(-1), reason: '$labels');
+    expect(labels.sublist(title, title + 4), [
+      _tw('chatVariable.panelTitle'),
+      _tw('chatVariable.tips'),
+      _tc('operation.close'),
+      _tw('chatVariable.button'),
+    ], reason: '$labels');
+    // Dify's intent: the book button folds the tips (a collapsible); the tips have no close of their own.
+    final tips = find.descendant(of: header, matching: find.bySemanticsLabel(_tw('chatVariable.tips')));
+    expect(tips, findsOneWidget);
+    expect(find.descendant(of: sheet, matching: find.text('TIPS')), findsOneWidget);
+    await t.tap(tips);
+    await settle(t, 400);
+    expect(find.descendant(of: sheet, matching: find.text('TIPS')), findsNothing);
+    await t.tap(tips);
+    await settle(t, 400);
+    expect(find.descendant(of: sheet, matching: find.text('TIPS')), findsOneWidget);
+    // The one close closes the sheet.
+    await t.tap(_close(sheet));
+    await settle(t, 600);
+    expect(e.store.showChatVariablePanel.value, isFalse);
+    expect(e.sheet('phone-variables-sheet'), findsNothing);
+    expect(t.takeException(), isNull);
+    semantics.dispose();
     await e.dispose();
   });
 
