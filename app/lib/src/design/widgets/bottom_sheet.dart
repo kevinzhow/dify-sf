@@ -9,6 +9,7 @@
 /// `raw-sheet`).
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show listEquals;
@@ -107,11 +108,14 @@ class DifySheetController extends ChangeNotifier {
   _DifySheetState? _sheet;
 
   /// Whether a sheet is attached.
-  bool get isAttached => _sheet?._sheet.isAttached ?? false;
+  bool get isAttached => _sheet?._ready ?? false;
 
   /// The sheet's visible height above the bottom of its viewport, the keyboard under it included (null before it is
   /// laid out).
   double? get offset => _sheet?._offset;
+
+  /// The detent the attached sheet rests at, or is settling on (null when none is attached).
+  DifySheetDetent? get detent => _sheet?._resting;
 
   /// Animates the attached sheet to [detent]; completes at once when none is attached.
   Future<void> animateTo(
@@ -119,6 +123,10 @@ class DifySheetController extends ChangeNotifier {
     Duration duration = const Duration(milliseconds: 300),
     Curve curve = Curves.easeInOut,
   }) => _sheet?._animateTo(detent, duration: duration, curve: curve) ?? Future.value();
+
+  /// Slides a dismissible [DifyPersistentSheet] away and then calls its `onDismiss` (what Back does for such a
+  /// sheet); completes at once when none is attached or it cannot be dismissed.
+  Future<void> dismiss() => _sheet?._dismiss() ?? Future.value();
 
   void _attach(_DifySheetState sheet) => _sheet = sheet;
 
@@ -268,7 +276,15 @@ class _SheetTopInset extends InheritedWidget {
 
 /// A sheet that lives in a page instead of a route (mockup 7's run panel): the page behind stays interactive. Put
 /// it last in a Stack that fills the page; it fills the Stack and only its sheet takes pointers. It rests at
-/// [initialDetent] (the first of [detents]) and snaps between [detents]; it cannot be dragged away.
+/// [initialDetent] (the first of [detents]) and snaps between [detents]; without [onDismiss] it cannot be dragged
+/// away.
+///
+/// Because it is part of the page, its content sees the page's inherited scopes (a route's content would not), and
+/// the page decides when it shows: an owner that shows it while some state says so (a panel is open) passes
+/// [onDismiss] to clear that state. Then a drag or flick below the lowest detent, [DifySheetController.dismiss] (Back,
+/// through the owner) and a tap on the [modal] scrim slide it away and call [onDismiss]; should the owner keep it, it
+/// slides back. [slideIn] makes it rise from the bottom edge when it first shows. With [modal], a scrim
+/// (`DifySheetRecipe.scrim`, fading with the sheet) covers the page and blocks it, as a modal sheet route's does.
 ///
 /// Edge to edge like [showDifyBottomSheet]: in an edge-to-edge page it paints to the window's edges and pads its
 /// content by the system insets and the keyboard; its full height stops at the top safe area.
@@ -279,12 +295,29 @@ class DifyPersistentSheet extends StatelessWidget {
     this.detents = const [DifySheetDetent.peek(120), DifySheetDetent.half, DifySheetDetent.full],
     this.initialDetent,
     this.controller,
-  });
+    this.onDismiss,
+    this.modal = false,
+    this.slideIn = false,
+    this.barrierLabel,
+  }) : assert(!modal || onDismiss != null, 'A modal sheet needs onDismiss: its scrim closes it');
 
   final Widget child;
   final List<DifySheetDetent> detents;
   final DifySheetDetent? initialDetent;
   final DifySheetController? controller;
+
+  /// Called once the sheet has slid away (dragged below its lowest detent, dismissed through [controller], or its
+  /// scrim tapped); null: the sheet cannot be dismissed.
+  final VoidCallback? onDismiss;
+
+  /// A scrim covers the page behind the sheet and blocks it; a tap on it dismisses the sheet.
+  final bool modal;
+
+  /// The sheet rises from the bottom edge to [initialDetent] when it first shows.
+  final bool slideIn;
+
+  /// The scrim's accessible name (the framework's "Dismiss" by default).
+  final String? barrierLabel;
 
   @override
   Widget build(BuildContext context) => _DifySheet(
@@ -293,7 +326,11 @@ class DifyPersistentSheet extends StatelessWidget {
     controller: controller,
     requestClose: null,
     modalRoute: false,
-    shadow: true,
+    shadow: !modal,
+    onDismiss: onDismiss,
+    scrim: modal,
+    slideIn: slideIn,
+    barrierLabel: barrierLabel,
     child: child,
   );
 }
@@ -349,6 +386,10 @@ class _DifySheet extends StatefulWidget {
     required this.modalRoute,
     required this.shadow,
     required this.child,
+    this.onDismiss,
+    this.scrim = false,
+    this.slideIn = false,
+    this.barrierLabel,
   });
 
   final List<DifySheetDetent> detents;
@@ -361,6 +402,13 @@ class _DifySheet extends StatefulWidget {
   final Future<bool> Function()? requestClose;
   final bool modalRoute, shadow;
   final Widget child;
+
+  /// A sheet without a route: what closing it does, after it slid away ([DifyPersistentSheet.onDismiss]).
+  final VoidCallback? onDismiss;
+
+  /// A sheet without a route: a scrim behind it ([DifyPersistentSheet.modal]), and whether it rises into view.
+  final bool scrim, slideIn;
+  final String? barrierLabel;
 
   @override
   State<_DifySheet> createState() => _DifySheetState();
@@ -386,15 +434,82 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
   List<double> _snaps = const [], _sheetSnaps = const [];
   double _min = 0, _max = 1;
 
-  bool get _canClose => widget.requestClose != null && _keyboard == 0;
+  bool get _dismissible => widget.requestClose != null || widget.onDismiss != null;
+
+  bool get _canClose => _dismissible && _keyboard == 0;
+
+  /// A sheet without an owner's close request rising into view ([_DifySheet.slideIn]) or sliding away ([_dismiss]): it
+  /// may sit below its lowest detent meanwhile, and the layout's re-snapping leaves it alone.
+  bool _entering = false, _dismissing = false;
 
   double? get _offset => _sheet.isAttached ? _sheet.pixels + _keyboard : null;
+
+  /// The scroll controller the sheet's [DraggableScrollableSheet] hands its content.
+  ScrollController? _scroll;
+
+  /// The sheet can be moved: its controller has exactly one scroll view (the content's, or the anchor). For the frame
+  /// in which content gains a scroll view while the anchor is still there it has two; the anchor goes at once, and
+  /// moves wait for it.
+  bool get _ready {
+    if (!_sheet.isAttached) return false;
+    final scroll = _scroll;
+    if (scroll == null || scroll.positions.length == 1) return true;
+    _syncAnchor(scroll);
+    return false;
+  }
 
   @override
   void initState() {
     super.initState();
     widget.controller?._attach(this);
     _sheet.addListener(_moved);
+    if (widget.slideIn && widget.requestClose == null) {
+      _entering = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) => _enter());
+    }
+  }
+
+  /// Rises from the bottom edge to the resting detent. Content without a scroll view of its own gets the controller's
+  /// anchor a frame later: the rise waits for it (a few frames at most).
+  Future<void> _enter([int wait = 3]) async {
+    if (!mounted) return;
+    if (!_ready && wait > 0) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => _enter(wait - 1));
+      SchedulerBinding.instance.scheduleFrame();
+      return;
+    }
+    if (_ready && _room > 0) {
+      await _sheet.animateTo(_fraction(_resting), duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+    }
+    if (!mounted) return;
+    setState(() => _entering = false);
+    // Not attached in time: the layout puts it at its detent.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _ready && _sheet.size < 1e-3) _sheet.jumpTo(_fraction(_resting).clamp(_min, _max));
+    });
+  }
+
+  /// Slides a routeless dismissible sheet to the bottom, then calls its `onDismiss`. When the owner keeps the sheet
+  /// (it is still here a frame later), it slides back to where it rested.
+  Future<void> _dismiss() async {
+    final onDismiss = widget.onDismiss;
+    if (widget.requestClose != null || onDismiss == null || _dismissing || !mounted) return;
+    _dismissing = true;
+    if (_keyboard > 0) FocusManager.instance.primaryFocus?.unfocus();
+    if (_sheet.isAttached && _room > 0) {
+      setState(() {});
+      await SchedulerBinding.instance.endOfFrame;
+      if (_ready) {
+        await _sheet.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
+      }
+    }
+    if (!mounted) return;
+    onDismiss();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _dismissing = false);
+      if (_sheet.isAttached) unawaited(_animateTo(_resting));
+    });
   }
 
   @override
@@ -438,7 +553,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
   void _resolve() {
     final sorted = _sorted;
     final lowest = sorted.first.$1, highest = sorted.last.$1;
-    _min = _canClose ? 0 : lowest;
+    _min = _canClose || _entering || _dismissing ? 0 : lowest;
     _max = math.max(highest, _min);
     final snaps = <double>[];
     for (final (f, _) in sorted) {
@@ -454,7 +569,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
       _snaps = snaps;
       final target = _fraction(_resting);
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _dragging || !_sheet.isAttached) return;
+        if (!mounted || _dragging || _entering || _dismissing || !_ready) return;
         if ((_sheet.size - target).abs() > 1e-4) _sheet.jumpTo(target.clamp(_min, _max));
       });
     }
@@ -472,12 +587,22 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
   }) {
     _resting = detent;
     if (!_sheet.isAttached) return Future.value();
+    if (!_ready) {
+      // The anchor is going this frame: move after it.
+      final done = Completer<void>();
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_ready || _resting != detent) return done.complete();
+        done.complete(_sheet.animateTo(_fraction(detent).clamp(_min, _max), duration: duration, curve: curve));
+      });
+      SchedulerBinding.instance.scheduleFrame();
+      return done.future;
+    }
     return _sheet.animateTo(_fraction(detent).clamp(_min, _max), duration: duration, curve: curve);
   }
 
   @override
   void update(double dy) {
-    if (!_sheet.isAttached || _room <= 0) return;
+    if (!_ready || _room <= 0) return;
     _dragging = true;
     if (dy > 0 && _keyboard > 0) FocusManager.instance.primaryFocus?.unfocus();
     // Held just above the bottom: reaching it is a request to close, asked once when the drag ends.
@@ -489,7 +614,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
   void end(double velocityDy) {
     if (!_dragging) return;
     _dragging = false;
-    if (!_sheet.isAttached) return;
+    if (!_ready) return;
     final size = _sheet.size;
     final sorted = _sorted;
     final lowest = sorted.first.$1;
@@ -508,10 +633,15 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
     _animateTo(target);
   }
 
-  /// A drag to the bottom asks the owner to close the sheet, the way Back and Escape do; a veto slides it back.
+  /// A drag to the bottom asks the owner to close the sheet, the way Back and Escape do; a veto slides it back. A page
+  /// sheet without such a request ([DifyPersistentSheet.onDismiss]) slides away and calls its `onDismiss`.
   void _close() {
     final request = widget.requestClose;
-    if (request == null || _asking) return;
+    if (request == null) {
+      unawaited(_dismiss());
+      return;
+    }
+    if (_asking) return;
     _asking = true;
     request().then((stillOpen) {
       _asking = false;
@@ -520,6 +650,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
   }
 
   bool _onExtent(DraggableScrollableNotification n) {
+    if (_entering || _dismissing) return false;
     // The scroll view's drag (or a settle) reached the bottom.
     if (_canClose && n.extent <= n.minExtent + 0.001 && !_dragging) _close();
     // Settled on a detent: it is where the sheet rests now.
@@ -547,7 +678,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
           child: DraggableScrollableSheet(
             controller: _sheet,
             expand: !widget.modalRoute,
-            initialChildSize: _fraction(_resting).clamp(_min, _max),
+            initialChildSize: _entering ? 0 : _fraction(_resting).clamp(_min, _max),
             minChildSize: _min,
             maxChildSize: _max,
             snap: true,
@@ -569,9 +700,22 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
             ),
           );
         }
-        return Padding(
+        final page = Padding(
           padding: EdgeInsets.only(top: top, bottom: keyboard),
           child: sheet,
+        );
+        if (!widget.scrim) return page;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            _SheetScrim(
+              sheet: _sheet,
+              resting: () => _fraction(_resting),
+              label: widget.barrierLabel,
+              onTap: () => unawaited(_dismiss()),
+            ),
+            page,
+          ],
         );
       },
     );
@@ -594,14 +738,21 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
 
   /// After the frame: anchors the controller when the content attached no scroll view to it, and drops the anchor
   /// again once the content has its own (the controller must have exactly one).
-  void _checkScrollable(ScrollController scroll) => SchedulerBinding.instance.addPostFrameCallback((_) {
+  void _checkScrollable(ScrollController scroll) =>
+      SchedulerBinding.instance.addPostFrameCallback((_) => _syncAnchor(scroll));
+
+  void _syncAnchor(ScrollController scroll) {
     if (!mounted) return;
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      return _checkScrollable(scroll);
+    }
     final clients = scroll.positions.length;
     if (clients == 0 && !_anchor) setState(() => _anchor = true);
     if (clients > 1 && _anchor) setState(() => _anchor = false);
-  });
+  }
 
   Widget _content(BuildContext context, ScrollController scroll, EdgeInsets padding) {
+    _scroll = scroll;
     _checkScrollable(scroll);
     final media = MediaQuery.of(context);
     Widget content = DifySurface(
@@ -639,6 +790,15 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
       ],
     );
     // The content's body scroll view is the sheet's scrollable.
+    // A scroll view the content gains or drops later (a loading state that turns into a list) does not rebuild this
+    // builder: its first metrics re-check the anchor, so the controller never keeps two scroll views.
+    content = NotificationListener<ScrollMetricsNotification>(
+      onNotification: (n) {
+        if (n.metrics.axis == Axis.vertical) _syncAnchor(scroll);
+        return false;
+      },
+      child: content,
+    );
     content = PrimaryScrollController(controller: scroll, child: content);
     // The insets are the sheet's: nested SafeAreas and Scaffolds in the content must not add them again.
     content = MediaQuery(
@@ -660,6 +820,46 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
     );
     return widget.modalRoute ? content : _surface(content);
   }
+}
+
+/// A routeless modal sheet's scrim (`DifySheetRecipe.scrim`): it fades with the sheet's height up to its resting
+/// detent (painted, not rebuilt: the sheet moves during layout), blocks the page behind, and a tap on it (or its
+/// semantic dismiss action) closes the sheet.
+class _SheetScrim extends StatelessWidget {
+  const _SheetScrim({required this.sheet, required this.resting, required this.onTap, this.label});
+  final DraggableScrollableController sheet;
+  final double Function() resting;
+  final VoidCallback onTap;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    key: const ValueKey('dify-sheet-scrim'),
+    painter: _ScrimPainter(sheet: sheet, resting: resting, color: DifySheetRecipe.scrim),
+    child: ModalBarrier(
+      dismissible: true,
+      onDismiss: onTap,
+      semanticsLabel: label ?? MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    ),
+  );
+}
+
+class _ScrimPainter extends CustomPainter {
+  _ScrimPainter({required this.sheet, required this.resting, required this.color}) : super(repaint: sheet);
+  final DraggableScrollableController sheet;
+  final double Function() resting;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rest = resting();
+    final t = !sheet.isAttached || rest <= 0 ? 0.0 : (sheet.size / rest).clamp(0.0, 1.0);
+    if (t == 0) return;
+    canvas.drawRect(Offset.zero & size, Paint()..color = color.withValues(alpha: color.a * t));
+  }
+
+  @override
+  bool shouldRepaint(_ScrimPainter old) => old.sheet != sheet || old.color != color;
 }
 
 /// Lays the content out at its own height (at most [maxHeight]) to measure it ([onMeasured]: the full detent of content
@@ -714,7 +914,9 @@ class _RenderContentHeight extends RenderProxyBox {
       SchedulerBinding.instance.addPostFrameCallback((_) => onMeasured(natural));
     }
     if (natural >= _maxHeight - 0.5) {
-      final fill = math.max(height, math.min(natural, _floor));
+      // Not squeezed below half the room either: a sheet sliding away (or dragged low) keeps its header and its first
+      // rows laid out, and is clipped rather than overflowing.
+      final fill = math.max(height, math.min(natural, math.max(_floor, _maxHeight / 2)));
       if ((fill - natural).abs() > 0.01) {
         child.layout(BoxConstraints.tightFor(width: width, height: fill), parentUsesSize: true);
       }
