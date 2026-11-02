@@ -203,6 +203,23 @@ void main() {
     await e.dispose();
   });
 
+  testWidgets('Steps view: Run this step from the long press opens the step\'s panel, which takes the request', (
+    t,
+  ) async {
+    final e = await _pump(t);
+    final card = find.byKey(const ValueKey('step-card-code'));
+    await t.ensureVisible(card);
+    await settle(t, 300);
+    await t.longPress(card);
+    await settle(t, 600);
+    await t.tap(find.text(DifyI18n.tr('workflow', 'panel.runThisStep')));
+    await settle(t, 800);
+    expect(find.byType(WorkflowNodePanel), findsOneWidget);
+    expect(e.store.pendingSingleRun.value, isNull, reason: 'the panel consumed the run request');
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
   testWidgets('Steps view: Add with no step selected continues the flow (connected, not a free spot)', (t) async {
     final e = await _pump(t);
     expect(e.phone.view, PhoneEditorView.steps);
