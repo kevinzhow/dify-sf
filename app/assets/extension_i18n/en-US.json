@@ -148,5 +148,13 @@
     "zoom": "Zoom",
     "generate": "Generate with AI",
     "connectionDetails": "Connection details"
+  },
+  "workflow": {
+    "mobile.steps.addStep": "Add step",
+    "mobile.steps.addStepAfter": "Add step after",
+    "mobile.steps.addStepHere": "Add a step here",
+    "mobile.steps.continuesAt": "Continues at {{title}}",
+    "mobile.steps.notConnected": "Not connected",
+    "mobile.steps.empty": "No steps yet"
   }
 }

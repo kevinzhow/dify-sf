@@ -594,7 +594,10 @@
     "step_list.dart": {
       "kind": "text-composition",
       "evidence": [
-        "app/test/dify_spec/dify_ui/step_list_test.dart"
+        "app/test/dify_spec/dify_ui/step_list_test.dart",
+        "app/test/workflow_editor/steps/steps_view_test.dart",
+        "app/tool/steps_view_preview_main.dart",
+        "app/test/workflow_editor/steps/steps_view_shots_test.dart"
       ],
       "note": "dify-sf phone step list for the workflow editor's Steps view (no Dify counterpart; mockups 2-steps and 7-run): DifyText in DifyPhoneType.labelStrong / DifyType styles; tests cover the 64 px card with one-line title and summary, selected/status/highlight/waiting looks, the 48 px connector target, lane chips, rails, link and add rows."
     },

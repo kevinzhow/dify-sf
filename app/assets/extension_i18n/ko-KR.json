@@ -116,5 +116,13 @@
     "zoom": "확대/축소",
     "generate": "AI로 생성",
     "connectionDetails": "연결 세부 정보"
+  },
+  "workflow": {
+    "mobile.steps.addStep": "단계 추가",
+    "mobile.steps.addStepAfter": "뒤에 단계 추가",
+    "mobile.steps.addStepHere": "여기에 단계 추가",
+    "mobile.steps.continuesAt": "{{title}}(으)로 계속",
+    "mobile.steps.notConnected": "연결되지 않음",
+    "mobile.steps.empty": "단계가 없습니다"
   }
 }

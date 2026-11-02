@@ -116,5 +116,13 @@
     "zoom": "縮放",
     "generate": "AI 生成",
     "connectionDetails": "連線詳情"
+  },
+  "workflow": {
+    "mobile.steps.addStep": "新增步驟",
+    "mobile.steps.addStepAfter": "在後面新增步驟",
+    "mobile.steps.addStepHere": "在此處新增步驟",
+    "mobile.steps.continuesAt": "繼續執行 {{title}}",
+    "mobile.steps.notConnected": "未連接",
+    "mobile.steps.empty": "尚無步驟"
   }
 }

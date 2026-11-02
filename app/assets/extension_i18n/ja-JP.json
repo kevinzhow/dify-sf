@@ -116,5 +116,13 @@
     "zoom": "ズーム",
     "generate": "AI で生成",
     "connectionDetails": "接続の詳細"
+  },
+  "workflow": {
+    "mobile.steps.addStep": "ステップを追加",
+    "mobile.steps.addStepAfter": "後にステップを追加",
+    "mobile.steps.addStepHere": "ここにステップを追加",
+    "mobile.steps.continuesAt": "{{title}} に続く",
+    "mobile.steps.notConnected": "未接続",
+    "mobile.steps.empty": "ステップがありません"
   }
 }
