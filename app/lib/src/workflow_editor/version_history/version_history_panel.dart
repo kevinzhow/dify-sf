@@ -1070,10 +1070,20 @@ class VersionHistoryPanelState extends State<VersionHistoryPanel> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DifySheetHeader(
-            title: _w('versionHistory.title'),
-            onClose: sheet.onClose,
-            actions: [DifyTouchTarget(child: filter)],
+          // The shown version's name over "Version History": the list's peek names what the canvas shows.
+          ValueListenableBuilder(
+            valueListenable: store.currentVersion,
+            builder: (context, current, _) => DifySheetHeader(
+              key: const ValueKey('version-sheet-header'),
+              title: current == null
+                  ? _w('versionHistory.title')
+                  : current['version'] == workflowVersionDraft
+                  ? _w('versionHistory.currentDraft')
+                  : versionHistoryName(current),
+              subtitle: current == null ? null : _w('versionHistory.title'),
+              onClose: sheet.onClose,
+              actions: [DifyTouchTarget(child: filter)],
+            ),
           ),
           list,
           if (_hasNextPage) _loadMore(),

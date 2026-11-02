@@ -984,11 +984,13 @@ class RunPanelWrap extends StatelessWidget {
   Widget build(BuildContext context) {
     // dify-sf: in a phone sheet the sheet is the frame and its header has the title and the close.
     if (PanelSheetScope.maybeOf(context) != null) {
+      // It hugs its fields (the run form's way): "Test Run" over the step's title.
       return Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DifySheetHeader(title: '${_tw('singleRun.testRun')} $nodeName', onClose: onHide),
-          Expanded(child: child),
+          DifySheetHeader(title: _tw('singleRun.testRun'), subtitle: nodeName, onClose: onHide),
+          Flexible(child: child),
         ],
       );
     }
@@ -1149,12 +1151,16 @@ class _BeforeRunFormState extends State<BeforeRunForm> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: SizedBox(
                 width: double.infinity,
-                child: DifyButton(
-                  variant: DifyButtonVariant.primary,
-                  disabled: !isFilesLoaded(widget.forms),
-                  onPressed: _run,
-                  child: DifyTextLine(
-                    _isHumanInput ? _tw('nodes.humanInput.singleRun.button') : _tw('singleRun.startRun'),
+                // dify-sf: in a phone sheet the large size with a 48 px target.
+                child: DifyTouchTarget(
+                  child: DifyButton(
+                    variant: DifyButtonVariant.primary,
+                    size: PanelSheetScope.maybeOf(context) != null ? DifyButtonSize.large : DifyButtonSize.medium,
+                    disabled: !isFilesLoaded(widget.forms),
+                    onPressed: _run,
+                    child: DifyTextLine(
+                      _isHumanInput ? _tw('nodes.humanInput.singleRun.button') : _tw('singleRun.startRun'),
+                    ),
                   ),
                 ),
               ),

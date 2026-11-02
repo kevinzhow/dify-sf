@@ -294,10 +294,20 @@ bool handleNodeSingleRun(BuildContext context, Node node, Document doc) {
 /// The single-run form over the node panel (BasePanel's `shouldRenderSingleRunPanel`): shown while the node's
 /// `_isSingleRun` is on; Start Run runs with the values (handleRunWithParams) and switches to Last Run.
 class NodeSingleRunOverlay extends StatefulWidget {
-  const NodeSingleRunOverlay({super.key, required this.node, required this.doc, this.dataSourceForm});
+  const NodeSingleRunOverlay({
+    super.key,
+    required this.node,
+    required this.doc,
+    this.dataSourceForm,
+    this.fill = true,
+  });
   final Node node;
   final Document doc;
   final Widget Function()? dataSourceForm;
+
+  /// Over the node panel it fills the panel's Stack ([Positioned.fill]); false (dify-sf: a phone sheet) it is the
+  /// form alone, as tall as its fields.
+  final bool fill;
 
   @override
   State<NodeSingleRunOverlay> createState() => _NodeSingleRunOverlayState();
@@ -366,6 +376,8 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
     showDataToast(context, DataToastType.error, e is TransportException ? e.message : '$e');
   }
 
+  Widget _place(Widget child) => widget.fill ? Positioned.fill(child: child) : child;
+
   @override
   Widget build(BuildContext context) {
     final scope = WorkflowRunScope.maybeOf(context);
@@ -377,10 +389,10 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
       builder: (context, _, _) {
         if (!c.isShowSingleRun) return const SizedBox.shrink();
         final custom = getCustomRunForm(nodeType: widget.node.type, dataSourceForm: widget.dataSourceForm);
-        if (custom != null) return Positioned.fill(child: custom);
+        if (custom != null) return _place(custom);
         if (_generatedForm case final form?) {
-          return Positioned.fill(
-            child: RunPanelWrap(
+          return _place(
+            RunPanelWrap(
               nodeName: widget.node.title,
               onHide: c.hideSingleRun,
               child: SingleChildScrollView(
@@ -412,8 +424,8 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
         );
         if (forms.isEmpty) return const SizedBox.shrink();
         final exist = existVarValuesInForms(forms, store, widget.node);
-        return Positioned.fill(
-          child: BeforeRunForm(
+        return _place(
+          BeforeRunForm(
             nodeName: widget.node.title,
             nodeType: widget.node.type,
             onHide: c.hideSingleRun,

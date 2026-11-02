@@ -247,7 +247,28 @@ class _VariableItemCardState extends State<VariableItemCard> {
                           ],
                         ),
                       ),
-                      if (w.onEdit != null || w.onDelete != null)
+                      // dify-sf: in a phone sheet, 44 px touch buttons with their 48 px targets side by side.
+                      if ((w.onEdit != null || w.onDelete != null) && PanelSheetScope.maybeOf(context) != null)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: 4,
+                          children: [
+                            if (w.onEdit != null)
+                              DifyTouchIconButton(
+                                label: tc('operation.edit'),
+                                icon: const RemixIcon('edit-line', size: 20),
+                                onPressed: w.onEdit,
+                              ),
+                            if (w.onDelete != null)
+                              DifyTouchIconButton(
+                                label: tc('operation.delete'),
+                                icon: const RemixIcon('delete-bin-line', size: 20),
+                                destructive: true,
+                                onPressed: w.onDelete,
+                              ),
+                          ],
+                        )
+                      else if (w.onEdit != null || w.onDelete != null)
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           spacing: 4,
@@ -344,7 +365,53 @@ class VariableModalSurface extends StatelessWidget {
   final Widget? close;
 
   @override
-  Widget build(BuildContext context) => DifySurface(
+  Widget build(BuildContext context) {
+    // dify-sf: in a phone sheet (the popover shown as a bottom sheet) the form is the sheet's content: the sheet's
+    // header (title, close), the fields, and 36 px Cancel / Save with 48 px targets.
+    if (DifyFloating.inSheet(context)) {
+      return DifySurface(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DifySheetHeader(title: title, onClose: onClose),
+            Flexible(child: body),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Row(
+                spacing: 12,
+                children: [
+                  Expanded(
+                    child: DifyTouchTarget(
+                      child: DifyButton(
+                        size: DifyButtonSize.large,
+                        onPressed: onClose,
+                        child: DifyTextLine(tc('operation.cancel')),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: DifyTouchTarget(
+                      child: DifyButton(
+                        key: const ValueKey('variable-modal-save'),
+                        variant: DifyButtonVariant.primary,
+                        size: DifyButtonSize.large,
+                        onPressed: onSave,
+                        child: DifyTextLine(tc('operation.save')),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return _desktop(context);
+  }
+
+  Widget _desktop(BuildContext context) => DifySurface(
     child: Container(
       width: width,
       decoration: BoxDecoration(
