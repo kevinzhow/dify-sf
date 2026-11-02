@@ -225,13 +225,13 @@ class _CursorsPainter extends CustomPainter {
   static final _shadow1 = _arrow.shift(const Offset(0, 4));
   static final _shadow2 = _arrow.shift(const Offset(0, 2));
   static final _shadowPaint1 = Paint()
-    ..color = const Color(0x12000000)
+    ..color = DifyTailwind.black.withValues(alpha: .07) // drop-shadow-md, first layer
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
   static final _shadowPaint2 = Paint()
-    ..color = const Color(0x0F000000)
+    ..color = DifyTailwind.black.withValues(alpha: .06) // drop-shadow-md, second layer
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1);
   static final _stroke = Paint()
-    ..color = const Color(0xFFFFFFFF)
+    ..color = DifyTailwind.white
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.5
     ..strokeJoin = StrokeJoin.round;
@@ -261,7 +261,7 @@ class _CursorsPainter extends CustomPainter {
       ..drawRRect(
         RRect.fromRectAndRadius(pill.shift(const Offset(0, 1)), const Radius.circular(4)),
         Paint()
-          ..color = const Color(0x0D000000)
+          ..color = DifyTailwind.black.withValues(alpha: .05) // shadow-sm
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1),
       )
       ..drawRRect(RRect.fromRectAndRadius(pill, const Radius.circular(4)), Paint()..color = color);
