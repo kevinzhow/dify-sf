@@ -1168,11 +1168,9 @@ void main() {
     await e.dispose();
   });
 
-  testWidgets('the prompt is read as one text with each variable\'s name in its place (polish 3): "Summarize Start '
-      'query in one sentence.", no U+FFFC, the chip not read again; every offset between the platform and the field is '
-      'mapped (review): the selection it is told, the selection it sets, its moves and the text it replaces', (
-    t,
-  ) async {
+  testWidgets('the prompt field (polish 3, PR #89 review): its value is the edited text (the variable is its one '
+      'character), its hint the sentence with the name in place ("Summarize Start query in one sentence."), the chip '
+      'not read apart; the platform\'s selections, moves and texts act on the edited text', (t) async {
     final semantics = t.ensureSemantics();
     final e = await _pump(t);
     await _openFromSteps(t, _llmTitle);
@@ -1182,16 +1180,16 @@ void main() {
     final editable = find.descendant(of: panel, matching: find.byType(EditableText)).first;
     final controller = t.widget<EditableText>(editable).controller as PromptEditorController;
     var data = t.getSemantics(editable).getSemanticsData();
-    expect(data.value, 'Summarize Start query in one sentence.');
+    expect(data.value, controller.text, reason: 'the value is the edited text');
+    expect(data.value, isNot(contains('￼')), reason: 'the block is its own character, not U+FFFC');
+    expect(data.hint, 'Summarize Start query in one sentence.');
     expect(data.label, isNot(contains('query')), reason: 'the chip\'s texts are not merged into the field\'s name');
     final labels = platformLabels(t);
     expect(labels.where((l) => l.contains('query')), isEmpty, reason: 'the chip is no node of its own: $labels');
-    // The editor's text: one character for the block ("Summarize " is 10 long).
     await t.tap(editable);
     await settle(t, 300);
     final block = [for (var i = 0; i < controller.text.length; i++) i].firstWhere((i) => controller.blockAt(i) != null);
     expect(block, 10);
-    const name = 'Start query', nameEnd = 10 + name.length;
     final owner = t.binding.renderViews.first.owner!.semanticsOwner!;
     Future<SemanticsData> act(SemanticsAction action, [Object? args]) async {
       owner.performAction(t.getSemantics(editable).id, action, args);
@@ -1205,49 +1203,44 @@ void main() {
       return t.getSemantics(editable).getSemanticsData();
     }
 
-    // The caret after the block is told as after the name.
+    // The caret after the block is told as it is.
     data = await caret(block + 1);
-    expect(data.textSelection, const TextSelection.collapsed(offset: nameEnd));
-    expect(data.value.substring(nameEnd), ' in one sentence.');
-    // The platform puts the cursor after the name: the editor's caret goes after the block, and an insert goes there.
+    expect(data.textSelection, TextSelection.collapsed(offset: block + 1));
+    expect(data.value.substring(block + 1), ' in one sentence.');
+    // The platform puts the cursor after the block: the caret goes there, and an insert goes there.
     await caret(0);
-    data = await act(SemanticsAction.setSelection, {'base': nameEnd, 'extent': nameEnd});
+    data = await act(SemanticsAction.setSelection, {'base': block + 1, 'extent': block + 1});
     expect(controller.selection, TextSelection.collapsed(offset: block + 1));
-    expect(data.textSelection, const TextSelection.collapsed(offset: nameEnd));
     t.testTextInput.updateEditingValue(controller.value.replaced(controller.selection, 'X'));
     await settle(t, 300);
     expect(controller.prompt, 'Summarize {{#n-start.query#}}X in one sentence.');
     t.testTextInput.updateEditingValue(controller.value.replaced(TextRange(start: block + 1, end: block + 2), ''));
     await settle(t, 300);
-    // Inside a name: the nearer edge of its block ("Sta|rt" is nearer its start).
-    await act(SemanticsAction.setSelection, {'base': 13, 'extent': 13});
-    expect(controller.selection, TextSelection.collapsed(offset: block));
-    // A range over the name selects the block.
-    await act(SemanticsAction.setSelection, {'base': 10, 'extent': nameEnd});
+    // A selection over the block selects it.
+    await act(SemanticsAction.setSelection, {'base': block, 'extent': block + 1});
     expect(controller.selection, TextSelection(baseOffset: block, extentOffset: block + 1));
-    // Moves by character pass the block whole; what the platform reads for the move is the name.
+    // Moves by character pass the block whole, both ways.
     await caret(block);
     data = await act(SemanticsAction.moveCursorForwardByCharacter, false);
     expect(controller.selection, TextSelection.collapsed(offset: block + 1));
-    expect(data.textSelection, const TextSelection.collapsed(offset: nameEnd));
+    expect(data.textSelection, TextSelection.collapsed(offset: block + 1));
     data = await act(SemanticsAction.moveCursorBackwardByCharacter, false);
     expect(controller.selection, TextSelection.collapsed(offset: block));
-    expect(data.textSelection, const TextSelection.collapsed(offset: 10));
-    // By word: the field's own move, told back mapped.
+    expect(data.textSelection, TextSelection.collapsed(offset: block));
+    // By word: the field's own move, told as it is.
     await caret(0);
     for (final _ in [1, 2, 3]) {
       data = await act(SemanticsAction.moveCursorForwardByWord, false);
-      final told = data.textSelection!.baseOffset;
-      expect(
-        told,
-        controller.text.substring(0, controller.selection.baseOffset).replaceAll(controller.text[block], name).length,
-        reason: 'by word: caret ${controller.selection}, told $told',
-      );
+      expect(data.textSelection, controller.selection);
     }
-    // The platform replaces "one" by "two": the editor keeps its block.
-    data = await act(SemanticsAction.setText, 'Summarize Start query in two sentence.');
+    // The platform replaces "one" by "two" in the value: the block stays (the value carries it).
+    data = await act(SemanticsAction.setText, data.value.replaceFirst('one', 'two'));
     expect(controller.prompt, 'Summarize {{#n-start.query#}} in two sentence.');
-    expect(data.value, 'Summarize Start query in two sentence.');
+    expect(data.hint, 'Summarize Start query in two sentence.');
+    // And sets the text without the block: the block is deleted, nothing else.
+    data = await act(SemanticsAction.setText, data.value.replaceRange(block, block + 1, ''));
+    expect(controller.prompt, 'Summarize  in two sentence.');
+    expect(data.hint, isEmpty, reason: 'no variable left: the value says it all');
     expect(t.takeException(), isNull);
     semantics.dispose();
     await e.dispose();
