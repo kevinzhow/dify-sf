@@ -39,8 +39,11 @@ http {
         default 0;
         ~^POST:.+ 1;
     }
-    upstream codex_http { server ${CODEX_UPSTREAM}; }
-    upstream codex_socket { server ${CODEX_WS_UPSTREAM}; }
+    # Every proxied request gets its own connection: POSTs are sent with `Connection: close`, and since nginx 1.29.7 an
+    # upstream block caches idle connections unless told not to. A cached connection the API has already finished with
+    # (it parsed a `Connection: close` request) makes the next request a parser error, an empty 400.
+    upstream codex_http { server ${CODEX_UPSTREAM}; keepalive 0; }
+    upstream codex_socket { server ${CODEX_WS_UPSTREAM}; keepalive 0; }
     map $request_method $codex_upstream { default codex_http; GET codex_socket; }
     map "$request_method:$http_upgrade" $codex_connection { default close; ~*^GET:websocket$ upgrade; }
     server {
