@@ -18,6 +18,9 @@ import 'touch_target.dart';
 /// [DifyTopAppBar.large] is a top-level page's bar (mockup 1 "Studio"): a [DifyPhoneType.largeTitle] title 18 px from
 /// the edge, no back button.
 ///
+/// [DifyTopAppBar.search] is a page's inline search (mockup 1's search action, opened): a back button that closes the
+/// search ([onBack]) and the search [field] in place of the title.
+///
 /// Edge to edge: the bar reads `MediaQuery.padding` (zero inside a safe page) and paints its [backgroundColor]
 /// (none by default: the page shows through) under the status bar and the side insets, while its content stays
 /// below and between them. It grows past 56 px rather than clip when the text is scaled up. Its row is 56 px tall and
@@ -32,14 +35,28 @@ class DifyTopAppBar extends StatelessWidget {
     this.backgroundColor,
     this.automaticallyImplyLeading = true,
     this.onBack,
-  }) : large = false;
+  }) : large = false,
+       field = null;
 
   const DifyTopAppBar.large({super.key, required this.title, this.actions = const [], this.backgroundColor})
     : large = true,
       subtitle = null,
       leading = null,
       automaticallyImplyLeading = false,
-      onBack = null;
+      onBack = null,
+      field = null;
+
+  const DifyTopAppBar.search({
+    super.key,
+    required Widget this.field,
+    required VoidCallback this.onBack,
+    this.actions = const [],
+    this.backgroundColor,
+  }) : large = false,
+       title = '',
+       subtitle = null,
+       leading = null,
+       automaticallyImplyLeading = false;
 
   /// The bar's height below the status bar.
   static const height = 56.0;
@@ -57,32 +74,38 @@ class DifyTopAppBar extends StatelessWidget {
   final VoidCallback? onBack;
   final bool large;
 
+  /// The search mode's field ([DifyTopAppBar.search]).
+  final Widget? field;
+
   @override
   Widget build(BuildContext context) {
     final insets = MediaQuery.paddingOf(context);
-    final lead =
-        leading ??
-        (automaticallyImplyLeading && (ModalRoute.of(context)?.impliesAppBarDismissal ?? false)
-            ? DifyAppBarBackButton(onPressed: onBack)
-            : null);
-    final titleBlock = Padding(
-      padding: EdgeInsets.only(left: large ? 10 : 4, right: 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Semantics(
-            header: true,
-            child: DifyText(
-              title,
-              large ? DifyPhoneType.largeTitle : DifyPhoneType.title,
-              color: DifyColors.textPrimary,
-            ),
+    final lead = field != null
+        ? DifyAppBarBackButton(onPressed: onBack)
+        : leading ??
+              (automaticallyImplyLeading && (ModalRoute.of(context)?.impliesAppBarDismissal ?? false)
+                  ? DifyAppBarBackButton(onPressed: onBack)
+                  : null);
+    final titleBlock =
+        field ??
+        Padding(
+          padding: EdgeInsets.only(left: large ? 10 : 4, right: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Semantics(
+                header: true,
+                child: DifyText(
+                  title,
+                  large ? DifyPhoneType.largeTitle : DifyPhoneType.title,
+                  color: DifyColors.textPrimary,
+                ),
+              ),
+              if (subtitle case final s?) DifyText(s, DifyType.systemXsRegular, color: DifyColors.textTertiary),
+            ],
           ),
-          if (subtitle case final s?) DifyText(s, DifyType.systemXsRegular, color: DifyColors.textTertiary),
-        ],
-      ),
-    );
+        );
     final items = [?lead, Expanded(child: titleBlock), ...actions];
     Widget bar = Padding(
       padding: EdgeInsets.fromLTRB(insets.left, insets.top, insets.right, 0),

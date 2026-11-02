@@ -230,6 +230,15 @@
       ],
       "note": "dify-sf floating action button (no Dify counterpart): Dify primary button colours, label through DifyText (DifyPhoneType.labelStrong); size, radius, shadow and disabled state are tested."
     },
+    "filter_chip.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+      ],
+      "note": "dify-sf phone filter chips (no Dify counterpart): 13 px DifyTw text; tests cover 34 px chips, the 48 px hit area inside the chip bar, selected colour and semantics, sideways scrolling."
+    },
     "floating.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
@@ -323,6 +332,15 @@
         "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart"
       ],
       "note": "dify-sf port of raft-flutter RaftKeyboardScrollView (no Dify counterpart): no text of its own; tests keep the focused field and the primary action above a 300 dp keyboard at 360 and 411 dp."
+    },
+    "list_row.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+      ],
+      "note": "dify-sf phone list rows (no Dify counterpart): DifyText in DifyType/DifyPhoneType styles; tests cover 52/64 px heights, one-line ellipsis, the row target, separate action semantics, destructive colour, section headings."
     },
     "loading.dart": {
       "kind": "layout-or-non-text",
@@ -461,6 +479,15 @@
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
+    "refresh_indicator.dart": {
+      "kind": "layout-or-non-text",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart",
+        "app/tool/phone_gallery_main.dart",
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+      ],
+      "note": "dify-sf pull to refresh on the widgets layer (no Dify counterpart, no Material RefreshIndicator): a spinner disc, no text; tests cover refresh past the trigger, the spinner until the future completes, a short pull going back on clamping and bouncing lists."
+    },
     "reorderable_list.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
@@ -486,7 +513,8 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
@@ -680,7 +708,8 @@
         "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
         "app/tool/phone_gallery_main.dart",
         "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
-        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart",
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart"
       ],
       "note": "dify-sf phone app bar (no Dify counterpart): DifyPhoneType title / large title and system-xs-regular subtitle through DifyText; height, ellipsis, back and insets are tested."
     },

@@ -25,6 +25,7 @@ class DifySearchInput extends StatefulWidget {
     this.autofocus = false,
     this.focusNode,
     this.width,
+    this.height = 32,
   });
 
   final String value;
@@ -42,6 +43,9 @@ class DifySearchInput extends StatefulWidget {
 
   /// A call site's width (`w-50` in the Studio).
   final double? width;
+
+  /// The field's height: Dify's 32 px; a phone app bar's search uses 40.
+  final double height;
 
   @override
   State<DifySearchInput> createState() => _DifySearchInputState();
@@ -73,7 +77,7 @@ class _DifySearchInputState extends State<DifySearchInput> {
     Widget field = DifyInput(
       value: widget.value,
       focusNode: _focus,
-      height: 32,
+      height: widget.height,
       disabled: widget.disabled,
       placeholder: widget.placeholder ?? _c('operation.search'),
       semanticLabel: widget.semanticLabel ?? _c('operation.search'),

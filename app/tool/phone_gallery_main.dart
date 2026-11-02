@@ -73,6 +73,7 @@ class _Gallery extends StatefulWidget {
 }
 
 class _GalleryState extends State<_Gallery> {
+  String _query = '', _chip = 'All';
   String _view = 'steps';
   int _tab = 0, _touchTaps = 0;
 
@@ -220,6 +221,90 @@ class _GalleryState extends State<_Gallery> {
                 _Section(
                   'DifyCountBadge',
                   child: const Row(spacing: 8, children: [DifyCountBadge(1), DifyCountBadge(12), DifyCountBadge(120)]),
+                ),
+                _Section(
+                  'DifyTopAppBar.search',
+                  child: _Framed(
+                    child: DifyTopAppBar.search(
+                      onBack: () => _toast('Search closed'),
+                      field: DifySearchInput(
+                        value: _query,
+                        height: 40,
+                        onValueChange: (v) => setState(() => _query = v),
+                      ),
+                    ),
+                  ),
+                ),
+                _Section(
+                  'DifyChipBar / DifyFilterChip',
+                  child: DifyChipBar(
+                    children: [
+                      for (final c in const ['All', 'Workflow', 'Chatflow'])
+                        DifyFilterChip(label: c, selected: _chip == c, onPressed: () => setState(() => _chip = c)),
+                      DifyFilterChip(
+                        label: 'Creators',
+                        leading: const RemixIcon('filter-3-line', size: 16),
+                        onPressed: () => _toast('Creators'),
+                      ),
+                      DifyFilterChip(
+                        label: 'Last modified',
+                        leading: const RemixIcon('sort-desc', size: 16),
+                        onPressed: () => _toast('Sort'),
+                      ),
+                    ],
+                  ),
+                ),
+                _Section(
+                  'DifyListRow / DifyListSectionHeader',
+                  child: ColoredBox(
+                    color: DifyColors.componentsPanelBg,
+                    child: Column(
+                      children: [
+                        DifyListRow(
+                          leading: const RemixIcon('group-2-line', size: 20),
+                          title: 'Members',
+                          trailing: const [DifyListChevron()],
+                          onTap: () => _toast('Members'),
+                        ),
+                        DifyListRow(
+                          leading: DifyAppIcon(size: DifyAppIconSize.large, iconType: 'emoji', icon: '🧪'),
+                          title: 'Self-host check',
+                          subtitle: 'Workflow · Edited at 22:52',
+                          strong: true,
+                          onTap: () => _toast('Open'),
+                          onLongPress: () => _toast('Long press'),
+                          actions: [
+                            DifyTouchIconButton(
+                              label: 'More actions for Self-host check',
+                              icon: const RemixIcon('more-fill', size: 20),
+                              onPressed: () => _toast('More'),
+                            ),
+                          ],
+                        ),
+                        const DifyListSectionHeader('Account'),
+                        DifyListRow(
+                          leading: const RemixIcon('shut-down-line', size: 20),
+                          title: 'Log out',
+                          destructive: true,
+                          divider: false,
+                          onTap: () => _toast('Log out'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                _Section(
+                  'DifyRefreshIndicator (pull the list)',
+                  child: SizedBox(
+                    height: 160,
+                    child: DifyRefreshIndicator(
+                      onRefresh: () => Future<void>.delayed(const Duration(seconds: 1), () => _toast('Refreshed')),
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [for (var i = 0; i < 3; i++) DifyListRow(title: 'Row ${i + 1}')],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
