@@ -98,7 +98,10 @@ flutter:
     - assets/i18n/zh-Hans/
     - assets/i18n/zh-Hant/
     - path: assets/fonts/cjk/
-      platforms: [android, ios, linux, macos, windows]
+      # Android already uses its system CJK fallback; these full regional faces
+      # are not loaded there. Keep them out of the APK rather than bundling 50 MB
+      # of unused font data. Other platforms retain their existing assets.
+      platforms: [ios, linux, macos, windows]
     - path: assets/fonts/subsets/
       platforms:
         - web

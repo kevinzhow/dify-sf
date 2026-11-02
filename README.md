@@ -122,7 +122,8 @@ client dependencies in `third_party/`. See the [client guide](docs/client.md),
 [design rules](tool/design/README.md) and [Android Web support](docs/mobile-support.md).
 Run resource-intensive commands inside the host's normal build/test limits.
 
-For Android, install JDK 21 and the Android SDK, then run `flutter build apk --debug --split-per-abi` from `app/`.
+For Android, install JDK 21 and the Android SDK, then build an optimized ARM64 preview from `app/`:
+`DIFYSF_ANDROID_PREVIEW_RELEASE=true flutter build apk --release --target-platform android-arm64 --split-per-abi`.
 See the [Android guide](app/android/README.md) for SDK setup, server connections and publisher-controlled release signing.
 
 ## Run your own server

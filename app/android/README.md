@@ -32,17 +32,25 @@ then accept the Android SDK licenses. From `app/`:
 
 ```sh
 flutter pub get
-flutter build apk --debug --split-per-abi
+# Installable ARM64 preview, using release-mode AOT compilation and shrinking:
+DIFYSF_ANDROID_PREVIEW_RELEASE=true flutter build apk --release --target-platform android-arm64 --split-per-abi
 ```
 
-The debug application ID is `dev.difysf.dify_sf_app.dev`, so this test build can
-coexist with the production package. Profile builds use the `.qa` suffix. Release
-builds use `dev.difysf.dify_sf_app`. The minimum Android version is API 24
+The explicit preview release uses the development signing key and the
+`dev.difysf.dify_sf_app.dev` ID, so it can replace the debug test app without using
+the production package's identity. It is compiled in **release** mode, with no
+debug Dart kernel or debug engine. Use `flutter build apk --debug --split-per-abi`
+only when the debugger is needed; debug APKs are much larger. Profile builds use
+the `.qa` suffix. Production release builds use `dev.difysf.dify_sf_app`.
+The minimum Android version is API 24
 (Android 7.0).
 
 Android HTTP uses the Dart team's `cronet_http` package and its embedded engine,
 so the app does not require Google Play Services. The native canvas uses Flutter
 GPU with the existing widget-renderer fallback.
+Android text retains its system CJK fallback, so the APK excludes the full
+regional CJK font assets that Android does not load. Other platforms keep their
+existing font assets.
 
 To sign a release, the publisher supplies its own keystore through these
 environment variables, without committing them:
@@ -52,9 +60,11 @@ environment variables, without committing them:
 - `DIFYSF_ANDROID_KEY_ALIAS`
 - `DIFYSF_ANDROID_KEY_PASSWORD`
 
-Then run `flutter build apk --release --split-per-abi`. Without a publisher's
-keystore, the release build remains unsigned; a debug key is never silently used
-for the production package. Store publication is a separate release step.
+With `DIFYSF_ANDROID_PREVIEW_RELEASE` unset, run
+`flutter build apk --release --target-platform android-arm64 --split-per-abi`.
+Without a publisher's keystore, the production release remains unsigned; a debug
+key is never silently used for the production package. Store publication is a
+separate release step.
 
 ## Validation
 
