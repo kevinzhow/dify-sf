@@ -12,7 +12,6 @@ import 'package:dify_sf_app/src/design/platform_input.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show TextField;
 import 'package:flutter/widgets.dart';
 
 /// Starts like lib/main.dart: platform input, the UI strings, the system theme, Dify's font stack (the system UI
@@ -425,7 +424,7 @@ class _GalleryState extends State<_Gallery> {
             children: [
               for (var i = 0; i < 4; i++)
                 SizedBox(height: 48, child: DifyText('Row $i', DifyType.bodyMdRegular, color: DifyColors.textTertiary)),
-              DifySurface(child: const TextField()),
+              const _RenameField(),
             ],
           ),
         ),
@@ -571,7 +570,7 @@ class _BarsPageState extends State<_BarsPage> {
         ColoredBox(
           color: DifyColors.backgroundBody,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: Align(
               alignment: Alignment.centerLeft,
               child: _ViewSwitch(value: _view, onChanged: (v) => setState(() => _view = v)),
@@ -774,6 +773,26 @@ class _RunPageState extends State<_RunPage> {
 }
 
 // ----- helpers -----
+
+/// The keyboard sheet's field: the design system's input (controlled, like every DifyInput).
+class _RenameField extends StatefulWidget {
+  const _RenameField();
+
+  @override
+  State<_RenameField> createState() => _RenameFieldState();
+}
+
+class _RenameFieldState extends State<_RenameField> {
+  String _value = 'Self-host check';
+
+  @override
+  Widget build(BuildContext context) => DifyInput(
+    value: _value,
+    placeholder: 'App name',
+    semanticLabel: 'App name',
+    onChanged: (v) => setState(() => _value = v),
+  );
+}
 
 class _Section extends StatelessWidget {
   const _Section(this.title, {required this.child});
