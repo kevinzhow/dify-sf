@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
@@ -69,6 +70,10 @@ List<({Json row, int? index})> displayRows(List<Json> data, Json emptyRow, bool 
 /// and the checked toggles) whose cells stay editable, at touch size (48 px rows; the text field, the select and the
 /// checkbox are 48 px nodes), with Delete under a "…" in a column of its own inside the table's borders (the header and
 /// the rows without a key keep that column empty, so the columns line up) and on a long press.
+///
+/// Every edit (a cell, Delete) applies to its row by the row's identity in the latest [data], so a select's sheet or a
+/// field open while a collaborator adds, removes or moves rows still edits its own row, writes only that cell, and
+/// writes nothing once the row is gone.
 class GenericTable extends StatefulWidget {
   const GenericTable({
     super.key,
@@ -99,40 +104,112 @@ class GenericTable extends StatefulWidget {
 class _GenericTableState extends State<GenericTable> {
   String get _primaryKey => widget.columns.where((c) => c.key == 'key' || c.key == 'name').firstOrNull?.key ?? 'key';
 
-  void _update(int? index, String key, Object? value) {
+  /// Each data row's identity, in step with [GenericTable.data]: the rows are keyed by it (an open select, a focused
+  /// field and the "…" stay with their row when rows are added, removed or moved above it), and every edit finds its
+  /// row by it when it applies. The rows are plain maps without ids: identities follow them across a new list by the
+  /// row's key, then its content, then its place ([_follow]).
+  late List<Object> _ids = [for (final _ in widget.data) Object()];
+
+  /// The identity of the trailing virtual row; a value typed there appends a row that keeps it (the field keeps the
+  /// focus), and a new virtual row gets a new one.
+  Object _virtual = Object();
+
+  /// What this table last handed to [GenericTable.onChange] and its rows' identities: the base the next list is
+  /// matched against (it may come back normalised, or with a row renamed by that very edit).
+  ({List<Json> data, List<Object> ids})? _sent;
+
+  @override
+  void didUpdateWidget(GenericTable old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.data, widget.data)) {
+      final base = _sent ?? (data: old.data, ids: _ids);
+      _ids = _follow(base.data, base.ids, widget.data);
+      if (_ids.contains(_virtual)) _virtual = Object();
+    }
+    _sent = null;
+  }
+
+  /// The identities of [next]'s rows: each takes the identity of the first unclaimed row of [data] with the same
+  /// key, else the same content, else at the same place; a row matching none is new.
+  List<Object> _follow(List<Json> data, List<Object> ids, List<Json> next) {
+    final primary = _primaryKey;
+    final free = List<bool>.filled(data.length, true);
+    final out = List<Object?>.filled(next.length, null);
+    void claim(bool Function(Json a, Json b) same) {
+      for (final (i, row) in next.indexed) {
+        if (out[i] != null) continue;
+        for (var j = 0; j < data.length; j++) {
+          if (free[j] && same(data[j], row)) {
+            free[j] = false;
+            out[i] = ids[j];
+            break;
+          }
+        }
+      }
+    }
+
+    claim((a, b) => _present(b[primary]) && '${a[primary]}' == '${b[primary]}');
+    claim(mapEquals);
+    for (final (i, _) in next.indexed) {
+      if (out[i] == null && i < data.length && free[i]) {
+        free[i] = false;
+        out[i] = ids[i];
+      }
+    }
+    return [for (final id in out) id ?? Object()];
+  }
+
+  void _send(List<Json> data, List<Object> ids) {
+    _sent = (data: data, ids: ids);
+    widget.onChange(data);
+  }
+
+  /// Sets [key] to [value] in the row [id] of the table as it is when the edit applies (a select's sheet or a field
+  /// may have been open while a collaborator added, removed or moved rows): only that cell changes, on the latest
+  /// rows; the virtual row appends one; a row no longer there takes nothing.
+  void _update(Object id, String key, Object? value) {
     final data = widget.data;
     if (widget.readonly) return;
-    if (index != null && index < data.length) {
-      widget.onChange([
-        for (final (i, r) in data.indexed) i == index ? {...r, key: value} : r,
-      ]);
+    if (id == _virtual) {
+      _send(
+        [
+          ...data,
+          {...widget.emptyRowData, key: value},
+        ],
+        [..._ids, _virtual],
+      );
       return;
     }
-    widget.onChange([
-      ...data,
-      {...widget.emptyRowData, key: value},
-    ]);
-  }
-
-  /// Deletes the row whose primary key is [key], from the table as it is when the action runs (a phone's action
-  /// sheet may have been open while a collaborator added, removed or changed rows): the row at [at] if it still has
-  /// that key, else the first that has it; nothing once no row has it. The other rows are the latest ones.
-  void _remove(String key, int at) {
-    final data = widget.data, primary = _primaryKey;
-    if (widget.readonly) return;
-    final index = at < data.length && '${data[at][primary] ?? ''}' == key
-        ? at
-        : data.indexWhere((r) => '${r[primary] ?? ''}' == key);
+    final index = _ids.indexOf(id);
     if (index < 0) return;
-    widget.onChange([
-      for (final (i, r) in data.indexed)
-        if (i != index) r,
-    ]);
+    _send([
+      for (final (i, r) in data.indexed) i == index ? {...r, key: value} : r,
+    ], _ids);
   }
 
-  Widget _cell(TableColumn c, Json row, int? index, bool phone) {
+  /// Deletes the row [id] from the table as it is when the action runs (a phone's action sheet may have been open
+  /// while a collaborator added, removed or changed rows): the other rows are the latest ones; nothing once the row is
+  /// gone.
+  void _remove(Object id) {
+    final data = widget.data;
+    if (widget.readonly) return;
+    final index = _ids.indexOf(id);
+    if (index < 0) return;
+    _send(
+      [
+        for (final (i, r) in data.indexed)
+          if (i != index) r,
+      ],
+      [
+        for (final (i, x) in _ids.indexed)
+          if (i != index) x,
+      ],
+    );
+  }
+
+  Widget _cell(TableColumn c, Json row, int? index, Object id, bool phone) {
     final readonly = widget.readonly;
-    void change(Object? v) => _update(index, c.key, v);
+    void change(Object? v) => _update(id, c.key, v);
     final value = row[c.key];
     return switch (c.type) {
       ColumnType.input => _InputCell(
@@ -233,21 +310,20 @@ class _GenericTableState extends State<GenericTable> {
                   ),
                 ),
               for (final (i, r) in rows.indexed)
-                _TableRow(
-                  key: ValueKey('row-$i'),
-                  label: '${r.row[primary] ?? ''}',
-                  name: _rowName(r.row),
-                  last: i == rows.length - 1,
-                  hasContent: _present(r.row[primary]),
-                  moreColumn: moreColumn,
-                  onDelete: !w.readonly && r.index != null && _present(r.row[primary])
-                      ? () => _remove('${r.row[primary]}', r.index!)
-                      : null,
-                  children: [
-                    for (final (j, c) in w.columns.indexed)
-                      _sized(c, j == w.columns.length - 1, _cell(c, r.row, r.index, phone)),
-                  ],
-                ),
+                if (r.index == null ? _virtual : _ids[r.index!] case final id)
+                  _TableRow(
+                    key: ValueKey(id),
+                    label: '${r.row[primary] ?? ''}',
+                    name: _rowName(r.row),
+                    last: i == rows.length - 1,
+                    hasContent: _present(r.row[primary]),
+                    moreColumn: moreColumn,
+                    onDelete: !w.readonly && r.index != null && _present(r.row[primary]) ? () => _remove(id) : null,
+                    children: [
+                      for (final (j, c) in w.columns.indexed)
+                        _sized(c, j == w.columns.length - 1, _cell(c, r.row, r.index, id, phone)),
+                    ],
+                  ),
             ],
           ),
         ),
@@ -318,12 +394,16 @@ class _TableRowState extends State<_TableRow> {
     final phone = DifyTouch.compactOf(context);
     if (!phone) return _row(showBin: true);
     final delete = widget.onDelete;
-    if (delete == null) return _row(showBin: false, more: widget.moreColumn ? const SizedBox(width: _moreWidth) : null);
+    // One shape whether the row can be deleted or not: a row that gets its key as it is typed (the empty row) keeps
+    // its cells, so the field being typed in keeps the focus and its caret.
     return DifyActionRow.builder(
       label: widget.label,
       semanticLabel: widget.name,
-      actions: [DifyActionRow.delete(delete)],
-      builder: (context, more) => _row(showBin: false, more: more),
+      actions: [if (delete != null) DifyActionRow.delete(delete)],
+      builder: (context, more) => _row(
+        showBin: false,
+        more: more ?? (widget.moreColumn ? const SizedBox(width: _moreWidth) : null),
+      ),
     );
   }
 

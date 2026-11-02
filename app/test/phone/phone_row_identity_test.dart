@@ -4,7 +4,7 @@
 // its own change on the latest list (rows added or changed meanwhile survive). At 411x914.
 //
 // The first seven cases are Winnie's review tests (pr90_row_identity_review2_test.dart: 4, review7: 1, review8: 2),
-// adapted to this suite's harness.
+// adapted to this suite's harness; her review17 (a webhook cell's type picker) is in the last group.
 
 import 'package:dify_sf_app/src/design/dify_theme.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
@@ -328,5 +328,197 @@ void main() {
     expect(names(), ['new']);
     expect(t.takeException(), isNull);
     await unmount(t);
+  });
+
+  group('webhook table cells edit their own row (Winnie review17 and more)', () {
+    /// A table (name input, type select) whose rows another client can change.
+    Future<StateSetter> pumpTable(WidgetTester t, List<_Json> Function() rows, void Function(List<_Json>) set) async {
+      phoneWindow(t);
+      late StateSetter update;
+      await t.pumpWidget(
+        DifyApplication(
+          theme: difyTheme(),
+          home: DifyPage(
+            edgeToEdge: true,
+            body: StatefulBuilder(
+              builder: (context, s) {
+                update = s;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+                  child: GenericTable(
+                    title: 'Query parameters',
+                    columns: const [
+                      TableColumn(key: 'name', title: 'Name', type: ColumnType.input),
+                      TableColumn(
+                        key: 'type',
+                        title: 'Type',
+                        type: ColumnType.select,
+                        options: [(name: 'String', value: 'string'), (name: 'Number', value: 'number')],
+                      ),
+                    ],
+                    data: rows(),
+                    onChange: (next) => update(() => set(next)),
+                    emptyRowData: const {'name': '', 'type': ''},
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await settle(t, 400);
+      return update;
+    }
+
+    // Winnie's pr90_table_selector_identity_review17_test.dart, adapted: in "remove" the picker closes with its row
+    // (rows follow their identity), so Number is tapped only if the picker is still open; either way nothing is
+    // written.
+    for (final change in ['none', 'insert', 'remove']) {
+      testWidgets('Webhook type picker targets its original row after $change', (t) async {
+        var rows = <_Json>[
+          {'name': 'alpha', 'type': 'string'},
+          {'name': 'beta', 'type': 'string', 'description': 'original'},
+        ];
+        try {
+          final update = await pumpTable(t, () => rows, (next) => rows = next);
+          await t.tap(find.bySemanticsLabel('Type, String').first);
+          await settle(t, 600);
+          expect(find.text('Number'), findsOneWidget);
+          if (change == 'insert') {
+            update(
+              () => rows = [
+                {'name': 'new', 'type': 'string'},
+                rows[0],
+                {...rows[1], 'description': 'updated'},
+              ],
+            );
+          }
+          if (change == 'remove') {
+            update(
+              () => rows = [
+                {...rows[1], 'description': 'updated'},
+              ],
+            );
+          }
+          await settle(t, 300);
+          if (change == 'remove') {
+            expect(find.text('Number'), findsNothing, reason: "alpha's picker closed with alpha");
+          } else {
+            await t.tap(find.text('Number'));
+          }
+          await settle(t, 700);
+          if (change == 'none') {
+            expect(rows, [
+              {'name': 'alpha', 'type': 'number'},
+              {'name': 'beta', 'type': 'string', 'description': 'original'},
+            ]);
+          }
+          if (change == 'insert') {
+            expect(rows, [
+              {'name': 'new', 'type': 'string'},
+              {'name': 'alpha', 'type': 'number'},
+              {'name': 'beta', 'type': 'string', 'description': 'updated'},
+            ], reason: 'the picker was opened for alpha; preserve new and beta');
+          }
+          if (change == 'remove') {
+            expect(rows, [
+              {'name': 'beta', 'type': 'string', 'description': 'updated'},
+            ], reason: 'alpha no longer exists; discard the selection');
+          }
+          expect(t.takeException(), isNull);
+        } finally {
+          await unmount(t);
+        }
+      });
+    }
+
+    testWidgets("B's type picker after A was deleted elsewhere and B moved: the pick goes to B, C keeps its own type", (
+      t,
+    ) async {
+      var rows = <_Json>[
+        {'name': 'a', 'type': 'string'},
+        {'name': 'b', 'type': 'string'},
+        {'name': 'c', 'type': 'string', 'description': 'old'},
+      ];
+      final update = await pumpTable(t, () => rows, (next) => rows = next);
+      await t.tap(find.bySemanticsLabel('Type, String').at(1));
+      await settle(t, 600);
+      // Another user deletes a and edits c: b is first now, c where b was.
+      update(
+        () => rows = [
+          rows[1],
+          {'name': 'c', 'type': 'string', 'description': 'new'},
+        ],
+      );
+      await settle(t, 300);
+      await t.tap(find.text('Number'));
+      await settle(t, 700);
+      expect(rows, [
+        {'name': 'b', 'type': 'number'},
+        {'name': 'c', 'type': 'string', 'description': 'new'},
+      ]);
+      expect(t.takeException(), isNull);
+      await unmount(t);
+    });
+
+    for (final insertMidway in [false, true]) {
+      testWidgets('typing in B\'s name one character at a time: every character lands in B, the field keeps the focus '
+          'and the caret${insertMidway ? ', also when another user inserts a row above B midway' : ''}', (t) async {
+        var rows = <_Json>[
+          {'name': 'a', 'type': 'string'},
+          {'name': 'b', 'type': 'string'},
+        ];
+        final update = await pumpTable(t, () => rows, (next) => rows = next);
+        await t.tap(find.byWidgetPredicate((w) => w is EditableText && w.controller.text == 'b'));
+        await settle(t, 300);
+        final focused = find.byWidgetPredicate((w) => w is EditableText && w.focusNode.hasFocus);
+        final node = t.widget<EditableText>(focused).focusNode;
+        var text = 'b';
+        for (final ch in 'xyz'.split('')) {
+          if (insertMidway && ch == 'y') {
+            update(
+              () => rows = [
+                {'name': 'new', 'type': 'number'},
+                ...rows,
+              ],
+            );
+            await settle(t, 300);
+          }
+          text += ch;
+          t.testTextInput.updateEditingValue(
+            TextEditingValue(
+              text: text,
+              selection: TextSelection.collapsed(offset: text.length),
+            ),
+          );
+          await settle(t, 100);
+          expect(node.hasFocus, isTrue, reason: 'after "$text": the same field has the focus');
+          final field = t.widget<EditableText>(focused);
+          expect(field.focusNode, same(node));
+          expect(field.controller.selection, TextSelection.collapsed(offset: text.length), reason: 'the caret');
+        }
+        expect([for (final r in rows) r['name']], [if (insertMidway) 'new', 'a', 'bxyz']);
+        expect(rows.last['type'], 'string');
+
+        // The empty row: a typed name appends a row, and the field keeps the focus as the row gets its key.
+        final empty = find.byWidgetPredicate((w) => w is EditableText && w.controller.text.isEmpty);
+        await t.tap(empty.last);
+        await settle(t, 300);
+        final emptyNode = t.widget<EditableText>(focused).focusNode;
+        for (final value in ['d', 'd1']) {
+          t.testTextInput.updateEditingValue(
+            TextEditingValue(
+              text: value,
+              selection: TextSelection.collapsed(offset: value.length),
+            ),
+          );
+          await settle(t, 100);
+          expect(emptyNode.hasFocus, isTrue, reason: 'the new row keeps the focus after "$value"');
+        }
+        expect(rows.last, {'name': 'd1', 'type': ''});
+        expect(t.takeException(), isNull);
+        await unmount(t);
+      });
+    }
   });
 }
