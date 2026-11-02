@@ -341,11 +341,20 @@ void main() {
     expect(find.byType(WorkflowNodePanel), findsNothing);
     expect(e.c.selectedNodeId, 'code', reason: 'back closed the panel, the selection stays');
 
+    // Run step: the phone's sheets take the request (its form or its result as sheets, batch 4b; the demo's code step
+    // may also be refused by its check, with Dify's toast); the settings stay closed.
     await t.tap(find.byKey(const ValueKey('phone-node-run')));
     await settle(t, 600);
-    expect(e.phone.settingsNodeId, 'code', reason: 'the single run happens in the panel');
-    expect(find.byType(WorkflowNodePanel), findsOneWidget);
-    expect(await systemBack(t), isTrue);
+    expect(e.store.pendingSingleRun.value, isNull);
+    expect(e.phone.settingsNodeId, isNull);
+    expect(find.byType(WorkflowNodePanel), findsNothing);
+    if (find.byKey(const ValueKey('phone-step-input-sheet')).evaluate().isNotEmpty) {
+      expect(await systemBack(t), isTrue);
+      await settle(t, 600);
+      expect(find.byKey(const ValueKey('phone-step-input-sheet')), findsNothing);
+    }
+    e.phone.singleRunNodeId = null;
+    await settle(t, 300);
 
     // Add next: the picker names the anchor; the block is inserted after it and selected.
     final before = e.c.doc.nodes.keys.toSet();
@@ -590,21 +599,28 @@ void main() {
     ]) {
       expect(find.textContaining(label), findsOneWidget, reason: label);
     }
-    // The variable inspect panel opens as a page; back closes it.
+    // The variable inspect panel opens as a sheet (batch 4b); back closes it.
     await t.tap(find.text(_tw('debug.variableInspect.title')));
     await settle(t, 800);
     expect(e.store.showVariableInspectPanel.value, isTrue);
-    expect(find.byKey(const ValueKey('phone-variable-inspect')), findsOneWidget);
+    expect(find.byKey(const ValueKey('phone-inspect-sheet')), findsOneWidget);
     expect(await systemBack(t), isTrue);
+    await settle(t, 600);
     expect(e.store.showVariableInspectPanel.value, isFalse);
 
-    // Version history: the canvas browses versions with the restoring bars; back leaves it.
+    // Version history: the canvas browses versions with the restoring bars and the list as a sheet; back lowers the
+    // list to its peek, closes it, then leaves the versions.
     await t.tap(find.text(_tp('versions')));
     await settle(t, 800);
     expect(e.store.isRestoring.value, isTrue);
     expect(find.byKey(const ValueKey('phone-restoring-bar')), findsOneWidget);
     expect(find.byKey(const ValueKey('phone-restore')), findsOneWidget);
+    expect(find.byKey(const ValueKey('phone-versions-sheet')), findsOneWidget);
+    expect(await systemBack(t), isTrue, reason: 'lowers the version list to its peek');
+    await settle(t, 600);
     expect(await systemBack(t), isTrue, reason: 'closes the version list');
+    await settle(t, 600);
+    expect(find.byKey(const ValueKey('phone-versions-sheet')), findsNothing);
     expect(e.store.isRestoring.value, isTrue);
     expect(await systemBack(t), isTrue, reason: 'leaves the versions');
     expect(e.store.isRestoring.value, isFalse);

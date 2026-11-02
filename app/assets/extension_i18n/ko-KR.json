@@ -117,7 +117,11 @@
     "organize": "정리",
     "zoom": "확대/축소",
     "generate": "AI로 생성",
-    "connectionDetails": "연결 세부 정보"
+    "connectionDetails": "연결 세부 정보",
+    "runSucceeded": "성공",
+    "runFailed": "실패",
+    "runStopped": "중지됨",
+    "runPaused": "일시 중지됨"
   },
   "workflow": {
     "mobile.steps.addStep": "단계 추가",

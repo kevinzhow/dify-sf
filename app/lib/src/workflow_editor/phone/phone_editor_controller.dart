@@ -103,6 +103,17 @@ class PhoneEditorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  String? _singleRunNodeId;
+
+  /// The node whose single-step run the run sheet shows (null: none); set when a step starts running, cleared when
+  /// that sheet closes.
+  String? get singleRunNodeId => _singleRunNodeId;
+  set singleRunNodeId(String? value) {
+    if (value == _singleRunNodeId) return;
+    _singleRunNodeId = value;
+    notifyListeners();
+  }
+
   /// A long press on the canvas (what is under the finger, and where on the canvas): the phone chrome opens an action
   /// sheet instead of the desktop context menu. Set by the phone chrome while it is shown.
   void Function(WorkflowContextMenuTarget target, Offset canvasPoint)? onCanvasLongPress;

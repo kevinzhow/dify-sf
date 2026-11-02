@@ -149,7 +149,11 @@
     "organize": "Organize",
     "zoom": "Zoom",
     "generate": "Generate with AI",
-    "connectionDetails": "Connection details"
+    "connectionDetails": "Connection details",
+    "runSucceeded": "Succeeded",
+    "runFailed": "Failed",
+    "runStopped": "Stopped",
+    "runPaused": "Paused"
   },
   "workflow": {
     "mobile.steps.addStep": "Add step",

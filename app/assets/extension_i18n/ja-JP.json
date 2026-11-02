@@ -117,7 +117,11 @@
     "organize": "整列",
     "zoom": "ズーム",
     "generate": "AI で生成",
-    "connectionDetails": "接続の詳細"
+    "connectionDetails": "接続の詳細",
+    "runSucceeded": "成功",
+    "runFailed": "失敗",
+    "runStopped": "停止済み",
+    "runPaused": "一時停止中"
   },
   "workflow": {
     "mobile.steps.addStep": "ステップを追加",

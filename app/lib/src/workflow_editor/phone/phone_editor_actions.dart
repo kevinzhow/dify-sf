@@ -28,8 +28,10 @@ import '../header/workflow_header.dart' show HeaderInNormal;
 import '../node_insertion/insert_block.dart';
 import '../operator/actions.dart' show ExportImageFormat, OperatorActions, OperatorOptions;
 import '../operator/view_workflow_history.dart' show historyEntries, historyEntryText;
+import '../run/run_scope.dart' show WorkflowRunScope;
 import '../store/store.dart';
 import 'phone_editor_controller.dart';
+import 'phone_editor_sheets.dart' show PhoneEditorPanels, PhoneEditorSheets;
 import 'steps_view_slot.dart';
 
 String _tw(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('workflow', key, params);
@@ -53,6 +55,7 @@ class PhoneEditorConfig {
     this.sessionDetails,
     this.publisher,
     this.stepsView,
+    this.panels,
   });
 
   final EditorController controller;
@@ -86,6 +89,9 @@ class PhoneEditorConfig {
 
   /// Builds the Steps view; null: [workflowStepsView].
   final StepsViewBuilder? stepsView;
+
+  /// The editor's other panels, which the phone shows in sheets ([PhoneEditorSheets]); null: none.
+  final PhoneEditorPanels? panels;
 }
 
 /// The phone editor's actions on [context] (inside the editor: its store, header and block selector scopes).
@@ -212,11 +218,9 @@ class PhoneEditorActions {
     }
   }
 
-  /// Runs (or stops) the node alone: the panel runs it on its last-run tab, so the panel opens.
-  void runStep(String nodeId) {
-    actions.runStep(nodeId);
-    phone?.openSettings(nodeId);
-  }
+  /// Runs (or stops) the node alone: its input form shows as a sheet when it needs values, and its result in the run
+  /// sheet ([PhoneEditorSheets] takes the request when the node's settings are not open).
+  void runStep(String nodeId) => actions.runStep(nodeId);
 
   /// The app bar's Run: Preview in a chatflow; otherwise the only start option directly, or a sheet of them. An
   /// option whose node has checklist items is refused with Dify's toast.
@@ -229,6 +233,12 @@ class PhoneEditorActions {
       if (d.facts.checklist.any((n) => n.id == o.nodeId)) {
         d.toast?.call(HeaderToastType.error, _tw('panel.checklistTip'));
         return;
+      }
+      // The run sheet stays open with a finished run's outcome; Run starts a new run (Dify's Run would close the
+      // panel), and the run sheet shows it rather than a step's run.
+      phone?.singleRunNodeId = null;
+      if (store.showDebugAndPreviewPanel.value) {
+        WorkflowRunScope.maybeOf(context)?.run.handleCancelDebugAndPreviewPanel();
       }
       d.onRun?.call(o);
     }
@@ -251,7 +261,12 @@ class PhoneEditorActions {
     );
   }
 
-  void stopRun() => data.onStopRun?.call('${store.workflowRunningData.value?['task_id'] ?? ''}');
+  void stopRun() {
+    // Dify opens variable inspect when a run stops (the desktop's bottom panel); a phone keeps the run sheet in view.
+    final inspecting = store.showVariableInspectPanel.value;
+    data.onStopRun?.call('${store.workflowRunningData.value?['task_id'] ?? ''}');
+    if (!inspecting) store.setShowVariableInspectPanel(false);
+  }
 
   // ----- adding -----
 

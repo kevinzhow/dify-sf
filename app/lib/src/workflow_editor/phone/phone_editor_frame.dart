@@ -2,7 +2,8 @@
 /// (back, the app's name with its save state and collaborators, Run, "…"), the Steps | Canvas switch with the
 /// checklist's issues, the view, and a bottom bar (the toolbar, or what is selected on the canvas). The canvas has no
 /// floating desktop chrome: two small buttons (pan / select mode, fit to screen); everything else is in the bars and
-/// the "…" sheet. The panels take the whole area under the app bar. Android back closes the newest layer first.
+/// the "…" sheet. The node's settings take the whole area under the app bar; the run and the other panels are sheets
+/// ([PhoneEditorSheets]). Android back closes the newest layer first.
 library;
 
 import 'dart:async';
@@ -24,9 +25,9 @@ import '../header/workflow_header.dart' show HeaderInRestoring;
 import '../node_insertion/insert_block.dart' show InsertOnEdge;
 import '../operator/actions.dart' show OperatorReadOnly;
 import '../store/store.dart';
-import '../variable_inspect/panel.dart' show InspectPanel;
 import 'phone_editor_actions.dart';
 import 'phone_editor_controller.dart';
+import 'phone_editor_sheets.dart';
 import 'steps_view_slot.dart';
 
 export 'phone_editor_actions.dart' show PhoneEditorActions, PhoneEditorConfig;
@@ -52,6 +53,9 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
   PhoneEditorController? _phone;
   WorkflowStore? _store;
 
+  /// The run, its input forms and the other panels as sheets.
+  late final _sheets = PhoneEditorSheets(widget.config.controller);
+
   EditorController get _controller => widget.config.controller;
   CanvasController get _canvas => widget.config.canvas;
   PhoneEditorActions get _actions => PhoneEditorActions(context, widget.config);
@@ -68,18 +72,24 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
     super.didChangeDependencies();
     _store = WorkflowStoreScope.of(context);
     final phone = PhoneEditorScope.maybeOf(context);
-    if (phone == _phone) return;
+    if (phone == _phone) return _bindSheets();
     _phone?.removeListener(_phoneChanged);
     if (_phone?.onCanvasLongPress == _longPress) _phone?.onCanvasLongPress = null;
     _phone = phone
       ?..addListener(_phoneChanged)
       ..onCanvasLongPress = _longPress;
     _phoneChanged();
+    _bindSheets();
+  }
+
+  void _bindSheets() {
+    if (_phone case final phone?) _sheets.bind(context, _controller, _store!, phone, widget.config.panels);
   }
 
   @override
   void didUpdateWidget(PhoneEditorFrame old) {
     super.didUpdateWidget(old);
+    _bindSheets();
     if (old.config.controller != _controller) {
       old.config.controller.removeListener(_documentChanged);
       _controller.addListener(_documentChanged);
@@ -97,6 +107,7 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
     _canvas.touchSelect.value = false;
     _phone?.removeListener(_phoneChanged);
     if (_phone?.onCanvasLongPress == _longPress) _phone?.onCanvasLongPress = null;
+    _sheets.dispose();
     super.dispose();
   }
 
@@ -138,8 +149,9 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
   VoidCallback? _topLayer(PhoneEditorActions a) {
     final store = a.store, phone = _phone;
     if (phone == null) return null;
-    if (store.showVariableInspectPanel.value) return () => store.setShowVariableInspectPanel(false);
     if (phone.settingsNodeId != null) return phone.closeSettings;
+    // The sheets: the modal ones, then the lists and the run sheet (collapsed to their peek first).
+    if (_sheets.backStep() case final step?) return step;
     final panels = <ValueNotifier<bool>, VoidCallback>{
       store.showDebugAndPreviewPanel: () => store.setShowDebugAndPreviewPanel(false),
       store.showEnvPanel: () => store.setShowEnvPanel(false),
@@ -193,7 +205,12 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
         final close = _topLayer(a);
         return DifyBackDismiss(
           enabled: close != null,
-          onDismiss: () => _topLayer(_actions)?.call(),
+          onDismiss: () {
+            _topLayer(_actions)?.call();
+            // A layer that only collapses (a sheet back to its peek) changes nothing this frame listens to: rebuild so
+            // the next layer's back step is held again.
+            if (mounted) setState(() {});
+          },
           child: ColoredBox(
             color: DifyColors.backgroundBody,
             child: Stack(
@@ -225,14 +242,15 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
                                 _bottomBar(a, phone),
                               ],
                             ),
-                            ?config.body.panels,
-                            if (store.showVariableInspectPanel.value) const _InspectPage(),
+                            // The node's settings (the other panels are sheets).
+                            if (phone.settingsNodeId != null) ?config.body.panels,
                           ],
                         ),
                       ),
                     ),
                   ],
                 ),
+                _sheets.modalLayer(),
                 ?config.body.modal,
                 config.body.confirm,
               ],
@@ -261,21 +279,32 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
           ),
         if (steps)
           Positioned.fill(
+            // The run sheet (or a list) rests over the view's end: the last step scrolls above it.
             child: Builder(
-              builder: (context) => (config.stepsView ?? workflowStepsView)(
-                context,
-                StepsViewHost(
-                  controller: _controller,
-                  canvas: _canvas,
-                  actions: () => _actions.actions,
-                  openSettings: (id) => _actions.openSettings(id),
-                  insert: (at) => _actions.insert(at),
-                  showNodeActions: (id) => unawaited(_actions.showNodeSheet(id)),
-                  registerAddAtEnd: (fn) => phone.stepsAddAtEnd = fn,
-                ),
-              ),
+              builder: (context) {
+                final media = MediaQuery.of(context);
+                return MediaQuery(
+                  data: media.copyWith(
+                    padding: media.padding.copyWith(bottom: media.padding.bottom + _sheets.dockedHeight),
+                  ),
+                  child: (config.stepsView ?? workflowStepsView)(
+                    context,
+                    StepsViewHost(
+                      controller: _controller,
+                      canvas: _canvas,
+                      actions: () => _actions.actions,
+                      openSettings: (id) => _actions.openSettings(id),
+                      insert: (at) => _actions.insert(at),
+                      showNodeActions: (id) => unawaited(_actions.showNodeSheet(id)),
+                      registerAddAtEnd: (fn) => phone.stepsAddAtEnd = fn,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
+        // The run sheet and the version and comment lists, over the view and above the bottom bar.
+        _sheets.dockedLayer(),
       ],
     );
   }
@@ -678,32 +707,5 @@ class _CanvasButtons extends StatelessWidget {
         onPressed: () => actions.operator.zoom((c) => c.fitView()),
       ),
     ],
-  );
-}
-
-/// The variable inspect panel as a page under the app bar.
-class _InspectPage extends StatelessWidget {
-  const _InspectPage();
-
-  @override
-  Widget build(BuildContext context) => Positioned.fill(
-    key: const ValueKey('phone-variable-inspect'),
-    child: ColoredBox(
-      color: DifyColors.backgroundBody,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(4, 4, 4, 4 + MediaQuery.paddingOf(context).bottom),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: DifyColors.componentsPanelBg,
-            borderRadius: BorderRadius.circular(DifyRadius.xxl),
-            border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(DifyRadius.xxl),
-            child: MediaQuery.removePadding(context: context, removeBottom: true, child: const InspectPanel()),
-          ),
-        ),
-      ),
-    ),
   );
 }
