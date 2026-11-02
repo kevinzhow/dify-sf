@@ -297,7 +297,7 @@ class _InspectPanelState extends State<InspectPanel> {
                     : crud.resetToLastRunVar(current.nodeId, '${v['id']}'),
               ),
             if (v['value_type'] != 'secret')
-              DifyTouchTarget(child: DifyCopyFeedback(content: InspectRight._copyContent(v['value']))),
+              DifyCopyFeedback(content: InspectRight._copyContent(v['value']), touch: true),
           ],
         ),
         fetching

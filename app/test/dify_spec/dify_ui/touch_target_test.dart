@@ -1,4 +1,5 @@
 // dify-sf phone layout (no Dify spec): window classes, touch metrics and touch-size hit areas.
+import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:flutter/foundation.dart';
 
 import 'phone_harness.dart';
@@ -197,6 +198,36 @@ void main() {
       expect(t.getSemantics(find.bySemanticsLabel('User input fields')).flagsCollection.isToggled, Tristate.isTrue);
       expect(t.getSize(find.byType(DifyTouchIconButton)), const Size(44, 44));
       handle.dispose();
+    });
+  });
+
+  group('DifyCopyFeedback (touch)', () {
+    testWidgets('in a phone sheet\'s header: a 44 px touch icon button named Copy, then Copied for 2 s', (t) async {
+      final copied = <Object?>[];
+      t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') copied.add((call.arguments as Map)['text']);
+        return null;
+      });
+      addTearDown(() => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      await renderControl(t, const Center(child: DifyCopyFeedback(content: 'value', touch: true)));
+      String tr(String key) => DifyI18n.tr('app-overview', 'overview.appInfo.embedded.$key');
+      final button = find.byType(DifyTouchIconButton);
+      expect(t.getSize(button), const Size(44, 44));
+      expect(t.widget<DifyTouchIconButton>(button).label, tr('copy'));
+      expect(find.byType(DifyTooltip), findsNothing, reason: 'no hover tooltip on touch');
+      await t.tap(button);
+      await t.pump();
+      expect(copied, ['value']);
+      expect(t.widget<DifyTouchIconButton>(button).label, tr('copied'));
+      await t.pump(const Duration(seconds: 2));
+      expect(t.widget<DifyTouchIconButton>(button).label, tr('copy'));
+    });
+
+    testWidgets('without touch it stays Dify\'s small icon button with its tooltip', (t) async {
+      await renderControl(t, const Center(child: DifyCopyFeedback(content: 'value')));
+      expect(find.byType(DifyTouchIconButton), findsNothing);
+      expect(find.byType(DifyIconButton), findsOneWidget);
+      expect(find.byType(DifyTooltip), findsOneWidget);
     });
   });
 }

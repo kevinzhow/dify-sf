@@ -16,6 +16,7 @@ library;
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart' show Node;
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
@@ -151,6 +152,8 @@ class PhoneEditorSheets {
     _store?.pendingSingleRun.removeListener(_pendingSingleRun);
     _store?.nodeRunData.removeListener(_nodeRunChanged);
     _store?.workflowRunningData.removeListener(_liveChanged);
+    _liveTick?.cancel();
+    liveTime.dispose();
     for (final c in [run, runInput, chat, stepInput, inspect, variables, comments, versions]) {
       c.dispose();
     }
@@ -178,10 +181,15 @@ class PhoneEditorSheets {
   @visibleForTesting
   static DateTime Function() now = DateTime.now;
 
-  /// The test run's time, counted from the moment it started running here (the sheet's header and the view row's chip
-  /// both read it, whichever shows).
+  /// The test run's time, counted from the moment it started running here.
   DateTime? _liveStart, _liveEnd;
   String? _liveStatus;
+
+  /// The test run's time in seconds, in tenths, moved by one tick every tenth of a second while it runs and frozen
+  /// when it ends: the run sheet's header and the view row's chip both show this value (whichever shows), so they
+  /// agree to the tenth and change together.
+  final liveTime = ValueNotifier<double>(0);
+  Timer? _liveTick;
 
   void _liveChanged() {
     final status = runningStatusOf(_store?.workflowRunningData.value);
@@ -189,13 +197,21 @@ class PhoneEditorSheets {
     if (running && _liveStatus != WorkflowRunningStatus.running) {
       _liveStart = now();
       _liveEnd = null;
+      _liveTick?.cancel();
+      _liveTick = Timer.periodic(const Duration(milliseconds: 100), (_) => _tickLive());
     } else if (!running && _liveStatus == WorkflowRunningStatus.running) {
       _liveEnd = now();
+      _liveTick?.cancel();
+      _liveTick = null;
     }
     _liveStatus = status;
+    _tickLive();
   }
 
-  /// Seconds since the test run started (while it runs; frozen once it ended).
+  // The ticks fall on the tenths since the start, give or take the timer's lateness: the nearest tenth.
+  void _tickLive() => liveTime.value = (liveSeconds * 10).round() / 10;
+
+  /// Seconds since the test run started (while it runs; frozen once it ended), to the millisecond.
   double get liveSeconds {
     final start = _liveStart;
     if (start == null) return 0;
@@ -712,7 +728,7 @@ class _RunSheet extends StatelessWidget {
                   final elapsed = resultOf(data)['elapsed_time'];
                   return _RunHeader(
                     status: status,
-                    counted: () => sheets.liveSeconds,
+                    live: sheets.liveTime,
                     title: _tw('common.run'),
                     run: data?['task_id'] ?? resultOf(data)['workflow_run_id'],
                     seconds: elapsed is num ? elapsed : null,
@@ -877,12 +893,12 @@ class _RunHeader extends StatelessWidget {
     this.onStop,
     this.leading,
     this.tabs,
-    this.counted,
+    this.live,
   });
 
-  /// The run's time while it goes, when it is kept elsewhere (the test run's); null: counted from when this header
-  /// first showed it running.
-  final double Function()? counted;
+  /// The run's time while it goes, when it is kept elsewhere (the test run's, [PhoneEditorSheets.liveTime]); null:
+  /// counted from when this header first showed it running.
+  final ValueListenable<double>? live;
 
   /// A `WorkflowRunningStatus` / `NodeRunningStatus`.
   final String status;
@@ -909,7 +925,7 @@ class _RunHeader extends StatelessWidget {
       run: run,
       running: running,
       seconds: seconds,
-      counted: counted,
+      live: live,
       builder: (context, time) => DifySheetHeader(
         key: const ValueKey('phone-run-sheet-header'),
         leading: Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: [_icon(), ?leading]),
@@ -933,20 +949,20 @@ class _RunHeader extends StatelessWidget {
   }
 }
 
-/// The run's time: counted from when this run was first shown running (tenths of a second, only while it runs),
-/// then the run's own time once it has one.
+/// The run's time: [live] while it runs (from its start, ticking with the view row's chip), else counted from when
+/// this run was first shown running (tenths of a second, only while it runs); then the run's own time once it has one.
 class _RunTime extends StatefulWidget {
   const _RunTime({
     required this.run,
     required this.running,
     required this.seconds,
     required this.builder,
-    this.counted,
+    this.live,
   });
   final Object? run;
   final bool running;
   final num? seconds;
-  final double Function()? counted;
+  final ValueListenable<double>? live;
   final Widget Function(BuildContext context, String? time) builder;
 
   @override
@@ -963,18 +979,33 @@ class _RunTimeState extends State<_RunTime> {
   @override
   void initState() {
     super.initState();
+    widget.live?.addListener(_changed);
     _sync();
   }
 
   @override
   void didUpdateWidget(_RunTime old) {
     super.didUpdateWidget(old);
+    if (old.live != widget.live) {
+      old.live?.removeListener(_changed);
+      widget.live?.addListener(_changed);
+    }
     if (old.run != widget.run) _start = _end = null;
     _sync();
   }
 
+  void _changed() {
+    if (!mounted) return;
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => _changed());
+      return;
+    }
+    setState(() {});
+  }
+
   void _sync() {
-    if (widget.running) {
+    // A live time ticks by itself.
+    if (widget.running && widget.live == null) {
       _start ??= _now;
       _end = null;
       _tick ??= Timer.periodic(const Duration(milliseconds: 100), (_) {
@@ -989,6 +1020,7 @@ class _RunTimeState extends State<_RunTime> {
 
   @override
   void dispose() {
+    widget.live?.removeListener(_changed);
     _tick?.cancel();
     super.dispose();
   }
@@ -1002,13 +1034,15 @@ class _RunTimeState extends State<_RunTime> {
 
   @override
   Widget build(BuildContext context) {
-    final own = widget.seconds;
-    final counted = widget.counted?.call() ?? _counted;
-    final time = !widget.running && own != null
-        ? formatStepSeconds(own)
-        : counted > 0
-        ? formatStepSeconds(counted)
-        : null;
+    final own = widget.seconds, live = widget.live;
+    final String? time;
+    if (!widget.running && own != null) {
+      time = formatStepSeconds(own);
+    } else if (live != null) {
+      time = widget.running || live.value > 0 ? formatStepSeconds(live.value) : null;
+    } else {
+      time = _counted > 0 ? formatStepSeconds(_counted) : null;
+    }
     return widget.builder(context, time);
   }
 }
@@ -1026,7 +1060,6 @@ class _RunChipRow extends StatefulWidget {
 class _RunChipRowState extends State<_RunChipRow> {
   WorkflowStore? _store;
   Listenable? _watched;
-  Timer? _tick;
 
   @override
   void didChangeDependencies() {
@@ -1041,13 +1074,14 @@ class _RunChipRowState extends State<_RunChipRow> {
       store.historyWorkflowData,
       store.isListening,
       store.isRestoring,
+      // The run's time: the same value and tick as the run sheet's header.
+      widget.sheets.liveTime,
     ])..addListener(_changed);
   }
 
   @override
   void dispose() {
     _watched?.removeListener(_changed);
-    _tick?.cancel();
     super.dispose();
   }
 
@@ -1076,29 +1110,18 @@ class _RunChipRowState extends State<_RunChipRow> {
         : runningStatusOf(data) ?? WorkflowRunningStatus.running;
   }
 
-  /// Ticks once a second while a hidden run is going (its time in the chip), not otherwise.
-  void _syncTick(bool running) {
-    if (running) {
-      _tick ??= Timer.periodic(const Duration(seconds: 1), (_) => _changed());
-    } else {
-      _tick?.cancel();
-      _tick = null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final status = _status;
-    _syncTick(status == WorkflowRunningStatus.running);
     if (status == null) return widget.issues(false);
     final running = status == WorkflowRunningStatus.running;
-    final seconds = '${widget.sheets.liveSeconds.floor()} s';
-    final full = running ? '${_stateLabel(status)} · $seconds' : _stateLabel(status);
-    // Ended: the short form is its time beside the outcome's icon ("✓ 3.1 s"), never a bare icon like the issues chip's.
+    // The run sheet's header shows the same time ([PhoneEditorSheets.liveTime] while it runs, the run's own after).
     final elapsed = resultOf(_store!.workflowRunningData.value)['elapsed_time'];
-    final took = formatStepSeconds(elapsed is num ? elapsed : widget.sheets.liveSeconds);
+    final time = formatStepSeconds(!running && elapsed is num ? elapsed : widget.sheets.liveTime.value);
+    final full = running ? '${_stateLabel(status)} · $time' : _stateLabel(status);
+    // Ended: the short form is its time beside the outcome's icon ("✓ 3.1 s"), never a bare icon like the issues chip's.
     Widget chip({required bool compact}) => DifyFilterChip(
-      label: compact ? (running ? seconds : took) : full,
+      label: compact ? time : full,
       semanticLabel: full,
       leading: SizedBox.square(dimension: 16, child: Center(child: _stateIcon(status, 16))),
       onPressed: widget.sheets.reopenRun,
@@ -1141,6 +1164,7 @@ class _RenderFirstThatFits extends RenderBox
   @override
   void performLayout() {
     final loose = BoxConstraints(maxHeight: constraints.maxHeight);
+    final was = _shown;
     _shown = null;
     var child = firstChild;
     while (child != null) {
@@ -1149,6 +1173,8 @@ class _RenderFirstThatFits extends RenderBox
       child = childAfter(child);
     }
     size = constraints.constrain(_shown?.size ?? Size.zero);
+    // Another form shows (the run's time grew, it ended): it is the one read out, the one before leaves the tree.
+    if (_shown != was) markNeedsSemanticsUpdate();
   }
 
   @override

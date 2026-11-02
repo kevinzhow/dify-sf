@@ -167,9 +167,10 @@
     "copy_feedback.dart": {
       "kind": "text-composition",
       "evidence": [
-        "app/test/design_typography_test.dart"
+        "app/test/design_typography_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. No dedicated direct construction test is claimed by this row."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. dify-sf phone layout: `touch: true` is the 44 px DifyTouchIconButton form for a phone sheet's header (Copy / Copied, no hover tooltip), constructed and tapped in touch_target_test.dart; the default form is unchanged."
     },
     "dashed_border.dart": {
       "kind": "layout-or-non-text",

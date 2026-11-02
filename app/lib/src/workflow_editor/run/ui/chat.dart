@@ -947,6 +947,16 @@ class FeatureBar extends StatelessWidget {
             (!const {'citation', 'annotationReply'}.contains(f.$1) || isChatMode))
           f,
     ];
+    // dify-sf: the bar is its own node for assistive technology (its text and, when empty, its tap), not merged into
+    // the node of the conversation around it.
+    return Semantics(
+      container: true,
+      button: enabled.isEmpty && onFeatureBarClick != null,
+      child: _bar(enabled, ta),
+    );
+  }
+
+  Widget _bar(List<(String, String?, String?, Color, String)> enabled, String Function(String) ta) {
     return Container(
       transform: Matrix4.translationValues(0, -8, 0),
       margin: const EdgeInsets.fromLTRB(4, 0, 4, 4),

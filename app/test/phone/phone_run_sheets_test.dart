@@ -35,7 +35,11 @@ import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:dify_sf_app/src/workflow_editor/variable_inspect/panel.dart';
 import 'package:dify_sf_app/src/workflow_editor/variable_inspect/value_content.dart' show ValueContent;
 import 'package:dify_sf_app/src/workflow_editor/variable_panels/variable_panels.dart';
+import 'package:dify_sf_app/src/workflow_editor/version_history/version_history_panel.dart';
+import 'package:dify_sf_app/src/workflow_editor/phone/panel_sheet_scope.dart';
+import 'package:dify_sf_app/src/workflow_editor/run/ui/chat.dart' show FeatureBar;
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -199,6 +203,20 @@ String _tc(String key) => DifyI18n.tr('common', key);
 String _tr(String key) => DifyI18n.tr('run-log', key);
 
 const _windows = [Size(411, 914), Size(360, 780)];
+
+/// The labels of the semantics tree as the platform gets it (traversal order), what TalkBack and uiautomator read.
+List<String> _platformLabels(WidgetTester t) {
+  final out = <String>[];
+  void walk(SemanticsNode n) {
+    if (n.label.isNotEmpty) out.add(n.label);
+    n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder).forEach(walk);
+  }
+
+  for (final view in t.binding.renderViews) {
+    if (view.owner?.semanticsOwner?.rootSemanticsNode case final root?) walk(root);
+  }
+  return out;
+}
 
 /// The close button of the sheet header in [of].
 Finder _close(Finder of) => find.descendant(
@@ -411,7 +429,7 @@ void main() {
       expect(e.runSheet, findsNothing);
       expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.running);
       expect(chip, findsOneWidget);
-      final running = find.bySemanticsLabel(RegExp(r'^Running · \d+ s$'));
+      final running = find.bySemanticsLabel(RegExp(r'^Running · \d+\.\d s$'));
       expect(running, findsOneWidget);
       final row = t.getRect(find.byKey(const ValueKey('phone-view-switch')));
       final shown = t.getRect(runChip());
@@ -421,7 +439,7 @@ void main() {
       // It counts while the run goes.
       final before = t.getSemantics(running).label;
       await settle(t, 1100);
-      expect(t.getSemantics(find.bySemanticsLabel(RegExp(r'^Running · \d+ s$'))).label, isNot(before));
+      expect(t.getSemantics(find.bySemanticsLabel(RegExp(r'^Running · \d+\.\d s$'))).label, isNot(before));
 
       // A tap reopens the sheet at its peek; Back hides it again.
       await t.tap(runChip());
@@ -436,7 +454,8 @@ void main() {
       // It ends while hidden: the chip says so, and stops counting.
       await settle(t, 3000);
       expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.succeeded);
-      expect(find.bySemanticsLabel(_tp('runSucceeded')), findsOneWidget);
+      // Read once (the chip shows one of its forms; the platform's tree has only that one).
+      expect(_platformLabels(t).where((l) => l == _tp('runSucceeded')), hasLength(1));
       // At 360 dp its short form is its time beside the outcome's icon, never a bare check like the issues chip's.
       final label = t.widget<DifyFilterChip>(runChip()).label;
       if (size.width < 400) {
@@ -457,6 +476,62 @@ void main() {
       expect(e.store.workflowRunningData.value, isNull);
       expect(chip, findsNothing);
       expect(find.byKey(const ValueKey('phone-issues')), findsOneWidget);
+      expect(t.takeException(), isNull);
+      await e.dispose();
+    });
+
+    testWidgets('$name: the hidden run\'s chip and the run sheet show the same time, on the same tick', (t) async {
+      final e = await _pump(t, size: size);
+      e.mock.scenario = const MockRunScenario(stepDelay: Duration(seconds: 3));
+      final clock = TestWidgetsFlutterBinding.instance.clock;
+      final chip = find.byKey(const ValueKey('phone-run-chip'));
+      Finder runChip() => find.descendant(of: chip, matching: find.byType(DifyFilterChip)).hitTestable().first;
+      final time = RegExp(r'(\d+\.\d) s$');
+      await t.tap(find.byKey(const ValueKey('phone-run')));
+      await settle(t, 800);
+      await t.enterText(
+        find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)),
+        'q',
+      );
+      await t.pump();
+      await t.tap(find.text(_tw('singleRun.startRun')));
+      final start = clock.now();
+      await settle(t, 600);
+      expect(await systemBack(t), isTrue);
+      await settle(t, 400);
+      // At uneven moments: the chip (hidden sheet), then at that same instant the sheet reopened from it.
+      for (final wait in const [Duration(milliseconds: 730), Duration(milliseconds: 1260), Duration(seconds: 2)]) {
+        await t.pump(wait);
+        final elapsed = clock.now().difference(start).inMilliseconds / 1000;
+        // The run's chip in each of the row's forms (the issues chip beside it aside).
+        final chips = [
+          for (final c in t.widgetList<DifyFilterChip>(
+            find.descendant(of: chip, matching: find.byType(DifyFilterChip)),
+          ))
+            if (c.semanticLabel?.startsWith(_tw('common.running')) ?? false) c,
+        ];
+        expect(chips, hasLength(3));
+        final shown = time.firstMatch(chips.first.semanticLabel!)!.group(1)!;
+        // Each form of the chip (the full one, and at 360 dp the short one) shows that time.
+        for (final c in chips) {
+          expect(time.firstMatch(c.label)?.group(1), shown, reason: c.label);
+        }
+        expect(double.parse(shown), closeTo(elapsed, 0.11), reason: 'no lag: $shown s at $elapsed s');
+        await t.tap(runChip());
+        await t.pump();
+        final subtitle = t.widget<DifySheetHeader>(find.byKey(const ValueKey('phone-run-sheet-header'))).subtitle!;
+        expect(subtitle, '${_tw('common.running')} · $shown s', reason: 'the sheet at the same instant');
+        // A tick later both moved on together.
+        await t.pump(const Duration(milliseconds: 100));
+        final next = time.firstMatch(
+          t.widget<DifySheetHeader>(find.byKey(const ValueKey('phone-run-sheet-header'))).subtitle!,
+        )!;
+        expect(double.parse(next.group(1)!), closeTo(double.parse(shown) + 0.1, 0.001));
+        expect(await systemBack(t), isTrue);
+        await settle(t, 400);
+        expect(e.runSheet, findsNothing);
+      }
+      expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.running);
       expect(t.takeException(), isNull);
       await e.dispose();
     });
@@ -732,15 +807,21 @@ void main() {
     );
   }
 
-  testWidgets('run statuses: a new run starts with every status reset, a chatflow\'s preview leaves none', (t) async {
+  testWidgets('run statuses: the run form shows none, a new run starts with every status reset, a chatflow\'s preview '
+      'leaves none', (t) async {
     final e = await _pump(t);
     await runOnce(e, t);
     expect(e.store.nodesWithInspectVars.value, isNotEmpty);
     expect(find.byKey(const ValueKey('step-status-succeeded')), findsNothing, reason: 'the closed run left none');
-    // A new run: while its first step runs, nothing shows the last run's success (End least of all).
+    // A new run: its form (no run shown yet) shows no status, nor does the run before its own (End least of all).
     e.mock.scenario = const MockRunScenario(stepDelay: Duration(milliseconds: 800));
     await t.tap(find.byKey(const ValueKey('phone-run')));
     await settle(t, 800);
+    expect(e.sheet('phone-run-input-sheet'), findsOneWidget);
+    expect(e.store.showDebugAndPreviewPanel.value, isTrue);
+    expect(e.store.nodesWithInspectVars.value, isNotEmpty, reason: 'the last run\'s values are still there');
+    expect(find.byKey(const ValueKey('step-status-succeeded')), findsNothing, reason: 'the form shows no run');
+    expect(e.canvas.nodeRun.value, isEmpty, reason: 'nor does the canvas');
     await t.enterText(find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)), 'q');
     await t.pump();
     await t.tap(find.text(_tw('singleRun.startRun')));
@@ -764,6 +845,53 @@ void main() {
     expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.succeeded);
     expect(find.byKey(const ValueKey('step-status-succeeded')), findsNWidgets(4), reason: 'the run\'s own statuses');
     await e.dispose();
+  });
+
+  test('run statuses on a phone come only from a run that started: none for the run form, before the run\'s first '
+      'event or in an empty chat preview', () {
+    final store = WorkflowStore();
+    final canvas = CanvasController();
+    var chat = false;
+    final binding = RunCanvasBinding(store, canvas, isChatMode: () => chat)..runOnly = true;
+    void lastRun() => store.nodesWithInspectVars.value = [
+      {'nodeId': 'llm', 'vars': const <Object?>[]},
+    ];
+    // A closed run left its inspect values (Dify's success marks).
+    lastRun();
+    expect(canvas.nodeRun.value, isEmpty);
+    // Run: the form, the panel open without a run.
+    store.setShowDebugAndPreviewPanel(true);
+    store.setShowInputsPanel(true);
+    expect(canvas.nodeRun.value, isEmpty, reason: 'the run form');
+    // Start Run: the run is going before its first event marks the steps waiting; nothing of the last run shows.
+    store.setWorkflowRunningData(createRunningWorkflowState());
+    expect(canvas.nodeRun.value, isEmpty, reason: 'before workflow_started');
+    // The run ended: Dify leaves its success to the inspect values; they show for it.
+    store.setWorkflowRunningData({
+      ...createRunningWorkflowState(),
+      'result': {'status': WorkflowRunningStatus.succeeded},
+    });
+    lastRun();
+    expect(canvas.nodeRun.value['llm']?.status, 'succeeded', reason: 'the run\'s own');
+    // Closed: gone.
+    store
+      ..setShowDebugAndPreviewPanel(false)
+      ..workflowRunningData.value = null;
+    expect(canvas.nodeRun.value, isEmpty);
+    // A chatflow: the preview opens with an empty conversation (none), a message is answered (its values come: its
+    // marks), and a reopened preview is a new conversation again.
+    chat = true;
+    store.setShowDebugAndPreviewPanel(true);
+    expect(canvas.nodeRun.value, isEmpty, reason: 'an empty preview');
+    lastRun();
+    expect(canvas.nodeRun.value['llm']?.status, 'succeeded', reason: 'the answered message\'s');
+    store.setShowDebugAndPreviewPanel(false);
+    expect(canvas.nodeRun.value, isEmpty);
+    store.setShowDebugAndPreviewPanel(true);
+    expect(canvas.nodeRun.value, isEmpty, reason: 'reopened: a new conversation');
+    binding.dispose();
+    canvas.dispose();
+    store.dispose();
   });
 
   testWidgets('a chatflow\'s statuses go when its preview closes', (t) async {
@@ -807,7 +935,7 @@ void main() {
       find.descendant(of: find.byKey(const ValueKey('phone-run-chip')), matching: find.byType(DifyFilterChip)).first,
     );
     // The same clock: a second or two since the start, not the idle time before it.
-    final n = int.parse(RegExp(r'· (\d+) s$').firstMatch(chip.semanticLabel!)!.group(1)!);
+    final n = double.parse(RegExp(r'· (\d+\.\d) s$').firstMatch(chip.semanticLabel!)!.group(1)!);
     expect(n, inInclusiveRange(1, 2), reason: chip.semanticLabel);
     await e.dispose();
   });
@@ -935,6 +1063,188 @@ void main() {
     semantics.dispose();
     await e.dispose();
   });
+
+  testWidgets(
+    'the version list in a sheet: the Latest badge hugs its word, an unnamed version has no empty comment line',
+    (t) async {
+      phoneWindow(t, size: const Size(411, 914), insets: gestureInsets);
+      Widget item(String id, {String name = '', String comment = '', int number = 2}) => VersionHistoryItem(
+        key: ValueKey('item-$id'),
+        item: {
+          'id': id,
+          'version': '2026-11-02 23:50:00.000000',
+          'version_number': number,
+          'marked_name': name,
+          'marked_comment': comment,
+          'created_at': 1762127400,
+          'created_by': {'name': 'Owner'},
+        },
+        currentVersion: null,
+        latestVersionId: 'v2',
+        onClick: (_) {},
+        handleClickActionMenuItem: (_) {},
+        canImportExportDsl: false,
+        isLast: false,
+      );
+      await t.pumpWidget(
+        DifyApplication(
+          theme: difyTheme(),
+          home: DifyPage(
+            body: PanelSheetScope(
+              onClose: () {},
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  item('v2'),
+                  item('v1', name: 'v1 slow count', comment: 'Phone check', number: 1),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pump();
+      final word = find.text(DifyI18n.tr('workflow', 'versionHistory.latest').toUpperCase());
+      expect(word, findsOneWidget);
+      final badge = find.ancestor(of: word, matching: find.byType(Container)).first;
+      // The word, its 5 px padding and 1 px border on each side: not stretched over the row.
+      expect(t.getSize(badge).width, closeTo(t.getSize(word).width + 12, 1));
+      // The unnamed latest version: its time right under its title (the column's 2 px), no empty line between.
+      final v2 = find.byKey(const ValueKey('item-v2'));
+      final title = find.descendant(of: v2, matching: find.textContaining('2')).first;
+      final time = find.descendant(of: v2, matching: find.textContaining('Owner'));
+      expect(
+        t.getTopLeft(time).dy - t.getBottomLeft(find.ancestor(of: title, matching: find.byType(SizedBox)).first).dy,
+        closeTo(2, 0.5),
+      );
+      // A version with a comment keeps it between its title and time.
+      expect(
+        find.descendant(of: find.byKey(const ValueKey('item-v1')), matching: find.text('Phone check')),
+        findsOneWidget,
+      );
+      expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Variable Inspect\'s value page: Copy is a 44 px touch button that says it copied', (t) async {
+    final e = await _pump(t);
+    await runOnce(e, t, query: 'copy me');
+    await overflow(t, _tw('debug.variableInspect.title'));
+    await settle(t, 800);
+    final sheet = e.sheet('phone-inspect-sheet');
+    await t.tap(find.descendant(of: sheet, matching: find.text('query')).first);
+    await settle(t, 600);
+    final header = find.byKey(const ValueKey('inspect-phone-value'));
+    expect(header, findsOneWidget);
+    final copy = DifyI18n.tr('app-overview', 'overview.appInfo.embedded.copy');
+    final button = find.descendant(
+      of: header,
+      matching: find.byWidgetPredicate((w) => w is DifyTouchIconButton && w.label == copy),
+    );
+    expect(button, findsOneWidget);
+    expect(t.getSize(button), const Size(44, 44));
+    t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (_) async => null);
+    addTearDown(() => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    await t.tap(button);
+    await t.pump();
+    final copied = DifyI18n.tr('app-overview', 'overview.appInfo.embedded.copied');
+    expect(
+      find.descendant(
+        of: header,
+        matching: find.byWidgetPredicate((w) => w is DifyTouchIconButton && w.label == copied),
+      ),
+      findsOneWidget,
+    );
+    await settle(t, 2200);
+    expect(button, findsOneWidget, reason: 'back to Copy');
+    await e.dispose();
+  });
+
+  testWidgets('accessibility: in the chat preview the feature bar is its own node, under the input; the conversation '
+      'is not labelled by it', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t, chat: true);
+    await t.tap(find.byKey(const ValueKey('phone-run')));
+    await settle(t, 800);
+    final fields = find.descendant(of: e.sheet('phone-chat-sheet'), matching: find.byType(EditableText));
+    for (var i = 0; i < fields.evaluate().length; i++) {
+      await t.enterText(fields.at(i), 'hello $i');
+      await t.pump();
+    }
+    await t.tap(find.bySemanticsLabel(_tc('operation.send')).first);
+    await settle(t, 3000);
+    final label = DifyI18n.tr('app-debug', 'feature.bar.empty');
+    final nodes = <SemanticsNode>[], sent = <SemanticsNode>[];
+    void walk(SemanticsNode n) {
+      if (n.label == label) nodes.add(n);
+      if (n.label == 'hello 1') sent.add(n);
+      n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder).forEach(walk);
+    }
+
+    for (final view in t.binding.renderViews) {
+      if (view.owner?.semanticsOwner?.rootSemanticsNode case final root?) walk(root);
+    }
+    expect(nodes, hasLength(1));
+    final node = nodes.single;
+    final bar = t.getRect(find.byType(FeatureBar));
+    // Its own bounds (the bar's), not the conversation's.
+    final global = node.transform == null ? node.rect : MatrixUtils.transformRect(node.transform!, node.rect);
+    expect(global.height, lessThan(80), reason: '$global');
+    expect(global.width, closeTo(bar.width, 1), reason: '$global vs $bar');
+    final data = node.getSemanticsData();
+    expect(data.hasAction(SemanticsAction.tap), isTrue, reason: 'it opens the features');
+    expect(data.flagsCollection.isButton, isTrue);
+    // The conversation is read on its own: the message sent is its own node, not under the bar's.
+    expect(sent, hasLength(1));
+    var up = sent.single.parent;
+    while (up != null && up != node) {
+      up = up.parent;
+    }
+    expect(up, isNull, reason: 'the message is not inside the bar\'s node');
+    semantics.dispose();
+    await e.dispose();
+  });
+
+  testWidgets(
+    'accessibility: Add / Edit Environment Variable exposes the form\'s fields and buttons and hides the '
+    'variables sheet behind it',
+    // The form is a DifyPopover shown as a sheet over the variables sheet (a DifySheetPortal): on this base the
+    // nested portal leaves the platform an empty tree (batch 4a fixes nested portals; checked again after the rebase).
+    skip: true,
+    (t) async {
+      final semantics = t.ensureSemantics();
+      final e = await _pump(t);
+      List<String> labels() {
+        final out = <String>[];
+        void walk(SemanticsNode n) {
+          if (n.label.isNotEmpty) out.add(n.label);
+          n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder).forEach(walk);
+        }
+
+        for (final view in t.binding.renderViews) {
+          if (view.owner?.semanticsOwner?.rootSemanticsNode case final root?) walk(root);
+        }
+        return out;
+      }
+
+      await overflow(t, _tw('env.envPanelTitle'));
+      await settle(t, 800);
+      var l = labels();
+      expect(l, contains(_tw('env.envPanelTitle')), reason: 'the variables sheet: $l');
+      final add = _tw('env.envPanelButton');
+      expect(l, contains(add));
+      await t.tap(find.text(add));
+      await settle(t, 800);
+      l = labels();
+      expect(l, contains(_tw('env.modal.title')), reason: 'the form\'s title: $l');
+      expect(l.any((x) => x.contains(_tw('env.modal.namePlaceholder'))), isTrue, reason: 'its name field: $l');
+      expect(l, containsAll([_tc('operation.cancel'), _tc('operation.save')]), reason: 'its buttons: $l');
+      expect(l, isNot(contains(add)), reason: 'the variables sheet behind is hidden: $l');
+      expect(l, isNot(contains(_tw('env.envPanelTitle'))), reason: 'the variables sheet behind is hidden: $l');
+      semantics.dispose();
+      await e.dispose();
+    },
+  );
 
   testWidgets('a step\'s form hugs its field under "Test Run" and the step\'s title', (t) async {
     final e = await _pump(t);

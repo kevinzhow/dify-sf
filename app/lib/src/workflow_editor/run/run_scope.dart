@@ -30,9 +30,10 @@ String canvasStatusOf(DifyJson runData, {bool hasVarValue = false}) =>
 /// [WorkflowStore.edgeRunData] and the nodes with inspect variables (`hasNodeInspectVars`: the success border
 /// without a running status). Only changed entries are replaced, so the canvas touches only the nodes that changed.
 class RunCanvasBinding {
-  RunCanvasBinding(this.store, this.canvas) {
+  RunCanvasBinding(this.store, this.canvas, {bool Function()? isChatMode}) : isChatMode = isChatMode ?? _never {
+    _panel = store.showDebugAndPreviewPanel.value;
     store.nodeRunData.addListener(_syncNodes);
-    store.nodesWithInspectVars.addListener(_syncNodes);
+    store.nodesWithInspectVars.addListener(_inspectChanged);
     store.edgeRunData.addListener(_syncEdges);
     store.workflowRunningData.addListener(_runChanged);
     store.isListening.addListener(_runChanged);
@@ -45,12 +46,18 @@ class RunCanvasBinding {
   final WorkflowStore store;
   final CanvasController canvas;
 
+  /// Chatflow (advanced-chat): its preview's messages run the graph without a workflow run's data.
+  final bool Function() isChatMode;
+  static bool _never() => false;
+
   /// dify-sf phones: the canvas and the Steps view show the current run's statuses only. Dify marks a node with
   /// inspect values as succeeded (`hasVarValue`; after a run it clears the succeeded statuses and leaves the marks to
-  /// that): on a phone that mark shows only while a run is kept (its panel open, or its data not closed) and not on a
-  /// step the run still waits for, so it goes with the closed run and does not show the last run's success during
-  /// the next. No status shows while a version is browsed (its graph is not the run's), and no node is left running
-  /// or waiting once the run has ended (a stop leaves the running node's status as it was).
+  /// that): on a phone that mark shows only for a run that started and is shown, once it has ended (a test run's data
+  /// until it is closed; a chatflow's message answered in the open preview), never for the run form or an empty
+  /// preview, and not on a step the run still waits for. So it goes with the closed run and does not show the last
+  /// run's success while the next is set up or goes. No status shows while a version is browsed (its graph is not the
+  /// run's), and no node is left running or waiting once the run has ended (a stop leaves the running node's status
+  /// as it was).
   bool get runOnly => _runOnly;
   bool _runOnly = false;
   set runOnly(bool value) {
@@ -61,16 +68,30 @@ class RunCanvasBinding {
     _syncEdges();
   }
 
-  /// The run's state as [runOnly] reads it: going (or listening) or not, a version browsed, and a run kept.
+  /// The run's state as [runOnly] reads it: going (or listening) or not, a version browsed, and a run shown.
   (bool, bool, bool) _run = (false, false, false);
 
   (bool, bool, bool) get _runNow => (
     resultOf(store.workflowRunningData.value)['status'] == NodeRunningStatus.running || store.isListening.value,
     store.isRestoring.value,
-    store.showDebugAndPreviewPanel.value || store.workflowRunningData.value != null,
+    store.workflowRunningData.value != null || _chatAnswered,
   );
 
+  /// Whether the run panel (the debug and preview panel) was open, and whether a chatflow's message was answered in it
+  /// since it opened (its inspect values came while it was open).
+  bool _panel = false, _chatAnswered = false;
+
+  void _inspectChanged() {
+    if (_panel && isChatMode()) _chatAnswered = true;
+    _syncNodes();
+  }
+
   void _runChanged() {
+    final panel = store.showDebugAndPreviewPanel.value;
+    if (panel != _panel) {
+      _panel = panel;
+      _chatAnswered = false;
+    }
     final now = _runNow;
     if (now == _run) return;
     _run = now;
@@ -96,7 +117,7 @@ class RunCanvasBinding {
       if (canvas.nodeRun.value.isNotEmpty) canvas.nodeRun.value = const {};
       return;
     }
-    final withVars = _runOnly && !kept
+    final withVars = _runOnly && (!kept || going)
         ? const <Object?>{}
         : {for (final n in store.nodesWithInspectVars.value) n['nodeId']};
     final ended = _runOnly && !going;
@@ -138,7 +159,7 @@ class RunCanvasBinding {
 
   void dispose() {
     store.nodeRunData.removeListener(_syncNodes);
-    store.nodesWithInspectVars.removeListener(_syncNodes);
+    store.nodesWithInspectVars.removeListener(_inspectChanged);
     store.edgeRunData.removeListener(_syncEdges);
     store.workflowRunningData.removeListener(_runChanged);
     store.isListening.removeListener(_runChanged);
@@ -228,7 +249,7 @@ class WorkflowRunHostState extends State<WorkflowRunHost> {
       if (issue['openInlineAgentPanel'] == true) store.setOpenInlineAgentPanelNodeId(id);
     },
   );
-  late final binding = RunCanvasBinding(store, widget.canvas);
+  late final binding = RunCanvasBinding(store, widget.canvas, isChatMode: () => widget.isChatMode?.call() ?? false);
   late final _viewport = CanvasRunViewport(widget.canvas);
   final _singleRuns = <String, SingleRunController>{};
 

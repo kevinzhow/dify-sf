@@ -417,6 +417,24 @@ class _VersionHistoryItemState extends State<VersionHistoryItem> {
     final comment = '${item['marked_comment'] ?? ''}';
     final creator = '${_map(item['created_by'])['name'] ?? ''}';
     final showMenu = !w.hideActionMenu && !isDraft;
+    // dify-sf: in a phone sheet the Latest badge hugs its word (Dify's `shrink-0`) and an empty comment takes no line
+    // (Dify's empty `div`).
+    final inSheet = PanelSheetScope.maybeOf(context) != null;
+    final latest = Container(
+      height: 20,
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: DifyColors.componentsBadgeBgDimm,
+        borderRadius: BorderRadius.circular(DifyRadius.md),
+        border: Border.all(color: DifyColors.textAccentSecondary),
+      ),
+      child: DifyText(
+        _w('versionHistory.latest').toUpperCase(),
+        DifyType.system2xsMediumUppercase,
+        color: DifyColors.textAccentSecondary,
+      ),
+    );
     final content = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 4,
@@ -457,30 +475,14 @@ class _VersionHistoryItemState extends State<VersionHistoryItem> {
                           color: isSelected ? DifyColors.textAccent : DifyColors.textSecondary,
                         ),
                       ),
-                      if (isLatest)
-                        Flexible(
-                          child: Container(
-                            height: 20,
-                            padding: const EdgeInsets.symmetric(horizontal: 5),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: DifyColors.componentsBadgeBgDimm,
-                              borderRadius: BorderRadius.circular(DifyRadius.md),
-                              border: Border.all(color: DifyColors.textAccentSecondary),
-                            ),
-                            child: DifyText(
-                              _w('versionHistory.latest').toUpperCase(),
-                              DifyType.system2xsMediumUppercase,
-                              color: DifyColors.textAccentSecondary,
-                            ),
-                          ),
-                        ),
+                      if (isLatest) inSheet ? latest : Flexible(child: latest),
                     ],
                   ),
                 ),
               ),
               if (!isDraft) ...[
-                DifyText(comment, DifyType.systemXsRegular, color: DifyColors.textSecondary, maxLines: null),
+                if (comment.isNotEmpty || !inSheet)
+                  DifyText(comment, DifyType.systemXsRegular, color: DifyColors.textSecondary, maxLines: null),
                 DifyText(
                   '${formatVersionTime((item['created_at'] as num?) ?? 0)} · $creator',
                   DifyType.systemXsRegular,
