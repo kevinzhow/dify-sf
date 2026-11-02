@@ -282,20 +282,34 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     _scroll.jumpTo((p.pixels + delta).clamp(p.minScrollExtent, p.maxScrollExtent));
   }
 
-  /// Whether row [key] is on screen whole, clear of the system bar and the chrome's toolbar at the bottom.
+  /// What covers the list's bottom besides the system bar and the toolbar during a reveal (the node settings sheet):
+  /// the window's y from which it is covered.
+  double? _coveredFromY;
+
+  /// Whether row [key] is on screen whole, clear of the system bar and the chrome's toolbar at the bottom (and of a
+  /// sheet over the list, [_coveredFromY]).
   bool _fullyVisible(String key) {
     final box = _boxOf(key);
     final viewport = _scroll.position.context.storageContext.findRenderObject();
     if (box == null || viewport is! RenderBox) return false;
     final top = box.localToGlobal(Offset.zero, ancestor: viewport).dy;
-    final bottomCover = MediaQuery.paddingOf(context).bottom + widget.bottomInset;
+    final bottomCover = MediaQuery.paddingOf(context).bottom + widget.bottomInset + _sheetCover(viewport);
     return top >= 0 && top + box.size.height <= _scroll.position.viewportDimension - bottomCover;
   }
 
+  /// How much of [viewport]'s bottom the sheet over the list covers.
+  double _sheetCover(RenderBox viewport) {
+    final y = _coveredFromY;
+    if (y == null) return 0;
+    return (viewport.localToGlobal(Offset(0, viewport.size.height)).dy - y).clamp(0.0, viewport.size.height);
+  }
+
   /// Scrolls node [id]'s row into view (lazily built rows are reached in a few jumps); [highlight] marks it for a
-  /// moment.
-  void revealNode(String id, {bool highlight = false}) {
+  /// moment. [coveredFromY]: a sheet covers the window from this y down (the phone's node settings at half), so the row
+  /// goes above it.
+  void revealNode(String id, {bool highlight = false, double? coveredFromY}) {
     if (!mounted) return;
+    _coveredFromY = coveredFromY;
     _layout = _cache.layoutOf(_doc);
     final index = _layout.rowOfNode(id);
     if (index == null) return;
@@ -316,10 +330,15 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
       final ctx = _rows[key];
       if (ctx != null && ctx.mounted && _boxOf(key) != null) {
         if (_fullyVisible(key)) return;
+        final viewport = _scroll.position.context.storageContext.findRenderObject();
+        final visible = viewport is RenderBox && viewport.size.height > 0
+            ? 1 - _sheetCover(viewport) / viewport.size.height
+            : 1.0;
         unawaited(
           Scrollable.ensureVisible(
             ctx,
-            alignment: 0.3,
+            // Where a third of the uncovered list is.
+            alignment: 0.3 * visible,
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOutCubic,
           ),

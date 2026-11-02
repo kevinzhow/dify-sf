@@ -86,6 +86,40 @@ Future<_Editor> _pump(
   return e;
 }
 
+/// A long flow (Start, twelve code steps, End), so a step can sit under the half sheet and the list can scroll it up.
+void _longWorkflow(EditorController c) {
+  final nodes = <Node>[];
+  void add(String id, String type, String title, Map<String, Object?> data) => nodes.add(
+    nodeFromDify(
+      {
+        'id': id,
+        'position': {'x': nodes.length * 300, 'y': 0},
+        'data': {'type': type, 'title': title, ...data},
+      },
+      Document(nodes: nodes),
+      id: id,
+    ),
+  );
+  add('l-start', 'start', 'Start', {'variables': <Object?>[]});
+  for (var i = 1; i <= 12; i++) {
+    add('l-$i', 'code', 'Step $i', {
+      'code_language': 'python3',
+      'code': 'def main() -> dict:\n    return {}\n',
+      'variables': <Object?>[],
+      'outputs': <String, Object?>{},
+    });
+  }
+  add('l-end', 'end', 'End', {'outputs': <Object?>[]});
+  final ids = [for (final n in nodes) n.id];
+  c.applyGraphChange(
+    event: HistoryEvent.nodeAdd,
+    removeNodes: [...c.doc.nodes.keys],
+    addNodes: nodes,
+    addEdges: [for (var i = 0; i + 1 < ids.length; i++) Edge(id: 'le-$i', source: ids[i], target: ids[i + 1])],
+  );
+  c.selectNode(null);
+}
+
 /// The LLM step's title: a long node name.
 const _llmTitle = 'Summarize the customer request in one sentence';
 
@@ -109,6 +143,7 @@ void _difyWorkflow(EditorController c) {
     'variables': [
       {'variable': 'query', 'label': 'Query', 'type': 'text-input', 'required': true},
       {'variable': 'customer_request_text_in_full', 'label': 'Request', 'type': 'paragraph', 'required': false},
+      {'variable': 'attachment', 'label': 'Attachment', 'type': 'file', 'required': false},
     ],
   });
   add('n-llm', 'llm', _llmTitle, {
@@ -155,6 +190,7 @@ void _difyWorkflow(EditorController c) {
 final _sheet = find.byKey(const Key('node-settings-sheet'));
 final _header = find.byKey(const Key('node-settings-header'));
 final _scrims = find.byKey(const ValueKey('dify-sheet-scrim'));
+final _membersPage = find.byWidgetPredicate((w) => '${w.key}'.contains('var-members-page-'));
 
 String _tw(String key) => DifyI18n.tr('workflow', key);
 String _tc(String key) => DifyI18n.tr('common', key);
@@ -331,6 +367,10 @@ void main() {
     expect(box.height, greaterThanOrEqualTo(DifyTouch.controlHeight));
     final name = _inSheet(find.byType(DifyInput)).first;
     expect(t.getRect(name).bottom, lessThanOrEqualTo(box.top + 0.5), reason: 'the name above the value');
+    // Every text field is 44 px on a phone (DifyInput).
+    for (final input in _inSheet(find.byType(DifyInput)).evaluate()) {
+      expect((input.renderObject! as RenderBox).size.height, greaterThanOrEqualTo(44));
+    }
 
     // The picker: "Insert variable", a full-height sheet over the settings, no keyboard.
     await t.tap(trigger);
@@ -496,4 +536,118 @@ void main() {
       await e.dispose();
     });
   }
+
+  testWidgets('a step opened in the lower half of the Steps view is revealed above the half sheet', (t) async {
+    final e = await _pump(t);
+    _longWorkflow(e.c);
+    await settle(t, 800);
+    final view = find.byType(WorkflowStepsView);
+    final half = 914 / 2 - gestureInsets.bottom;
+    // The lowest step card in view that the half sheet would cover.
+    String? low;
+    for (var i = 12; i >= 1; i--) {
+      final f = find.descendant(of: view, matching: find.text('Step $i'));
+      if (f.evaluate().isEmpty) continue;
+      final r = t.getRect(f.first);
+      if (r.top > half && r.bottom < t.getRect(find.byKey(const ValueKey('phone-toolbar'))).top) {
+        low = 'Step $i';
+        break;
+      }
+    }
+    expect(low, isNotNull, reason: 'a step under the half sheet\'s top');
+    await t.tap(find.descendant(of: view, matching: find.text(low!)).first);
+    await settle(t, 1200);
+    expect(_sheet, findsOneWidget);
+    final card = t.getRect(find.descendant(of: view, matching: find.text(low)).first);
+    expect(card.bottom, lessThanOrEqualTo(_sheetTop(t)), reason: '$low revealed above the sheet');
+    expect(card.top, greaterThanOrEqualTo(t.getRect(find.byKey(const ValueKey('phone-view-switch'))).bottom));
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('object variables: the members open as a page of the variable sheet; back returns; a member is '
+      'picked', (t) async {
+    final e = await _pump(t);
+    await _openFromSteps(t, 'End');
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final trigger = _inSheet(find.byKey(const Key('var-reference-picker-trigger'))).first;
+    await _scrollTo(t, trigger);
+    await t.tap(trigger);
+    await settle(t, 800);
+    expect(find.text(_insertVariable), findsOneWidget);
+    // No hover panel on a phone: a chevron opens the members as a page of the sheet.
+    final members = find.byKey(const ValueKey('var-members-attachment'));
+    await t.ensureVisible(members);
+    await settle(t, 300);
+    expect(t.getSize(find.ancestor(of: members, matching: find.byType(DifyTouchArea))).height, 48);
+    await t.tap(members);
+    await settle(t, 600);
+    expect(find.byKey(const ValueKey('var-members-page-attachment')), findsOneWidget);
+    expect(find.byType(PickerStructurePanel), findsNothing);
+    // Android back returns to the list, the sheet stays.
+    expect(await systemBack(t), isTrue);
+    expect(find.byKey(const ValueKey('var-members-page-attachment')), findsNothing);
+    expect(find.text(_insertVariable), findsOneWidget);
+    // The page's back button too; then a member is picked.
+    await t.tap(members);
+    await settle(t, 600);
+    await t.tap(find.descendant(of: _membersPage, matching: find.byType(DifyAppBarBackButton)));
+    await settle(t, 600);
+    expect(_membersPage, findsNothing);
+    await t.tap(members);
+    await settle(t, 600);
+    final name = find.byKey(const ValueKey('var-member-name'));
+    expect(t.getSize(name).height, 48);
+    await t.tap(name);
+    await settle(t, 800);
+    expect(find.text(_insertVariable), findsNothing);
+    expect(find.descendant(of: trigger, matching: find.textContaining('name')), findsWidgets);
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('the prompt editor\'s insert-variable button: dismissed without a choice, its "/" goes again', (t) async {
+    final e = await _pump(t);
+    await _openFromSteps(t, _llmTitle);
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final editor = _inSheet(find.byType(DifyPromptEditor)).first;
+    await _scrollTo(t, editor);
+    final state = t.state<DifyPromptEditorState>(editor);
+    final before = state.controller.prompt;
+    final button = find.descendant(
+      of: _inSheet(find.byType(DifyPromptEditorPanel)).first,
+      matching: find.bySemanticsLabel(_tw('common.insertVarTip')),
+    );
+    for (final close in ['back', 'close']) {
+      // Dify's `/` trigger needs a word boundary before it: the caret at the start.
+      state.controller.selection = const TextSelection.collapsed(offset: 0);
+      await t.tap(button.first);
+      await settle(t, 800);
+      expect(find.byKey(const Key('prompt-editor-picker-sheet')), findsOneWidget, reason: close);
+      if (close == 'back') {
+        expect(await systemBack(t), isTrue);
+      } else {
+        // The sheet fills the window (its list): its header's close.
+        await t.tap(
+          find.descendant(
+            of: find.byKey(const Key('prompt-editor-picker-sheet')),
+            matching: find.byType(DifyTouchIconButton),
+          ),
+        );
+        await settle(t, 800);
+      }
+      expect(find.byKey(const Key('prompt-editor-picker-sheet')), findsNothing, reason: close);
+      expect(state.controller.prompt, before, reason: '$close: the "/" the button typed is gone');
+      expect(_sheet, findsOneWidget, reason: close);
+    }
+    // A "/" the user typed stays when the sheet is dismissed.
+    state.controller
+      ..selection = TextSelection.collapsed(offset: state.controller.text.length)
+      ..insertText('/');
+    await settle(t, 800);
+    expect(await systemBack(t), isTrue);
+    expect(state.controller.prompt, '$before/');
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
 }

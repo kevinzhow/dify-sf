@@ -95,6 +95,10 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
 
   /// The node the phone's settings sheet showed last (it keeps showing it while it slides away).
   Node? _sheetNode;
+
+  /// The settings sheet's position: once it rests at half, the Steps view reveals the step above it.
+  final _sheet = DifySheetController();
+  String? _revealed;
   final _nodes = <String, (String, String, Map<String, Value>)>{};
   final _edges = <String, Edge>{};
 
@@ -133,6 +137,7 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
 
   @override
   void dispose() {
+    _sheet.dispose();
     widget.controller.removeListener(_documentChanged);
     _store?.workflowCanvasWidth.removeListener(_limitPreviewWidth);
     _store?.previewPanelWidth.removeListener(_limitPreviewWidth);
@@ -206,6 +211,10 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
     final panelNode = phone == null ? custom : null;
     final sheetNode = phone != null && custom != null && phone.settingsNodeId == custom.id ? custom : null;
     if (sheetNode != null) _sheetNode = sheetNode;
+    if (phone != null && sheetNode?.id != _revealed) {
+      _revealed = sheetNode?.id;
+      if (sheetNode != null) _revealAbove(phone, sheetNode.id);
+    }
     final sheet = phone == null ? null : _settingsSheet(phone, sheetNode);
     return ListenableBuilder(
       listenable: Listenable.merge([
@@ -292,12 +301,26 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
     );
   }
 
+  /// Once the sheet opened for [nodeId] is laid out (it shows a frame after it opens), the Steps view (when it shows)
+  /// brings that step above the sheet's top.
+  void _revealAbove(PhoneEditorController phone, String nodeId, [int frames = 0]) =>
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || phone.settingsNodeId != nodeId) return;
+        final offset = _sheet.offset;
+        if (offset == null) {
+          if (frames < 5) _revealAbove(phone, nodeId, frames + 1);
+          return;
+        }
+        phone.stepsReveal?.call(nodeId, MediaQuery.sizeOf(context).height - offset);
+      });
+
   /// The phone's node settings: the node panel's content in a sheet, open while [open] is the settings node.
   Widget _settingsSheet(PhoneEditorController phone, Node? open) {
     final shown = open ?? _sheetNode;
     return DifySheetPortal(
       key: const ValueKey('phone-node-settings-sheet'),
       open: open != null,
+      controller: _sheet,
       onDismiss: phone.closeSettings,
       detents: const [DifySheetDetent.half, DifySheetDetent.full],
       barrierLabel: DifyI18n.tr('common', 'operation.close'),

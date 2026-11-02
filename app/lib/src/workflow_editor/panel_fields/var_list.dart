@@ -273,7 +273,6 @@ class _VarListState extends State<VarList> {
           final constant = item.variableType == VarKindType.constant;
           final touch = DifyTouch.compactOf(context);
           final name = DifyInput(
-            height: touch ? DifyTouch.controlHeight : null,
             value: item.variable,
             semanticLabel: nameLabel,
             placeholder: nameLabel,
@@ -492,8 +491,7 @@ class _OutputVarListState extends State<OutputVarList> {
   Widget build(BuildContext context) {
     final w = widget;
     final label = DifyI18n.tr('workflow', 'common.variableNamePlaceholder');
-    // A phone: the name and the type share the row at the select's touch height; remove has its touch box.
-    final touch = DifyTouch.compactOf(context);
+    // A phone: the name and the type share the row (both are 44 px there); remove has its touch box.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -505,7 +503,6 @@ class _OutputVarListState extends State<OutputVarList> {
             children: [
               Expanded(
                 child: DifyInput(
-                  height: touch ? DifyTouch.controlHeight : null,
                   value: key,
                   readOnly: w.readonly,
                   semanticLabel: label,

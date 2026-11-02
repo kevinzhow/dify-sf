@@ -256,9 +256,10 @@
         "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
         "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
-        "app/test/phone/phone_node_sheet_test.dart"
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/phone/phone_panel_pickers_test.dart"
       ],
-      "note": "Does not define a distinct text face; supplied children use the shared typography contract. sheetOnCompact (batch 4a): a picker opens as a bottom sheet in a compact window; DifyPopupSheetScope / DifyFloating.inSheet."
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. sheetOnCompact (batch 4a): a picker opens as a bottom sheet in a compact window; DifyPopupSheetScope / DifyFloating.inSheet. Batch 4a follow-up: sheetOnCompact defaults to dismissible, focusing, trigger-anchored popups (pickers); DifyFloating.surface drops a popup's own surface in a sheet."
     },
     "font_notice.dart": {
       "kind": "text-composition",
@@ -314,9 +315,11 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: at least 44 px tall in a compact window."
     },
     "input_mode.dart": {
       "kind": "text-composition",
@@ -381,7 +384,7 @@
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: a dropdown is a sheet on a phone only as a picker (select style, radio or checkbox items); action menus stay anchored."
     },
     "menu_items.dart": {
       "kind": "text-composition",

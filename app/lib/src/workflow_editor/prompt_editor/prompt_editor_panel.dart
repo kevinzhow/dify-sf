@@ -167,6 +167,8 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
     if (!_asPage) _focusNode.requestFocus();
     final c = _controller;
     if (!c.selection.isValid) c.selection = TextSelection.collapsed(offset: c.text.length);
+    // A phone's sheet takes the `/` back out when it is dismissed without a choice.
+    c.buttonTriggerAt = _asPage ? c.selection.baseOffset : null;
     c.insertText('/');
   }
 

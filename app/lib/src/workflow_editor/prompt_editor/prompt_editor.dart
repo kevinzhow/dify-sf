@@ -154,7 +154,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
   /// closes it (leaving what was typed) before anything under it.
   late final _sheetAnim = AnimationController(vsync: this, duration: DifySheetRecipe.openDuration);
   late final _sheetCurve = CurvedAnimation(parent: _sheetAnim, curve: Curves.easeOutCubic);
-  late final _sheetBack = DifyBackStep(onDismiss: _dismiss);
+  late final _sheetBack = DifyBackStep(onDismiss: _dismissSheet);
 
   bool get _asSheet => mounted && DifyFloating.presentsAsSheet(context);
 
@@ -385,6 +385,18 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
     _updateMenu();
   }
 
+  /// The phone's sheet dismissed without a choice: a `/` the insert-variable button typed goes again; a trigger the
+  /// user typed stays (as Escape leaves it).
+  void _dismissSheet() {
+    final at = controller.buttonTriggerAt, m = _match;
+    controller.buttonTriggerAt = null;
+    if (at != null && m != null && m.trigger == '/' && m.leadOffset == at && m.query.isEmpty) {
+      _removeTrigger();
+      return;
+    }
+    _dismiss();
+  }
+
   /// The list used a key through its own keyboard handler; the editor must not act on it too.
   void _markKeyUsed() {
     _keyUsed = true;
@@ -404,6 +416,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
 
   /// handleSelectWorkflowVariable.
   void _selectVariable(List<String> variables) {
+    controller.buttonTriggerAt = null;
     _markKeyUsed();
     _removeTrigger();
     final PromptBlock? block;
@@ -425,6 +438,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
   }
 
   void _selectOption(PickerOption o) {
+    controller.buttonTriggerAt = null;
     _markKeyUsed();
     if (o.key.isNotEmpty) _removeTrigger();
     o.onSelect?.call();
@@ -999,7 +1013,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
     final options = _options(m);
     return DifyPortalSheetFrame(
       animation: _sheetCurve,
-      onDismiss: _dismiss,
+      onDismiss: _dismissSheet,
       isOpen: () => mounted && _menuVisible,
       child: TextFieldTapRegion(
         child: DifyPopupSheetScope(
@@ -1025,7 +1039,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
                           vars: _workflowVariableOptions,
                           onChange: (sel, _) => _selectVariable(sel),
                           isSupportFileVar: w.isSupportFileVar,
-                          onClose: _dismiss,
+                          onClose: _dismissSheet,
                           showManageInputField: wvb!.showManageInputField,
                           onManageInputField: wvb.onManageInputField,
                           isInCodeGeneratorInstructionEditor: w.currentBlock?.generatorType == PromptGeneratorType.code,

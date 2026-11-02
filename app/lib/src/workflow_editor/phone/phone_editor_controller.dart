@@ -39,6 +39,10 @@ class PhoneEditorController extends ChangeNotifier {
   /// The Steps view's "add at the end of the flow" while it shows (it registers itself); the toolbar's Add uses it
   /// when no step is selected.
   Future<bool> Function()? stepsAddAtEnd;
+
+  /// The Steps view's reveal while it shows (it registers itself): the node settings sheet asks it to bring step
+  /// [nodeId] above the window's y [coveredFromY] (the sheet's top at half).
+  void Function(String nodeId, double coveredFromY)? stepsReveal;
   bool _viewChosen = false, _disposed = false;
   Future<SharedPreferences>? _prefs;
 

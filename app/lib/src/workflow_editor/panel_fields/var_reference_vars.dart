@@ -87,24 +87,16 @@ class SmallBlockIcon extends StatelessWidget {
 
 /// The search field of the list: an InputGroup with `i-ri-search-line` in front and, with text, a clear button.
 class _SearchBox extends StatelessWidget {
-  const _SearchBox({
-    required this.value,
-    required this.onChanged,
-    required this.focusNode,
-    required this.onKey,
-    this.height,
-  });
+  const _SearchBox({required this.value, required this.onChanged, required this.focusNode, required this.onKey});
   final String value;
   final ValueChanged<String> onChanged;
   final FocusNode focusNode;
   final FocusOnKeyEventCallback onKey;
-  final double? height;
 
   @override
   Widget build(BuildContext context) {
     final label = DifyI18n.tr('workflow', 'common.searchVar');
     return DifyInput(
-      height: height,
       focusInteractiveAddons: false,
       value: value,
       onChanged: onChanged,
@@ -191,7 +183,26 @@ class VarReferenceVars extends StatefulWidget {
   State<VarReferenceVars> createState() => _VarReferenceVarsState();
 }
 
+/// One members page of the phone sheet: the variable [item] of node [nodeId] ([title]), the member path below it, and
+/// that level's schema.
+typedef _Members = ({String nodeId, String title, PickerVar item, List<String> path, Map<String, Object?> schema});
+
 class _VarReferenceVarsState extends State<VarReferenceVars> {
+  /// The phone sheet's member pages, newest last; back (the page's or Android's) returns to the one before.
+  final _members = <_Members>[];
+  late final _membersBack = DifyBackStep(onDismiss: _popMembers);
+
+  void _pushMembers(_Members page) {
+    setState(() => _members.add(page));
+    _membersBack.attach(context);
+  }
+
+  void _popMembers() {
+    if (_members.isEmpty) return;
+    setState(_members.removeLast);
+    _members.isEmpty ? _membersBack.detach() : _membersBack.attach(context);
+  }
+
   String _search = '';
   int _selected = -1;
   FocusNode? _ownFocus;
@@ -235,6 +246,7 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
 
   @override
   void dispose() {
+    _membersBack.detach();
     HardwareKeyboard.instance.removeHandler(_onGlobalKey);
     _focus.removeListener(_onFocus);
     _ownFocus?.dispose();
@@ -410,6 +422,7 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
 extension on _VarReferenceVarsState {
   /// The list in a sheet (a phone, mockup 5): search, then each group under its node's header, in 48 px rows.
   Widget _sheet(BuildContext context) {
+    if (_members.isNotEmpty) return _membersPage(_members.last);
     final w = widget;
     final groups = _filtered;
     final selected = _effective;
@@ -439,6 +452,8 @@ extension on _VarReferenceVarsState {
             isSelected: false,
             onActivate: () => _activate(at),
             tapRegionGroup: w.tapRegionGroup,
+            onDrill: (schema) =>
+                _pushMembers((nodeId: g.nodeId, title: g.title, item: v, path: const [], schema: schema)),
           ),
         );
       }
@@ -455,7 +470,6 @@ extension on _VarReferenceVarsState {
               onChanged: _setSearch,
               focusNode: _focus,
               onKey: _onSearchKey,
-              height: DifyTouch.controlHeight,
             ),
           ),
         Expanded(
@@ -474,6 +488,99 @@ extension on _VarReferenceVarsState {
       ],
     );
   }
+}
+
+extension on _VarReferenceVarsState {
+  /// A members page (a phone): back and "Node.variable.member" in a 48 px row, then the members in 48 px rows; a row
+  /// picks that member, a member object's chevron opens its own members.
+  Widget _membersPage(_Members page) {
+    final w = widget;
+    final props = (page.schema['properties'] as Map<String, Object?>?) ?? const {};
+    final title = [page.item.variable, ...page.path].join('.');
+    return Column(
+      key: ValueKey('var-members-page-$title'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 16, 4),
+          child: Row(
+            spacing: 4,
+            children: [
+              DifyAppBarBackButton(onPressed: _popMembers),
+              Expanded(
+                child: DifyText('${page.title}.$title', DifyType.systemSmSemibold, color: DifyColors.textSecondary),
+              ),
+              DifyText(page.item.schemaType ?? 'object', DifyType.systemXsRegular, color: DifyColors.textTertiary),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            primary: true,
+            padding: const EdgeInsets.only(bottom: 12),
+            children: [
+              for (final MapEntry(key: name, value: field) in props.entries)
+                if (field is Map<String, Object?>)
+                  _MemberRow(
+                    name: name,
+                    type: fieldTypeOf(field),
+                    onSelect: () => w.onChange([page.nodeId, page.item.variable, ...page.path, name], page.item),
+                    onDrill: field['type'] == 'object' && field['properties'] is Map
+                        ? () => _pushMembers((
+                            nodeId: page.nodeId,
+                            title: page.title,
+                            item: page.item,
+                            path: [...page.path, name],
+                            schema: field,
+                          ))
+                        : null,
+                  ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A member row of the phone sheet's members page: `{x} name … Type` in 48 px, a chevron to its own members.
+class _MemberRow extends StatelessWidget {
+  const _MemberRow({required this.name, required this.type, required this.onSelect, this.onDrill});
+  final String name, type;
+  final VoidCallback onSelect;
+  final VoidCallback? onDrill;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    child: GestureDetector(
+      key: ValueKey('var-member-$name'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onSelect,
+      child: Container(
+        height: DifyTouch.minTarget,
+        padding: EdgeInsets.only(left: 16, right: onDrill == null ? 16 : 8),
+        child: Row(
+          children: [
+            DifyIcon('vender/solid/development/variable-02', size: 14, color: DifyColors.textAccent),
+            const SizedBox(width: 12),
+            Expanded(child: DifyText(name, DifyType.systemMdRegular, color: DifyColors.textPrimary)),
+            const SizedBox(width: 4),
+            DifyText(type, DifyType.systemXsRegular, color: DifyColors.textTertiary),
+            if (onDrill case final drill?)
+              DifyTouchArea(
+                child: DifyIconButton(
+                  label: name,
+                  onPressed: drill,
+                  icon: DifyIcon('vender/line/arrows/chevron-right', size: 16, color: DifyColors.textTertiary),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// A group's header in the sheet: the node's 24 px block icon (a variable-category icon for the environment,
@@ -627,16 +734,21 @@ class VarReferenceItem extends StatefulWidget {
     this.isSelected = false,
     this.onActivate,
     this.tapRegionGroup,
+    this.onDrill,
   });
 
   final String nodeId, title;
   final PickerVar item;
+
+  /// In a sheet (a phone): opens the variable's members (an object's, a file's) as a page of the sheet, given their
+  /// schema; there is no hover panel there.
   final VarSelected onChange;
   final List<String> objPath;
   final bool isSupportFileVar, isException, isLoopVar, isFlat, isInCodeGeneratorInstructionEditor;
   final bool preferSchemaType, isSelected;
   final VoidCallback? onActivate;
   final Object? tapRegionGroup;
+  final ValueChanged<Map<String, Object?>>? onDrill;
 
   @override
   State<VarReferenceItem> createState() => _VarReferenceItemState();
@@ -775,7 +887,17 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
                 cssCapitalize(type ?? ''),
                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
               ),
-              if (_hasPanel)
+              if (_hasPanel && sheet)
+                // A phone: the members open as a page of the sheet; a tap on the rest of the row picks the variable.
+                DifyTouchArea(
+                  child: DifyIconButton(
+                    key: ValueKey('var-members-${_v.variable}'),
+                    label: _v.variable,
+                    onPressed: () => w.onDrill?.call(_schema),
+                    icon: DifyIcon('vender/line/arrows/chevron-right', size: 16, color: DifyColors.textTertiary),
+                  ),
+                )
+              else if (_hasPanel)
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => setState(() => _pinned = !_pinned),
@@ -794,7 +916,7 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
       ),
     );
     final item = Semantics(selected: w.isSelected, button: true, child: row);
-    if (!_hasPanel) return item;
+    if (!_hasPanel || sheet) return item;
     return DifyFloating(
       open: hovering,
       placement: DifyPlacement.leftStart,

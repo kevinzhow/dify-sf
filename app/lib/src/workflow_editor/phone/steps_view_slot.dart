@@ -13,6 +13,7 @@ import '../../i18n/dify_i18n.dart';
 import '../context_menu/context_menu.dart';
 import '../node_insertion/insert_block.dart';
 import '../steps/workflow_steps_view.dart';
+import 'phone_editor_controller.dart';
 
 /// What the phone chrome hands the Steps view. The view is built inside the editor, so it also finds the editor's
 /// scopes: `WorkflowStoreScope.of` (the store: run data, read-only state), `WorkflowHeaderScope.of(context).graph`
@@ -75,6 +76,7 @@ class _HostedStepsView extends StatefulWidget {
 
 class _HostedStepsViewState extends State<_HostedStepsView> {
   final _view = GlobalKey<WorkflowStepsViewState>();
+  PhoneEditorController? _phone;
 
   @override
   void initState() {
@@ -83,8 +85,21 @@ class _HostedStepsViewState extends State<_HostedStepsView> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The node settings sheet reveals the step it opened for above itself.
+    final phone = PhoneEditorScope.read(context);
+    if (phone == _phone) return;
+    if (_phone?.stepsReveal == _reveal) _phone?.stepsReveal = null;
+    _phone = phone?..stepsReveal = _reveal;
+  }
+
+  void _reveal(String id, double coveredFromY) => _view.currentState?.revealNode(id, coveredFromY: coveredFromY);
+
+  @override
   void dispose() {
     widget.host.registerAddAtEnd?.call(null);
+    if (_phone?.stepsReveal == _reveal) _phone?.stepsReveal = null;
     super.dispose();
   }
 

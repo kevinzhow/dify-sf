@@ -19,6 +19,10 @@ class PromptEditorController extends TextEditingController {
     super.value = TextEditingValue(text: _encode(parsePrompt(prompt, blocks)));
   }
 
+  /// Where the panel's insert-variable button typed its trigger (`/`) to open a phone's picker sheet: the sheet removes
+  /// it again when it is dismissed without a choice (the user did not type it). Null otherwise.
+  int? buttonTriggerAt;
+
   static const _firstCode = 0xE000, _lastCode = 0xF8FF;
 
   final _codeOf = <String, int>{};
