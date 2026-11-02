@@ -137,12 +137,19 @@ class PhoneEditorSheets {
     _store?.pendingSingleRun.removeListener(_pendingSingleRun);
     _store?.nodeRunData.removeListener(_nodeRunChanged);
     _store?.workflowRunningData.removeListener(_liveChanged);
+    _store?.historyWorkflowData.removeListener(_sourceChanged);
+    _store?.isRestoring.removeListener(_sourceChanged);
+    _store?.showDebugAndPreviewPanel.removeListener(_sourceChanged);
     _store = store
       ..pendingSingleRun.addListener(_pendingSingleRun)
       ..nodeRunData.addListener(_nodeRunChanged)
-      ..workflowRunningData.addListener(_liveChanged);
-    _liveStatus = null;
+      ..workflowRunningData.addListener(_liveChanged)
+      ..historyWorkflowData.addListener(_sourceChanged)
+      ..isRestoring.addListener(_sourceChanged)
+      ..showDebugAndPreviewPanel.addListener(_sourceChanged);
+    _liveStatus = _liveRunId = null;
     _liveChanged();
+    _source = _sourceOf(store);
     _singleStatus
       ..clear()
       ..addAll({for (final e in store.nodeRunData.value.entries) e.key: e.value['_singleRunningStatus'] as String?});
@@ -152,8 +159,11 @@ class PhoneEditorSheets {
     _store?.pendingSingleRun.removeListener(_pendingSingleRun);
     _store?.nodeRunData.removeListener(_nodeRunChanged);
     _store?.workflowRunningData.removeListener(_liveChanged);
-    _liveTick?.cancel();
+    _store?.historyWorkflowData.removeListener(_sourceChanged);
+    _store?.isRestoring.removeListener(_sourceChanged);
+    _store?.showDebugAndPreviewPanel.removeListener(_sourceChanged);
     liveTime.dispose();
+    stepTime.dispose();
     for (final c in [run, runInput, chat, stepInput, inspect, variables, comments, versions]) {
       c.dispose();
     }
@@ -181,44 +191,34 @@ class PhoneEditorSheets {
   @visibleForTesting
   static DateTime Function() now = DateTime.now;
 
-  /// The test run's time, counted from the moment it started running here.
-  DateTime? _liveStart, _liveEnd;
-  String? _liveStatus;
+  /// The test run's time ([_RunClock]): the run sheet's header and the view row's chip both show it (whichever
+  /// shows), so they agree and change together. Each run that starts is a new run with its own start, also when it
+  /// follows a run that had not been closed.
+  final liveTime = _RunClock();
 
-  /// The test run's time in seconds: whole seconds while it runs, moved by one tick a second from its start; once it
-  /// ended, its time to the tenth. The run sheet's header and the view row's chip both show this value (whichever
-  /// shows, [_formatRunTime]), so they agree and change together.
-  final liveTime = ValueNotifier<double>(0);
-  Timer? _liveTick;
+  /// The shown step run's time (the run sheet's header): each start of a step, also of the same step again, is a new
+  /// run with its own start.
+  final stepTime = _RunClock();
+  String? _liveStatus, _liveRunId, _stepClockNode;
 
   void _liveChanged() {
-    final status = runningStatusOf(_store?.workflowRunningData.value);
+    final data = _store?.workflowRunningData.value;
+    final status = runningStatusOf(data);
     final running = status == WorkflowRunningStatus.running;
-    if (running && _liveStatus != WorkflowRunningStatus.running) {
-      _liveStart = now();
-      _liveEnd = null;
-      _liveTick?.cancel();
-      _liveTick = Timer.periodic(const Duration(seconds: 1), (_) => _tickLive());
-    } else if (!running && _liveStatus == WorkflowRunningStatus.running) {
-      _liveEnd = now();
-      _liveTick?.cancel();
-      _liveTick = null;
+    final id = data?['task_id'] ?? resultOf(data)['workflow_run_id'];
+    final runId = id == null ? null : '$id';
+    // Another run (its id changed from one it already had) is a new run, as a start is.
+    final another = running && runId != null && _liveRunId != null && runId != _liveRunId;
+    if (running && (_liveStatus != WorkflowRunningStatus.running || another)) {
+      liveTime.start();
+      _liveRunId = runId;
+      // The newest choice shows: the run sheet shows the test run that starts, not a step's run.
+      _phone?.singleRunNodeId = null;
+    } else {
+      if (!running && _liveStatus == WorkflowRunningStatus.running) liveTime.end();
+      if (runId != null) _liveRunId = runId;
     }
     _liveStatus = status;
-    _tickLive();
-  }
-
-  void _tickLive() => liveTime.value = _liveEnd == null
-      // The ticks fall on the whole seconds since the start, give or take the timer's lateness.
-      ? (liveSeconds + 0.05).floorToDouble()
-      : (liveSeconds * 10).round() / 10;
-
-  /// Seconds since the test run started (while it runs; frozen once it ended), to the millisecond.
-  double get liveSeconds {
-    final start = _liveStart;
-    if (start == null) return 0;
-    final d = (_liveEnd ?? now()).difference(start);
-    return d.isNegative ? 0 : d.inMilliseconds / 1000;
   }
 
   // ----- single-step runs -----
@@ -243,20 +243,57 @@ class PhoneEditorSheets {
     store.setInitShowLastRunTab(false);
   }
 
-  /// A step that starts running (from here, the step's form, or its settings) is the run sheet's.
+  /// What the run sheet can show besides a step's run, as last seen: a viewed past run, the version browser, the test
+  /// run's panel.
+  ({Object? history, bool restoring, bool panel}) _source = (history: null, restoring: false, panel: false);
+
+  static ({Object? history, bool restoring, bool panel}) _sourceOf(WorkflowStore store) => (
+    history: store.historyWorkflowData.value,
+    restoring: store.isRestoring.value,
+    panel: store.showDebugAndPreviewPanel.value,
+  );
+
+  /// The newest choice shows in the run sheet: a past run picked from the run history, the version browser entered, or
+  /// the test run's panel opened (Run's form, the chip) replaces a step's run there; the step's run does not come back
+  /// when they close (Dify's run history and version browser also close the run panel).
+  void _sourceChanged() {
+    final store = _store;
+    if (store == null) return;
+    final was = _source, now = _sourceOf(store);
+    _source = now;
+    final picked = now.history != null && !identical(now.history, was.history);
+    if (picked || (now.restoring && !was.restoring) || (now.panel && !was.panel)) _phone?.singleRunNodeId = null;
+  }
+
+  static bool _going(String? status) => status == NodeRunningStatus.running || status == NodeRunningStatus.listening;
+
+  /// A step that starts running (from here, the step's form, or its settings) is the run sheet's: a new run of that
+  /// step, with its own time ([stepTime]), also when the same step runs again.
   void _nodeRunChanged() {
     final store = _store, phone = _phone;
     if (store == null || phone == null) return;
     String? started;
+    var ended = false;
     for (final MapEntry(key: id, value: data) in store.nodeRunData.value.entries) {
       final s = data['_singleRunningStatus'] as String?;
-      if (_singleStatus[id] == s) continue;
+      final was = _singleStatus[id];
+      if (was == s) continue;
       _singleStatus[id] = s;
-      if (s == NodeRunningStatus.running || s == NodeRunningStatus.listening) started = id;
+      if (_going(s) && !_going(was)) started = id;
+      if (!_going(s) && _going(was) && id == _stepClockNode) ended = true;
+    }
+    if (started != null) {
+      _stepClockNode = started;
+      stepTime.start();
+    } else if (ended) {
+      stepTime.end();
     }
     if (started == null) return;
     final id = started;
     void show() {
+      // The newest choice shows: the test run's sheet gives way to the step's run (hidden, not closed: the view row's
+      // chip brings it back), so closing the step's run does not bring the older run back by itself.
+      if (store.showDebugAndPreviewPanel.value && !_panels.isChatMode) store.setShowDebugAndPreviewPanel(false);
       phone.singleRunNodeId = id;
       if (phone.settingsNodeId != id) store.setInitShowLastRunTab(false);
       unawaited(run.animateTo(_runPeek));
@@ -301,10 +338,10 @@ class PhoneEditorSheets {
     final step = phone.singleRunNodeId;
     final history = store.historyWorkflowData.value != null;
     return (
-      run: step != null && controller.doc.nodes.containsKey(step)
-          ? _RunKind.step
-          : history
+      run: history
           ? _RunKind.history
+          : step != null && controller.doc.nodes.containsKey(step)
+          ? _RunKind.step
           : debug && !chat && !inputStage
           ? _RunKind.live
           : null,
@@ -798,6 +835,7 @@ class _RunSheet extends StatelessWidget {
         return _StepRun(
           key: ValueKey('phone-step-run-$id'),
           node: sheets.controller.doc.nodes[id]!,
+          time: sheets.stepTime,
           onClose: close,
           stop: sheets.stopRun,
         );
@@ -808,8 +846,9 @@ class _RunSheet extends StatelessWidget {
 /// A step's run in the run sheet: the step's icon and title, the run's state and time, Stop while it runs, and the
 /// node panel's Last Run view (its result) below.
 class _StepRun extends StatelessWidget {
-  const _StepRun({super.key, required this.node, required this.onClose, required this.stop});
+  const _StepRun({super.key, required this.node, required this.time, required this.onClose, required this.stop});
   final Node node;
+  final ValueListenable<double> time;
   final VoidCallback onClose;
   final void Function(VoidCallback stop) stop;
 
@@ -832,6 +871,7 @@ class _StepRun extends StatelessWidget {
               title: node.title.isEmpty ? _tw('blocks.${node.type}') : node.title,
               leading: SelectorBlockIcon(type: node.type, size: SelectorIconSize.md),
               run: node.id,
+              live: time,
               seconds: elapsed is num ? elapsed : null,
               onStop: c == null ? null : () => stop(c.handleStop),
               onClose: onClose,
@@ -948,6 +988,55 @@ class _RunHeader extends StatelessWidget {
         tabs: tabs,
       ),
     );
+  }
+}
+
+/// A run's time for the run sheet's header and the view row's chip, from [start] (the moment the run starts,
+/// [PhoneEditorSheets.now]) to [end]: whole seconds while the run goes, moved by one tick a second from its start; the
+/// run's time to the tenth once it ended ([_formatRunTime]). A new [start] is a new run: its time starts at 0.
+class _RunClock extends ChangeNotifier implements ValueListenable<double> {
+  DateTime? _start, _end;
+  Timer? _tick;
+  double _value = 0;
+
+  @override
+  double get value => _value;
+
+  void start() {
+    _start = PhoneEditorSheets.now();
+    _end = null;
+    _tick?.cancel();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) => _update());
+    _update(always: true);
+  }
+
+  void end() {
+    if (_start == null || _end != null) return;
+    _end = PhoneEditorSheets.now();
+    _tick?.cancel();
+    _tick = null;
+    _update();
+  }
+
+  double get _seconds {
+    final start = _start;
+    if (start == null) return 0;
+    final d = (_end ?? PhoneEditorSheets.now()).difference(start);
+    return d.isNegative ? 0 : d.inMilliseconds / 1000;
+  }
+
+  void _update({bool always = false}) {
+    // The ticks fall on the whole seconds since the start, give or take the timer's lateness.
+    final next = _end == null ? (_seconds + 0.05).floorToDouble() : (_seconds * 10).round() / 10;
+    if (next == _value && !always) return;
+    _value = next;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
   }
 }
 

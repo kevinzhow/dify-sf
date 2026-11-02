@@ -135,6 +135,14 @@ class _ViewHistoryState extends State<ViewHistory> {
 
 /// A run picked from the history: shown read-only on the canvas (the draft is backed up), the run panels close.
 void _pickRun(DifyJson item, WorkflowHeaderData data, WorkflowStore store, {required VoidCallback close}) {
+  // dify-sf: the phone's "…" offers the run history while versions are browsed (Dify's header does not): the newest
+  // choice shows, so the version browser is left first (its draft comes back, then is backed up for the run).
+  if (store.isRestoring.value) {
+    data.handleLoadBackupDraft?.call();
+    store
+      ..isRestoring.value = false
+      ..setShowWorkflowVersionHistoryPanel(false);
+  }
   store
     ..historyWorkflowData.value = item
     ..showInputsPanel.value = false

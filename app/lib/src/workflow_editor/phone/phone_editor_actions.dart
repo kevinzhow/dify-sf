@@ -715,6 +715,9 @@ class PhoneEditorActions {
       store.setShowWorkflowVersionHistoryPanel(!store.showWorkflowVersionHistoryPanel.value);
       return;
     }
+    // The newest choice shows: a viewed past run is left first (the draft comes back), then the versions are browsed
+    // (Dify's header has no version history while a run is viewed; the phone's "…" has).
+    if (store.historyWorkflowData.value != null) leaveRunHistory();
     phone?.closeSettings();
     HeaderInNormal.startRestoring(store, data, canvas);
   }

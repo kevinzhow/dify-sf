@@ -742,6 +742,282 @@ void main() {
     await settle(t, 300);
   }
 
+  // ----- what the run sheet shows: the newest choice (review of PR #87) -----
+
+  /// Runs [title]'s step from its long press (its form as a sheet when it has inputs).
+  Future<void> runStepOf(_Editor e, WidgetTester t, String title, {String input = 'single'}) async {
+    await t.longPress(find.text(title).first);
+    await settle(t, 800);
+    await t.tap(find.text(_tw('panel.runThisStep')));
+    await settle(t, 800);
+    final form = e.sheet('phone-step-input-sheet');
+    if (form.evaluate().isNotEmpty) {
+      await t.enterText(find.descendant(of: form, matching: find.byType(EditableText)).first, input);
+      await t.pump();
+      await t.tap(find.text(_tw('singleRun.startRun')));
+    }
+  }
+
+  /// "…" → Run History → the first past run.
+  Future<void> pickPastRun(WidgetTester t) async {
+    await t.tap(find.byKey(const ValueKey('phone-editor-more')));
+    await settle(t, 800);
+    await t.ensureVisible(find.text(_tw('common.runHistory')));
+    await t.tap(find.text(_tw('common.runHistory')));
+    await settle(t, 800);
+    await t.tap(find.textContaining('Test Run (', findRichText: true).first);
+    await settle(t, 1000);
+  }
+
+  /// The run sheet's header title.
+  String? sheetTitle(WidgetTester t) {
+    final header = find.byKey(const ValueKey('phone-run-sheet-header'));
+    return header.evaluate().isEmpty ? null : t.widget<DifySheetHeader>(header).title;
+  }
+
+  // Winnie's history5_test (PR #87 review), adapted: it fails on b287c2a8.
+  testWidgets('source: a step\'s result shown, then a past run picked from the run history: the past run shows; going '
+      'back to the editor does not bring the step\'s result back', (t) async {
+    final e = await _pump(t);
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration.zero);
+    await e.scope.run.handleRun({
+      'inputs': {'query': 'q'},
+    });
+    await settle(t, 1000);
+    e.scope.run.handleCancelDebugAndPreviewPanel();
+    await settle(t, 300);
+    await runStepOf(e, t, 'Summarize');
+    await settle(t, 1800);
+    expect(e.phone.singleRunNodeId, 'llm');
+    expect(e.store.nodeRunDataOf('llm')['_singleRunningStatus'], NodeRunningStatus.succeeded);
+    expect(sheetTitle(t), 'Summarize');
+    // Its result stays; a full run is picked from the history.
+    await pickPastRun(t);
+    expect(e.store.historyWorkflowData.value, isNotNull);
+    expect(find.byKey(const ValueKey('phone-history-bar')), findsOneWidget);
+    expect(
+      find.byType(RunPanel),
+      findsOneWidget,
+      reason: 'the picked run shows; singleRunNodeId=${e.phone.singleRunNodeId}',
+    );
+    expect(e.phone.singleRunNodeId, isNull);
+    // Go back to edit: as Dify (its run panel was closed by the pick), nothing shows; not the step's old result.
+    await t.tap(find.text(_tw('common.goBackToEdit')));
+    await settle(t, 800);
+    expect(e.store.historyWorkflowData.value, isNull);
+    expect(e.runSheet, findsNothing);
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('source: a step\'s result shown, then Run: the test run shows', (t) async {
+    final e = await _pump(t);
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration.zero);
+    await runStepOf(e, t, 'Summarize');
+    await settle(t, 1800);
+    expect(sheetTitle(t), 'Summarize');
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration(milliseconds: 600));
+    await t.tap(find.byKey(const ValueKey('phone-run')));
+    await settle(t, 800);
+    await t.enterText(find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)), 'q');
+    await t.pump();
+    await t.tap(find.text(_tw('singleRun.startRun')));
+    await settle(t, 600);
+    expect(e.phone.singleRunNodeId, isNull);
+    expect(sheetTitle(t), _tw('common.run'));
+    expect(find.byKey(const ValueKey('phone-run-sheet-stop')), findsOneWidget, reason: 'the test run, running');
+    await settle(t, 4000);
+    await e.dispose();
+  });
+
+  testWidgets('source: a finished test run shown, then a step run: the step\'s run shows; closing it does not bring '
+      'the test run back (its chip does)', (t) async {
+    final e = await _pump(t);
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration.zero);
+    await t.tap(find.byKey(const ValueKey('phone-run')));
+    await settle(t, 800);
+    await t.enterText(find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)), 'q');
+    await t.pump();
+    await t.tap(find.text(_tw('singleRun.startRun')));
+    await settle(t, 1500);
+    expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.succeeded);
+    expect(sheetTitle(t), _tw('common.run'));
+    await runStepOf(e, t, 'Summarize');
+    await settle(t, 1800);
+    expect(sheetTitle(t), 'Summarize', reason: 'the newest: the step\'s run');
+    expect(e.store.showDebugAndPreviewPanel.value, isFalse, reason: 'the test run is hidden, not closed');
+    // Closing the step's run leaves no sheet; the test run's chip is in the view row and reopens it.
+    await t.tap(_close(e.runHeader));
+    await settle(t, 800);
+    expect(e.runSheet, findsNothing, reason: 'not the older test run, by itself');
+    final chip = find.byKey(const ValueKey('phone-run-chip'));
+    expect(chip, findsOneWidget);
+    await t.tap(find.descendant(of: chip, matching: find.byType(DifyFilterChip)).hitTestable().first);
+    await settle(t, 800);
+    expect(sheetTitle(t), _tw('common.run'));
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('source: a past run shown: no step runs (read-only, as Dify); a step that was running when it was picked '
+      'does not take the sheet when it ends', (t) async {
+    final e = await _pump(t);
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration.zero);
+    await e.scope.run.handleRun({
+      'inputs': {'query': 'q'},
+    });
+    await settle(t, 1000);
+    e.scope.run.handleCancelDebugAndPreviewPanel();
+    await settle(t, 300);
+    // A slow step run, then a past run picked while it runs.
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration(seconds: 3));
+    await runStepOf(e, t, 'Summarize');
+    await settle(t, 300);
+    expect(e.store.nodeRunDataOf('llm')['_singleRunningStatus'], NodeRunningStatus.running);
+    await pickPastRun(t);
+    expect(find.byType(RunPanel), findsOneWidget);
+    await settle(t, 4000);
+    expect(e.store.nodeRunDataOf('llm')['_singleRunningStatus'], isNot(NodeRunningStatus.running));
+    expect(find.byType(RunPanel), findsOneWidget, reason: 'the past run still shows');
+    expect(e.phone.singleRunNodeId, isNull);
+    // A step's long press has no Run this step while a past run is viewed.
+    await t.longPress(find.text('Summarize').first);
+    await settle(t, 800);
+    expect(find.text(_tw('panel.runThisStep')), findsNothing);
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('source: versions browsed, then a past run picked from "…": the versions are left, the past run shows; '
+      'going back returns to the draft', (t) async {
+    final e = await _pump(t);
+    await runOnce(e, t);
+    await t.tap(find.text(_tp('versions')));
+    await settle(t, 800);
+    expect(e.store.isRestoring.value, isTrue);
+    await pickPastRun(t);
+    expect(e.store.isRestoring.value, isFalse, reason: 'the version browser is left');
+    expect(e.sheet('phone-versions-sheet'), findsNothing);
+    expect(e.store.historyWorkflowData.value, isNotNull);
+    expect(find.byKey(const ValueKey('phone-history-bar')), findsOneWidget);
+    expect(find.byType(RunPanel), findsOneWidget);
+    await t.tap(find.text(_tw('common.goBackToEdit')));
+    await settle(t, 800);
+    expect(e.store.historyWorkflowData.value, isNull);
+    expect(e.store.isRestoring.value, isFalse);
+    expect(find.byKey(const ValueKey('phone-restoring-bar')), findsNothing);
+    expect(e.runSheet, findsNothing);
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('source: a past run shown, then Version History from "…": the past run is left, the versions show; '
+      'leaving them returns to the draft', (t) async {
+    final e = await _pump(t);
+    await runOnce(e, t);
+    await pickPastRun(t);
+    expect(e.store.historyWorkflowData.value, isNotNull);
+    await t.tap(find.byKey(const ValueKey('phone-editor-more')));
+    await settle(t, 800);
+    await t.ensureVisible(find.text(_tw('common.versionHistory')));
+    await t.tap(find.text(_tw('common.versionHistory')));
+    await settle(t, 800);
+    expect(e.store.historyWorkflowData.value, isNull, reason: 'the past run is left');
+    expect(e.store.isRestoring.value, isTrue);
+    expect(e.sheet('phone-versions-sheet'), findsOneWidget);
+    expect(e.runSheet, findsNothing);
+    expect(find.byKey(const ValueKey('phone-restoring-bar')), findsOneWidget);
+    await t.tap(find.text(_tw('common.exitVersions')));
+    await settle(t, 800);
+    expect(e.store.isRestoring.value, isFalse);
+    expect(e.store.historyWorkflowData.value, isNull);
+    expect(find.byKey(const ValueKey('phone-history-bar')), findsNothing);
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  // Winnie's rerun9_test (PR #87 review), adapted: it fails on b287c2a8.
+  testWidgets('run time: a step run again (the same step) is a new run: its time starts at 0, not from the first run', (
+    t,
+  ) async {
+    final e = await _pump(t);
+    Future<void> runStep() async {
+      e.store.setPendingSingleRun((nodeId: 'llm', action: SingleRunAction.run));
+      await settle(t, 500);
+      final form = e.sheet('phone-step-input-sheet');
+      if (form.evaluate().isNotEmpty) {
+        await t.enterText(find.descendant(of: form, matching: find.byType(EditableText)).first, 'q');
+        await t.pump();
+        await t.tap(find.text(_tw('singleRun.startRun')));
+      }
+    }
+
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration(milliseconds: 1500));
+    await runStep();
+    await settle(t, 300);
+    expect(e.store.nodeRunDataOf('llm')['_singleRunningStatus'], NodeRunningStatus.running);
+    expect(e.runHeader, findsOneWidget);
+    await settle(t, 2600);
+    expect(e.store.nodeRunDataOf('llm')['_singleRunningStatus'], NodeRunningStatus.succeeded);
+    expect(e.phone.singleRunNodeId, 'llm');
+    await t.pump(const Duration(seconds: 10));
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration(seconds: 5));
+    await runStep();
+    await settle(t, 300);
+    expect(e.store.nodeRunDataOf('llm')['_singleRunningStatus'], NodeRunningStatus.running);
+    final header = t.widget<DifySheetHeader>(e.runHeader);
+    final time = RegExp(r'([0-9]+(?:\.[0-9]+)?)\s*s').firstMatch(header.subtitle ?? '');
+    expect(time, isNotNull, reason: 'subtitle=${header.subtitle}');
+    expect(
+      double.parse(time!.group(1)!),
+      lessThan(2),
+      reason: 'the second run just started; the first run and the 10 s idle do not count: ${header.subtitle}',
+    );
+    await settle(t, 6000);
+    await e.dispose();
+  });
+
+  testWidgets('run time: a test run started again after a finished one left open is a new run, in the sheet and the '
+      'chip', (t) async {
+    final e = await _pump(t);
+    Future<void> start(Duration step) async {
+      e.mock.scenario = MockRunScenario(stepDelay: step);
+      await t.tap(find.byKey(const ValueKey('phone-run')));
+      await settle(t, 800);
+      await t.enterText(
+        find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)),
+        'q',
+      );
+      await t.pump();
+      await t.tap(find.text(_tw('singleRun.startRun')));
+    }
+
+    await start(const Duration(milliseconds: 100));
+    for (
+      var i = 0;
+      i < 40 && runningStatusOf(e.store.workflowRunningData.value) == WorkflowRunningStatus.running;
+      i++
+    ) {
+      await settle(t, 500);
+    }
+    expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.succeeded);
+    expect(e.runSheet, findsOneWidget, reason: 'left open');
+    await t.pump(const Duration(seconds: 10));
+    await start(const Duration(seconds: 3));
+    await settle(t, 300);
+    final subtitle = t.widget<DifySheetHeader>(e.runHeader).subtitle!;
+    expect(subtitle, '${_tw('common.running')} · 0 s');
+    expect(await systemBack(t), isTrue);
+    await settle(t, 400);
+    final chip = t.widget<DifyFilterChip>(
+      find.descendant(of: find.byKey(const ValueKey('phone-run-chip')), matching: find.byType(DifyFilterChip)).first,
+    );
+    // Under a second since the start when the sheet hid, about one by now: not the first run's time or the idle 10 s.
+    expect(chip.semanticLabel, matches(RegExp('^${_tw('common.running')} · [01] s\$')));
+    await settle(t, 30000);
+    await e.dispose();
+  });
+
   for (final size in _windows) {
     testWidgets(
       '${size.width.toInt()}: Variable Inspect is a list, a variable a page with Back; one header, touch rows',
