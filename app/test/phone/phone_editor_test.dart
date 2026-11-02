@@ -333,10 +333,10 @@ void main() {
     await settle(t, 600);
     expect(find.byType(WorkflowNodePanel), findsOneWidget);
     expect(e.phone.settingsNodeId, 'code');
-    // The panel takes the area under the app bar: the canvas is not squeezed beside it.
-    final panels = t.getRect(find.byKey(const ValueKey('phone-panels')));
-    expect(panels.width, 411);
-    expect(panels.top, t.getRect(find.byKey(const ValueKey('phone-editor-app-bar'))).bottom);
+    // Batch 4a: the panel is a bottom sheet over the editor (half the window first), not squeezed beside the canvas.
+    final sheet = t.getRect(find.byKey(const Key('node-settings-sheet')));
+    expect(sheet.width, 411);
+    expect(sheet.top, greaterThan(t.getRect(find.byKey(const ValueKey('phone-editor-app-bar'))).bottom));
     expect(await systemBack(t), isTrue);
     expect(find.byType(WorkflowNodePanel), findsNothing);
     expect(e.c.selectedNodeId, 'code', reason: 'back closed the panel, the selection stays');
@@ -626,12 +626,13 @@ void main() {
     await settle(t, 600);
     await t.tap(find.byKey(const ValueKey('phone-node-settings')));
     await settle(t, 600);
-    await t.tap(find.byKey(const ValueKey('phone-editor-more')));
+    // Batch 4a: the settings are a modal sheet over the app bar; its own "…" opens an action sheet over it.
+    await t.tap(find.byKey(const Key('node-settings-more')));
     await settle(t, 800);
-    expect(find.byType(Scrollable), findsWidgets);
+    expect(find.text(_tw('panel.changeBlock')), findsOneWidget);
 
     expect(await systemBack(t), isTrue, reason: 'the sheet');
-    expect(find.text(_tp('connectionDetails')), findsNothing);
+    expect(find.text(_tw('panel.changeBlock')), findsNothing);
     expect(find.byType(WorkflowNodePanel), findsOneWidget);
     expect(await systemBack(t), isTrue, reason: 'the panel');
     expect(find.byType(WorkflowNodePanel), findsNothing);

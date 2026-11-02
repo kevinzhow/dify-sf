@@ -17,6 +17,7 @@ import '../../editor/undo_manager.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/dify_json.dart';
 import '../block_selector/block_selector.dart' show BlockSelectorPlacements;
+import '../block_selector/selector_widgets.dart' show SelectorBlockIcon, SelectorIconSize;
 import '../code_editor/code_editor.dart';
 import '../context_menu/context_menu.dart';
 import '../node_insertion/insert_block.dart';
@@ -72,6 +73,11 @@ List<({String id, String name})> nodeTargetBranches(Node node) {
 ///
 /// "Run this step" asks for a single run through the store ([WorkflowActions.runStep]); the panel then shows the
 /// Last Run tab and hands the request to [onSingleRun] / [onStopSingleRun] (none yet in dify-sf).
+///
+/// [sheet] is dify-sf's phone presentation (the content of a bottom sheet, [DifySheetPortal]): no width or resize
+/// strip; the header is a [DifySheetHeader] (the block's icon, the editable title over the block's type, Run this
+/// step, the "…" menu as an action sheet, close) with the Settings | Last run tabs in its tab slot; the description
+/// leads the settings. The bodies and the shared sections are the same widgets.
 class WorkflowNodePanel extends StatefulWidget {
   const WorkflowNodePanel({
     super.key,
@@ -80,9 +86,13 @@ class WorkflowNodePanel extends StatefulWidget {
     this.bodies = NodePanelBodies.defaults,
     this.onSingleRun,
     this.onStopSingleRun,
+    this.sheet = false,
   });
 
   final Node node;
+
+  /// The phone's bottom-sheet presentation.
+  final bool sheet;
 
   /// The canvas actions (selection, delete, the "…" menu) on the editor's controller and store.
   final WorkflowActions actions;
@@ -223,8 +233,23 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
     widget.actions.controller.selectNode(null);
   }
 
+  Widget _tabContent() => switch (_tab) {
+    NodePanelTab.settings => SingleChildScrollView(
+      // The sheet's body: on a phone it is the sheet's scrollable (a drag up grows the sheet first).
+      primary: widget.sheet ? true : null,
+      child: _settings(context),
+    ),
+    NodePanelTab.lastRun => NodeLastRun(
+      nodeId: widget.node.id,
+      canSingleRun: canRunBySingle(widget.node.type, isChildNode: parentIdOf(widget.node) != null),
+      onSingleRun: () => widget.actions.runStep(widget.node.id),
+      logs: _logs,
+    ),
+  };
+
   @override
   Widget build(BuildContext context) {
+    if (widget.sheet) return _sheetPanel();
     final panel = ListenableBuilder(
       listenable: widget.actions.readOnlyChanges,
       builder: (context, _) => Column(
@@ -232,17 +257,7 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
         children: [
           // Run this step / Stop follows the node's single run (local run state).
           ValueListenableBuilder(valueListenable: store.nodeRunData, builder: (context, _, _) => _header()),
-          Expanded(
-            child: switch (_tab) {
-              NodePanelTab.settings => SingleChildScrollView(child: _settings(context)),
-              NodePanelTab.lastRun => NodeLastRun(
-                nodeId: widget.node.id,
-                canSingleRun: canRunBySingle(widget.node.type, isChildNode: parentIdOf(widget.node) != null),
-                onSingleRun: () => widget.actions.runStep(widget.node.id),
-                logs: _logs,
-              ),
-            },
-          ),
+          Expanded(child: _tabContent()),
         ],
       ),
     );
@@ -313,6 +328,160 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
         );
       },
       child: box,
+    );
+  }
+
+  // ----- the phone's sheet -----
+
+  /// The panel as a bottom sheet's content: the sheet header with the tabs, then the tab (or the single-run form over
+  /// it, or the special result) filling the rest of the sheet.
+  Widget _sheetPanel() {
+    final body = ListenableBuilder(
+      listenable: _logs,
+      builder: (context, _) => _logs.showSpecialResultPanel
+          ? SingleChildScrollView(primary: true, child: SpecialResultPanel(logs: _logs))
+          : Stack(
+              fit: StackFit.expand,
+              children: [
+                _tabContent(),
+                NodeSingleRunOverlay(node: widget.node, doc: widget.actions.doc),
+              ],
+            ),
+    );
+    return ListenableBuilder(
+      listenable: widget.actions.readOnlyChanges,
+      builder: (context, _) => Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: _tw('panel.nodePanel'),
+        child: Column(
+          key: const Key('node-settings-sheet'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ValueListenableBuilder(valueListenable: store.nodeRunData, builder: (context, _, _) => _sheetHeader()),
+            Expanded(child: body),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sheetHeader() {
+    final a = widget.actions, node = widget.node, c = a.controller;
+    final running = a.isSingleRunning(node.id);
+    final canRun =
+        canRunBySingle(node.type, isChildNode: parentIdOf(node) != null) && a.options.canRun && !a.nodesReadOnly;
+    return DifySheetHeader(
+      key: const Key('node-settings-header'),
+      title: node.title,
+      titleWidget: TitleInput(
+        key: ValueKey('title-${node.id}'),
+        value: node.title,
+        currentVersion: () => c.seenVersion,
+        onCommit: (text, base) => c.setTitle(node.id, text, base: base),
+      ),
+      subtitle: _tw('blocks.${node.type}'),
+      leading: SizedBox.square(
+        dimension: 32,
+        child: FittedBox(
+          child: SelectorBlockIcon(
+            type: node.type,
+            size: SelectorIconSize.md,
+            toolIcon: difyDataOf(node)['provider_icon'],
+          ),
+        ),
+      ),
+      actions: [
+        if (canRun)
+          DifyTouchIconButton(
+            key: const Key('node-settings-run'),
+            label: running ? _tw('debug.variableInspect.trigger.stop') : _tw('panel.runThisStep'),
+            icon: running
+                ? const DifyIcon('vender/line/mediaAndDevices/stop', size: 22)
+                : const RemixIcon('play-large-fill', size: 22),
+            onPressed: () => a.runStep(node.id),
+          ),
+        DifyTouchIconButton(
+          key: const Key('node-settings-more'),
+          label: DifyI18n.tr('common', 'operation.more'),
+          icon: const RemixIcon('more-fill', size: 22),
+          onPressed: _showMoreSheet,
+        ),
+      ],
+      tabs: Row(
+        spacing: 24,
+        children: [
+          for (final (tab, key) in const [
+            (NodePanelTab.settings, 'debug.settingsTab'),
+            (NodePanelTab.lastRun, 'debug.lastRunTab'),
+          ])
+            DifyTab(
+              key: Key('node-settings-tab-${tab.name}'),
+              label: _tw(key),
+              height: DifyTouch.minTarget,
+              padding: EdgeInsets.zero,
+              active: _tab == tab,
+              onPressed: () => _selectTab(tab, clicked: true),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// The panel header's "…" menu as an action sheet (menus.dart nodeActionsMenuItems; Run this step is the sheet
+  /// header's own button).
+  Future<void> _showMoreSheet() {
+    final a = widget.actions, node = widget.node, o = a.options;
+    final meta = a.metaOf(node);
+    final readOnly = a.nodesReadOnly;
+    final id = node.id;
+    final canChangeBlock =
+        !(meta?.isTypeFixed ?? false) && !(meta?.isUndeletable ?? false) && !readOnly && o.onChangeBlock != null;
+    final sourceHandle = a.doc.edges.values.where((e) => e.target == id).firstOrNull?.sourceHandle ?? 'source';
+    final appHref = o.workflowAppHref?.call(node);
+    final helpLink = nodeHelpLink(node.type, chatMode: a.chatMode, product: o.docsProduct);
+    return showDifyActionSheet(
+      context,
+      title: node.title,
+      actions: [
+        if (canChangeBlock)
+          DifyActionSheetAction(
+            label: _tw('panel.changeBlock'),
+            icon: const RemixIcon('exchange-2-line', size: 20),
+            onTap: () => o.onChangeBlock!(id, sourceHandle),
+          ),
+        if (!readOnly && !(meta?.isSingleton ?? false)) ...[
+          DifyActionSheetAction(
+            label: _tw('common.copy'),
+            icon: const RemixIcon('clipboard-line', size: 20),
+            onTap: () => a.copyNodes(id),
+          ),
+          DifyActionSheetAction(
+            label: _tw('common.duplicate'),
+            icon: const RemixIcon('file-copy-2-line', size: 20),
+            onTap: () => a.duplicateNodes(id),
+          ),
+        ],
+        if (appHref != null)
+          DifyActionSheetAction(
+            label: _tw('panel.openWorkflow'),
+            icon: const RemixIcon('external-link-line', size: 20),
+            onTap: () => o.openUrl?.call(appHref),
+          ),
+        if (helpLink != null)
+          DifyActionSheetAction(
+            label: _tw('panel.helpLink'),
+            icon: const RemixIcon('book-open-line', size: 20),
+            onTap: () => o.openUrl?.call(helpLink),
+          ),
+        if (!readOnly && !(meta?.isUndeletable ?? false))
+          DifyActionSheetAction(
+            label: DifyI18n.tr('common', 'operation.delete'),
+            icon: const RemixIcon('delete-bin-line', size: 20),
+            destructive: true,
+            onTap: () => a.deleteNode(id),
+          ),
+      ],
     );
   }
 
@@ -432,9 +601,24 @@ class _WorkflowNodePanelState extends State<WorkflowNodePanel> {
     final props = NodePanelProps(node: node, controller: a.controller, actions: a);
     final broken = [for (final v in node.config.values) ...v.brokenRefs];
     final readOnly = a.nodesReadOnly;
+    final desc = switch (node.config['desc']) {
+      VString(:final value) => value,
+      _ => '',
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // The sheet's header has no room for it: the description leads the settings.
+        if (widget.sheet)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+            child: DescriptionInput(
+              key: ValueKey('desc-${node.id}'),
+              value: desc,
+              currentVersion: () => a.controller.seenVersion,
+              onCommit: (text, base) => a.controller.setConfig(node.id, const ['desc'], VString(text), base: base),
+            ),
+          ),
         if (broken.isNotEmpty) BrokenReferences(broken: broken),
         widget.bodies.of(node.type)(context, props),
         const PanelSplit(),

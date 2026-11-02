@@ -57,6 +57,12 @@ class NodePanelActions extends WorkflowActions {
 ///
 /// The node panel rebuilds when the document changes in a way it shows (the node, any node's title, type or config,
 /// the edges), not when nodes only move.
+///
+/// On a phone ([PhoneEditorScope]) the node panel is a modal bottom sheet over the whole editor ([DifySheetPortal]:
+/// it keeps the editor's scopes), open while the phone's settings node ([PhoneEditorController.settingsNodeId]) is the
+/// selected node: half the window first (the step or canvas above stays visible), pulled up to full; back, the scrim,
+/// a drag down and its close button close it (the selection stays). The other panels take the area under the app
+/// bar.
 class WorkflowPanels extends StatefulWidget {
   const WorkflowPanels({
     super.key,
@@ -86,6 +92,9 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
 
   /// What the node panel showed: the selected node, and per node its title, type and config, and the edges.
   Node? _node;
+
+  /// The node the phone's settings sheet showed last (it keeps showing it while it slides away).
+  Node? _sheetNode;
   final _nodes = <String, (String, String, Map<String, Value>)>{};
   final _edges = <String, Edge>{};
 
@@ -190,13 +199,14 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
   Widget build(BuildContext context) {
     final node = _node;
     final store = _store!;
-    // On a phone a selected node shows its selection bar; its panel opens through the bar's Settings.
+    // On a phone a selected node shows its selection bar; its panel opens through the bar's Settings, as a sheet.
     final phone = PhoneEditorScope.maybeOf(context);
     // Only workflow blocks have a panel (not notes or container starts: Panel renders CUSTOM_NODE only).
-    final panelNode =
-        node != null && reactFlowTypeOf(node) == 'custom' && (phone == null || phone.settingsNodeId == node.id)
-        ? node
-        : null;
+    final custom = node != null && reactFlowTypeOf(node) == 'custom' ? node : null;
+    final panelNode = phone == null ? custom : null;
+    final sheetNode = phone != null && custom != null && phone.settingsNodeId == custom.id ? custom : null;
+    if (sheetNode != null) _sheetNode = sheetNode;
+    final sheet = phone == null ? null : _settingsSheet(phone, sheetNode);
     return ListenableBuilder(
       listenable: Listenable.merge([
         store.showEnvPanel,
@@ -217,7 +227,7 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
             store.showCommentsPanel.value ||
             store.showWorkflowVersionHistoryPanel.value ||
             store.historyWorkflowData.value != null;
-        if (compact && panelNode == null && !otherOpen) return const SizedBox.shrink();
+        if (compact && panelNode == null && !otherOpen) return sheet ?? const SizedBox.shrink();
         final row = WorkflowRightPanelScope(
           panelKey: _panelKey,
           child: _SizeReporter(
@@ -262,17 +272,49 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
           ),
         );
         if (phone == null) return rail;
-        // The phone layout gives the panels the whole area under its app bar (the canvas is not squeezed beside
-        // them): an opaque page whose content keeps clear of the bottom inset.
-        return ColoredBox(
-          key: const ValueKey('phone-panels'),
-          color: DifyColors.backgroundBody,
-          child: Padding(
-            padding: EdgeInsets.only(top: 4, bottom: MediaQuery.paddingOf(context).bottom + 4),
-            child: MediaQuery.removePadding(context: context, removeBottom: true, child: rail),
-          ),
+        // The phone layout gives the other panels the whole area under its app bar (the canvas is not squeezed
+        // beside them): an opaque page whose content keeps clear of the bottom inset.
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(
+              key: const ValueKey('phone-panels'),
+              color: DifyColors.backgroundBody,
+              child: Padding(
+                padding: EdgeInsets.only(top: 4, bottom: MediaQuery.paddingOf(context).bottom + 4),
+                child: MediaQuery.removePadding(context: context, removeBottom: true, child: rail),
+              ),
+            ),
+            ?sheet,
+          ],
         );
       },
+    );
+  }
+
+  /// The phone's node settings: the node panel's content in a sheet, open while [open] is the settings node.
+  Widget _settingsSheet(PhoneEditorController phone, Node? open) {
+    final shown = open ?? _sheetNode;
+    return DifySheetPortal(
+      key: const ValueKey('phone-node-settings-sheet'),
+      open: open != null,
+      onDismiss: phone.closeSettings,
+      detents: const [DifySheetDetent.half, DifySheetDetent.full],
+      barrierLabel: DifyI18n.tr('common', 'operation.close'),
+      builder: (context) => shown == null
+          ? const SizedBox.shrink()
+          : WorkflowRightPanelScope(
+              panelKey: _panelKey,
+              child: WorkflowNodePanel(
+                key: ValueKey('${shown.id}-${shown.type}'),
+                node: shown,
+                actions: _actions,
+                bodies: widget.bodies,
+                onSingleRun: widget.onSingleRun,
+                onStopSingleRun: widget.onStopSingleRun,
+                sheet: true,
+              ),
+            ),
     );
   }
 
