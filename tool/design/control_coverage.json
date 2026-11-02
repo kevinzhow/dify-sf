@@ -55,6 +55,13 @@
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
+    "bottom_toolbar.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/bottom_toolbar_test.dart"
+      ],
+      "note": "dify-sf phone toolbar and selection bar (no Dify counterpart): 11 px DifyPhoneType labels and system-md-semibold titles through DifyText; geometry, hit areas and colours are tested."
+    },
     "button.dart": {
       "kind": "text-composition",
       "evidence": [
