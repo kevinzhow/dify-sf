@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../dify_tokens.g.dart';
 import 'selection.dart';
@@ -61,7 +62,37 @@ class DifyApplication extends StatelessWidget {
     home: DifySelectionRegion(child: home),
     theme: theme,
     navigatorKey: navigatorKey,
-    builder: builder,
+    // The navigator's pages, general-dialog routes and app-wide overlays all
+    // share this boundary. A SafeArea inside an individual page cannot protect
+    // a dialog or a toast built above that page.
+    builder: (context, child) {
+      final dark = theme.brightness == Brightness.dark;
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+          statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+          systemStatusBarContrastEnforced: false,
+          systemNavigationBarContrastEnforced: false,
+        ),
+        child: ColoredBox(
+          color: DifyColors.backgroundBody,
+          child: DefaultTextStyle(
+            // MaterialApp's fallback style is red with yellow double lines.
+            // Native chrome outside a page's Material still needs a body style.
+            style: theme.textTheme.bodyMedium!.copyWith(
+              color: DifyColors.textPrimary,
+              decoration: TextDecoration.none,
+            ),
+            child: SafeArea(
+              child: Builder(builder: (context) => builder?.call(context, child) ?? child!),
+            ),
+          ),
+        ),
+      );
+    },
     debugShowCheckedModeBanner: false,
     themeAnimationDuration: Duration.zero,
   );
