@@ -1,7 +1,9 @@
 // Batch 4a follow-up: popovers of particular node bodies are pickers too, so on a phone they open as sheets and
 // work there (knowledge retrieval's metadata filter, the tool picker, the model provider's credential dropdown, the
 // LLM's JSON schema importer), at 411x914 with gesture insets.
+import 'package:dify_sf_app/src/design/dify_icon.dart' show RemixIcon;
 import 'package:dify_sf_app/src/design/dify_theme.dart';
+import 'package:dify_sf_app/src/design/dify_tokens.g.dart' show DifyColors;
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/settings/model_provider/provider_added_card.dart' show DropdownContent;
 import 'package:dify_sf_app/src/settings/model_provider/model_provider_env.dart';
@@ -247,6 +249,85 @@ void main() {
     await t.tap(close);
     await _frames(t);
     expect(_scrims, findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
+  // ----- polish after batch 4 (item 4) -----
+
+  /// The LLM panel's model field with two OpenAI models, GPT-3.5 the current one.
+  Future<void> pumpModelField(WidgetTester t, {bool field = true}) {
+    final modal = ModelParameterModal(
+      provider: 'openai',
+      modelId: 'gpt-3.5-turbo',
+      completionParams: const {'temperature': 0.7},
+      onModelChange: (_) {},
+      onCompletionParamsChange: (_) {},
+    );
+    return _pump(
+      t,
+      field ? Field(title: 'model', child: modal) : modal,
+      services: LlmGroupServices(
+        models: catalogOf([
+          makeModel(
+            provider: 'openai',
+            models: [
+              makeModelItem(
+                model: 'gpt-3.5-turbo',
+                label: const {'en_US': 'GPT-3.5'},
+                modelProperties: const {'mode': 'chat'},
+              ),
+              makeModelItem(model: 'gpt-4', label: const {'en_US': 'GPT-4'}, modelProperties: const {'mode': 'chat'}),
+            ],
+          ),
+        ]),
+        parameterRules: (p, m) => Future.value(const <Map<String, Object?>>[]),
+      ),
+    );
+  }
+
+  /// [label]'s model row is the one marked as current, the way every select sheet marks it: highlighted, with the
+  /// accent check; [other]'s row is not.
+  void markedAsSelect(WidgetTester t, String label, String other) {
+    Finder row(String l) => find.ancestor(of: find.text(l), matching: find.byType(ModelSelectorModelRow));
+    Finder box(String l) => find.descendant(of: row(l), matching: find.byType(Container)).first;
+    final checks = find.byWidgetPredicate((w) => w is RemixIcon && w.name == 'check-line');
+    expect(
+      find.descendant(of: row(label), matching: checks),
+      findsOneWidget,
+      reason: 'the check on $label',
+    );
+    expect(t.widget<RemixIcon>(find.descendant(of: row(label), matching: checks)).color, DifyColors.textAccent);
+    expect((t.widget<Container>(box(label)).decoration as BoxDecoration?)?.color, DifyColors.stateBaseHover);
+    expect(find.descendant(of: row(other), matching: checks), findsNothing);
+    expect((t.widget<Container>(box(other)).decoration as BoxDecoration?)?.color, isNull);
+  }
+
+  testWidgets('the model selector sheet is titled like the other select sheets, "Model" from its field (not '
+      '"Configure model"), and marks the current model as they do (polish 4)', (t) async {
+    await pumpModelField(t);
+    await t.tap(find.byType(ModelSelectorButton).first);
+    await _frames(t);
+    _isSheet(t, 'model list');
+    final header = find.byType(DifySheetHeader).last;
+    expect(find.descendant(of: header, matching: find.text('Model')), findsOneWidget);
+    expect(find.descendant(of: header, matching: find.text('plugin.detailPanel.configureModel')), findsNothing);
+    markedAsSelect(t, 'GPT-3.5', 'GPT-4');
+    expect(await t.binding.handlePopRoute(), isTrue);
+    await _frames(t);
+    expect(_scrims, findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('a model selector in no field (as in a popover) titles its sheet with Dify\'s "Model" (polish 4)', (
+    t,
+  ) async {
+    await pumpModelField(t, field: false);
+    await t.tap(find.byType(ModelSelectorButton).first);
+    await _frames(t);
+    _isSheet(t, 'model list');
+    final header = find.byType(DifySheetHeader).last;
+    expect(find.descendant(of: header, matching: find.text('common.modelProvider.model')), findsOneWidget);
+    markedAsSelect(t, 'GPT-3.5', 'GPT-4');
     expect(t.takeException(), isNull);
   });
 }
