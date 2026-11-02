@@ -143,11 +143,11 @@ final class HTTPKeepAliveHandler: ChannelDuplexHandler {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let part = self.unwrapInboundIn(data)
         switch part {
-        case .head:
+        case .head(let request):
             // Begin a new request. (Any previous request's response must have
             // completed already since HTTPServerPipelineHandler enforces ordering.)
             self.requestEndReceived = false
-            self.closeAfterResponseEnd = false
+            self.closeAfterResponseEnd = Self.requestsClose(request.headerFields[.connection])
             self.finalResponseState = .notStarted
         case .body:
             break
@@ -169,8 +169,13 @@ final class HTTPKeepAliveHandler: ChannelDuplexHandler {
         context.fireChannelReadComplete()
     }
 
+    private static func requestsClose(_ value: String?) -> Bool {
+        value?.split(whereSeparator: { $0 == "," || $0 == " " || $0 == "\t" })
+            .contains { $0.lowercased() == "close" } ?? false
+    }
+
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let part = self.unwrapOutboundIn(data)
+        var part = self.unwrapOutboundIn(data)
         switch self.finalResponseState {
         case .notStarted:
             // Informational (1xx) responses pass through without affecting state: they
@@ -180,10 +185,20 @@ final class HTTPKeepAliveHandler: ChannelDuplexHandler {
                 context.write(data, promise: promise)
                 return
             }
+            // A completed request is still not reusable when either peer chose
+            // Connection: close. Advertise that decision before streaming and
+            // close only after the final response end, including long responses.
+            if case .head(var response) = part,
+                self.closeAfterResponseEnd || Self.requestsClose(response.headerFields[.connection])
+            {
+                self.closeAfterResponseEnd = true
+                response.headerFields[.connection] = "close"
+                part = .head(response)
+            }
             if self.requestEndReceived {
                 // Request fully read; stream the response directly.
                 self.finalResponseState = .streaming
-                context.write(data, promise: promise)
+                context.write(self.wrapOutboundOut(part), promise: promise)
             } else {
                 // Start buffering with the head. Additional parts (body, end) the
                 // handler may write before the next deadline are appended below.
@@ -196,8 +211,13 @@ final class HTTPKeepAliveHandler: ChannelDuplexHandler {
             additional.append(BufferedWrite(part: part, promise: promise))
             self.finalResponseState = .buffering(head: head, additional: additional)
         case .streaming:
+            // Writing .end can synchronously release a pipelined request head,
+            // which replaces per-request state. Snapshot this response's policy.
+            let closeAfterWrite: Bool
+            if case .end = part { closeAfterWrite = self.closeAfterResponseEnd }
+            else { closeAfterWrite = false }
             context.write(data, promise: promise)
-            if case .end = part, self.closeAfterResponseEnd {
+            if closeAfterWrite {
                 // The head we flushed earlier carried `Connection: close`; close
                 // the connection now that the response is complete.
                 context.flush()
@@ -242,6 +262,7 @@ final class HTTPKeepAliveHandler: ChannelDuplexHandler {
         }
 
         self.finalResponseState = .streaming
+        let closeAfterWrite = self.closeAfterResponseEnd
 
         context.write(self.wrapOutboundOut(head.part), promise: head.promise)
         var sawEnd = false
@@ -253,7 +274,7 @@ final class HTTPKeepAliveHandler: ChannelDuplexHandler {
         }
         context.flush()
 
-        if sawEnd && self.closeAfterResponseEnd {
+        if sawEnd && closeAfterWrite {
             // The response was fully buffered (head + ... + end) and we have to
             // close. Close now (the flush above ensured the writes reached the
             // wire).
