@@ -220,6 +220,41 @@ void main() {
     await e.dispose();
   });
 
+  testWidgets('Steps view: Stop from the long press reaches the step\'s panel and stops the run', (t) async {
+    // (From the PR review's reproduction.)
+    final e = await _pump(t);
+    e.store.setNodeRunData('code', {'_singleRunningStatus': 'running'});
+    await settle(t, 300);
+    final card = find.byKey(const ValueKey('step-card-code'));
+    await t.ensureVisible(card);
+    await settle(t, 300);
+    await t.longPress(card);
+    await settle(t, 600);
+    final stop = DifyI18n.tr('workflow', 'debug.variableInspect.trigger.stop');
+    expect(find.text(stop), findsOneWidget);
+    await t.tap(find.text(stop));
+    await settle(t, 800);
+    expect(e.store.pendingSingleRun.value, isNull, reason: 'the panel consumed the stop request');
+    expect(e.store.nodeRunDataOf('code')['_singleRunningStatus'], 'stopped');
+    await e.dispose();
+  });
+
+  testWidgets('zoomed out, a drag inside the card after another moves that card', (t) async {
+    // (From the PR review's reproduction.)
+    final e = await _pump(t);
+    await e.showCanvas();
+    e.canvas.view.scale = .25;
+    e.canvas.view.center = e.canvas.graph!['code']!.rect.center;
+    await settle(t, 500);
+    final before = e.c.doc.nodes['code']!;
+    final edges = e.c.doc.edges.length;
+    await t.dragFrom(e.node('code', (r) => Offset(r.left + 8, r.center.dy)), const Offset(0, 70));
+    await settle(t, 500);
+    expect(e.c.doc.nodes['code']!.y, greaterThan(before.y));
+    expect(e.c.doc.edges.length, edges);
+    await e.dispose();
+  });
+
   testWidgets('Steps view: Add with no step selected continues the flow (connected, not a free spot)', (t) async {
     final e = await _pump(t);
     expect(e.phone.view, PhoneEditorView.steps);
