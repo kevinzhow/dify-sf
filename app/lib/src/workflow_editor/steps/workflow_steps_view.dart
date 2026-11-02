@@ -546,6 +546,9 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     return RemixIcon(icon, key: ValueKey('step-status-${run.status}'), size: 20, color: color);
   }
 
+  /// The time each step of the shown run took (mockup 7: "words = 3 · 1.2 s"), from the run's tracing.
+  Map<String, num> _times = const {};
+
   Widget _card(StepRow row) {
     final n = _doc.nodes[row.nodeId]!;
     final run = widget.canvas.nodeRun.value[n.id] ?? NodeRunView.idle;
@@ -553,11 +556,19 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     final issue = _issues[n.id];
     final status = running ? (run.isLoading ? DifyColors.stateAccentSolid : statusBorderColor(run.status)) : null;
     final title = n.title.isEmpty ? blockName(n.type) : n.title;
+    final time = running && !run.isLoading ? _times[n.id] : null;
+    final summary = stepSummary(n, _doc);
     return DifyStepCard(
       key: ValueKey('step-card-${n.id}'),
       leading: FittedBox(child: BlockIcon(type: n.type)),
       title: title,
-      subtitle: issue != null && issue.message.isNotEmpty ? issue.message : stepSummary(n, _doc),
+      subtitle: issue != null && issue.message.isNotEmpty
+          ? issue.message
+          : time == null
+          ? summary
+          : summary.isEmpty
+          ? formatStepSeconds(time)
+          : '$summary · ${formatStepSeconds(time)}',
       subtitleColor: issue != null && issue.message.isNotEmpty ? DifyColors.textDestructive : null,
       statusColor: status ?? (issue != null ? DifyColors.stateDestructiveSolid : null),
       trailing: [
@@ -643,6 +654,7 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     final data = BlockSelectorScope.of(context);
     final insets = MediaQuery.paddingOf(context);
     final rows = _layout.rows;
+    _times = stepTimesOf(_store?.workflowRunningData.value);
     final end = 24 + insets.bottom + widget.bottomInset + _coverRoom;
     if (rows.isEmpty) {
       return Padding(
