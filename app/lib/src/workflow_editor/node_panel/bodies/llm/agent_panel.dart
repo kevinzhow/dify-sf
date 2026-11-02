@@ -1186,6 +1186,23 @@ class _ToolItemState extends State<_ToolItem> {
     final uninstalled = provider == null;
     final noAuth = provider != null && provider['is_team_authorization'] == false;
     final mcpBlocked = v['type'] == ToolCollectionType.mcp && !widget.isMcpAllowed;
+    // A phone: tap opens the tool's settings; "…" and a long press offer Settings and Delete (hover-only in Dify). The
+    // switch and "Not authorized" stay the row's own controls.
+    return DifyActionRow(
+      label: '${_providerShortName(v)}, ${v['tool_label'] ?? v['tool_name'] ?? ''}',
+      onTap: widget.onOpen,
+      childInteractive: true,
+      actions: [
+        if (!widget.disabled) ...[
+          DifyActionRow.edit(widget.onOpen, label: DifyI18n.tr('common', 'operation.settings')),
+          if (widget.onDelete case final delete?) DifyActionRow.delete(delete),
+        ],
+      ],
+      child: _row(v, provider, uninstalled, noAuth, mcpBlocked),
+    );
+  }
+
+  Widget _row(Json v, Json? provider, bool uninstalled, bool noAuth, bool mcpBlocked) {
     return DifyPressable(
       semanticLabel: '${v['tool_label'] ?? v['tool_name'] ?? ''}',
       onPressed: widget.onOpen,

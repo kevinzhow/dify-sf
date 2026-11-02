@@ -1,7 +1,7 @@
 // The design's dialog on a phone (a dify-sf divergence, raft-flutter's form policy): a modal bottom sheet with the
 // dialog's title and close in its header, the body scrolling, the actions as 44 px buttons pinned at its bottom above
 // the keyboard and the gesture bar; Back closes it first; only the topmost layer is read. Confirmations stay centred.
-// Wide windows keep Dify's centred dialog.
+// Wide windows keep Dify's centred dialog. And DifyActionRow: a panel row's hover actions by touch on a phone.
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 
 import '../../support/platform_semantics.dart';
@@ -322,5 +322,115 @@ void main() {
     await t.tap(find.byKey(const ValueKey('ok')));
     await _settle(t);
     expect(await ok, isTrue);
+  });
+
+  group('DifyActionRow', () {
+    Widget card(String key) => Container(
+      key: ValueKey(key),
+      height: 32,
+      color: const Color(0xFFEEEEEE),
+      child: Row(
+        children: [
+          const DifyTextLine('text · Text'),
+          const Spacer(),
+          DifyIconButton(label: 'Hover edit', icon: const RemixIcon('edit-line', size: 16), onPressed: () {}),
+        ],
+      ),
+    );
+
+    testWidgets('a phone: 48 px, one node named by its label with its actions; tap edits; long press and "…" open '
+        'Edit, Delete, Move up, Move down', (t) async {
+      final semantics = t.ensureSemantics();
+      phoneView(t, size: const Size(411, 914), padding: gestureInsets);
+      final log = <String>[];
+      await pumpPhoneApp(
+        t,
+        DifyPage(
+          edgeToEdge: true,
+          body: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 100, 16, 0),
+            child: Column(
+              children: [
+                DifyActionRow(
+                  label: 'text, Text, required',
+                  onTap: () => log.add('edit'),
+                  actions: [
+                    DifyActionRow.edit(() => log.add('edit')),
+                    DifyActionRow.delete(() => log.add('delete')),
+                    DifyActionRow.moveUp(() => log.add('up'), enabled: false),
+                    DifyActionRow.moveDown(() => log.add('down')),
+                  ],
+                  child: card('card'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        edgeToEdge: true,
+      );
+      final row = find.byKey(const ValueKey('card'));
+      expect(t.getSize(row).height, 48);
+      final node = t.getSemantics(find.ancestor(of: row, matching: find.byType(Semantics)).first);
+      final data = node.getSemanticsData();
+      expect(data.label, 'text, Text, required');
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
+      expect(data.hasAction(SemanticsAction.longPress), isTrue);
+      final custom = [
+        for (final id in data.customSemanticsActionIds ?? <int>[]) CustomSemanticsAction.getAction(id)!.label,
+      ];
+      expect(custom, containsAll(['Edit', 'Delete', 'Move down']));
+      expect(custom, isNot(contains('Move up')), reason: 'off for the first row');
+      expect(platformLabels(t), isNot(contains('Hover edit')), reason: "the card's hover controls are not read");
+
+      // The card ignores pointers on a phone: the row around it takes the tap.
+      await t.tap(row, warnIfMissed: false);
+      await _settle(t);
+      expect(log, ['edit']);
+
+      final more = find.byKey(const ValueKey('dify-action-row-more-text, Text, required'));
+      expect(t.getSize(more), const Size(44, 44));
+      expect(find.bySemanticsLabel('More actions for text, Text, required'), findsOneWidget);
+      await t.tap(more);
+      await _settle(t);
+      for (final a in ['Edit', 'Delete', 'Move up', 'Move down']) {
+        expect(find.text(a), findsOneWidget, reason: a);
+      }
+      await t.tap(find.text('Move up'));
+      await _settle(t);
+      expect(find.text('Move down'), findsOneWidget, reason: 'a disabled action does nothing');
+      await t.tap(find.text('Move down'));
+      await _settle(t);
+      expect(log, ['edit', 'down']);
+
+      await t.longPress(row, warnIfMissed: false);
+      await _settle(t);
+      await t.tap(find.text('Delete'));
+      await _settle(t);
+      expect(log, ['edit', 'down', 'delete']);
+      semantics.dispose();
+    });
+
+    testWidgets('a wide window: the row as Dify draws it (no "…", its own height and hover controls)', (t) async {
+      phoneView(t, size: const Size(1280, 800));
+      await pumpPhoneApp(
+        t,
+        DifyPage(
+          body: Center(
+            child: SizedBox(
+              width: 400,
+              child: DifyActionRow(
+                label: 'text',
+                onTap: () {},
+                actions: [DifyActionRow.delete(() {})],
+                child: card('card'),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(t.getSize(find.byKey(const ValueKey('card'))).height, 32);
+      expect(find.byType(DifyTouchIconButton), findsNothing);
+      expect(find.bySemanticsLabel('Hover edit'), findsOneWidget);
+    });
   });
 }

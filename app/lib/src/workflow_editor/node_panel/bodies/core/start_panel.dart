@@ -219,6 +219,14 @@ class _StartVarListState extends State<StartVarList> {
     return true;
   }
 
+  /// Moves the row at [from] to [to] (a phone's Move up / Move down).
+  void _move(int from, int to) {
+    if (_session != null) setState(() => _session = null);
+    final list = [...widget.list];
+    list.insert(to, list.removeAt(from));
+    widget.onChange(list);
+  }
+
   void _remove(int index) {
     if (_session != null) setState(() => _session = null);
     widget.onChange(
@@ -250,7 +258,9 @@ class _StartVarListState extends State<StartVarList> {
     final c = _current;
     final shown = c == null ? w.list : [for (final i in c.order) w.list[i]];
     final active = c?.order.indexOf(c.origin) ?? -1;
-    final canDrag = !w.readonly && w.list.length > 1;
+    // A phone reorders from each row's actions (Move up / Move down), not by dragging or a hover handle.
+    final phone = DifyTouch.compactOf(context);
+    final canDrag = !w.readonly && w.list.length > 1 && !phone;
     final keys = [for (final v in w.list) jsKey(v['variable'])];
     return ReorderableList(
       shrinkWrap: true,
@@ -274,6 +284,8 @@ class _StartVarListState extends State<StartVarList> {
           iconHidden: faded,
           onChange: (p, m) => _change(index, p, m),
           onRemove: () => _remove(index),
+          onMoveUp: position == 0 ? null : () => _move(position, position - 1),
+          onMoveDown: position == shown.length - 1 ? null : () => _move(position, position + 1),
         );
         if (canDrag) row = DifyReorderableDragStartListener(index: position, enabled: c == null, child: row);
         return MouseRegion(
@@ -369,10 +381,15 @@ class StartVarItem extends StatefulWidget {
     this.varKeys = const [],
     this.showLegacyBadge = false,
     this.iconHidden = false,
+    this.onMoveUp,
+    this.onMoveDown,
   });
 
   final bool readonly;
   final Map<String, Object?> payload;
+
+  /// A phone's Move up / Move down (null: the row is first / last, or the list does not reorder).
+  final VoidCallback? onMoveUp, onMoveDown;
 
   /// The edited field and how its key changed; false keeps the dialog open.
   final bool Function(Map<String, Object?> payload, VarChange? moreInfo)? onChange;
@@ -403,8 +420,47 @@ class _StartVarItemState extends State<StartVarItem> {
     );
   }
 
+  /// The row as one node on a phone: "name, label, type, required".
+  String _readName() {
+    final p = widget.payload;
+    final type = jsKey(p['type']);
+    final typeKey = switch (type) {
+      'file' => 'single-file',
+      'file-list' => 'multi-files',
+      'json_object' => 'json',
+      _ => type,
+    };
+    final typeName = type.isEmpty ? '' : DifyI18n.tr('app-debug', 'variableConfig.$typeKey');
+    return [
+      jsKey(p['variable']),
+      if ((jsStr(p['label']) ?? '').isNotEmpty) jsStr(p['label'])!,
+      if (typeName.isNotEmpty && !typeName.startsWith('variableConfig.')) typeName,
+      if (p['required'] == true) tw('nodes.start.required'),
+    ].join(', ');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final w = widget;
+    final row = _row(context);
+    // A phone: tap edits (the dialog is a sheet there); "…" and a long press offer Edit, Delete, Move up, Move down.
+    if (w.readonly || w.rightContent != null) return row;
+    return DifyActionRow(
+      label: _readName(),
+      onTap: _edit,
+      actions: [
+        DifyActionRow.edit(_edit),
+        if (w.onRemove case final remove?) DifyActionRow.delete(remove),
+        if (w.onMoveUp != null || w.onMoveDown != null) ...[
+          DifyActionRow.moveUp(w.onMoveUp ?? () {}, enabled: w.onMoveUp != null),
+          DifyActionRow.moveDown(w.onMoveDown ?? () {}, enabled: w.onMoveDown != null),
+        ],
+      ],
+      child: row,
+    );
+  }
+
+  Widget _row(BuildContext context) {
     final w = widget;
     final variable = jsKey(w.payload['variable']);
     final label = jsStr(w.payload['label']) ?? '';

@@ -207,6 +207,7 @@ class GenericTable extends StatelessWidget {
               for (final (i, r) in rows.indexed)
                 _TableRow(
                   key: ValueKey('row-$i'),
+                  label: '${r.row[primary] ?? ''}',
                   last: i == rows.length - 1,
                   hasContent: _present(r.row[primary]),
                   onDelete: !readonly && r.index != null && _present(r.row[primary]) ? () => _remove(r.index!) : null,
@@ -237,7 +238,17 @@ class GenericTable extends StatelessWidget {
 /// divide-divider-subtle` line below; hovered `bg-state-destructive-hover` when it has a primary key (else
 /// `bg-state-base-hover`) and showing the "Delete row" bin on the right.
 class _TableRow extends StatefulWidget {
-  const _TableRow({super.key, required this.last, required this.hasContent, required this.children, this.onDelete});
+  const _TableRow({
+    super.key,
+    required this.label,
+    required this.last,
+    required this.hasContent,
+    required this.children,
+    this.onDelete,
+  });
+
+  /// The row's key (its primary column), its name on a phone.
+  final String label;
   final bool last, hasContent;
   final List<Widget> children;
   final VoidCallback? onDelete;
@@ -250,7 +261,22 @@ class _TableRowState extends State<_TableRow> {
   bool _hovered = false;
 
   @override
-  Widget build(BuildContext context) => MouseRegion(
+  Widget build(BuildContext context) {
+    // A phone: no invisible bin (a blind tap there deleted the row); "…" and a long press offer Delete. The cells stay
+    // the row's own fields.
+    final phone = DifyTouch.compactOf(context);
+    final row = _row(showBin: !phone);
+    final delete = widget.onDelete;
+    if (!phone || delete == null) return row;
+    return DifyActionRow(
+      label: widget.label,
+      childInteractive: true,
+      actions: [DifyActionRow.delete(delete)],
+      child: row,
+    );
+  }
+
+  Widget _row({required bool showBin}) => MouseRegion(
     onEnter: (_) => setState(() => _hovered = true),
     onExit: (_) => setState(() => _hovered = false),
     child: Container(
@@ -267,7 +293,7 @@ class _TableRowState extends State<_TableRow> {
           IntrinsicHeight(
             child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: widget.children),
           ),
-          if (widget.onDelete != null)
+          if (widget.onDelete != null && showBin)
             Positioned(
               right: 8,
               top: 0,

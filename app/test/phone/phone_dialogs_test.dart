@@ -21,6 +21,8 @@ import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/human_inp
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/data_common.dart' show DataPanelHost;
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/kr_datasets.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/pe_params.dart';
+import 'package:dify_sf_app/src/workflow_editor/panel_fields/next_step.dart';
 import 'package:dify_sf_app/src/workflow_editor/steps/workflow_steps_view.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -98,6 +100,10 @@ Future<void> _openStart(WidgetTester t) async {
   expect(_settings, findsOneWidget);
 }
 
+/// The Start row of [variable] (its touch row).
+Finder _row(String variable) =>
+    find.descendant(of: find.byKey(ValueKey('start-var-$variable')), matching: find.byType(DifyActionRow)).first;
+
 /// [button] (a DifyButton found by its label) is a 44 px button at the dialog sheet's bottom: above the gesture bar
 /// (or [above], the keyboard's top), and within a button's height of it.
 void _pinned(WidgetTester t, String label, Size size, {double? above}) {
@@ -113,6 +119,9 @@ Future<void> _show(WidgetTester t, Finder f) async {
   await Scrollable.ensureVisible(t.element(f), alignment: 0.5);
   await settle(t, 300);
 }
+
+/// The touch row showing [text].
+Finder _touchRow(String text) => find.ancestor(of: find.text(text), matching: find.byType(DifyActionRow)).first;
 
 /// The dialog sheet's header shows [title] with a 44 px close.
 void _header(WidgetTester t, String title) {
@@ -201,6 +210,62 @@ void main() {
       expect(await systemBack(t), isTrue);
       await settle(t, 800);
       expect(_settings, findsNothing, reason: 'then Back closes the settings');
+      expect(t.takeException(), isNull);
+      semantics.dispose();
+      await _close(t, demo);
+    });
+
+    testWidgets('$name: Start\'s input rows by touch: 48 px, one node each with a name; tap opens Edit Input Field '
+        'as a sheet; "…" moves a row; a long press deletes one, with Dify\'s confirmation for a used variable', (
+      t,
+    ) async {
+      final semantics = t.ensureSemantics();
+      final (_, demo) = await _editor(t, size);
+      await _openStart(t);
+      for (final v in ['query', 'request', 'attachment']) {
+        await _show(t, _row(v));
+        expect(t.getSize(_row(v)).height, greaterThanOrEqualTo(48), reason: v);
+      }
+      expect(find.bySemanticsLabel('query, Query, Short Text, required'), findsOneWidget);
+      expect(find.bySemanticsLabel('attachment, Attachment, Single File'), findsOneWidget);
+      expect(platformLabels(t).where((l) => l.startsWith('Reorder')), isEmpty, reason: 'no hover handles');
+
+      await _show(t, _row('request'));
+      await t.tap(_row('request'));
+      await settle(t, 800);
+      _header(t, 'Edit Input Field');
+      _pinned(t, _tc('operation.save'), size);
+      await t.tap(find.widgetWithText(DifyButton, _tc('operation.cancel')).last);
+      await settle(t, 800);
+      expect(find.byKey(const Key('config-var-modal')), findsNothing);
+
+      double top(String v) => t.getRect(find.byKey(ValueKey('start-var-$v'))).top;
+      await _show(t, _row('request'));
+      expect(top('request'), lessThan(top('attachment')));
+      final more = find.byKey(const ValueKey('dify-action-row-more-attachment, Attachment, Single File'));
+      await _show(t, more);
+      expect(t.getSize(more), const Size(44, 44));
+      await t.tap(more);
+      await settle(t, 600);
+      expect(find.text(_tc('operation.edit')), findsOneWidget);
+      expect(find.text(_tc('operation.delete')), findsOneWidget);
+      await t.tap(find.text('Move up'));
+      await settle(t, 600);
+      expect(top('attachment'), lessThan(top('request')), reason: 'moved up');
+
+      await _show(t, _row('query'));
+      await t.longPress(_row('query'));
+      await settle(t, 600);
+      await t.tap(find.text(_tc('operation.delete')));
+      await settle(t, 800);
+      // query is End's output: Dify confirms first, a centred confirmation (not a sheet).
+      final confirm = find.byType(DifyAlertDialogContent);
+      expect(confirm, findsOneWidget);
+      final ok = find.descendant(of: confirm, matching: find.byType(DifyButton)).last;
+      expect(t.getSize(ok).height, greaterThanOrEqualTo(44));
+      await t.tap(ok);
+      await settle(t, 800);
+      expect(find.byKey(const ValueKey('start-var-query')), findsNothing, reason: 'deleted');
       expect(t.takeException(), isNull);
       semantics.dispose();
       await _close(t, demo);
@@ -335,5 +400,77 @@ void main() {
     expect(find.byKey(const ValueKey('create-app-name')), findsNothing);
     expect(t.takeException(), isNull);
     await unmount(t);
+  });
+
+  testWidgets('the other touch rows: an extract parameter, a delivery method, a next step (48 px, a name, tap '
+      'acts, "…" offers the hover actions)', (t) async {
+    final log = <String>[];
+    await _app(
+      t,
+      DataPanelHost(
+        child: HumanInputHost(
+          members: const [],
+          userEmail: 'owner@example.com',
+          userName: 'Owner',
+          workspaceName: 'Lab',
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+            child: Column(
+              children: [
+                ExtractParamItem(
+                  payload: const {'name': 'city', 'type': 'string', 'required': true, 'description': 'The city'},
+                  onEdit: () => log.add('edit param'),
+                  onDelete: () => log.add('delete param'),
+                ),
+                const SizedBox(height: 8),
+                MethodItem(
+                  method: const {'id': 'm', 'type': 'webapp', 'enabled': true},
+                  onChange: (_) => log.add('change method'),
+                  onDelete: (type) => log.add('delete $type'),
+                  email: const EmailContext(nodeId: 'n'),
+                ),
+                const SizedBox(height: 8),
+                NextStepItem(
+                  node: const NextStepNode(id: 'n2', type: 'llm', title: 'Summarize'),
+                  actions: NextStepActions(
+                    onSelectNode: (id) => log.add('jump $id'),
+                    onDisconnect: (id) => log.add('disconnect $id'),
+                    onDelete: (id) => log.add('delete $id'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    for (final f in [find.byType(ExtractParamItem), find.byType(MethodItem), find.byType(NextStepItem)]) {
+      final row = find.descendant(of: f, matching: find.byType(DifyActionRow));
+      expect(t.getSize(row).height, greaterThanOrEqualTo(48));
+    }
+    await t.tap(_touchRow('city'));
+    await settle(t, 300);
+    expect(log, ['edit param']);
+    await t.tap(find.byKey(const ValueKey('dify-action-row-more-city, String, Required, The city')));
+    await settle(t, 600);
+    await t.tap(find.text(_tc('operation.delete')));
+    await settle(t, 600);
+    expect(log.last, 'delete param');
+
+    await t.tap(find.byKey(const ValueKey('dify-action-row-more-Webapp')));
+    await settle(t, 600);
+    await t.tap(find.text(_tc('operation.remove')));
+    await settle(t, 600);
+    expect(log.last, 'delete webapp');
+
+    await t.tap(_touchRow('Summarize'));
+    await settle(t, 300);
+    expect(log.last, 'jump n2');
+    await t.longPress(_touchRow('Summarize'));
+    await settle(t, 600);
+    expect(find.text('Disconnect'), findsOneWidget);
+    await t.tap(find.text('Disconnect'));
+    await settle(t, 600);
+    expect(log.last, 'disconnect n2');
   });
 }

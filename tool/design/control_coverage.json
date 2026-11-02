@@ -371,9 +371,11 @@
         "app/test/phone/phone_account_test.dart",
         "app/test/phone/phone_studio_test.dart",
         "app/tool/phone_gallery_main.dart",
-        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart",
+        "app/test/phone/phone_dialogs_test.dart"
       ],
-      "note": "dify-sf phone list rows (no Dify counterpart): DifyText in DifyType/DifyPhoneType styles; tests cover 52/64 px heights, one-line ellipsis, the row target, separate action semantics, destructive colour, section headings."
+      "note": "dify-sf phone list rows (no Dify counterpart): DifyText in DifyType/DifyPhoneType styles; tests cover 52/64 px heights, one-line ellipsis, the row target, separate action semantics, destructive colour, section headings. DifyActionRow: a panel row whose actions Dify shows on hover, by touch on a compact window (48 px, one named node with custom actions, tap, long press and a 44 px \"…\" opening an action sheet: Edit, Delete, Move up, Move down); wide windows render the child unchanged."
     },
     "loading.dart": {
       "kind": "layout-or-non-text",

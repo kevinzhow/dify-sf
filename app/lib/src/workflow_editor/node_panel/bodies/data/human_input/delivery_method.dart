@@ -2,6 +2,7 @@
 /// upgrade-modal.tsx).
 library;
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -473,7 +474,7 @@ class _MethodItemState extends State<MethodItem> {
         ),
       ),
     );
-    return MouseRegion(
+    final row = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() {
         _hovered = false;
@@ -544,6 +545,31 @@ class _MethodItemState extends State<MethodItem> {
           ),
         ),
       ),
+    );
+    if (w.readonly) return row;
+    // A phone: tap configures an email (the dialog is a sheet there); "…" and a long press offer the hover actions.
+    // The switch and "Not configured" stay the row's own controls.
+    final configure = isEmail ? _configure : null;
+    return DifyActionRow(
+      label: [
+        cssCapitalize(type),
+        if (debug) 'DEBUG',
+        if (isEmail && config == null) hi('deliveryMethod.notConfigured'),
+      ].join(', '),
+      onTap: configure,
+      childInteractive: true,
+      actions: [
+        if (isEmail && config != null) ...[
+          DifyActionRow.edit(_configure, label: wf('common.configure')),
+          DifyActionSheetAction(
+            label: testTip,
+            icon: const RemixIcon('send-plane-2-line', size: 20),
+            onTap: () => unawaited(_test()),
+          ),
+        ],
+        DifyActionRow.delete(() => w.onDelete(type), label: cm('operation.remove')),
+      ],
+      child: row,
     );
   }
 }

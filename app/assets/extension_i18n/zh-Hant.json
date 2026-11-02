@@ -2,6 +2,8 @@
   "common": {
     "operation.cut": "剪下",
     "operation.paste": "貼上",
+    "operation.moveUp": "上移",
+    "operation.moveDown": "下移",
     "web.fontLoadFailed": "部分文字載入失敗，請連線後重試。",
     "release.title": "版本與能力",
     "release.client": "用戶端",

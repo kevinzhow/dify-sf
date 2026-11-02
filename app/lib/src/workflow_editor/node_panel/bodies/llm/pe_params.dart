@@ -72,6 +72,22 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
   Widget build(BuildContext context) {
     final p = widget.payload;
     final required = p['required'] == true;
+    // A phone: tap edits (the dialog is a sheet there); "…" and a long press offer Edit and Delete.
+    return DifyActionRow(
+      label: [
+        '${p['name'] ?? ''}',
+        _cap('${p['type'] ?? ''}'),
+        if (required) _w('$_p.addExtractParameterContent.required'),
+        if ('${p['description'] ?? ''}'.isNotEmpty) '${p['description']}',
+      ].join(', '),
+      onTap: widget.onEdit,
+      actions: [DifyActionRow.edit(widget.onEdit), DifyActionRow.delete(widget.onDelete)],
+      child: _row(required),
+    );
+  }
+
+  Widget _row(bool required) {
+    final p = widget.payload;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
