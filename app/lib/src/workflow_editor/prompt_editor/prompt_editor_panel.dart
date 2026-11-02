@@ -319,16 +319,19 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
     );
   }
 
-  /// The Jinja switch; on a phone ([touch]) the icon has no hover tip (no hover there) and the switch alone is read.
+  /// The Jinja switch; on a phone ([touch]) the icon has no hover tip (no hover there), the switch alone is read, and
+  /// a tap anywhere on the control (its border and padding too, where its touch box sends taps at its edges) toggles
+  /// it, so the touch box reported to the platform is all hittable.
   Widget _jinjaSwitch({bool touch = false}) {
     final on = widget.editionType == PromptEditionType.jinja2;
     final label = DifyI18n.tr('workflow', 'common.enableJinja');
+    void toggle(bool v) => widget.onEditionTypeChange?.call(v ? PromptEditionType.jinja2 : PromptEditionType.basic);
     final icon = SizedBox(
       width: 28,
       height: 16,
       child: Center(child: DifyIcon('vender/workflow/jinja', size: 24, color: DifyColors.textQuaternary)),
     );
-    return _Hover(
+    final control = _Hover(
       builder: (context, hovered) => Container(
         height: 22,
         padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -362,16 +365,17 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
                   ],
                 ),
               ),
-            DifySwitch(
-              size: DifySwitchSize.sm,
-              checked: on,
-              semanticLabel: label,
-              onCheckedChange: (v) =>
-                  widget.onEditionTypeChange?.call(v ? PromptEditionType.jinja2 : PromptEditionType.basic),
-            ),
+            DifySwitch(size: DifySwitchSize.sm, checked: on, semanticLabel: label, onCheckedChange: toggle),
           ],
         ),
       ),
+    );
+    if (!touch) return control;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      excludeFromSemantics: true,
+      onTap: () => toggle(!on),
+      child: control,
     );
   }
 

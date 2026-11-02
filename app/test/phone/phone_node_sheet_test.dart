@@ -297,6 +297,7 @@ Future<(Rect, String)> _touchTarget(WidgetTester t, Element el, String what) asy
   );
   expect(node.rect.width, greaterThanOrEqualTo(44), reason: '$what: "$name" accessible width ${node.rect}');
   expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$what: "$name" accessible height ${node.rect}');
+  _hittable(t, el, node, '$what: "$name"');
   final scroll = Scrollable.maybeOf(el);
   final shift = scroll == null
       ? Offset.zero
@@ -304,6 +305,54 @@ Future<(Rect, String)> _touchTarget(WidgetTester t, Element el, String what) asy
       ? Offset(0, scroll.position.pixels)
       : Offset(scroll.position.pixels, 0);
   return (_globalRect(node).shift(shift), name);
+}
+
+/// The bounds [node] reports are all hittable: a tap at their centre and 2 dp inside each edge reaches a pointer
+/// listener (a gesture detector) of the control that forms the node, not padding or a border around it, nor a
+/// neighbour (the platform sends a touch there to the control).
+void _hittable(WidgetTester t, Element el, SemanticsNode node, String what) {
+  // The render object that forms the node (the control's own, or the box it is merged into).
+  RenderObject? owner = el.renderObject;
+  final queue = <RenderObject>[owner!];
+  while (queue.isNotEmpty && owner?.debugSemantics != node) {
+    final r = queue.removeAt(0);
+    if (r.debugSemantics == node) {
+      owner = r;
+      break;
+    }
+    r.visitChildren(queue.add);
+  }
+  if (owner?.debugSemantics != node) {
+    for (RenderObject? r = el.renderObject; r != null; r = r.parent) {
+      if (r.debugSemantics == node) {
+        owner = r;
+        break;
+      }
+    }
+  }
+  expect(owner?.debugSemantics, node, reason: '$what: the node\'s render object');
+  final listeners = <RenderObject>{};
+  void collect(RenderObject r) {
+    if (r is RenderPointerListener) listeners.add(r);
+    r.visitChildren(collect);
+  }
+
+  collect(owner!);
+  final r = _globalRect(node);
+  for (final p in [
+    r.center,
+    Offset(r.center.dx, r.top + 2),
+    Offset(r.center.dx, r.bottom - 2),
+    Offset(r.left + 2, r.center.dy),
+    Offset(r.right - 2, r.center.dy),
+  ]) {
+    final path = t.hitTestOnBinding(p).path.map((e) => e.target);
+    expect(
+      path.any(listeners.contains),
+      isTrue,
+      reason: '$what: a tap at $p in its bounds $r reaches no gesture of it',
+    );
+  }
 }
 
 /// No two of [targets] overlap.
@@ -1091,7 +1140,10 @@ void main() {
   }
 
   testWidgets('the prompt is read as one text with each variable\'s name in its place (polish 3): "Summarize Start '
-      'query in one sentence.", no U+FFFC, and the chip is not read again apart from it', (t) async {
+      'query in one sentence.", no U+FFFC, the chip not read again; every offset between the platform and the field is '
+      'mapped (review): the selection it is told, the selection it sets, its moves and the text it replaces', (
+    t,
+  ) async {
     final semantics = t.ensureSemantics();
     final e = await _pump(t);
     await _openFromSteps(t, _llmTitle);
@@ -1099,17 +1151,75 @@ void main() {
     final panel = _inSheet(find.byType(DifyPromptEditorPanel)).first;
     await _scrollTo(t, panel);
     final editable = find.descendant(of: panel, matching: find.byType(EditableText)).first;
-    final field = t.getSemantics(editable).getSemanticsData();
-    expect(field.value, 'Summarize Start query in one sentence.');
-    expect(field.label, isNot(contains('query')), reason: 'the chip\'s texts are not merged into the field\'s name');
+    final controller = t.widget<EditableText>(editable).controller as PromptEditorController;
+    var data = t.getSemantics(editable).getSemanticsData();
+    expect(data.value, 'Summarize Start query in one sentence.');
+    expect(data.label, isNot(contains('query')), reason: 'the chip\'s texts are not merged into the field\'s name');
     final labels = platformLabels(t);
     expect(labels.where((l) => l.contains('query')), isEmpty, reason: 'the chip is no node of its own: $labels');
-    // The text the field edits is still Dify's prompt.
-    expect(
-      t.widget<EditableText>(editable).controller.text.contains('￼'),
-      isFalse,
-      reason: 'the display text keeps its private-use block character',
-    );
+    // The editor's text: one character for the block ("Summarize " is 10 long).
+    await t.tap(editable);
+    await settle(t, 300);
+    final block = [for (var i = 0; i < controller.text.length; i++) i].firstWhere((i) => controller.blockAt(i) != null);
+    expect(block, 10);
+    const name = 'Start query', nameEnd = 10 + name.length;
+    final owner = t.binding.renderViews.first.owner!.semanticsOwner!;
+    Future<SemanticsData> act(SemanticsAction action, [Object? args]) async {
+      owner.performAction(t.getSemantics(editable).id, action, args);
+      await settle(t, 300);
+      return t.getSemantics(editable).getSemanticsData();
+    }
+
+    Future<SemanticsData> caret(int offset) async {
+      controller.selection = TextSelection.collapsed(offset: offset);
+      await settle(t, 300);
+      return t.getSemantics(editable).getSemanticsData();
+    }
+
+    // The caret after the block is told as after the name.
+    data = await caret(block + 1);
+    expect(data.textSelection, const TextSelection.collapsed(offset: nameEnd));
+    expect(data.value.substring(nameEnd), ' in one sentence.');
+    // The platform puts the cursor after the name: the editor's caret goes after the block, and an insert goes there.
+    await caret(0);
+    data = await act(SemanticsAction.setSelection, {'base': nameEnd, 'extent': nameEnd});
+    expect(controller.selection, TextSelection.collapsed(offset: block + 1));
+    expect(data.textSelection, const TextSelection.collapsed(offset: nameEnd));
+    t.testTextInput.updateEditingValue(controller.value.replaced(controller.selection, 'X'));
+    await settle(t, 300);
+    expect(controller.prompt, 'Summarize {{#n-start.query#}}X in one sentence.');
+    t.testTextInput.updateEditingValue(controller.value.replaced(TextRange(start: block + 1, end: block + 2), ''));
+    await settle(t, 300);
+    // Inside a name: the nearer edge of its block ("Sta|rt" is nearer its start).
+    await act(SemanticsAction.setSelection, {'base': 13, 'extent': 13});
+    expect(controller.selection, TextSelection.collapsed(offset: block));
+    // A range over the name selects the block.
+    await act(SemanticsAction.setSelection, {'base': 10, 'extent': nameEnd});
+    expect(controller.selection, TextSelection(baseOffset: block, extentOffset: block + 1));
+    // Moves by character pass the block whole; what the platform reads for the move is the name.
+    await caret(block);
+    data = await act(SemanticsAction.moveCursorForwardByCharacter, false);
+    expect(controller.selection, TextSelection.collapsed(offset: block + 1));
+    expect(data.textSelection, const TextSelection.collapsed(offset: nameEnd));
+    data = await act(SemanticsAction.moveCursorBackwardByCharacter, false);
+    expect(controller.selection, TextSelection.collapsed(offset: block));
+    expect(data.textSelection, const TextSelection.collapsed(offset: 10));
+    // By word: the field's own move, told back mapped.
+    await caret(0);
+    for (final _ in [1, 2, 3]) {
+      data = await act(SemanticsAction.moveCursorForwardByWord, false);
+      final told = data.textSelection!.baseOffset;
+      expect(
+        told,
+        controller.text.substring(0, controller.selection.baseOffset).replaceAll(controller.text[block], name).length,
+        reason: 'by word: caret ${controller.selection}, told $told',
+      );
+    }
+    // The platform replaces "one" by "two": the editor keeps its block.
+    data = await act(SemanticsAction.setText, 'Summarize Start query in two sentence.');
+    expect(controller.prompt, 'Summarize {{#n-start.query#}} in two sentence.');
+    expect(data.value, 'Summarize Start query in two sentence.');
+    expect(t.takeException(), isNull);
     semantics.dispose();
     await e.dispose();
   });

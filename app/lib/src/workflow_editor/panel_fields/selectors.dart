@@ -130,7 +130,8 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
           ),
         );
         // A phone: the 20 px default trigger (a code editor's language, a prompt's role) in a touch box that is also
-        // its accessible bounds, read as a button that opens the select's sheet.
+        // its accessible bounds, read as a button that opens the select's sheet. Without Dify's -8 px shift (below):
+        // shifted, the box would stick out of its row, where taps do not reach.
         if (trigger == null && DifyTouch.compactOf(context)) {
           button = DifyTouchArea(
             minSize: DifyTouch.controlHeight,
@@ -194,7 +195,9 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
               ),
             ),
     );
-    if (trigger == null && !noLeft) selector = Transform.translate(offset: const Offset(-8, 0), child: selector);
+    if (trigger == null && !noLeft && !DifyTouch.compactOf(context)) {
+      selector = Transform.translate(offset: const Offset(-8, 0), child: selector);
+    }
     return selector;
   }
 }

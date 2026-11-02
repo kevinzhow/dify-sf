@@ -1,8 +1,9 @@
 // dify-sf phone layout (no Dify spec), polish after batch 4: the design's shared touch rules. In a sheet on a phone an
 // icon button sits in a 44 px box that is also its accessible bounds (as a button there is touch-high); a hover or drag
-// handle opts out; a touch target can be the control's accessible bounds (a switch, the touch segmented control's
-// items); a button leaves hidden keycaps out of its row (the label stays centred); a field in a picker sheet does not
-// take the focus at once; a sheet of choices marks the current one with DifyChoiceMark.
+// handle opts out; a phone's switch has such a box too, all of it hittable; a touch target can be the control's
+// accessible bounds inside a box of its own (the touch segmented control's items); a button leaves hidden keycaps out
+// of its row (the label stays centred); a field in a picker sheet does not take the focus at once; a sheet of choices
+// marks the current one with DifyChoiceMark.
 import 'dart:async';
 
 import 'phone_harness.dart';
@@ -73,8 +74,8 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('DifyTouchTarget(accessible): the hit area is the control\'s accessible bounds (one node, its name); a '
-      'phone\'s switch reports a 48 px target, its track stays 28 x 16', (t) async {
+  testWidgets('a phone\'s switch sits in a 44 px box that is its accessible bounds and all of its hit area (a tap 2 dp '
+      'inside each edge toggles it); its track stays 28 x 16', (t) async {
     final semantics = t.ensureSemantics();
     phoneView(t);
     var on = false;
@@ -82,51 +83,88 @@ void main() {
       t,
       DifyPage(
         body: Center(
-          child: StatefulBuilder(
-            builder: (context, set) => SizedBox(
-              height: 48,
-              child: Center(
-                child: DifySwitch(checked: on, semanticLabel: 'Retry', onCheckedChange: (v) => set(() => on = v)),
+          // At the end of a row that ends at the switch (as a header's operations do).
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const DifyTextLine('Retry'),
+              StatefulBuilder(
+                builder: (context, set) =>
+                    DifySwitch(checked: on, semanticLabel: 'Retry', onCheckedChange: (v) => set(() => on = v)),
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-    final node = _node(t, find.byType(DifySwitch));
-    expect(node.rect.size, const Size(48, 48));
-    expect(node.getSemanticsData().label, 'Retry');
-    expect(t.getSize(find.byType(AnimatedContainer)), const Size(28, 16));
-    // A tap 10 px above the track, inside the 48 px target, toggles it.
-    await t.tapAt(t.getCenter(find.byType(AnimatedContainer)) - const Offset(0, 18));
-    await t.pumpAndSettle();
-    expect(on, isTrue);
-    semantics.dispose();
-  });
-
-  testWidgets('the touch segmented control\'s items are 44 px tall nodes inside its 48 px box', (t) async {
-    final semantics = t.ensureSemantics();
-    phoneView(t);
-    await pumpPhoneApp(
-      t,
-      DifyPage(
-        body: Center(
-          child: DifySegmentedControl<int>(
-            value: 0,
-            size: DifySegmentedControlSize.touch,
-            onChanged: (_) {},
-            segments: const [
-              (value: 0, label: 'Steps', child: DifyTextLine('Steps')),
-              (value: 1, label: 'Canvas', child: DifyTextLine('Canvas')),
             ],
           ),
         ),
       ),
     );
-    for (final label in ['Steps', 'Canvas']) {
-      final rect = t.getSemantics(find.bySemanticsLabel(label)).rect;
-      expect(rect.height, 44, reason: label);
-      expect(rect.width, greaterThanOrEqualTo(44), reason: label);
+    final node = _node(t, find.byType(DifySwitch));
+    expect(node.rect.size, const Size(44, 44));
+    expect(node.getSemanticsData().label, 'Retry');
+    expect(t.getSize(find.byType(AnimatedContainer)), const Size(28, 16));
+    final r = t.getRect(find.byType(DifySwitch));
+    expect(r.size, const Size(44, 44));
+    var taps = 0;
+    for (final p in [
+      r.center,
+      Offset(r.center.dx, r.top + 2),
+      Offset(r.center.dx, r.bottom - 2),
+      Offset(r.left + 2, r.center.dy),
+      Offset(r.right - 2, r.center.dy),
+    ]) {
+      await t.tapAt(p);
+      await t.pumpAndSettle();
+      taps++;
+      expect(on, taps.isOdd, reason: 'a tap at $p in $r');
+    }
+    semantics.dispose();
+  });
+
+  testWidgets('the touch segmented control\'s items are 44 px tall nodes inside its 48 px box, all of them hittable', (
+    t,
+  ) async {
+    final semantics = t.ensureSemantics();
+    phoneView(t);
+    var value = 0;
+    await pumpPhoneApp(
+      t,
+      DifyPage(
+        body: Center(
+          child: StatefulBuilder(
+            builder: (context, set) => DifySegmentedControl<int>(
+              value: value,
+              size: DifySegmentedControlSize.touch,
+              onChanged: (v) => set(() => value = v),
+              segments: const [
+                (value: 0, label: 'Steps', child: DifyTextLine('Steps')),
+                (value: 1, label: 'Canvas', child: DifyTextLine('Canvas')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    for (final (i, label) in ['Steps', 'Canvas'].indexed) {
+      final node = t.getSemantics(find.bySemanticsLabel(label));
+      expect(node.rect.height, 44, reason: label);
+      expect(node.rect.width, greaterThanOrEqualTo(44), reason: label);
+      var r = node.rect;
+      for (SemanticsNode? x = node; x != null; x = x.parent) {
+        if (x.transform case final m?) r = MatrixUtils.transformRect(m, r);
+      }
+      for (final p in [
+        Offset(r.center.dx, r.top + 2),
+        Offset(r.center.dx, r.bottom - 2),
+        Offset(r.left + 2, r.center.dy),
+        Offset(r.right - 2, r.center.dy),
+      ]) {
+        // The other item chosen first, so the tap must choose this one.
+        await t.tap(find.text(['Steps', 'Canvas'][1 - i]));
+        await t.pumpAndSettle();
+        expect(value, 1 - i);
+        await t.tapAt(p);
+        await t.pumpAndSettle();
+        expect(value, i, reason: '$label: a tap at $p in $r');
+      }
     }
     semantics.dispose();
   });

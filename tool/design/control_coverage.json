@@ -661,7 +661,7 @@
         "app/test/phone/phone_node_sheet_test.dart",
         "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Polish (after batch 4): on a phone the 48 px hit area is also the switch's accessible bounds (DifyTouchTarget.accessible); the track keeps Dify's size."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Polish (after batch 4, PR #89 review): on a phone the track sits in a 44 px box (DifyTouchArea) that is its hit area and its accessible bounds, all of it hittable; the track keeps Dify's size."
     },
     "tab_slider_plain.dart": {
       "kind": "gallery",
@@ -791,7 +791,7 @@
         "app/test/phone/phone_node_sheet_test.dart",
         "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Hit-area expansion and the icon-only touch button (with its toggle state); no text of their own. DifyTouchArea (batch 4a): a small control in a real 48 px box with its target. Round 2: DifyTouchArea.accessibleBox makes the box the control's accessible bounds (MergeSemantics). Polish (after batch 4): DifyTouchTarget.accessible (raft-flutter's RaftTouchTarget: the hit area is also the control's accessible bounds, one merged node) and DifyTouchArea.inPhoneSheet (a small control in a phone sheet: a 44 px box that is its accessible bounds)."
+      "note": "Hit-area expansion and the icon-only touch button (with its toggle state); no text of their own. DifyTouchArea (batch 4a): a small control in a real 48 px box with its target. Round 2: DifyTouchArea.accessibleBox makes the box the control's accessible bounds (MergeSemantics). Polish (after batch 4): DifyTouchTarget.accessible (raft-flutter's RaftTouchTarget: the hit area is also the control's accessible bounds, one merged node; only inside a box of the control's own that holds the whole hit area) and DifyTouchArea.inPhoneSheet / appliesIn (a small control in a phone sheet: a 44 px box that is its accessible bounds; the control's edge must be hittable, no dead padding inside the box). PR #89 review: every reported box tapped 2 dp inside each edge in the tests."
     },
     "workspace_avatar.dart": {
       "kind": "text-composition",

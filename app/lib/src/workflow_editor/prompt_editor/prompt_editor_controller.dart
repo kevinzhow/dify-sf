@@ -33,11 +33,37 @@ class PromptEditorController extends TextEditingController {
   /// Builds block widgets ([DifyPromptEditor] sets it); without one, blocks show as their text.
   PromptChipBuilder? chipBuilder;
 
-  /// What a block reads as in the text's semantics ([DifyPromptEditor] sets it): a screen reader reads the prompt as
-  /// one string with each such block's name in its place ("Summarize Start query in one sentence."), and the block's
-  /// widget stays out of the semantics tree (it would be read again, apart from the text). Null for a block that keeps
-  /// its own semantics (a form field or an output with controls of their own).
+  /// What a block reads as for a screen reader ([DifyPromptEditor] sets it): its name in [semanticsText], and its widget
+  /// left out of the semantics tree (it would be read again, apart from the text). Null for a block that keeps its own
+  /// semantics (a form field or an output with controls of their own).
   String? Function(PromptBlock block)? blockLabel;
+
+  /// The field's text as a screen reader reads it, each named block's name in its place, with the offsets mapped both
+  /// ways (the editor's text has one character per block); null when no block has a name (the text reads as it is).
+  PromptSemanticsText? get semanticsText {
+    final label = blockLabel;
+    if (label == null) return null;
+    final value = StringBuffer();
+    final starts = List<int>.filled(text.length + 1, 0);
+    var named = false;
+    for (var i = 0; i < text.length; i++) {
+      starts[i] = value.length;
+      final block = _blockOf[text.codeUnitAt(i)];
+      if (block == null) {
+        value.writeCharCode(text.codeUnitAt(i));
+      } else if (block.kind == PromptBlockKind.literal) {
+        value.write(block.text);
+      } else if (label(block) case final name?) {
+        value.write(name);
+        named = true;
+      } else {
+        // A block with semantics of its own: the placeholder character, as the field reports it.
+        value.write('\uFFFC');
+      }
+    }
+    starts[text.length] = value.length;
+    return named ? PromptSemanticsText._(text, value.toString(), starts) : null;
+  }
 
   /// Called for each block a transform or an insert creates (Dify's `onInsert`) and each block that leaves the text
   /// (`onDelete`).
@@ -318,14 +344,7 @@ class PromptEditorController extends TextEditingController {
           ),
         );
         children.add(
-          label == null
-              ? WidgetSpan(alignment: PlaceholderAlignment.baseline, baseline: TextBaseline.alphabetic, child: chip)
-              : _ReadBlockSpan(
-                  label: label,
-                  alignment: PlaceholderAlignment.baseline,
-                  baseline: TextBaseline.alphabetic,
-                  child: chip,
-                ),
+          WidgetSpan(alignment: PlaceholderAlignment.baseline, baseline: TextBaseline.alphabetic, child: chip),
         );
       }
     }
@@ -334,23 +353,67 @@ class PromptEditorController extends TextEditingController {
   }
 }
 
-/// A block's widget in the text that reads as [label] in the text's semantics: the editor's value has [label] where a
-/// plain [WidgetSpan] has U+FFFC (which screen readers read as "object" or not at all). The widget itself is left out
-/// of the semantics tree by the editor ([PromptEditorController.blockLabel]).
-class _ReadBlockSpan extends WidgetSpan {
-  const _ReadBlockSpan({required this.label, required super.child, super.alignment, super.baseline});
+/// The text a prompt field reports to the platform ([PromptEditorController.semanticsText]): [value], each named
+/// block's name where the editor's text has the block's one character, and the offsets between the two. The platform's
+/// offsets (a selection it sets, the text it replaces) are in [value]; the editor's are in its text.
+class PromptSemanticsText {
+  PromptSemanticsText._(this.text, this.value, this._starts);
 
-  final String label;
+  /// The editor's text it was made from.
+  final String text;
 
-  @override
-  void computeSemanticsInformation(List<InlineSpanSemanticsInformation> collector) =>
-      collector.add(InlineSpanSemanticsInformation('\uFFFC', semanticsLabel: label));
+  final String value;
 
-  @override
-  bool operator ==(Object other) => super == other && other is _ReadBlockSpan && other.label == label;
+  /// Where each character of the editor's text starts in [value] (and, last, [value]'s length).
+  final List<int> _starts;
 
-  @override
-  int get hashCode => Object.hash(super.hashCode, label);
+  /// The offset in [value] of the editor's [offset].
+  int toValue(int offset) => _starts[offset.clamp(0, _starts.length - 1)];
+
+  /// The editor's offset for [value]'s [offset]: exact at a character's start; inside a name, the nearer edge of its
+  /// block ([floor] / [ceil] force the start or the end).
+  int toText(int offset, {bool floor = false, bool ceil = false}) {
+    if (offset <= 0) return 0;
+    final last = _starts.length - 1;
+    if (offset >= _starts[last]) return last;
+    var lo = 0, hi = last;
+    while (hi - lo > 1) {
+      final mid = (lo + hi) >> 1;
+      _starts[mid] <= offset ? lo = mid : hi = mid;
+    }
+    if (_starts[lo] == offset || floor) return lo;
+    if (ceil) return hi;
+    return offset - _starts[lo] <= _starts[hi] - offset ? lo : hi;
+  }
+
+  TextSelection toValueSelection(TextSelection s) => s.copyWith(
+    baseOffset: s.baseOffset < 0 ? s.baseOffset : toValue(s.baseOffset),
+    extentOffset: s.extentOffset < 0 ? s.extentOffset : toValue(s.extentOffset),
+  );
+
+  TextSelection toTextSelection(TextSelection s) => s.copyWith(
+    baseOffset: s.baseOffset < 0 ? s.baseOffset : toText(s.baseOffset),
+    extentOffset: s.extentOffset < 0 ? s.extentOffset : toText(s.extentOffset),
+  );
+
+  /// The editor's [text] after the platform replaced [value] by [next]: the unchanged start and end kept (blocks
+  /// included), the changed middle as typed; a name changed in part takes its whole block with it.
+  String textFor(String next) {
+    var prefix = 0;
+    final max = next.length < value.length ? next.length : value.length;
+    while (prefix < max && next.codeUnitAt(prefix) == value.codeUnitAt(prefix)) {
+      prefix++;
+    }
+    var suffix = 0;
+    while (suffix < max - prefix &&
+        next.codeUnitAt(next.length - 1 - suffix) == value.codeUnitAt(value.length - 1 - suffix)) {
+      suffix++;
+    }
+    // The kept start and end in the editor's text: whole characters (a name changed in part is not kept).
+    final start = toText(prefix, floor: true), end = toText(value.length - suffix, ceil: true);
+    final keptEnd = value.length - _starts[end];
+    return text.substring(0, start) + next.substring(_starts[start], next.length - keptEnd) + text.substring(end);
+  }
 }
 
 /// [s] with no `height` (TextStyle cannot unset one by copyWith or merge).

@@ -847,7 +847,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
 
   // -- blocks
 
-  /// What a block reads as in the text's semantics (its chip is left out of the tree).
+  /// What a block reads as in the field's semantics (its chip is left out of the tree).
   String? _blockLabel(PromptBlock b) => promptBlockReadName(
     b,
     variables: widget.workflowVariableBlock ?? const WorkflowVariableBlockConfig(),
@@ -1143,7 +1143,12 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
         ),
       ),
     );
-    field = Semantics(label: w.semanticLabel, child: field);
+    // A screen reader reads the field's text with each variable's name in place (the chips are out of the tree); the
+    // offsets it sends and is told are mapped to the editor's, where a block is one character.
+    field = Semantics(
+      label: w.semanticLabel,
+      child: _PromptFieldSemantics(text: controller.semanticsText, child: field),
+    );
     // The Stack stays when the placeholder goes, so the field keeps its state.
     field = Stack(
       children: [
@@ -1303,4 +1308,59 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 
   @override
   bool shouldRelayout(_MenuLayout old) => old.anchor != anchor || old.insets != insets;
+}
+
+/// The prompt field's semantics node when a block has a name ([PromptEditorController.semanticsText]): the text field's
+/// own configuration (its flags, focus, cursor moves, copy and paste), with the value the platform reads being [text]'s
+/// (the names in place) and every offset between the platform and the field mapped: the selection it is told, the
+/// selection it sets and the text it replaces. Cursor moves stay the field's own, in its text, and are told back
+/// mapped, so what the platform reads for a move (the value between the two offsets) is what the caret passed (a block
+/// is passed whole and read as its name). Without a named block it changes nothing.
+class _PromptFieldSemantics extends SingleChildRenderObjectWidget {
+  const _PromptFieldSemantics({required this.text, required super.child});
+
+  final PromptSemanticsText? text;
+
+  @override
+  _RenderPromptFieldSemantics createRenderObject(BuildContext context) => _RenderPromptFieldSemantics(text);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderPromptFieldSemantics renderObject) => renderObject.text = text;
+}
+
+class _RenderPromptFieldSemantics extends RenderProxyBox {
+  _RenderPromptFieldSemantics(this._text);
+
+  PromptSemanticsText? _text;
+  set text(PromptSemanticsText? value) {
+    final same = value?.text == _text?.text && value?.value == _text?.value;
+    _text = value;
+    if (!same) markNeedsSemanticsUpdate();
+  }
+
+  @override
+  void describeSemanticsConfiguration(SemanticsConfiguration config) {
+    super.describeSemanticsConfiguration(config);
+    // The field's node is formed here, so its configuration reaches assembleSemanticsNode.
+    config.isSemanticBoundary = true;
+  }
+
+  @override
+  void assembleSemanticsNode(SemanticsNode node, SemanticsConfiguration config, Iterable<SemanticsNode> children) {
+    final text = _text;
+    if (text == null || !config.isTextField) return super.assembleSemanticsNode(node, config, children);
+    final mapped = config.copy()..attributedValue = AttributedString(text.value);
+    if (config.textSelection case final s?) mapped.textSelection = text.toValueSelection(s);
+    // The field's handlers come merged in from below (as raw action handlers, with the platform's arguments).
+    if (config.getActionHandler(SemanticsAction.setSelection) case final set?) {
+      mapped.onSetSelection = (s) {
+        final t = text.toTextSelection(s);
+        set(<dynamic, dynamic>{'base': t.baseOffset, 'extent': t.extentOffset});
+      };
+    }
+    if (config.getActionHandler(SemanticsAction.setText) case final set?) {
+      mapped.onSetText = (value) => set(text.textFor(value));
+    }
+    node.updateWith(config: mapped, childrenInInversePaintOrder: children.toList());
+  }
 }

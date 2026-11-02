@@ -219,25 +219,28 @@ class FieldAddButton extends StatelessWidget {
   final bool alone;
 
   @override
-  Widget build(BuildContext context) => DifyTouchArea.inPhoneSheet(
-    context,
-    Padding(
-      padding: EdgeInsets.only(bottom: alone ? Css.inlineButtonLineGap : 0),
-      child: DifyPressable(
-        semanticLabel: label,
-        onPressed: onPressed,
-        builder: (context, hovered, focused) => Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: hovered ? DifyColors.stateBaseHover : null,
-            borderRadius: BorderRadius.circular(DifyRadius.md),
-            border: focused ? Border.all(color: DifyColors.componentsInputBorderActive) : null,
-          ),
-          child: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
+  Widget build(BuildContext context) {
+    final button = DifyPressable(
+      semanticLabel: label,
+      onPressed: onPressed,
+      builder: (context, hovered, focused) => Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: hovered ? DifyColors.stateBaseHover : null,
+          borderRadius: BorderRadius.circular(DifyRadius.md),
+          border: focused ? Border.all(color: DifyColors.componentsInputBorderActive) : null,
         ),
+        child: RemixIcon('add-line', size: 16, color: DifyColors.textTertiary),
       ),
-    ),
-  );
+    );
+    // A phone's sheet: the button alone in its touch box (the inline line gap under it would be a dead strip at the
+    // box's bottom edge, and the box centres the button anyway).
+    if (DifyTouchArea.appliesIn(context)) return DifyTouchArea.inPhoneSheet(context, button);
+    return Padding(
+      padding: EdgeInsets.only(bottom: alone ? Css.inlineButtonLineGap : 0),
+      child: button,
+    );
+  }
 }
 
 /// RemoveEffectVarConfirm (remove-effect-var-confirm.tsx): the "Remove Variable" alert dialog over the screen.
