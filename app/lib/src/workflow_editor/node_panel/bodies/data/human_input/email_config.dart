@@ -98,6 +98,141 @@ class _EmailConfigureModalState extends State<EmailConfigureModal> {
   Widget build(BuildContext context) {
     final email = HumanInputHost.of(context).userEmail;
     final base = difyStyle(DifyType.bodyXsRegular, DifyColors.textTertiary);
+    final header = DifyDialogTitle(
+      title: _t('title'),
+      description: _t('description'),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 4,
+              children: [
+                DifyText(_t('title'), DifyType.title2xlSemiBold, maxLines: null),
+                DifyText(_t('description'), DifyType.systemXsRegular, color: DifyColors.textTertiary),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: DifyIconButton(
+              label: cm('operation.close'),
+              size: DifyIconButtonSize.lg,
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const RemixIcon('close-line', size: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+    final fields = <Widget>[
+      _label(_t('subject')),
+      const SizedBox(height: 4),
+      DifyInput(
+        value: _subject,
+        semanticLabel: _t('subject'),
+        placeholder: _t('subjectPlaceholder'),
+        onChanged: (v) => setState(() => _subject = v),
+      ),
+      const SizedBox(height: 20),
+      _label(_t('body')),
+      const SizedBox(height: 4),
+      MailBodyInput(value: _body, onChange: (v) => setState(() => _body = v), email: widget.email),
+      const SizedBox(height: 20),
+      _label(_t('recipient')),
+      const SizedBox(height: 4),
+      Recipient(data: _recipients, onChange: (v) => setState(() => _recipients = v)),
+      const SizedBox(height: 20),
+      Container(
+        padding: const EdgeInsets.fromLTRB(10, 12, 12, 12),
+        decoration: BoxDecoration(
+          color: DifyColors.componentsPanelOnPanelItemBg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+          boxShadow: DifyShadows.xs,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 8,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: DifyColors.componentsIconBgOrangeDarkSolid,
+                border: Border.all(color: DifyColors.dividerRegular),
+                borderRadius: BorderRadius.circular(DifyRadius.sm),
+              ),
+              child: RemixIcon('bug-line', size: 14, color: DifyColors.textPrimaryOnSurface),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 4,
+                children: [
+                  DifyText(_t('debugMode'), DifyType.systemSmMedium, color: DifyColors.textSecondary),
+                  DifyTextLine.rich(
+                    TextSpan(
+                      children: transSpans(_t('debugModeTip1', {'email': email}), {
+                        'email': (inner) => TextSpan(
+                          text: inner,
+                          style: difyStyle(DifyType.bodyMdMedium, DifyColors.textPrimary),
+                        ),
+                      }),
+                    ),
+                    style: base,
+                  ),
+                  DifyTextLine(_t('debugModeTip2'), style: base),
+                ],
+              ),
+            ),
+            DifySwitch(
+              checked: _debug,
+              semanticLabel: _t('debugMode'),
+              onCheckedChange: (v) => setState(() => _debug = v),
+            ),
+          ],
+        ),
+      ),
+    ];
+    final buttons = <Widget>[
+      SizedBox(
+        width: 72,
+        child: DifyButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: DifyTextLine(cm('operation.cancel')),
+        ),
+      ),
+      SizedBox(
+        width: 72,
+        child: DifyButton(
+          variant: DifyButtonVariant.primary,
+          onPressed: _save,
+          child: DifyTextLine(cm('operation.save')),
+        ),
+      ),
+    ];
+    // A phone: the sheet's header, the fields scrolling, Cancel / Save pinned at the bottom (the design's sheet form).
+    if (DifyDialogFrame.sheetOf(context)) {
+      return DifyDialogSurface(
+        label: _t('title'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            header,
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: fields),
+              ),
+            ),
+            DifyAlertDialogActions(children: buttons),
+          ],
+        ),
+      );
+    }
     return DifyDialogSurface(
       padding: const EdgeInsets.all(24),
       scrollable: true,
@@ -107,119 +242,11 @@ class _EmailConfigureModalState extends State<EmailConfigureModal> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: 4,
-                  children: [
-                    DifyText(_t('title'), DifyType.title2xlSemiBold, maxLines: null),
-                    DifyText(_t('description'), DifyType.systemXsRegular, color: DifyColors.textTertiary),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: 0,
-                right: 0,
-                child: DifyIconButton(
-                  label: cm('operation.close'),
-                  size: DifyIconButtonSize.lg,
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const RemixIcon('close-line', size: 16),
-                ),
-              ),
-            ],
-          ),
+          header,
           const SizedBox(height: 24),
-          _label(_t('subject')),
-          const SizedBox(height: 4),
-          DifyInput(
-            value: _subject,
-            semanticLabel: _t('subject'),
-            placeholder: _t('subjectPlaceholder'),
-            onChanged: (v) => setState(() => _subject = v),
-          ),
-          const SizedBox(height: 20),
-          _label(_t('body')),
-          const SizedBox(height: 4),
-          MailBodyInput(value: _body, onChange: (v) => setState(() => _body = v), email: widget.email),
-          const SizedBox(height: 20),
-          _label(_t('recipient')),
-          const SizedBox(height: 4),
-          Recipient(data: _recipients, onChange: (v) => setState(() => _recipients = v)),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.fromLTRB(10, 12, 12, 12),
-            decoration: BoxDecoration(
-              color: DifyColors.componentsPanelOnPanelItemBg,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-              boxShadow: DifyShadows.xs,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 8,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: DifyColors.componentsIconBgOrangeDarkSolid,
-                    border: Border.all(color: DifyColors.dividerRegular),
-                    borderRadius: BorderRadius.circular(DifyRadius.sm),
-                  ),
-                  child: RemixIcon('bug-line', size: 14, color: DifyColors.textPrimaryOnSurface),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: 4,
-                    children: [
-                      DifyText(_t('debugMode'), DifyType.systemSmMedium, color: DifyColors.textSecondary),
-                      DifyTextLine.rich(
-                        TextSpan(
-                          children: transSpans(_t('debugModeTip1', {'email': email}), {
-                            'email': (inner) => TextSpan(
-                              text: inner,
-                              style: difyStyle(DifyType.bodyMdMedium, DifyColors.textPrimary),
-                            ),
-                          }),
-                        ),
-                        style: base,
-                      ),
-                      DifyTextLine(_t('debugModeTip2'), style: base),
-                    ],
-                  ),
-                ),
-                DifySwitch(
-                  checked: _debug,
-                  semanticLabel: _t('debugMode'),
-                  onCheckedChange: (v) => setState(() => _debug = v),
-                ),
-              ],
-            ),
-          ),
+          ...fields,
           const SizedBox(height: 24),
-          HiFooter(
-            children: [
-              SizedBox(
-                width: 72,
-                child: DifyButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: DifyTextLine(cm('operation.cancel')),
-                ),
-              ),
-              SizedBox(
-                width: 72,
-                child: DifyButton(
-                  variant: DifyButtonVariant.primary,
-                  onPressed: _save,
-                  child: DifyTextLine(cm('operation.save')),
-                ),
-              ),
-            ],
-          ),
+          HiFooter(children: buttons),
         ],
       ),
     );

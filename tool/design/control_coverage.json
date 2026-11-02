@@ -25,9 +25,10 @@
       "evidence": [
         "app/test/design_typography_test.dart",
         "app/test/dify_spec/studio/app_card_test.dart",
-        "app/test/dify_spec/dify_ui/alert_dialog_test.dart"
+        "app/test/dify_spec/dify_ui/alert_dialog_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Confirmations stay centred on phones (raft confirm policy) with 44 px buttons; DifyAlertDialogActions is the pinned px-4 py-2 action row of a dialog sheet, DifyAlertDialogContent drops its box in a sheet."
     },
     "app_icon.dart": {
       "kind": "text-composition",
@@ -86,9 +87,10 @@
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
         "app/test/dify_spec/dify_ui/modal_layers_test.dart",
-        "app/test/dify_spec/dify_ui/nested_popover_sheet_test.dart"
+        "app/test/dify_spec/dify_ui/nested_popover_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart"
       ],
-      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular. DifySheetPortal (batch 4a): the same sheet shown from a page's tree in the root overlay (keeps its scopes); DifyPortalSheetFrame; DifySheetHeader.titleWidget. Device check: DifyPortalSemantics keeps portal sheets in the platform's semantics tree (modal from the page side); DifySheetRecipe.contains. Batch 4a round 2: DifyModalLayer (a page, a portal sheet, a portal page) hides its whole content from accessibility while a modal layer opened from it is open and is that layer's semantics place, so only the topmost layer is read and it is never dropped; the portal sheet is a semantics boundary. The non-modal page sheet (DifyPersistentSheet) also slides in, dismisses (drag, controller) and moves only once its content has a single scroll view."
+      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular. DifySheetPortal (batch 4a): the same sheet shown from a page's tree in the root overlay (keeps its scopes); DifyPortalSheetFrame; DifySheetHeader.titleWidget. Device check: DifyPortalSemantics keeps portal sheets in the platform's semantics tree (modal from the page side); DifySheetRecipe.contains. Batch 4a round 2: DifyModalLayer (a page, a portal sheet, a portal page) hides its whole content from accessibility while a modal layer opened from it is open and is that layer's semantics place, so only the topmost layer is read and it is never dropped; the portal sheet is a semantics boundary. The non-modal page sheet (DifyPersistentSheet) also slides in, dismisses (drag, controller) and moves only once its content has a single scroll view. showDifyBottomSheet backDismissible / closeOnEscape carry a dialog's dismissal rules (scrim and drag off, Back and Escape on) into its sheet form."
     },
     "bottom_toolbar.dart": {
       "kind": "text-composition",
@@ -110,9 +112,10 @@
         "app/test/human_input/m1_second_review_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
-        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Batch 4a device check: touch-high (44 px) inside a sheet in a compact window, Dify's sizes elsewhere. Polish (after batch 4): a leading or trailing DifyKeycaps a phone does not show leaves the row with its gap (the label stays centred)."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Batch 4a device check: touch-high (44 px) inside a sheet in a compact window, Dify's sizes elsewhere. Polish (after batch 4): a leading or trailing DifyKeycaps a phone does not show leaves the row with its gap (the label stays centred). In a compact window's dialog (DifyDialogFrame) a button is touch-high too."
     },
     "button_style.dart": {
       "kind": "text-composition",
@@ -194,9 +197,11 @@
         "app/test/design_typography_test.dart",
         "app/test/design/page_selection_test.dart",
         "app/test/dify_spec/dify_ui/dialog_test.dart",
-        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart",
+        "app/test/phone/phone_dialogs_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. On a compact window showDifyDialog is a modal bottom sheet (DifyDialogFrame; raft-flutter form policy): DifyDialogSurface drops its box, DifyDialogTitle is the sheet header (title, description, 44 px close), Back closes it first, DifyModalLayer hides it under a picker; dialog_sheet_test and phone_dialogs_test cover header, pinned 44 px actions, keyboard, Back order, semantics, and the unchanged wide dialog."
     },
     "divider.dart": {
       "kind": "layout-or-non-text",

@@ -64,8 +64,10 @@ void main() {
       testWidgets('a dialog sits in the safe area exactly once; its backdrop covers the window', (t) async {
         phoneView(t, size: w.size, padding: w.insets);
         final nav = await pumpPhoneApp(t, const DifyPage(body: SizedBox()));
+        // The centred form (a confirmation on a phone); the sheet form: phone_dialog_sheet_test.
         showDifyDialog<void>(
           nav.currentContext!,
+          sheetOnCompact: false,
           builder: (_) => const DifyDialogSurface(top: 0, width: 200, height: 100, child: SizedBox.expand()),
         );
         await t.pumpAndSettle();
@@ -193,6 +195,7 @@ void main() {
         final nav = await pumpPhoneApp(t, const DifyPage(body: SizedBox()));
         showDifyDialog<void>(
           nav.currentContext!,
+          sheetOnCompact: false,
           builder: (_) => const DifyDialogSurface(width: 200, height: 100, child: SizedBox.expand()),
         );
         await t.pumpAndSettle();

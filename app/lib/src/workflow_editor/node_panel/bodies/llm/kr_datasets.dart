@@ -254,7 +254,8 @@ Future<List<Json>?> showSelectDataset(BuildContext context, {required List<Strin
       child: DifyDialogSurface(
         label: _ad('feature.dataSet.selectTitle'),
         width: 400,
-        padding: const EdgeInsets.all(24),
+        // A phone's sheet: the parts pad themselves (the sheet's header, the list and the actions at its edges).
+        padding: DifyDialogFrame.sheetOf(ctx) ? EdgeInsets.zero : const EdgeInsets.all(24),
         child: SelectDataset(
           selectedIds: selectedIds,
           onSelect: (d) => Navigator.of(ctx).pop(d),
@@ -320,29 +321,58 @@ class _SelectDatasetState extends State<SelectDataset> {
     final services = LlmGroupScope.of(context);
     final byId = {for (final d in _datasets) '${d['id']}': d};
     final hasNoData = !_loading && _datasets.isEmpty;
+    final sheet = DifyDialogFrame.sheetOf(context);
+    void cancel() {
+      _selected = [...widget.selectedIds];
+      widget.onClose();
+    }
+
+    final list = NotificationListener<ScrollNotification>(
+      onNotification: (n) {
+        if (n.metrics.extentAfter < 40 && _hasMore && !_fetchingNext) _fetch();
+        return false;
+      },
+      child: ListView(
+        shrinkWrap: true,
+        padding: sheet ? const EdgeInsets.symmetric(horizontal: 16) : null,
+        children: [
+          for (final d in _datasets)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: _DatasetOption(
+                dataset: d,
+                selected: _selected.contains('${d['id']}'),
+                onTap: () => _toggle(d),
+              ),
+            ),
+          if (_fetchingNext) const DifyLoading(),
+        ],
+      ),
+    );
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(child: DifyText(_ad('feature.dataSet.selectTitle'), DifyType.title2xlSemiBold, maxLines: null)),
-            DifyIconButton(
-              label: _c('operation.close'),
-              size: DifyIconButtonSize.lg,
-              icon: const RemixIcon('close-line', size: 16),
-              onPressed: () {
-                _selected = [...widget.selectedIds];
-                widget.onClose();
-              },
-            ),
-          ],
+        DifyDialogTitle(
+          title: _ad('feature.dataSet.selectTitle'),
+          onClose: cancel,
+          child: Row(
+            children: [
+              Expanded(child: DifyText(_ad('feature.dataSet.selectTitle'), DifyType.title2xlSemiBold, maxLines: null)),
+              DifyIconButton(
+                label: _c('operation.close'),
+                size: DifyIconButtonSize.lg,
+                icon: const RemixIcon('close-line', size: 16),
+                onPressed: cancel,
+              ),
+            ],
+          ),
         ),
         if (_loading && _datasets.isEmpty)
           const SizedBox(height: 200, child: DifyLoading())
         else if (hasNoData)
           Container(
-            margin: const EdgeInsets.only(top: 24),
+            margin: sheet ? const EdgeInsets.fromLTRB(16, 8, 16, 0) : const EdgeInsets.only(top: 24),
             height: 128,
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -370,37 +400,17 @@ class _SelectDatasetState extends State<SelectDataset> {
               ],
             ),
           )
+        else if (sheet)
+          // The sheet's body: the list scrolls between the header and the actions.
+          Flexible(child: Padding(padding: const EdgeInsets.only(top: 8), child: list))
         else
           Padding(
             padding: const EdgeInsets.only(top: 28),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 286),
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (n) {
-                  if (n.metrics.extentAfter < 40 && _hasMore && !_fetchingNext) _fetch();
-                  return false;
-                },
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final d in _datasets)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: _DatasetOption(
-                          dataset: d,
-                          selected: _selected.contains('${d['id']}'),
-                          onTap: () => _toggle(d),
-                        ),
-                      ),
-                    if (_fetchingNext) const DifyLoading(),
-                  ],
-                ),
-              ),
-            ),
+            child: ConstrainedBox(constraints: const BoxConstraints(maxHeight: 286), child: list),
           ),
         if (!_loading)
           Padding(
-            padding: const EdgeInsets.only(top: 32),
+            padding: sheet ? const EdgeInsets.fromLTRB(16, 8, 16, 8) : const EdgeInsets.only(top: 32),
             child: Row(
               children: [
                 Expanded(
@@ -412,10 +422,7 @@ class _SelectDatasetState extends State<SelectDataset> {
                 ),
                 Flexible(
                   child: DifyButton(
-                    onPressed: () {
-                      _selected = [...widget.selectedIds];
-                      widget.onClose();
-                    },
+                    onPressed: cancel,
                     child: DifyTextLine(_c('operation.cancel')),
                   ),
                 ),

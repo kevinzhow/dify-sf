@@ -98,6 +98,77 @@ class _VersionInfoModalState extends State<VersionInfoModal> {
     final heading = named ? _w('versionHistory.editVersionInfo') : _w('versionHistory.nameThisVersion');
     final optional = _w('panel.optional');
     final label = difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary);
+    final title = heading.isEmpty ? heading : heading[0].toUpperCase() + heading.substring(1);
+    final header = DifyDialogTitle(
+      title: title,
+      onClose: _close,
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 56, 16),
+            child: DifyTextLine(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+          ),
+          Positioned(
+            top: 20,
+            right: 20,
+            child: DifyIconButton(
+              label: DifyI18n.tr('common', 'operation.close'),
+              size: DifyIconButtonSize.lg,
+              icon: RemixIcon('close-line', size: 18, color: DifyColors.textTertiary),
+              onPressed: _close,
+            ),
+          ),
+        ],
+      ),
+    );
+    final fields = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 16,
+      children: [
+        _Field(
+          label: DifyTextLine(_w('versionHistory.editField.title'), style: label),
+          child: DifyTextControl(
+            controller: _title,
+            invalid: _titleError,
+            placeholder: '${_w('versionHistory.nameThisVersion')}$optional',
+          ),
+        ),
+        _Field(
+          label: DifyTextLine(_w('versionHistory.editField.releaseNotes'), style: label),
+          child: DifyTextControl(
+            controller: _notes,
+            invalid: _notesError,
+            multiline: true,
+            placeholder: '${_w('versionHistory.releaseNotesPlaceholder')}$optional',
+          ),
+        ),
+      ],
+    );
+    final buttons = [
+      DifyButton(onPressed: _close, child: DifyTextLine(DifyI18n.tr('common', 'operation.cancel'))),
+      DifyButton(
+        variant: DifyButtonVariant.primary,
+        onPressed: _save,
+        child: DifyTextLine(DifyI18n.tr('common', 'operation.save')),
+      ),
+    ];
+    // A phone: the sheet's header, the fields scrolling, Cancel / Save pinned at the bottom (the design's sheet form).
+    if (DifyDialogFrame.sheetOf(context)) {
+      return DifyDialogSurface(
+        label: heading,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            header,
+            Flexible(
+              child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), child: fields),
+            ),
+            DifyAlertDialogActions(children: buttons),
+          ],
+        ),
+      );
+    }
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -121,71 +192,11 @@ class _VersionInfoModalState extends State<VersionInfoModal> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Stack(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 24, 56, 16),
-                            child: DifyTextLine(
-                              heading.isEmpty ? heading : heading[0].toUpperCase() + heading.substring(1),
-                              style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
-                            ),
-                          ),
-                          Positioned(
-                            top: 20,
-                            right: 20,
-                            child: DifyIconButton(
-                              label: DifyI18n.tr('common', 'operation.close'),
-                              size: DifyIconButtonSize.lg,
-                              icon: RemixIcon('close-line', size: 18, color: DifyColors.textTertiary),
-                              onPressed: _close,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          spacing: 16,
-                          children: [
-                            _Field(
-                              label: DifyTextLine(_w('versionHistory.editField.title'), style: label),
-                              child: DifyTextControl(
-                                controller: _title,
-                                invalid: _titleError,
-                                placeholder: '${_w('versionHistory.nameThisVersion')}$optional',
-                              ),
-                            ),
-                            _Field(
-                              label: DifyTextLine(_w('versionHistory.editField.releaseNotes'), style: label),
-                              child: DifyTextControl(
-                                controller: _notes,
-                                invalid: _notesError,
-                                multiline: true,
-                                placeholder: '${_w('versionHistory.releaseNotesPlaceholder')}$optional',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      header,
+                      Padding(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), child: fields),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                        child: Wrap(
-                          alignment: WrapAlignment.end,
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            DifyButton(
-                              onPressed: _close,
-                              child: DifyTextLine(DifyI18n.tr('common', 'operation.cancel')),
-                            ),
-                            DifyButton(
-                              variant: DifyButtonVariant.primary,
-                              onPressed: _save,
-                              child: DifyTextLine(DifyI18n.tr('common', 'operation.save')),
-                            ),
-                          ],
-                        ),
+                        child: Wrap(alignment: WrapAlignment.end, spacing: 12, runSpacing: 12, children: buttons),
                       ),
                     ],
                   ),

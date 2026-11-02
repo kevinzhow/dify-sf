@@ -164,7 +164,9 @@ class _ModalSheetScope extends InheritedWidget {
 /// [modal], a scrim (`DifySheetRecipe.scrim`) covers the window and blocks the page; otherwise the page stays
 /// interactive around the sheet. When [dismissible], dragging it down below its lowest detent, a tap on the scrim, the
 /// system back button and Escape close it (each through [Navigator.maybePop], so a PopScope in the content can veto
-/// it); otherwise only the content can close it (`Navigator.pop`).
+/// it); otherwise only the content can close it (`Navigator.pop`), unless [backDismissible]: then the system back
+/// button and Escape still close it (a dialog whose outside clicks do not close it, Dify's `disablePointerDismissal`).
+/// With [closeOnEscape] false the content handles Escape itself.
 ///
 /// The sheet paints to the window's bottom and side edges and keeps its content clear of the system insets and the
 /// keyboard: the keyboard's height replaces the bottom inset (never added to it) and the sheet rises with it, so a
@@ -181,8 +183,11 @@ Future<T?> showDifyBottomSheet<T>(
   DifySheetController? controller,
   String? barrierLabel,
   bool useRootNavigator = true,
+  bool? backDismissible,
+  bool closeOnEscape = true,
 }) {
   assert(detents.isNotEmpty, 'A sheet needs at least one detent');
+  final back = backDismissible ?? dismissible;
   assert(initialDetent == null || detents.contains(initialDetent), 'initialDetent must be one of detents');
   final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
   late final _DifySheetRoute<T> route;
@@ -208,7 +213,8 @@ Future<T?> showDifyBottomSheet<T>(
           child: DifySelectionRegion(child: Builder(builder: builder)),
         ),
       );
-      if (!dismissible) sheet = PopScope<T>(canPop: false, child: sheet);
+      if (!back) sheet = PopScope<T>(canPop: false, child: sheet);
+      if (!closeOnEscape) return sheet;
       return Shortcuts(
         shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
         child: Actions(

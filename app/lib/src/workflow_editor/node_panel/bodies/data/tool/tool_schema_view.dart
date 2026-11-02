@@ -203,6 +203,28 @@ class ToolSchemaModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = DifyI18n.tr('workflow', 'nodes.agent.parameterSchema');
     final root = schema is Map ? (schema! as Map).cast<String, Object?>() : const <String, Object?>{};
+    // A phone: the design's sheet form (its header with the close, the tree scrolling under it).
+    if (DifyDialogFrame.sheetOf(context)) {
+      return DifyDialogSurface(
+        label: title,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DifyDialogTitle(title: title, child: const SizedBox()),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 18),
+                  child: SchemaField(name: rootName, payload: root),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 960, maxHeight: MediaQuery.sizeOf(context).height * 0.9),

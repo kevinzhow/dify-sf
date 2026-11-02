@@ -29,68 +29,71 @@ Future<T?> showCreateAppDialogShell<T>(BuildContext context, {required String ti
       barrierLabel: title,
       barrierColor: Colors.transparent,
       transition: DifyDialogTransition.linearFade,
-      builder: (context) => Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-              child: ColoredBox(color: DifyColors.backgroundOverlayBackdrop),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: DifySurface(
-              child: Semantics(
-                container: true,
-                scopesRoute: true,
-                namesRoute: true,
-                explicitChildNodes: true,
-                label: title,
-                child: Container(
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: DifyColors.backgroundDefaultSubtle,
-                    borderRadius: BorderRadius.circular(DifyRadius.xxl),
-                    border: Border.all(color: DifyColors.effectsHighlight),
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(child: builder(context)),
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: DifyPressable(
-                          key: const ValueKey('create-app-shell-close'),
-                          semanticLabel: 'Close',
-                          onPressed: () => Navigator.pop(context),
-                          builder: (context, hovered, focused) => Container(
-                            width: 36,
-                            height: 36,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: hovered
-                                  ? DifyColors.componentsButtonTertiaryBgHover
-                                  : DifyColors.componentsButtonTertiaryBg,
-                              borderRadius: BorderRadius.circular(10),
-                              border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
-                            ),
-                            child: RemixIcon(
-                              'close-large-line',
-                              size: 14,
-                              color: DifyColors.componentsButtonTertiaryText,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+      // A phone: the design's sheet is the shell (its header has the close).
+      builder: (context) => DifyDialogFrame.sheetOf(context)
+          ? DifyDialogSurface(label: title, namesRoute: true, child: builder(context))
+          : Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                    child: ColoredBox(color: DifyColors.backgroundOverlayBackdrop),
                   ),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: DifySurface(
+                    child: Semantics(
+                      container: true,
+                      scopesRoute: true,
+                      namesRoute: true,
+                      explicitChildNodes: true,
+                      label: title,
+                      child: Container(
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: DifyColors.backgroundDefaultSubtle,
+                          borderRadius: BorderRadius.circular(DifyRadius.xxl),
+                          border: Border.all(color: DifyColors.effectsHighlight),
+                        ),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(child: builder(context)),
+                            Positioned(
+                              top: 12,
+                              right: 12,
+                              child: DifyPressable(
+                                key: const ValueKey('create-app-shell-close'),
+                                semanticLabel: 'Close',
+                                onPressed: () => Navigator.pop(context),
+                                builder: (context, hovered, focused) => Container(
+                                  width: 36,
+                                  height: 36,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: hovered
+                                        ? DifyColors.componentsButtonTertiaryBgHover
+                                        : DifyColors.componentsButtonTertiaryBg,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+                                  ),
+                                  child: RemixIcon(
+                                    'close-large-line',
+                                    size: 14,
+                                    color: DifyColors.componentsButtonTertiaryText,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
 
 /// The blank app to create (`POST /apps`).
@@ -192,6 +195,183 @@ class _CreateAppModalState extends State<CreateAppModal> {
     final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
     final top = wide ? 139.0 : 24.0;
     final canSubmit = widget.canCreateApp && _name.isNotEmpty;
+    final middle = <Widget>[
+      // `mb-2 leading-6`: the heading's line box is 24 px, not the 16 px the type alone gives.
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: SizedBox(
+          height: 24,
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: DifyTextLine(
+              _a('newApp.chooseAppType'),
+              style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
+            ),
+          ),
+        ),
+      ),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 16,
+        children: [
+          Flex(
+            direction: phone ? Axis.vertical : Axis.horizontal,
+            crossAxisAlignment: phone ? CrossAxisAlignment.stretch : CrossAxisAlignment.center,
+            spacing: 8,
+            children: [
+              _AppTypeCard(
+                key: const ValueKey('create-app-type-workflow'),
+                width: phone ? null : _AppTypeCard.defaultWidth,
+                active: _mode == AppModes.workflow,
+                title: _a('types.workflow'),
+                description: _a('newApp.workflowShortDescription'),
+                color: DifyColors.componentsIconBgIndigoSolid,
+                icon: RemixIcon(
+                  'exchange-2-fill',
+                  size: 16,
+                  color: DifyColors.componentsAvatarShapeFillStop100,
+                ),
+                onTap: () => setState(() => _mode = AppModes.workflow),
+              ),
+              _AppTypeCard(
+                key: const ValueKey('create-app-type-advanced-chat'),
+                width: phone ? null : _AppTypeCard.defaultWidth,
+                active: _mode == AppModes.advancedChat,
+                title: _a('types.advanced'),
+                description: _a('newApp.advancedShortDescription'),
+                color: DifyColors.componentsIconBgBlueLightSolid,
+                icon: DifyIcon(
+                  'vender/solid/communication/bubble-text-mod',
+                  size: 16,
+                  color: DifyColors.componentsAvatarShapeFillStop100,
+                ),
+                onTap: () => setState(() => _mode = AppModes.advancedChat),
+              ),
+            ],
+          ),
+          DifyDivider(margin: EdgeInsets.zero),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            spacing: 12,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: 24,
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: DifyTextLine(
+                          _a('newApp.captionName'),
+                          style: difyTextStyle(
+                            DifyType.systemSmSemibold,
+                            DifyColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    DifyInput(
+                      key: const ValueKey('create-app-name'),
+                      value: _name,
+                      placeholder: _a('newApp.appNamePlaceholder'),
+                      semanticLabel: _a('newApp.captionName'),
+                      onChanged: (v) => setState(() => _name = v),
+                    ),
+                  ],
+                ),
+              ),
+              DifyAppIcon(
+                key: const ValueKey('create-app-icon'),
+                size: DifyAppIconSize.xxl,
+                radius: DifyRadius.xxl,
+                iconType: _icon.type,
+                icon: _icon.icon,
+                background: _icon.background,
+                imageUrl: _icon.url,
+                semanticLabel: _a('iconPicker.emoji'),
+                onTap: _pickIcon,
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 24,
+                child: Row(
+                  children: [
+                    DifyTextLine(
+                      _a('newApp.captionDescription'),
+                      style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
+                    ),
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: DifyTextLine(
+                          '(${_a('newApp.optional')})',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              DifyTextarea(
+                key: const ValueKey('create-app-description'),
+                value: _description,
+                placeholder: _a('newApp.appDescriptionPlaceholder'),
+                semanticLabel: _a('newApp.captionDescription'),
+                onChanged: (v) => setState(() => _description = v),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ];
+    final buttons = <Widget>[
+      DifyButton(
+        key: const ValueKey('create-app-cancel'),
+        semanticLabel: _a('newApp.Cancel'),
+        onPressed: widget.onClose,
+        child: DifyTextLine(_a('newApp.Cancel')),
+      ),
+      DifyButton(
+        key: const ValueKey('create-app-submit'),
+        variant: DifyButtonVariant.primary,
+        disabled: !canSubmit,
+        loading: _creating,
+        semanticLabel: _a('newApp.Create'),
+        onPressed: _handleCreate,
+        child: labelWithModEnter(_a('newApp.Create'), disabled: !canSubmit),
+      ),
+    ];
+    // A phone's sheet (the design's dialog form): the sheet's header, the form scrolling, Cancel / Create pinned at
+    // the bottom; no preview.
+    if (DifyDialogFrame.sheetOf(context)) {
+      return CallbackShortcuts(
+        bindings: modEnter(widget.canCreateApp ? _handleCreate : null),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DifyDialogTitle(title: _a('newApp.startFromBlank'), onClose: widget.onClose, child: const SizedBox()),
+            Flexible(
+              child: SingleChildScrollView(
+                key: const ValueKey('create-app-form'),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: middle),
+              ),
+            ),
+            DifyAlertDialogActions(children: buttons),
+          ],
+        ),
+      );
+    }
     return CallbackShortcuts(
       bindings: modEnter(widget.canCreateApp ? _handleCreate : null),
       child: LayoutBuilder(
@@ -230,165 +410,14 @@ class _CreateAppModalState extends State<CreateAppModal> {
                                 ).copyWith(height: 24 / 18),
                               ),
                             ),
-                            // `mb-2 leading-6`: the heading's line box is 24 px, not the 16 px the type alone gives.
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: SizedBox(
-                                height: 24,
-                                child: Align(
-                                  alignment: AlignmentDirectional.centerStart,
-                                  child: DifyTextLine(
-                                    _a('newApp.chooseAppType'),
-                                    style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              spacing: 16,
-                              children: [
-                                Flex(
-                                  direction: phone ? Axis.vertical : Axis.horizontal,
-                                  crossAxisAlignment: phone ? CrossAxisAlignment.stretch : CrossAxisAlignment.center,
-                                  spacing: 8,
-                                  children: [
-                                    _AppTypeCard(
-                                      key: const ValueKey('create-app-type-workflow'),
-                                      width: phone ? null : _AppTypeCard.defaultWidth,
-                                      active: _mode == AppModes.workflow,
-                                      title: _a('types.workflow'),
-                                      description: _a('newApp.workflowShortDescription'),
-                                      color: DifyColors.componentsIconBgIndigoSolid,
-                                      icon: RemixIcon(
-                                        'exchange-2-fill',
-                                        size: 16,
-                                        color: DifyColors.componentsAvatarShapeFillStop100,
-                                      ),
-                                      onTap: () => setState(() => _mode = AppModes.workflow),
-                                    ),
-                                    _AppTypeCard(
-                                      key: const ValueKey('create-app-type-advanced-chat'),
-                                      width: phone ? null : _AppTypeCard.defaultWidth,
-                                      active: _mode == AppModes.advancedChat,
-                                      title: _a('types.advanced'),
-                                      description: _a('newApp.advancedShortDescription'),
-                                      color: DifyColors.componentsIconBgBlueLightSolid,
-                                      icon: DifyIcon(
-                                        'vender/solid/communication/bubble-text-mod',
-                                        size: 16,
-                                        color: DifyColors.componentsAvatarShapeFillStop100,
-                                      ),
-                                      onTap: () => setState(() => _mode = AppModes.advancedChat),
-                                    ),
-                                  ],
-                                ),
-                                DifyDivider(margin: EdgeInsets.zero),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  spacing: 12,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                                        children: [
-                                          SizedBox(
-                                            height: 24,
-                                            child: Align(
-                                              alignment: AlignmentDirectional.centerStart,
-                                              child: DifyTextLine(
-                                                _a('newApp.captionName'),
-                                                style: difyTextStyle(
-                                                  DifyType.systemSmSemibold,
-                                                  DifyColors.textSecondary,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          DifyInput(
-                                            key: const ValueKey('create-app-name'),
-                                            value: _name,
-                                            placeholder: _a('newApp.appNamePlaceholder'),
-                                            semanticLabel: _a('newApp.captionName'),
-                                            onChanged: (v) => setState(() => _name = v),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    DifyAppIcon(
-                                      key: const ValueKey('create-app-icon'),
-                                      size: DifyAppIconSize.xxl,
-                                      radius: DifyRadius.xxl,
-                                      iconType: _icon.type,
-                                      icon: _icon.icon,
-                                      background: _icon.background,
-                                      imageUrl: _icon.url,
-                                      semanticLabel: _a('iconPicker.emoji'),
-                                      onTap: _pickIcon,
-                                    ),
-                                  ],
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    SizedBox(
-                                      height: 24,
-                                      child: Row(
-                                        children: [
-                                          DifyTextLine(
-                                            _a('newApp.captionDescription'),
-                                            style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
-                                          ),
-                                          Flexible(
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(left: 4),
-                                              child: DifyTextLine(
-                                                '(${_a('newApp.optional')})',
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    DifyTextarea(
-                                      key: const ValueKey('create-app-description'),
-                                      value: _description,
-                                      placeholder: _a('newApp.appDescriptionPlaceholder'),
-                                      semanticLabel: _a('newApp.captionDescription'),
-                                      onChanged: (v) => setState(() => _description = v),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                            ...middle,
                             Padding(
                               padding: const EdgeInsets.only(top: 20, bottom: 40),
                               child: Wrap(
                                 alignment: WrapAlignment.end,
                                 spacing: 8,
                                 runSpacing: 8,
-                                children: [
-                                  DifyButton(
-                                    key: const ValueKey('create-app-cancel'),
-                                    semanticLabel: _a('newApp.Cancel'),
-                                    onPressed: widget.onClose,
-                                    child: DifyTextLine(_a('newApp.Cancel')),
-                                  ),
-                                  DifyButton(
-                                    key: const ValueKey('create-app-submit'),
-                                    variant: DifyButtonVariant.primary,
-                                    disabled: !canSubmit,
-                                    loading: _creating,
-                                    semanticLabel: _a('newApp.Create'),
-                                    onPressed: _handleCreate,
-                                    child: labelWithModEnter(_a('newApp.Create'), disabled: !canSubmit),
-                                  ),
-                                ],
+                                children: buttons,
                               ),
                             ),
                           ],
