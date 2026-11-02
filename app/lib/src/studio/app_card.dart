@@ -17,11 +17,9 @@ import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/dify_i18n.dart';
-import '../workflow_editor/dsl/dsl_export_confirm_modal.dart' show showDslExportConfirm;
 import '../workflow_editor/header/format.dart' show formatTime;
+import 'app_actions.dart';
 import 'app_icons.dart';
-import 'app_modals.dart';
-import 'export_app_dsl.dart';
 import 'studio_scope.dart';
 
 String _a(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('app', key, params);
@@ -93,42 +91,20 @@ class AppCard extends StatefulWidget {
   State<AppCard> createState() => _AppCardState();
 }
 
-class _AppCardState extends State<AppCard> {
-  bool _hovered = false, _focusWithin = false, _menuOpen = false, _togglingStar = false;
+class _AppCardState extends State<AppCard> with StudioAppActions<AppCard> {
+  bool _hovered = false, _focusWithin = false, _menuOpen = false;
   final _menu = DifyFloatingController();
-  late StudioServices _services;
-
-  /// `useExportAppDsl` / `useExportWorkflowAppDsl` over the page's services.
-  late final _exporter = AppDslExporter(
-    exportDsl: (id, {includeSecret = false}) => _services.api.exportDsl(id, includeSecret: includeSecret),
-    environmentVariables: (id) => _services.environmentVariables(id),
-    saveDsl: (name, yaml) => _services.saveDsl(name, yaml),
-  )..addListener(_exportChanged);
-
-  AppInfo get app => widget.app;
-  bool get _exporting => _exporter.isExporting;
-
-  void _exportChanged() {
-    if (mounted) setState(() {});
-  }
 
   @override
-  void dispose() {
-    _exporter.dispose();
-    super.dispose();
-  }
+  AppInfo get app => widget.app;
+  bool get _exporting => exporting;
+  bool get _togglingStar => togglingStar;
 
   @override
   Widget build(BuildContext context) {
-    final services = _services = StudioScope.of(context);
+    final services = this.services = StudioScope.of(context);
     final previewOnly = hasOnlyAppPreviewPermission(app.permissionKeys);
-    final acl = appACLCapabilities(app.permissionKeys);
-    final ops = _Operations(
-      edit: acl.canEdit,
-      duplicate: services.canCreateApp,
-      export: acl.canImportExportDSL,
-      delete: acl.canDelete,
-    );
+    final ops = AppOperations.of(app, services);
     final popup = _menuOpen || _exporting;
     final lifted = !previewOnly && (_hovered || popup);
     final content = widget.starred ? _starredContent() : _cardContent();
@@ -300,7 +276,7 @@ class _AppCardState extends State<AppCard> {
 
   // ----- the action bar -----
 
-  Widget _actionBar(BuildContext context, StudioServices services, _Operations ops, {required bool visible}) {
+  Widget _actionBar(BuildContext context, StudioServices services, AppOperations ops, {required bool visible}) {
     final starLabel = _a('studio.starApp');
     return Positioned(
       top: -0.5,
@@ -359,7 +335,7 @@ class _AppCardState extends State<AppCard> {
                                   BlendMode.srcIn,
                                 ),
                               ),
-                              onPressed: () => unawaited(_toggleStar(services, !app.isStarred)),
+                              onPressed: () => unawaited(toggleStar(!app.isStarred)),
                             ),
                           ),
                         ),
@@ -398,7 +374,7 @@ class _AppCardState extends State<AppCard> {
     );
   }
 
-  List<Widget> _menuItems(BuildContext context, StudioServices services, _Operations ops) {
+  List<Widget> _menuItems(BuildContext context, StudioServices services, AppOperations ops) {
     Widget item(String key, String label, VoidCallback onSelect, {bool destructive = false, bool disabled = false}) =>
         DifyMenuItem(
           key: ValueKey('app-card-$key-${app.id}'),
@@ -415,13 +391,12 @@ class _AppCardState extends State<AppCard> {
         );
     final createExport = ops.duplicate || ops.export;
     return [
-      if (ops.edit) item('edit', _a('editApp'), () => _afterMenu(() => _edit(services))),
+      if (ops.edit) item('edit', _a('editApp'), () => _afterMenu(editApp)),
       if (ops.edit && (createExport || ops.delete)) const DifyMenuSeparator(),
-      if (ops.duplicate) item('duplicate', _a('duplicate'), () => _afterMenu(() => _duplicate(services))),
+      if (ops.duplicate) item('duplicate', _a('duplicate'), () => _afterMenu(duplicateApp)),
       if (ops.export) item('export', _a('export'), () => unawaited(_export()), disabled: _exporting),
       if (createExport && ops.delete) const DifyMenuSeparator(),
-      if (ops.delete)
-        item('delete', _c('operation.delete'), () => _afterMenu(() => _delete(services)), destructive: true),
+      if (ops.delete) item('delete', _c('operation.delete'), () => _afterMenu(deleteApp), destructive: true),
     ];
   }
 
@@ -433,147 +408,12 @@ class _AppCardState extends State<AppCard> {
     });
   }
 
-  Future<void> _toggleStar(StudioServices services, bool pressed) async {
-    if (_togglingStar) return;
-    setState(() => _togglingStar = true);
-    try {
-      if (pressed) {
-        await services.api.star(app.id);
-      } else {
-        await services.api.unstar(app.id);
-      }
-      await services.refresh();
-    } on TransportException catch (e) {
-      toast.error(e.message.isNotEmpty ? e.message : _a('studio.starFailed'));
-    } on Object {
-      toast.error(_a('studio.starFailed'));
-    } finally {
-      if (mounted) setState(() => _togglingStar = false);
-    }
-  }
-
-  Future<void> _edit(StudioServices services) => showEditAppModal(
-    context,
-    (hide) => EditAppModal(
-      isEditModal: true,
-      appName: app.name,
-      appIconType: app.iconType,
-      appIcon: app.icon ?? '',
-      appIconBackground: app.iconBackground,
-      appIconUrl: app.iconUrl,
-      appDescription: app.description,
-      appMode: app.mode,
-      appUseIconAsAnswerIcon: app.useIconAsAnswerIcon,
-      maxActiveRequests: app.maxActiveRequests,
-      uploadIcon: services.uploadIcon,
-      onHide: hide,
-      onConfirm: (p) async {
-        try {
-          await services.api.update(
-            app.id,
-            name: p.name,
-            iconType: p.iconType,
-            icon: p.icon,
-            iconBackground: p.iconBackground,
-            description: p.description,
-            useIconAsAnswerIcon: p.useIconAsAnswerIcon,
-            maxActiveRequests: p.maxActiveRequests,
-          );
-          toast.success(_a('editDone'));
-          await services.refresh();
-        } on TransportException catch (e) {
-          toast.error(e.message.isNotEmpty ? e.message : _a('editFailed'));
-        } on Object {
-          toast.error(_a('editFailed'));
-        }
-      },
-    ),
-  );
-
-  Future<void> _duplicate(StudioServices services) => showDifyDialog<void>(
-    context,
-    builder: (dialog) => DuplicateAppModal(
-      appName: app.name,
-      iconType: app.iconType,
-      icon: app.icon ?? '',
-      iconBackground: app.iconBackground,
-      iconUrl: app.iconUrl,
-      uploadIcon: services.uploadIcon,
-      onHide: () => Navigator.pop(dialog),
-      onConfirm: (p) async {
-        final AppInfo copy;
-        try {
-          copy = await services.api.copy(
-            app.id,
-            name: p.name,
-            iconType: p.iconType,
-            icon: p.icon,
-            iconBackground: p.iconBackground,
-          );
-        } on Object {
-          toast.error(_a('newApp.appCreateFailed'));
-          return;
-        }
-        toast.success(_a('newApp.appCreated'));
-        unawaited(services.refresh());
-        await services.open(copy);
-      },
-    ),
-  );
-
-  Future<void> _delete(StudioServices services) => showDifyDialog<void>(
-    context,
-    dismissible: false,
-    builder: (dialog) => DeleteAppDialog(
-      appName: app.name,
-      onClose: () => Navigator.pop(dialog),
-      onConfirm: () async {
-        try {
-          await services.api.delete(app.id);
-        } on TransportException catch (e) {
-          toast.error('${_a('appDeleteFailed')}${e.message.isNotEmpty ? ': ${e.message}' : ''}');
-          return false;
-        } on Object {
-          toast.error(_a('appDeleteFailed'));
-          return false;
-        }
-        toast.success(_a('appDeleted'));
-        unawaited(services.refresh());
-        return true;
-      },
-    ),
-  );
-
-  /// `exportCheck`: a workflow / chatflow asks first when its environment holds secrets.
+  /// The menu closes before the export starts.
   Future<void> _export() async {
     if (_exporting) return;
     setState(() => _menuOpen = false);
-    final result = app.mode == AppModes.workflow || app.mode == AppModes.advancedChat
-        ? await _exporter.exportWorkflowAppDsl(appId: app.id, appName: app.name)
-        : await _exporter.exportAppDsl(appId: app.id, appName: app.name);
-    if (result.status != 'confirmation-required' || !mounted) return;
-    await showDslExportConfirm(
-      context,
-      envList: result.secretEnvList,
-      onConfirm: (include) async {
-        await _exporter.exportAppDsl(appId: app.id, appName: app.name, includeSecret: include);
-      },
-    );
+    await exportApp();
   }
-}
-
-class _Operations {
-  const _Operations({
-    required this.edit,
-    required this.duplicate,
-    required this.export,
-    required this.delete,
-  });
-
-  final bool edit, duplicate, export, delete;
-
-  /// `shouldShowOperationsMenu`.
-  bool get any => edit || duplicate || export || delete;
 }
 
 /// The app card grid (`grid-cols-[repeat(auto-fill,minmax(min(100%,288px),1fr))] gap-2.5`): as many 288+ px columns
