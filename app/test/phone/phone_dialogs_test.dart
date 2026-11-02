@@ -319,6 +319,12 @@ void main() {
     expect(state.controller.prompt, before);
     final labels = platformLabels(t);
     expect(labels.where((l) => l.contains('request')), isNotEmpty, reason: '$labels');
+    // Read in order: the title, the close, the search, then the rows.
+    final title = labels.indexOf('Insert variable');
+    expect(title, greaterThanOrEqualTo(0), reason: '$labels');
+    final search = labels.indexWhere((l) => l.contains('Search variable'));
+    expect(search, greaterThan(title), reason: '$labels');
+    expect(labels.indexWhere((l) => l.contains('request')), greaterThan(search), reason: '$labels');
     expect(
       labels.where((l) => l.contains('Search variable') && l.contains('request')),
       isEmpty,

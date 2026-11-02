@@ -126,6 +126,35 @@ class _PageState extends State<_Page> {
   );
 }
 
+/// The labels in the order the platform reads them (traversal order: sort keys, then geometry), an overlay child
+/// under its portal's place as [platformLabels] does.
+List<String> _readingOrder(WidgetTester t) {
+  final roots = [for (final view in t.binding.renderViews) ?view.owner?.semanticsOwner?.rootSemanticsNode];
+  final grafted = <Object, List<SemanticsNode>>{};
+  void index(SemanticsNode n) {
+    if (n.getSemanticsData().traversalChildIdentifier case final id?) (grafted[id] ??= []).add(n);
+    n.visitChildren((c) {
+      index(c);
+      return true;
+    });
+  }
+
+  roots.forEach(index);
+  final out = <String>[];
+  void walk(SemanticsNode n) {
+    if (n.label.isNotEmpty) out.add(n.label);
+    final children = [
+      for (final c in n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder))
+        if (c.getSemanticsData().traversalChildIdentifier == null) c,
+    ];
+    if (n.getSemanticsData().traversalParentIdentifier case final id?) children.addAll(grafted[id] ?? const []);
+    children.forEach(walk);
+  }
+
+  roots.forEach(walk);
+  return out;
+}
+
 void main() {
   setUpAll(() => DifyI18n.load('en-US'));
 
@@ -322,6 +351,25 @@ void main() {
     await t.tap(find.byKey(const ValueKey('ok')));
     await _settle(t);
     expect(await ok, isTrue);
+  });
+
+  testWidgets('accessibility of a portal sheet: its title names the sheet (announced when it opens) and is read '
+      'first, then its close and content; the scrim\'s Close comes last', (t) async {
+    final semantics = t.ensureSemantics();
+    phoneView(t, size: const Size(411, 914), padding: gestureInsets);
+    await pumpPhoneApp(t, _Page(open: (_) {}), edgeToEdge: true);
+    await t.tap(find.byKey(const ValueKey('open-sheet')));
+    await _settle(t);
+    final order = _readingOrder(t);
+    final title = order.indexOf('Node settings');
+    expect(title, 0, reason: '$order');
+    expect(order.indexOf('Close'), greaterThan(title), reason: '$order');
+    expect(order.indexOf('Add'), greaterThan(order.indexOf('Close')), reason: '$order');
+    expect(order.last, 'Close', reason: 'the scrim last: $order');
+    expect(order.where((l) => l == 'Close'), hasLength(2), reason: 'the header close and the scrim');
+    final node = t.getSemantics(find.text('Node settings'));
+    expect(node.getSemanticsData().flagsCollection.namesRoute, isTrue);
+    semantics.dispose();
   });
 
   group('DifyActionRow', () {

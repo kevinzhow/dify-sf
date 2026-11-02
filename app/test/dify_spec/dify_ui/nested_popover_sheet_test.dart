@@ -105,7 +105,9 @@ void main() {
           for (final below in ['Env sheet', 'Env row', 'Add', 'Open']) {
             expect(labels, isNot(contains(below)), reason: '"$below" (below the form) is hidden: $labels');
           }
-          expect(_traversalLabels(t), labels, reason: 'the framework\'s traversal order agrees');
+          // The same nodes; the scrim's Close (first in the tree) is read last, as a route's barrier (its sort key).
+          expect(labels.first, 'operation.close');
+          expect(_traversalLabels(t), [...labels.skip(1), labels.first], reason: 'the framework\'s traversal order');
           expect(await t.binding.handlePopRoute(), isTrue);
           await _settle(t);
           labels = platformLabels(t);

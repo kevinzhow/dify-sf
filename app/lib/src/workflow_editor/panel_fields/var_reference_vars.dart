@@ -96,32 +96,37 @@ class _SearchBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = DifyI18n.tr('workflow', 'common.searchVar');
-    return DifyInput(
-      focusInteractiveAddons: false,
-      value: value,
-      onChanged: onChanged,
-      placeholder: label,
-      semanticLabel: label,
-      focusNode: focusNode,
-      onKeyEvent: onKey,
-      leading: Padding(
-        padding: EdgeInsets.only(left: 8, right: 4),
-        child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
-      ),
-      trailing: value.isEmpty
-          ? null
-          : Padding(
-              padding: const EdgeInsets.only(left: 2, right: 8),
-              child: DifyIconButton(
-                label: DifyI18n.tr('common', 'operation.clear'),
-                size: DifyIconButtonSize.xs,
-                onPressed: () {
-                  onChanged('');
-                  focusNode.requestFocus();
-                },
-                icon: RemixIcon('close-circle-fill', size: 14, color: DifyColors.textQuaternary),
+    // A node of its own for the input's label: without it the label went to the node above (a sheet's whole list
+    // was read as "Search variable", before the sheet's title).
+    return Semantics(
+      container: true,
+      child: DifyInput(
+        focusInteractiveAddons: false,
+        value: value,
+        onChanged: onChanged,
+        placeholder: label,
+        semanticLabel: label,
+        focusNode: focusNode,
+        onKeyEvent: onKey,
+        leading: Padding(
+          padding: EdgeInsets.only(left: 8, right: 4),
+          child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
+        ),
+        trailing: value.isEmpty
+            ? null
+            : Padding(
+                padding: const EdgeInsets.only(left: 2, right: 8),
+                child: DifyIconButton(
+                  label: DifyI18n.tr('common', 'operation.clear'),
+                  size: DifyIconButtonSize.xs,
+                  onPressed: () {
+                    onChanged('');
+                    focusNode.requestFocus();
+                  },
+                  icon: RemixIcon('close-circle-fill', size: 14, color: DifyColors.textQuaternary),
+                ),
               ),
-            ),
+      ),
     );
   }
 }

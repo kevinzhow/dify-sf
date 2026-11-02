@@ -1006,6 +1006,8 @@ class DifySheetHeader extends StatelessWidget {
                         titleWidget ??
                             Semantics(
                               header: true,
+                              // Names the sheet's route scope: announced when the sheet opens.
+                              namesRoute: true,
                               child: DifyText(title, DifyPhoneType.title, color: DifyColors.textPrimary),
                             ),
                         if (subtitle case final s?)
@@ -1438,6 +1440,7 @@ class DifyPortalSheetFrame extends StatelessWidget {
                   // A node of its own (a semantics boundary): nothing in the sheet can block past it.
                   child: Semantics(
                     container: true,
+                    sortKey: const OrdinalSortKey(0),
                     scopesRoute: true,
                     explicitChildNodes: true,
                     child: _SheetFocus(
@@ -1540,6 +1543,15 @@ class _PortalScrim extends StatelessWidget {
     );
     final dismiss = onDismiss;
     if (dismiss == null) return ExcludeSemantics(child: scrim);
-    return Semantics(container: true, button: true, label: label, onTap: dismiss, onDismiss: dismiss, child: scrim);
+    // Last in the reading order, as a route's barrier (OrdinalSortKey 1): TalkBack starts at the sheet's title.
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      onTap: dismiss,
+      onDismiss: dismiss,
+      sortKey: const OrdinalSortKey(1),
+      child: scrim,
+    );
   }
 }
