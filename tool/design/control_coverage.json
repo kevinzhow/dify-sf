@@ -598,6 +598,13 @@
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
+    "top_app_bar.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/top_app_bar_test.dart"
+      ],
+      "note": "dify-sf phone app bar (no Dify counterpart): DifyPhoneType title / large title and system-xs-regular subtitle through DifyText; height, ellipsis, back and insets are tested."
+    },
     "touch_target.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
