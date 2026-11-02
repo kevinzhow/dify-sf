@@ -12,6 +12,7 @@ import '../../design/widgets/widgets.dart';
 import '../../i18n/dify_i18n.dart';
 import '../../workflow/var_types.dart' show VarType;
 import '../panel_fields/var_reference_vars.dart' show VarFullPathPanel;
+import 'prompt_blocks.dart';
 import 'prompt_editor_types.dart';
 
 TextStyle _xsMedium(Color c) => difyTextStyle(DifyType.systemXsMedium, c);
@@ -94,6 +95,30 @@ bool llmModelPluginInstalled(
         : null,
   );
 }
+
+/// What block [b] reads as in the prompt's text for a screen reader: the words its chip shows ("Start query": the
+/// node's title and the variable's path; "Context"; "current_prompt"), null for blocks that keep their own semantics
+/// (a form field, an agent output with controls of its own) or show as text (a literal).
+String? promptBlockReadName(
+  PromptBlock b, {
+  required WorkflowVariableBlockConfig variables,
+  PromptGeneratorType generatorType = PromptGeneratorType.prompt,
+}) => switch (b.kind) {
+  PromptBlockKind.workflowVariable => () {
+    final v = b.variables;
+    final node = workflowVariableState(v, variables).node;
+    final showsNode = node != null && !(isEnvVar(v) || isConversationVar(v) || isGlobalVar(v) || isRagVariableVar(v));
+    return [if (showsNode && node.title.isNotEmpty) node.title, varName(v)].join(' ');
+  }(),
+  PromptBlockKind.context => DifyI18n.tr('common', 'promptEditor.context.item.title'),
+  PromptBlockKind.history => DifyI18n.tr('common', 'promptEditor.history.item.title'),
+  PromptBlockKind.query => DifyI18n.tr('common', 'promptEditor.query.item.title'),
+  PromptBlockKind.current => generatorType == PromptGeneratorType.prompt ? 'current_prompt' : 'current_code',
+  PromptBlockKind.errorMessage => 'error_message',
+  PromptBlockKind.lastRun => 'last_run',
+  PromptBlockKind.requestUrl => DifyI18n.tr('common', 'promptEditor.requestURL.item.title'),
+  PromptBlockKind.hitlInput || PromptBlockKind.agentOutput || PromptBlockKind.literal => null,
+};
 
 /// The workflow variable block: VariableLabelInEditor, with the full path on hover for paths over two segments.
 class WorkflowVariableChip extends StatelessWidget {

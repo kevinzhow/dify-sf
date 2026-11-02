@@ -201,6 +201,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
   void _attach(PromptEditorController c) {
     c
       ..chipBuilder = _chip
+      ..blockLabel = _blockLabel
       ..variableValueStyle = TextStyle(color: DifyColors.textAccent)
       ..onBlockCreated = ((b) {
         _configOf(b.kind)?.onInsert?.call();
@@ -217,6 +218,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
     c
       ..removeListener(_onChanged)
       ..chipBuilder = null
+      ..blockLabel = null
       ..onBlockCreated = null
       ..onBlockRemoved = null;
   }
@@ -844,6 +846,13 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
   }
 
   // -- blocks
+
+  /// What a block reads as in the text's semantics (its chip is left out of the tree).
+  String? _blockLabel(PromptBlock b) => promptBlockReadName(
+    b,
+    variables: widget.workflowVariableBlock ?? const WorkflowVariableBlockConfig(),
+    generatorType: widget.currentBlock?.generatorType ?? PromptGeneratorType.prompt,
+  );
 
   Widget _chip(BuildContext context, PromptBlock b, int offset) {
     final sel = controller.selection;

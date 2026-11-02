@@ -33,6 +33,12 @@ class PromptEditorController extends TextEditingController {
   /// Builds block widgets ([DifyPromptEditor] sets it); without one, blocks show as their text.
   PromptChipBuilder? chipBuilder;
 
+  /// What a block reads as in the text's semantics ([DifyPromptEditor] sets it): a screen reader reads the prompt as
+  /// one string with each such block's name in its place ("Summarize Start query in one sentence."), and the block's
+  /// widget stays out of the semantics tree (it would be read again, apart from the text). Null for a block that keeps
+  /// its own semantics (a form field or an output with controls of their own).
+  String? Function(PromptBlock block)? blockLabel;
+
   /// Called for each block a transform or an insert creates (Dify's `onInsert`) and each block that leaves the text
   /// (`onDelete`).
   void Function(PromptBlock block)? onBlockCreated, onBlockRemoved;
@@ -300,24 +306,51 @@ class PromptEditorController extends TextEditingController {
       } else if (block.kind == PromptBlockKind.literal || chipBuilder == null) {
         children.add(TextSpan(text: block.kind == PromptBlockKind.literal ? block.text : '￼'));
       } else {
-        children.add(
-          WidgetSpan(
-            alignment: PlaceholderAlignment.baseline,
-            baseline: TextBaseline.alphabetic,
-            child: CssMiddle(
-              key: ValueKey((c, seen[c] = (seen[c] ?? 0) + 1)),
-              fontSize: style?.fontSize ?? 14,
-              style: style,
-              lineHeight: strutLine ?? (style?.height ?? 0) * (style?.fontSize ?? 14),
-              child: chipBuilder!(context, block, i),
-            ),
+        final label = blockLabel?.call(block);
+        final chip = ExcludeSemantics(
+          key: ValueKey((c, seen[c] = (seen[c] ?? 0) + 1)),
+          excluding: label != null,
+          child: CssMiddle(
+            fontSize: style?.fontSize ?? 14,
+            style: style,
+            lineHeight: strutLine ?? (style?.height ?? 0) * (style?.fontSize ?? 14),
+            child: chipBuilder!(context, block, i),
           ),
+        );
+        children.add(
+          label == null
+              ? WidgetSpan(alignment: PlaceholderAlignment.baseline, baseline: TextBaseline.alphabetic, child: chip)
+              : _ReadBlockSpan(
+                  label: label,
+                  alignment: PlaceholderAlignment.baseline,
+                  baseline: TextBaseline.alphabetic,
+                  child: chip,
+                ),
         );
       }
     }
     addText(runStart, t.length);
     return TextSpan(style: style, children: children);
   }
+}
+
+/// A block's widget in the text that reads as [label] in the text's semantics: the editor's value has [label] where a
+/// plain [WidgetSpan] has U+FFFC (which screen readers read as "object" or not at all). The widget itself is left out
+/// of the semantics tree by the editor ([PromptEditorController.blockLabel]).
+class _ReadBlockSpan extends WidgetSpan {
+  const _ReadBlockSpan({required this.label, required super.child, super.alignment, super.baseline});
+
+  final String label;
+
+  @override
+  void computeSemanticsInformation(List<InlineSpanSemanticsInformation> collector) =>
+      collector.add(InlineSpanSemanticsInformation('\uFFFC', semanticsLabel: label));
+
+  @override
+  bool operator ==(Object other) => super == other && other is _ReadBlockSpan && other.label == label;
+
+  @override
+  int get hashCode => Object.hash(super.hashCode, label);
 }
 
 /// [s] with no `height` (TextStyle cannot unset one by copyWith or merge).

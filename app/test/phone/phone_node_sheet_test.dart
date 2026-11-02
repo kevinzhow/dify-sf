@@ -1090,6 +1090,30 @@ void main() {
     });
   }
 
+  testWidgets('the prompt is read as one text with each variable\'s name in its place (polish 3): "Summarize Start '
+      'query in one sentence.", no U+FFFC, and the chip is not read again apart from it', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+    await _openFromSteps(t, _llmTitle);
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final panel = _inSheet(find.byType(DifyPromptEditorPanel)).first;
+    await _scrollTo(t, panel);
+    final editable = find.descendant(of: panel, matching: find.byType(EditableText)).first;
+    final field = t.getSemantics(editable).getSemanticsData();
+    expect(field.value, 'Summarize Start query in one sentence.');
+    expect(field.label, isNot(contains('query')), reason: 'the chip\'s texts are not merged into the field\'s name');
+    final labels = platformLabels(t);
+    expect(labels.where((l) => l.contains('query')), isEmpty, reason: 'the chip is no node of its own: $labels');
+    // The text the field edits is still Dify's prompt.
+    expect(
+      t.widget<EditableText>(editable).controller.text.contains('￼'),
+      isFalse,
+      reason: 'the display text keeps its private-use block character',
+    );
+    semantics.dispose();
+    await e.dispose();
+  });
+
   testWidgets('"…" → Publish: with the keycaps hidden on a phone, the Publish button\'s label is centred (polish 5)', (
     t,
   ) async {
