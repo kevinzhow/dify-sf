@@ -8,6 +8,7 @@ import 'package:dify_sf_app/src/canvas/edge_curve.dart';
 import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
 import 'package:dify_sf_app/src/design/dify_theme.dart';
+import 'package:dify_sf_app/src/design/dify_tokens.g.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/editor/editor_controller.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
@@ -430,6 +431,43 @@ void main() {
     await settle(t, 400);
     expect(e.c.doc.edges.containsKey(edge), isFalse);
     await e.dispose();
+  });
+
+  testWidgets('the phone run history sheet requests the history once, however its load swaps the layout', (t) async {
+    // (From the PR review's reproduction: a delayed history replaces the loading state with a scrolling list.)
+    phoneWindow(t, size: const Size(411, 914), insets: gestureInsets);
+    final store = WorkflowStore();
+    var requests = 0;
+    await t.pumpWidget(
+      DifyApplication(
+        theme: difyTheme(),
+        edgeToEdge: true,
+        home: WorkflowStoreScope(
+          store: store,
+          child: WorkflowHeaderScope(
+            data: WorkflowHeaderData(
+              fetchRunHistory: () {
+                requests++;
+                return Future.delayed(const Duration(milliseconds: 200), () => <Map<String, Object?>>[]);
+              },
+            ),
+            child: Builder(
+              builder: (context) => DifyButton(
+                onPressed: () => unawaited(showRunHistorySheet(context)),
+                child: const DifyText('Open history', DifyType.systemSmRegular),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.tap(find.text('Open history'));
+    await settle(t, 3000);
+    final count = requests;
+    await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(seconds: 1));
+    store.dispose();
+    expect(count, 1);
   });
 
   testWidgets('the phone run history sheet opens without an inherited lookup in initState', (t) async {
