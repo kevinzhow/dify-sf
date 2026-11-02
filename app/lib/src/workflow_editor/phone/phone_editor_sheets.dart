@@ -131,7 +131,7 @@ class PhoneEditorSheets {
     _context = context;
     this.controller = controller;
     _panels = panels ?? const PhoneEditorPanels(isChatMode: false);
-    _phone = phone;
+    _phone = phone..canvasCover = () => dockedHeight;
     if (store == _store) return;
     _store?.pendingSingleRun.removeListener(_pendingSingleRun);
     _store?.nodeRunData.removeListener(_nodeRunChanged);
@@ -173,22 +173,24 @@ class PhoneEditorSheets {
 
   // ----- the test run's time -----
 
-  /// The test run's time, counted from when it started running here (the sheet's header and the view row's chip
-  /// both read it, whichever shows), on the frame clock: the frames the ticking time asks for advance it, and tests'
-  /// pumps do too.
-  Duration? _liveStart, _liveEnd;
-  String? _liveStatus;
+  /// The wall clock the run times count on (a run's start is taken the moment it starts, not from the last frame,
+  /// which is stale while the page sat idle). Tests point it at the test binding's clock.
+  @visibleForTesting
+  static DateTime Function() now = DateTime.now;
 
-  static Duration get _now => SchedulerBinding.instance.currentSystemFrameTimeStamp;
+  /// The test run's time, counted from the moment it started running here (the sheet's header and the view row's chip
+  /// both read it, whichever shows).
+  DateTime? _liveStart, _liveEnd;
+  String? _liveStatus;
 
   void _liveChanged() {
     final status = runningStatusOf(_store?.workflowRunningData.value);
     final running = status == WorkflowRunningStatus.running;
     if (running && _liveStatus != WorkflowRunningStatus.running) {
-      _liveStart = _now;
+      _liveStart = now();
       _liveEnd = null;
     } else if (!running && _liveStatus == WorkflowRunningStatus.running) {
-      _liveEnd = _now;
+      _liveEnd = now();
     }
     _liveStatus = status;
   }
@@ -197,7 +199,7 @@ class PhoneEditorSheets {
   double get liveSeconds {
     final start = _liveStart;
     if (start == null) return 0;
-    final d = (_liveEnd ?? _now) - start;
+    final d = (_liveEnd ?? now()).difference(start);
     return d.isNegative ? 0 : d.inMilliseconds / 1000;
   }
 
@@ -506,7 +508,8 @@ class _SheetLayerState extends State<_SheetLayer> {
         key: const ValueKey('phone-comments-sheet'),
         controller: sheets.comments,
         detents: const [_listPeek, DifySheetDetent.half, DifySheetDetent.full],
-        initialDetent: DifySheetDetent.half,
+        // Comment mode is for the canvas: the list starts at its peek.
+        initialDetent: _listPeek,
         slideIn: true,
         onDismiss: sheets._exitCommentMode,
         child: PanelSheetScope(
@@ -565,15 +568,8 @@ class _SheetLayerState extends State<_SheetLayer> {
         controller: sheets.inspect,
         detents: const [DifySheetDetent.full],
         onDismiss: () => store.setShowVariableInspectPanel(false),
-        builder: (context) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DifySheetHeader(title: _tw('debug.variableInspect.title')),
-            // Its two panes are laid out by the width the editor's bottom panel reports; on a phone that is the
-            // window's, as in the full-area page this replaces.
-            const Expanded(child: InspectPanel()),
-          ],
-        ),
+        // The panel's phone layout: the list, a variable's value as a page (its header is the sheet's).
+        builder: (context) => const InspectPanel(),
       ),
       portal(
         key: 'phone-chat-sheet',
@@ -594,17 +590,13 @@ class _SheetLayerState extends State<_SheetLayer> {
         key: 'phone-step-input-sheet',
         open: s.stepInput != null,
         controller: sheets.stepInput,
-        detents: const [DifySheetDetent.full],
         onDismiss: () {
           if (step != null) sheets._hideStepInput(step);
         },
-        // The node's single-run form (what covers its panel on the desktop): Start Run runs it, its result goes to the
-        // run sheet.
+        // The node's single-run form (what covers its panel on the desktop), as tall as its fields: Start Run runs
+        // it, its result goes to the run sheet.
         builder: (context) => switch (step == null ? null : sheets.controller.doc.nodes[step]) {
-          final node? => Stack(
-            fit: StackFit.expand,
-            children: [NodeSingleRunOverlay(node: node, doc: sheets.controller.doc)],
-          ),
+          final node? => NodeSingleRunOverlay(node: node, doc: sheets.controller.doc, fill: false),
           _ => const SizedBox.shrink(),
         },
       ),
@@ -964,11 +956,11 @@ class _RunTime extends StatefulWidget {
 }
 
 class _RunTimeState extends State<_RunTime> {
-  /// When this run was first shown running, and when it stopped, on the frame clock.
-  Duration? _start, _end;
+  /// When this run was first shown running, and when it stopped ([PhoneEditorSheets.now]).
+  DateTime? _start, _end;
   Timer? _tick;
 
-  static Duration get _now => SchedulerBinding.instance.currentSystemFrameTimeStamp;
+  static DateTime get _now => PhoneEditorSheets.now();
 
   @override
   void initState() {
@@ -1006,7 +998,7 @@ class _RunTimeState extends State<_RunTime> {
   double get _counted {
     final start = _start;
     if (start == null) return 0;
-    final d = (_end ?? _now) - start;
+    final d = (_end ?? _now).difference(start);
     return d.isNegative ? 0 : d.inMilliseconds / 1000;
   }
 
@@ -1104,8 +1096,11 @@ class _RunChipRowState extends State<_RunChipRow> {
     final running = status == WorkflowRunningStatus.running;
     final seconds = '${widget.sheets.liveSeconds.floor()} s';
     final full = running ? '${_stateLabel(status)} · $seconds' : _stateLabel(status);
+    // Ended: the short form is its time beside the outcome's icon ("✓ 3.1 s"), never a bare icon like the issues chip's.
+    final elapsed = resultOf(_store!.workflowRunningData.value)['elapsed_time'];
+    final took = formatStepSeconds(elapsed is num ? elapsed : widget.sheets.liveSeconds);
     Widget chip({required bool compact}) => DifyFilterChip(
-      label: compact ? (running ? seconds : '') : full,
+      label: compact ? (running ? seconds : took) : full,
       semanticLabel: full,
       leading: SizedBox.square(dimension: 16, child: Center(child: _stateIcon(status, 16))),
       onPressed: widget.sheets.reopenRun,

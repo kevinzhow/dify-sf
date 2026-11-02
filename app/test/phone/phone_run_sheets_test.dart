@@ -13,11 +13,14 @@ import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/editor/editor_controller.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
+import 'package:dify_sf_app/src/canvas/canvas_controller.dart';
 import 'package:dify_sf_app/src/canvas/canvas_input.dart' show ControlMode;
+import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
 import 'package:dify_sf_app/src/workflow_editor/dify_editor.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/workflow_panels.dart';
 import 'package:dify_sf_app/src/workflow_editor/phone/phone_editor_controller.dart';
 import 'package:dify_sf_app/src/workflow_editor/phone/phone_editor_frame.dart';
+import 'package:dify_sf_app/src/workflow_editor/phone/phone_editor_sheets.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/mock_run_service.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/run_scope.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/run_types.dart';
@@ -30,6 +33,7 @@ import 'package:dify_sf_app/src/workflow_editor/run/ui/workflow_preview.dart';
 import 'package:dify_sf_app/src/workflow_editor/steps/workflow_steps_view.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:dify_sf_app/src/workflow_editor/variable_inspect/panel.dart';
+import 'package:dify_sf_app/src/workflow_editor/variable_inspect/value_content.dart' show ValueContent;
 import 'package:dify_sf_app/src/workflow_editor/variable_panels/variable_panels.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -121,6 +125,7 @@ class _Editor {
   WorkflowStore get store => WorkflowStoreScope.of(t.element(find.byType(PhoneEditorFrame)));
   PhoneEditorController get phone => PhoneEditorScope.read(t.element(find.byType(PhoneEditorFrame)))!;
   WorkflowRunScope get scope => WorkflowRunScope.of(t.element(find.byType(PhoneEditorFrame)));
+  CanvasController get canvas => t.state<WorkflowCanvasState>(find.byType(WorkflowCanvas, skipOffstage: false)).canvas;
   MockWorkflowRunService get mock => scope.service as MockWorkflowRunService;
 
   Finder sheet(String key) => find.byKey(ValueKey(key));
@@ -208,7 +213,12 @@ void main() {
     await DifyI18n.load('en-US');
     await useAppFonts();
   });
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    // Run times count on the test binding's clock (it moves with the pumps).
+    PhoneEditorSheets.now = () => TestWidgetsFlutterBinding.instance.clock.now();
+  });
+  tearDown(() => PhoneEditorSheets.now = DateTime.now);
 
   for (final size in _windows) {
     final name = '${size.width.toInt()}x${size.height.toInt()}';
@@ -308,6 +318,8 @@ void main() {
       await settle(t, 300);
       expect(find.byType(TracingPanel), findsOneWidget);
       expect(t.widgetList<RunNodePanel>(find.byType(RunNodePanel)).map((r) => r.nodeInfo['node_id']).first, 'start');
+      // Its rows are touch rows.
+      expect(t.getSize(find.byType(RunNodePanel).first).height, greaterThanOrEqualTo(44));
 
       // Back collapses it to the peek, then closes it (the run's statuses go with it).
       expect(await systemBack(t), isTrue);
@@ -317,7 +329,10 @@ void main() {
       await settle(t, 600);
       expect(e.runSheet, findsNothing);
       expect(e.store.showDebugAndPreviewPanel.value, isFalse);
-      // The run's times went with it (the success marks stay where the steps have inspect values, as on the canvas).
+      // The run's statuses and times went with it, although the steps keep inspect values (Dify's success marks for
+      // those are not shown on a phone: they read as the closed run's).
+      expect(e.store.nodesWithInspectVars.value, isNotEmpty);
+      expect(find.byKey(const ValueKey('step-status-succeeded')), findsNothing);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('step-card-start')),
@@ -353,6 +368,10 @@ void main() {
       expect(find.byKey(const ValueKey('phone-run-sheet-stop')), findsNothing);
       expect(find.byKey(const ValueKey('phone-run')), findsOneWidget, reason: 'the app bar has Run again');
       expect(e.top('phone-run-sheet'), closeTo(e.barTop - 72, 1));
+      // The step that was running when it stopped shows no spinner any more.
+      await settle(t, 1500);
+      expect(find.byKey(const ValueKey('step-status-running')), findsNothing);
+      expect(e.canvas.nodeRun.value.values.where((v) => v.isLoading), isEmpty);
 
       // Close: the sheet goes, and the run with it.
       await t.tap(_close(e.runHeader));
@@ -414,6 +433,15 @@ void main() {
       await settle(t, 3000);
       expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.succeeded);
       expect(find.bySemanticsLabel(_tp('runSucceeded')), findsOneWidget);
+      // At 360 dp its short form is its time beside the outcome's icon, never a bare check like the issues chip's.
+      final label = t.widget<DifyFilterChip>(runChip()).label;
+      if (size.width < 400) {
+        expect(label, matches(RegExp(r'^\d+\.\d s$')));
+        expect(
+          find.descendant(of: chip, matching: find.byKey(const ValueKey('phone-run-state-succeeded'))),
+          findsWidgets,
+        );
+      }
       expect(t.takeException(), isNull);
       // Reopened, then closed: the run is cleared and the chip goes.
       await t.tap(runChip());
@@ -442,7 +470,13 @@ void main() {
       // The LLM reads start.query, which has no value: its form asks for it, in a sheet; back closes it.
       await runStep();
       expect(e.sheet('phone-step-input-sheet'), findsOneWidget);
-      expect(find.textContaining('${_tw('singleRun.testRun')} Summarize'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.ancestor(of: find.text(_tw('singleRun.testRun')), matching: find.byType(DifySheetHeader)),
+          matching: find.text('Summarize'),
+        ),
+        findsOneWidget,
+      );
       expect(e.phone.settingsNodeId, isNull, reason: 'the settings stay closed');
       expect(await systemBack(t), isTrue);
       await settle(t, 600);
@@ -533,7 +567,8 @@ void main() {
 
     testWidgets('$name: comments, run history and the version list are sheets over a usable editor', (t) async {
       final e = await _pump(t, size: size);
-      // Comment mode: the comment list rests at half on the canvas page; back: its peek, then comment mode ends.
+      // Comment mode: the comment list starts at its peek on the canvas page (the canvas is what comment mode is for);
+      // back ends comment mode.
       await t.tap(find.byKey(const ValueKey('phone-editor-more')));
       await settle(t, 800);
       await t.ensureVisible(find.text(_tw('common.commentMode')));
@@ -541,8 +576,6 @@ void main() {
       await settle(t, 800);
       expect(e.sheet('phone-comments-sheet'), findsOneWidget);
       expect(find.byKey(const ValueKey('dify-sheet-scrim')), findsNothing, reason: 'the canvas stays usable');
-      expect(await systemBack(t), isTrue);
-      await settle(t, 600);
       expect(e.top('phone-comments-sheet'), closeTo(e.barTop - 72, 1));
       expect(await systemBack(t), isTrue);
       await settle(t, 600);
@@ -568,6 +601,8 @@ void main() {
       expect(e.runSheet, findsOneWidget);
       expect(find.byType(RunPanel), findsOneWidget);
       expect(find.byKey(const ValueKey('phone-history-bar')), findsOneWidget);
+      expect(e.top('phone-run-sheet'), closeTo(e.barTop - 72, 1), reason: 'the viewed run lands at its peek');
+      expect(t.takeException(), isNull);
       await e.drag('phone-run-sheet', -500);
       await t.tap(_tab(e, 'detail'));
       await settle(t, 300);
@@ -589,9 +624,20 @@ void main() {
       expect(find.byKey(const ValueKey('phone-restoring-bar')), findsOneWidget);
       final half = e.top('phone-versions-sheet');
       expect(half, lessThan(e.barTop - 200));
-      e.store.currentVersion.value = {'id': 'v-picked', 'version': '2026-11-02 12:00'};
+      // The browsed graph shows no run statuses (the run before left inspect values).
+      expect(e.store.nodesWithInspectVars.value, isNotEmpty);
+      expect(e.canvas.nodeRun.value, isEmpty);
+      expect(find.byKey(const ValueKey('step-status-succeeded')), findsNothing);
+      final header = find.byKey(const ValueKey('version-sheet-header'));
+      expect(
+        find.descendant(of: header, matching: find.text(DifyI18n.tr('workflow', 'versionHistory.currentDraft'))),
+        findsOneWidget,
+      );
+      e.store.currentVersion.value = {'id': 'v-picked', 'version': '2026-11-02 12:00', 'marked_name': 'v1 slow count'};
       await settle(t, 600);
       expect(e.top('phone-versions-sheet'), closeTo(e.barTop - 72, 1));
+      // The peek names the shown version.
+      expect(find.descendant(of: header, matching: find.text('v1 slow count')), findsOneWidget);
       expect(await systemBack(t), isTrue, reason: 'closes the version list');
       await settle(t, 600);
       expect(e.sheet('phone-versions-sheet'), findsNothing);
@@ -603,6 +649,259 @@ void main() {
       await e.dispose();
     });
   }
+
+  // ----- device-check fixes -----
+
+  Future<void> overflow(WidgetTester t, String item) async {
+    await t.tap(find.byKey(const ValueKey('phone-editor-more')));
+    await settle(t, 800);
+    await t.ensureVisible(find.text(item));
+    await t.pump();
+    await t.tap(find.text(item));
+    await settle(t, 800);
+  }
+
+  Future<void> runOnce(_Editor e, WidgetTester t, {String query = 'hello from phone'}) async {
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration.zero);
+    await e.scope.run.handleRun({
+      'inputs': {'query': query},
+    });
+    await settle(t, 1000);
+    e.scope.run.handleCancelDebugAndPreviewPanel();
+    await settle(t, 300);
+  }
+
+  for (final size in _windows) {
+    testWidgets(
+      '${size.width.toInt()}: Variable Inspect is a list, a variable a page with Back; one header, touch rows',
+      (
+        t,
+      ) async {
+        final e = await _pump(t, size: size);
+        final title = _tw('debug.variableInspect.title');
+        Finder titles(Finder of) => find.descendant(
+          of: of,
+          matching: find.byWidgetPredicate((w) => w is Text && (w.data ?? '').toLowerCase() == title.toLowerCase()),
+        );
+        // Nothing to inspect yet: the empty state, full width.
+        await overflow(t, title);
+        final sheet = e.sheet('phone-inspect-sheet');
+        expect(find.descendant(of: sheet, matching: find.byType(InspectEmpty)), findsOneWidget);
+        expect(t.getSize(find.byType(InspectEmpty)).width, greaterThan(size.width - 48));
+        expect(systemBack, isNotNull);
+        expect(await systemBack(t), isTrue);
+        await settle(t, 600);
+
+        await runOnce(e, t);
+        await overflow(t, title);
+        expect(find.byKey(const ValueKey('inspect-phone-list')), findsOneWidget);
+        expect(titles(sheet), findsOneWidget, reason: 'one title: the sheet header\'s');
+        expect(_close(sheet), findsOneWidget, reason: 'one close');
+        expect(
+          find.descendant(of: find.byType(DifySheetHeader), matching: find.byKey(const ValueKey('inspect-reset-all'))),
+          findsOneWidget,
+        );
+        // Touch rows; the list takes the sheet's width.
+        final row = find.ancestor(of: find.text('query').first, matching: find.byType(DifyPressable)).first;
+        expect(t.getSize(row).height, greaterThanOrEqualTo(48));
+        expect(t.getSize(row).width, greaterThan(size.width - 48));
+        // A variable opens as a page: its name in the header, its value the sheet's width; Back returns to the list.
+        await t.tap(find.text('query').first);
+        await settle(t, 600);
+        final page = find.byKey(const ValueKey('inspect-phone-value'));
+        expect(page, findsOneWidget);
+        expect(find.descendant(of: page, matching: find.text('query')), findsOneWidget);
+        expect(find.byType(ValueContent), findsOneWidget);
+        expect(t.getSize(find.byType(ValueContent)).width, greaterThan(size.width - 48));
+        expect(find.textContaining('hello from phone'), findsWidgets);
+        expect(titles(sheet), findsNothing);
+        expect(await systemBack(t), isTrue);
+        await settle(t, 600);
+        expect(find.byKey(const ValueKey('inspect-phone-list')), findsOneWidget, reason: 'back to the list');
+        expect(e.store.showVariableInspectPanel.value, isTrue);
+        expect(await systemBack(t), isTrue);
+        await settle(t, 600);
+        expect(e.store.showVariableInspectPanel.value, isFalse);
+        expect(t.takeException(), isNull);
+        await e.dispose();
+      },
+    );
+  }
+
+  testWidgets('run statuses: a new run starts with every status reset, a chatflow\'s preview leaves none', (t) async {
+    final e = await _pump(t);
+    await runOnce(e, t);
+    expect(e.store.nodesWithInspectVars.value, isNotEmpty);
+    expect(find.byKey(const ValueKey('step-status-succeeded')), findsNothing, reason: 'the closed run left none');
+    // A new run: while its first step runs, nothing shows the last run's success (End least of all).
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration(milliseconds: 800));
+    await t.tap(find.byKey(const ValueKey('phone-run')));
+    await settle(t, 800);
+    await t.enterText(find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)), 'q');
+    await t.pump();
+    await t.tap(find.text(_tw('singleRun.startRun')));
+    await settle(t, 300);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('step-card-end')),
+        matching: find.byKey(const ValueKey('step-status-succeeded')),
+      ),
+      findsNothing,
+    );
+    expect(e.canvas.nodeRun.value['end']?.status ?? 'idle', 'idle');
+    for (
+      var i = 0;
+      i < 40 && runningStatusOf(e.store.workflowRunningData.value) == WorkflowRunningStatus.running;
+      i++
+    ) {
+      await settle(t, 500);
+    }
+    await settle(t, 500);
+    expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.succeeded);
+    expect(find.byKey(const ValueKey('step-status-succeeded')), findsNWidgets(4), reason: 'the run\'s own statuses');
+    await e.dispose();
+  });
+
+  testWidgets('a chatflow\'s statuses go when its preview closes', (t) async {
+    final e = await _pump(t, chat: true);
+    await t.tap(find.byKey(const ValueKey('phone-run')));
+    await settle(t, 800);
+    e.store.setNodeRunData('llm', {'_runningStatus': 'succeeded'});
+    e.store.nodesWithInspectVars.value = [
+      {'nodeId': 'llm', 'vars': const <Object?>[]},
+    ];
+    await settle(t, 300);
+    expect(e.canvas.nodeRun.value['llm']?.status, 'succeeded');
+    expect(await systemBack(t), isTrue);
+    await settle(t, 600);
+    expect(e.store.showDebugAndPreviewPanel.value, isFalse);
+    expect(e.canvas.nodeRun.value['llm'], isNull, reason: 'neither the run\'s status nor the inspect values\' mark');
+    await e.dispose();
+  });
+
+  testWidgets('the run time counts from the moment the run starts, not from an idle frame', (t) async {
+    final e = await _pump(t);
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration(seconds: 3));
+    await t.tap(find.byKey(const ValueKey('phone-run')));
+    await settle(t, 800);
+    // The form sits idle for 10 s.
+    await t.pump(const Duration(seconds: 10));
+    await t.enterText(find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)), 'q');
+    await t.pump();
+    await t.tap(find.text(_tw('singleRun.startRun')));
+    await settle(t, 900);
+    final text = t
+        .widgetList<Text>(find.descendant(of: e.runHeader, matching: find.byType(Text)))
+        .map((w) => w.data ?? '')
+        .firstWhere((d) => d.startsWith(_tw('common.running')));
+    final seconds = double.parse(RegExp(r'(\d+\.\d) s$').firstMatch(text)!.group(1)!);
+    expect(seconds, inInclusiveRange(0.7, 1.1), reason: text);
+    // Hidden, the chip counts on the same clock.
+    expect(await systemBack(t), isTrue);
+    await settle(t, 300);
+    final chip = t.widget<DifyFilterChip>(
+      find.descendant(of: find.byKey(const ValueKey('phone-run-chip')), matching: find.byType(DifyFilterChip)).first,
+    );
+    // The same clock: a second or two since the start, not the idle time before it.
+    final n = int.parse(RegExp(r'· (\d+) s$').firstMatch(chip.semanticLabel!)!.group(1)!);
+    expect(n, inInclusiveRange(1, 2), reason: chip.semanticLabel);
+    await e.dispose();
+  });
+
+  testWidgets('during a run the phone canvas stays put while the running step is in view, else pans just enough', (
+    t,
+  ) async {
+    final e = await _pump(t);
+    await t.tap(find.text(_tp('canvas')));
+    await settle(t, 600);
+    e.canvas.fitView();
+    await settle(t, 300);
+    final center = e.canvas.view.center, scale = e.canvas.view.scale;
+    await runOnce(e, t);
+    expect((e.canvas.view.center - center).distance, lessThan(0.5), reason: 'every step was in view');
+    expect(e.canvas.view.scale, scale);
+
+    // Zoomed in on Start: End is off to the right. Each step that starts is brought just into view.
+    e.canvas.view
+      ..scale = 1
+      ..center = e.canvas.graph!['start']!.rect.center;
+    await settle(t, 300);
+    final size = e.canvas.view.viewport;
+    expect(e.canvas.view.rectToScreen(e.canvas.graph!['end']!.rect).left, greaterThan(size.width));
+    e.mock.scenario = const MockRunScenario(stepDelay: Duration(milliseconds: 300));
+    await t.tap(find.byKey(const ValueKey('phone-run')));
+    await settle(t, 800);
+    await t.enterText(find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)), 'q');
+    await t.pump();
+    await t.tap(find.text(_tw('singleRun.startRun')));
+    await settle(t, 4000);
+    expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.succeeded);
+    final end = e.canvas.view.rectToScreen(e.canvas.graph!['end']!.rect);
+    expect(end.right, closeTo(size.width - 16, 1), reason: 'brought in from the right, no further');
+    expect(end.bottom, lessThanOrEqualTo(size.height - 72 - 16 + 0.5), reason: 'above the run sheet');
+    expect(e.canvas.view.scale, 1, reason: 'the zoom stays');
+    await e.dispose();
+  });
+
+  testWidgets('touch sizes: Start Run, the environment variable form and its cards\' actions', (t) async {
+    final e = await _pump(t);
+    // Start Run: 36 px with a 48 px target.
+    await t.tap(find.byKey(const ValueKey('phone-run')));
+    await settle(t, 800);
+    final start = find.ancestor(of: find.text(_tw('singleRun.startRun')), matching: find.byType(DifyButton)).first;
+    expect(t.getSize(start).height, 36);
+    expect(find.ancestor(of: start, matching: find.byType(DifyTouchTarget)), findsWidgets);
+    expect(await systemBack(t), isTrue);
+    await settle(t, 600);
+
+    // Add an environment variable: the form is the sheet's content (its header, 36 px Cancel / Save).
+    await overflow(t, _tw('env.envPanelTitle'));
+    await t.tap(find.text(_tw('env.envPanelButton')));
+    await settle(t, 800);
+    final form = find.byKey(const ValueKey('variable-modal-save'));
+    expect(form, findsOneWidget);
+    expect(find.text(_tw('env.modal.title')), findsOneWidget);
+    expect(
+      find.ancestor(of: find.text(_tw('env.modal.title')), matching: find.byType(DifySheetHeader)),
+      findsOneWidget,
+    );
+    expect(t.getSize(form).height, 36);
+    final fields = find.byType(EditableText);
+    await t.enterText(fields.first, 'api_base');
+    await t.pump();
+    await t.enterText(fields.at(1), 'https://example.com');
+    await t.pump();
+    await t.tap(form);
+    await settle(t, 800);
+    expect(e.c.doc.nodes, isNotEmpty);
+    // The card's edit and delete: 44 px touch buttons whose 48 px targets do not overlap.
+    final buttons = find.descendant(of: e.sheet('phone-variables-sheet'), matching: find.byType(DifyTouchIconButton));
+    final labels = {_tc('operation.edit'), _tc('operation.delete')};
+    final actions = [
+      for (final b in t.widgetList<DifyTouchIconButton>(buttons))
+        if (labels.contains(b.label)) b,
+    ];
+    expect(actions.length, 2);
+    final a = t.getRect(find.byWidget(actions[0])), b = t.getRect(find.byWidget(actions[1]));
+    expect(a.height, 44);
+    expect((b.center.dx - a.center.dx).abs(), greaterThanOrEqualTo(48));
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('a step\'s form hugs its field under "Test Run" and the step\'s title', (t) async {
+    final e = await _pump(t);
+    await t.longPress(find.text('Summarize'));
+    await settle(t, 800);
+    await t.tap(find.text(_tw('panel.runThisStep')));
+    await settle(t, 800);
+    expect(e.sheet('phone-step-input-sheet'), findsOneWidget);
+    final header = find.ancestor(of: find.text(_tw('singleRun.testRun')), matching: find.byType(DifySheetHeader));
+    expect(header, findsOneWidget);
+    expect(find.descendant(of: header, matching: find.text('Summarize')), findsOneWidget);
+    expect(e.top('phone-step-input-sheet'), greaterThan(914 / 2 - 24), reason: 'as tall as its one field');
+    await e.dispose();
+  });
 
   testWidgets('Run step from the open settings sheet runs once, in the settings; its result also in the run sheet', (
     t,
