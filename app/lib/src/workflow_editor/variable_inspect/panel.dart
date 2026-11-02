@@ -197,6 +197,123 @@ class _InspectPanelState extends State<InspectPanel> {
     scheduleMicrotask(() => crud.fetchInspectVarValue(focus).whenComplete(() => _fetching.remove(focus)));
   }
 
+  /// dify-sf: on a phone the value shows as a page over the list (Back returns to the list).
+  bool _phonePage = false;
+
+  /// The phone layout in its sheet: one header (the sheet's), the variable list with touch rows, and a variable's value
+  /// as a page with Back to the list. The desktop's two panes do not fit a phone's width.
+  Widget _phone(BuildContext context, VariableInspectScope scope, PanelSheetScope sheet) {
+    final crud = scope.crud, store = crud.store;
+    Widget page(Widget header, Widget body) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        Expanded(
+          child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8), child: body),
+        ),
+      ],
+    );
+    final title = _tw('debug.variableInspect.title');
+    if (store.isListening.value) {
+      return page(
+        DifySheetHeader(title: title, onClose: sheet.onClose),
+        Listening(onStop: () => scope.onStop?.call()),
+      );
+    }
+    if (!crud.hasVars) return page(DifySheetHeader(title: title, onClose: sheet.onClose), const InspectEmpty());
+    final focus = store.currentFocusNodeId.value;
+    final current = _currentNodeInfo(crud, focus);
+    final v = current?.varJson;
+    if (!_phonePage || current == null || v == null) {
+      return Column(
+        key: const ValueKey('inspect-phone-list'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DifySheetHeader(
+            title: title,
+            onClose: sheet.onClose,
+            actions: [
+              DifyTouchTarget(
+                child: DifyButton(
+                  key: const ValueKey('inspect-reset-all'),
+                  variant: DifyButtonVariant.ghost,
+                  onPressed: () {
+                    crud.deleteAllInspectorVars();
+                    store.setCurrentFocusNodeId('');
+                  },
+                  child: DifyTextLine(_tw('debug.variableInspect.clearAll')),
+                ),
+              ),
+            ],
+          ),
+          Expanded(
+            child: InspectLeft(
+              phone: true,
+              onSelect: (nodeId, varId) {
+                _select(nodeId, varId);
+                setState(() => _phonePage = true);
+              },
+            ),
+          ),
+        ],
+      );
+    }
+    final focusNode = crud.nodesWithInspectVars.where((n) => n['nodeId'] == current.nodeId).firstOrNull;
+    _fetchValues(crud, focus, focusNode);
+    final fetching = focusNode != null && focusNode['isValueFetched'] != true;
+    final isTruncated = v['is_truncated'] == true;
+    final edited = !isTruncated && v['edited'] == true;
+    final isConversation = v['type'] == VarInInspectType.conversation;
+    final fullContent = v['full_content'] as Map?;
+    final schemaType = '${v['schemaType'] ?? ''}';
+    final type = '${v['value_type']}${schemaType.isEmpty ? '' : '($schemaType)'}';
+    void back() => setState(() => _phonePage = false);
+    return DifyBackDismiss(
+      onDismiss: back,
+      child: page(
+        DifySheetHeader(
+          key: const ValueKey('inspect-phone-value'),
+          leading: DifyTouchIconButton(
+            label: DifyI18n.tr('common', 'operation.back'),
+            icon: const RemixIcon('arrow-left-line', size: 22),
+            onPressed: back,
+          ),
+          title: '${v['name']}',
+          subtitle: InspectRight._categories.contains(current.nodeType) ? type : '${current.title} · $type',
+          onClose: sheet.onClose,
+          actions: [
+            if (isTruncated)
+              DifyTouchIconButton(
+                label: _tw('debug.variableInspect.exportToolTip'),
+                icon: const RemixIcon('file-download-fill', size: 20),
+                onPressed: () => crud.services.openUrl('${fullContent?['download_url'] ?? ''}'),
+              ),
+            if (edited)
+              DifyTouchIconButton(
+                label: _tw(
+                  isConversation ? 'debug.variableInspect.resetConversationVar' : 'debug.variableInspect.reset',
+                ),
+                icon: const RemixIcon('arrow-go-back-line', size: 20),
+                onPressed: () => isConversation
+                    ? crud.resetConversationVar('${v['id']}')
+                    : crud.resetToLastRunVar(current.nodeId, '${v['id']}'),
+              ),
+            if (v['value_type'] != 'secret')
+              DifyTouchTarget(child: DifyCopyFeedback(content: InspectRight._copyContent(v['value']))),
+          ],
+        ),
+        fetching
+            ? Center(child: DifySpinner(size: 16, color: DifyColors.textTertiary))
+            : ValueContent(
+                key: ValueKey('${current.nodeId}-${v['id']}'),
+                currentVar: v,
+                isTruncated: isTruncated,
+                handleValueChange: (varId, value) => crud.editInspectVarValue(current.nodeId, varId, value),
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scope = VariableInspectScope.of(context), crud = scope.crud, store = crud.store;
@@ -208,33 +325,31 @@ class _InspectPanelState extends State<InspectPanel> {
         store.bottomPanelWidth,
       ]),
       builder: (context, _) {
-        // dify-sf: in a phone sheet the sheet's header has the title and the close.
-        final inSheet = PanelSheetScope.maybeOf(context) != null;
-        Widget headed(Widget body) => inSheet
-            ? Padding(padding: const EdgeInsets.all(8), child: body)
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        // dify-sf: in a phone sheet, the phone layout (the list, a variable's value as a page; the sheet's header).
+        if (PanelSheetScope.maybeOf(context) case final sheet?) return _phone(context, scope, sheet);
+        Widget headed(Widget body) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+              child: Row(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: DifyText(_tw('debug.variableInspect.title'), DifyType.systemSmSemiboldUppercase),
-                        ),
-                        DifyIconButton(
-                          label: _close(),
-                          icon: const RemixIcon('close-line', size: 16),
-                          onPressed: () => store.setShowVariableInspectPanel(false),
-                        ),
-                      ],
-                    ),
-                  ),
                   Expanded(
-                    child: Padding(padding: const EdgeInsets.all(8), child: body),
+                    child: DifyText(_tw('debug.variableInspect.title'), DifyType.systemSmSemiboldUppercase),
+                  ),
+                  DifyIconButton(
+                    label: _close(),
+                    icon: const RemixIcon('close-line', size: 16),
+                    onPressed: () => store.setShowVariableInspectPanel(false),
                   ),
                 ],
-              );
+              ),
+            ),
+            Expanded(
+              child: Padding(padding: const EdgeInsets.all(8), child: body),
+            ),
+          ],
+        );
         if (store.isListening.value) return headed(Listening(onStop: () => scope.onStop?.call()));
         if (!crud.hasVars) return headed(const InspectEmpty());
 
@@ -393,9 +508,12 @@ class _FullHeight extends StatelessWidget {
 /// left.tsx: "VARIABLE INSPECT" with "Reset all", then the environment, conversation and system groups, a divider,
 /// and a group per node with variables.
 class InspectLeft extends StatelessWidget {
-  const InspectLeft({super.key, this.currentVarId, required this.onSelect});
+  const InspectLeft({super.key, this.currentVarId, required this.onSelect, this.phone = false});
   final String? currentVarId;
   final void Function(String nodeId, String varId) onSelect;
+
+  /// dify-sf: in a phone sheet (whose header has the title and Reset all): no title row, touch-size rows.
+  final bool phone;
 
   @override
   Widget build(BuildContext context) {
@@ -407,38 +525,40 @@ class InspectLeft extends StatelessWidget {
       varList: vars,
       currentVarId: currentVarId,
       handleSelect: (v) => onSelect(type, '${v['id']}'),
+      phone: phone,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // `justify-between gap-1`: the title truncates, the button keeps its width.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
-          child: SizedBox(
-            height: 24,
-            child: CustomMultiChildLayout(
-              delegate: _TitleAndAction(),
-              children: [
-                LayoutId(
-                  id: 0,
-                  child: DifyText(_tw('debug.variableInspect.title'), DifyType.systemSmSemiboldUppercase),
-                ),
-                LayoutId(
-                  id: 1,
-                  child: DifyButton(
-                    variant: DifyButtonVariant.ghost,
-                    size: DifyButtonSize.small,
-                    onPressed: () {
-                      crud.deleteAllInspectorVars();
-                      store.setCurrentFocusNodeId('');
-                    },
-                    child: DifyTextLine(_tw('debug.variableInspect.clearAll')),
+        if (!phone)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
+            child: SizedBox(
+              height: 24,
+              child: CustomMultiChildLayout(
+                delegate: _TitleAndAction(),
+                children: [
+                  LayoutId(
+                    id: 0,
+                    child: DifyText(_tw('debug.variableInspect.title'), DifyType.systemSmSemiboldUppercase),
                   ),
-                ),
-              ],
+                  LayoutId(
+                    id: 1,
+                    child: DifyButton(
+                      variant: DifyButtonVariant.ghost,
+                      size: DifyButtonSize.small,
+                      onPressed: () {
+                        crud.deleteAllInspectorVars();
+                        store.setCurrentFocusNodeId('');
+                      },
+                      child: DifyTextLine(_tw('debug.variableInspect.clearAll')),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -458,6 +578,7 @@ class InspectLeft extends StatelessWidget {
                   varType: VarInInspectType.node,
                   varList: InspectVarsCrud.varsOf(node),
                   currentVarId: currentVarId,
+                  phone: phone,
                   handleSelect: (v) => onSelect('${node['nodeId']}', '${v['id']}'),
                   handleView: () => scope.onViewNode?.call('${node['nodeId']}'),
                   handleClear: () {
@@ -510,8 +631,11 @@ class InspectGroup extends StatefulWidget {
     required this.handleSelect,
     this.handleView,
     this.handleClear,
+    this.phone = false,
   });
 
+  /// dify-sf: in a phone sheet the group's heading and its variables are touch rows (44 and 48 px).
+  final bool phone;
   final DifyJson? nodeData;
   final String? currentVarId;
   final String varType;
@@ -602,7 +726,7 @@ class _InspectGroupState extends State<InspectGroup> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: 24,
+              height: w.phone ? 44 : 24,
               child: Row(
                 spacing: 2,
                 children: [
@@ -640,6 +764,7 @@ class _InspectGroupState extends State<InspectGroup> {
                         varType: w.varType,
                         selected: v['id'] == w.currentVarId,
                         onTap: () => _selectVar(v),
+                        phone: w.phone,
                       ),
                   ],
                 ),
@@ -673,11 +798,15 @@ class _VarItem extends StatelessWidget {
     required this.varType,
     required this.selected,
     required this.onTap,
+    this.phone = false,
   });
   final DifyJson varJson;
   final String varType;
   final bool selected;
   final VoidCallback onTap;
+
+  /// dify-sf: a 48 px touch row in a phone sheet.
+  final bool phone;
 
   @override
   Widget build(BuildContext context) {
@@ -686,7 +815,8 @@ class _VarItem extends StatelessWidget {
       semanticLabel: '$name ${varJson['value_type'] ?? ''}',
       onPressed: onTap,
       builder: (context, hovered, focused) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        constraints: BoxConstraints(minHeight: phone ? DifyTouch.minTarget : 0),
+        padding: EdgeInsets.symmetric(horizontal: phone ? 14 : 12, vertical: 4),
         decoration: BoxDecoration(
           color: selected
               ? DifyColors.stateBaseHoverAlt
