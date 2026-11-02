@@ -92,14 +92,15 @@ class RuleTest(unittest.TestCase):
                ' abstract final class DifyY {} enum DifyZ { a }')
         self.assertEqual(rules('a.dart', src), ['dify-class'] * 3)
 
-    def test_design_packages_only_inside_design(self):
-        src = ("import 'package:smooth_sheets/smooth_sheets.dart';\nexport 'package:smooth_sheets/src/sheet.dart';\n"
-               "// import 'package:smooth_sheets/smooth_sheets.dart';\nimport 'package:flutter/widgets.dart';\n")
-        self.assertEqual(rules('studio/a.dart', src), ['design-package'] * 2)
+    def test_raw_framework_sheets_only_inside_design(self):
+        src = ('DraggableScrollableSheet(builder: b); ModalBottomSheetRoute<void>(builder: b); showBottomSheet(context: c);'
+               ' m.BottomSheet(onClosing: f, builder: b); final c = DraggableScrollableController();'
+               ' showDifyBottomSheet(c, b); DifyBottomSheet(); showModalBottomSheet(context: c);')
+        self.assertEqual(rules('studio/a.dart', src), ['dialog-route'] + ['raw-sheet'] * 5)
         self.assertEqual(rules('design/widgets/bottom_sheet.dart', src), [])
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'allowlist.tsv'
-            path.write_text('design-package\ta.dart\t1\tlegit:x\n')
+            path.write_text('raw-sheet\ta.dart\t1\tlegit:x\n')
             _, errors = check.read_allowlist(path)
             self.assertTrue(any('prohibited' in e for e in errors))
 
