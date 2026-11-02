@@ -19,8 +19,9 @@ enum DifySegmentedControlSize {
   regular,
 
   /// dify-sf's phone control (mockup 2 "Steps | Canvas", gen.py `.seg`): 36 px tall, `p-[3px] gap-0.5`, items
-  /// `h-[30px] px-3.5 rounded-lg`, text-tertiary text and text-primary when checked. The whole height is the items'
-  /// touch target (the control's padding included) and so are 6 px above and below it ([DifyTouchTarget], 48 px).
+  /// `h-[30px] px-3.5 rounded-lg`, text-tertiary text and text-primary when checked, centred in a 48 px tall box.
+  /// The whole box is the items' touch target: the control's padding and the 6 px above and below it
+  /// ([DifyTouchTarget] inside the box, so the target never depends on the parent).
   touch,
 }
 
@@ -222,7 +223,11 @@ class _DifySegmentedControlState<T> extends State<DifySegmentedControl<T>> {
         ),
       ),
     );
-    return touch ? DifyTouchTarget(child: control) : control;
+    if (!touch) return control;
+    return SizedBox(
+      height: DifyTouch.minTarget,
+      child: Center(widthFactor: 1, child: DifyTouchTarget(child: control)),
+    );
   }
 }
 

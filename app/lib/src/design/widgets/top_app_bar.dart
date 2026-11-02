@@ -20,7 +20,8 @@ import 'touch_target.dart';
 ///
 /// Edge to edge: the bar reads `MediaQuery.padding` (zero inside a safe page) and paints its [backgroundColor]
 /// (none by default: the page shows through) under the status bar and the side insets, while its content stays
-/// below and between them. It grows past 56 px rather than clip when the text is scaled up.
+/// below and between them. It grows past 56 px rather than clip when the text is scaled up. Its row is 56 px tall and
+/// reaches 2 px past the outer buttons, so every [DifyTouchIconButton]'s 48 px target responds whole.
 class DifyTopAppBar extends StatelessWidget {
   const DifyTopAppBar({
     super.key,
@@ -82,18 +83,20 @@ class DifyTopAppBar extends StatelessWidget {
         ],
       ),
     );
+    final items = [?lead, Expanded(child: titleBlock), ...actions];
     Widget bar = Padding(
       padding: EdgeInsets.fromLTRB(insets.left, insets.top, insets.right, 0),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: height),
+        // `gap-1 px-2`, with the row reaching 2 px past the outer buttons: a 44 px button's 48 px target
+        // ([DifyTouchIconButton]) stays inside the row, which is what forwards a tap to it.
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Row(
-            spacing: 4,
             children: [
-              ?lead,
-              Expanded(child: titleBlock),
-              ...actions,
+              const SizedBox(width: 2),
+              for (final (i, w) in items.indexed) ...[if (i > 0) const SizedBox(width: 4), w],
+              const SizedBox(width: 2),
             ],
           ),
         ),

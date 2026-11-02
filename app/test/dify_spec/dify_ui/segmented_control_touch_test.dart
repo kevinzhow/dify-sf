@@ -8,7 +8,7 @@ const _segments = [
 
 void main() {
   group('DifySegmentedControl touch size', () {
-    testWidgets('is 36 px with 30 px items and leading icons; the regular size is unchanged', (t) async {
+    testWidgets('is 36 px with 30 px items and leading icons in a 48 px box; the regular size is unchanged', (t) async {
       await renderControl(
         t,
         const Column(
@@ -31,7 +31,16 @@ void main() {
           ],
         ),
       );
-      expect(t.getSize(find.byKey(const ValueKey('touch'))).height, 36);
+      expect(t.getSize(find.byKey(const ValueKey('touch'))).height, 48);
+      final visual = find.descendant(
+        of: find.byKey(const ValueKey('touch')),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              (w.decoration as BoxDecoration?)?.color == DifyColors.componentsSegmentedControlBgNormal,
+        ),
+      );
+      expect(t.getSize(visual).height, 36);
       expect(t.getSize(find.byKey(const ValueKey('regular'))).height, 32);
       final touchPills = find.descendant(
         of: find.byKey(const ValueKey('touch')),
@@ -62,7 +71,7 @@ void main() {
       expect(regular.text.style!.color, DifyColors.textAccentLightModeOnly);
     });
 
-    testWidgets('every point of it, and 6 px above and below, selects the segment under the finger', (t) async {
+    testWidgets('every point of its 48 px box selects the segment under the finger', (t) async {
       final changes = <String>[];
       await renderControl(
         t,
@@ -79,11 +88,12 @@ void main() {
         ),
       );
       final box = t.getRect(find.byType(DifySegmentedControl<String>));
+      expect(box.height, 48);
       final canvasX = t.getCenter(find.text('Canvas')).dx;
-      await t.tapAt(Offset(canvasX, box.top + 1)); // the control's padding
-      await t.tapAt(Offset(canvasX, box.top - 6)); // above it
-      await t.tapAt(Offset(canvasX, box.bottom + 6)); // below it
-      await t.tapAt(Offset(canvasX, box.bottom + 7)); // beyond 48 px
+      await t.tapAt(Offset(canvasX, box.top + 7)); // the control's padding
+      await t.tapAt(Offset(canvasX, box.top + 2)); // 4 px above the control, 2 px inside the box
+      await t.tapAt(Offset(canvasX, box.bottom - 2)); // 4 px below it
+      await t.tapAt(Offset(canvasX, box.bottom + 1)); // outside the box
       await t.pump();
       expect(changes, ['canvas', 'canvas', 'canvas']);
     });

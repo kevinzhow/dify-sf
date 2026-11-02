@@ -11,7 +11,7 @@ import '../../i18n/dify_i18n.dart';
 import 'button_style.dart';
 import 'form_control_shared.dart' show DifyFocusDecoration, difyFocusRing;
 import 'text.dart';
-import 'touch_target.dart';
+import 'responsive.dart';
 
 /// One action of a [DifyBottomToolbar] or [DifySelectionBar] (gen.py `.tb`): an [icon] (22 px by convention) over an
 /// 11 px [label], at least [minWidth] 52 px wide and as tall as its bar, so the whole cell is the touch target. Icons
@@ -123,11 +123,11 @@ class DifyBottomToolbar extends StatelessWidget {
   }
 }
 
-/// The bar that replaces the toolbar while something is selected (mockup 3, "Count Android selected"): a header row
-/// (`px-2 pb-1.5`: [leading], the one-line [title] in system-md-semibold, the [subtitle] in system-xs-regular
-/// text-tertiary, and a close glyph when [onClose] is given) over a row of [actions] (52 px tall cells), in
-/// `p-2 pb-1.5` on the same surface as [DifyBottomToolbar]. The 20 px close glyph has a 48 px hit area
-/// ([DifyTouchTarget]); where it overlaps the last action's top edge, close wins.
+/// The bar that replaces the toolbar while something is selected (mockup 3, "Count Android selected"): a 48 px header
+/// row (`pl-4`: [leading], the one-line [title] in system-md-semibold, the [subtitle] in system-xs-regular
+/// text-tertiary, and a 20 px close glyph when [onClose] is given) over a row of [actions] (48 px cells, `px-2 pb-1`),
+/// on the same surface as [DifyBottomToolbar]. The close glyph sits in a 48 px square of its own: its whole target is
+/// inside the bar and overlaps no action.
 class DifySelectionBar extends StatelessWidget {
   const DifySelectionBar({
     super.key,
@@ -150,53 +150,57 @@ class DifySelectionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _DifyBottomBarSurface(
-    child: Stack(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(8, 0, onClose == null ? 8 : 36, 6),
-                child: Row(
-                  spacing: 8,
-                  children: [
-                    ?leading,
-                    Flexible(
-                      child: DifyText(title, DifyType.systemMdSemibold, color: DifyColors.textPrimary),
+          // The glyph's right edge stays 16 px from the bar's (the mockup's `p-2` + `px-2`), its square 2 px.
+          padding: EdgeInsets.only(left: 16, right: onClose == null ? 16 : 2),
+          child: SizedBox(
+            height: DifyTouch.minTarget,
+            child: Row(
+              spacing: 8,
+              children: [
+                ?leading,
+                Flexible(
+                  child: DifyText(title, DifyType.systemMdSemibold, color: DifyColors.textPrimary),
+                ),
+                if (subtitle case final s?) DifyText(s, DifyType.systemXsRegular, color: DifyColors.textTertiary),
+                if (onClose case final close?) ...[
+                  const Spacer(),
+                  DifyPressable(
+                    onPressed: close,
+                    semanticLabel: closeLabel ?? DifyI18n.tr('common', 'operation.close'),
+                    builder: (context, hovered, focused) => SizedBox.square(
+                      dimension: DifyTouch.minTarget,
+                      child: Center(
+                        child: DecoratedBox(
+                          decoration: DifyFocusDecoration(
+                            borderRadius: BorderRadius.circular(DifyRadius.sm),
+                            boxShadow: difyFocusRing(focused),
+                          ),
+                          child: RemixIcon(
+                            'close-line',
+                            size: 20,
+                            color: hovered ? DifyColors.textSecondary : DifyColors.textTertiary,
+                          ),
+                        ),
+                      ),
                     ),
-                    if (subtitle case final s?) DifyText(s, DifyType.systemXsRegular, color: DifyColors.textTertiary),
-                  ],
-                ),
-              ),
-              _ActionRow(minHeight: 52, children: [for (final a in actions) Expanded(child: a)]),
-            ],
-          ),
-        ),
-        if (onClose case final close?)
-          Positioned(
-            top: 8,
-            right: 16,
-            child: DifyTouchTarget(
-              child: DifyPressable(
-                onPressed: close,
-                semanticLabel: closeLabel ?? DifyI18n.tr('common', 'operation.close'),
-                builder: (context, hovered, focused) => DecoratedBox(
-                  decoration: DifyFocusDecoration(
-                    borderRadius: BorderRadius.circular(DifyRadius.sm),
-                    boxShadow: difyFocusRing(focused),
                   ),
-                  child: RemixIcon(
-                    'close-line',
-                    size: 20,
-                    color: hovered ? DifyColors.textSecondary : DifyColors.textTertiary,
-                  ),
-                ),
-              ),
+                ],
+              ],
             ),
           ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+          child: _ActionRow(
+            minHeight: DifyTouch.minTarget,
+            children: [for (final a in actions) Expanded(child: a)],
+          ),
+        ),
       ],
     ),
   );

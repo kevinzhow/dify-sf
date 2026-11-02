@@ -102,9 +102,14 @@ void main() {
       );
       expect(find.text('Count Android'), findsOneWidget);
       expect(find.text('selected'), findsOneWidget);
+      // The 20 px glyph sits in a 48 px square of its own.
       final close = t.getRect(find.bySemanticsLabel('operation.close'));
-      expect(close.size, const Size(20, 20));
-      await t.tapAt(close.centerLeft - const Offset(12, 0));
+      expect(close.size, const Size(48, 48));
+      expect(
+        t.getSize(find.descendant(of: find.bySemanticsLabel('operation.close'), matching: find.byType(RemixIcon))),
+        const Size(20, 20),
+      );
+      await t.tapAt(close.centerLeft + const Offset(2, 0));
       await t.tap(find.text('Duplicate'));
       await t.tap(find.text('Delete'));
       expect(taps, ['close', 'Duplicate', 'Delete']);

@@ -72,7 +72,8 @@
         "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
         "app/tool/phone_gallery_main.dart",
         "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
-        "app/test/dify_spec/dify_ui/sheet_behaviour_test.dart"
+        "app/test/dify_spec/dify_ui/sheet_behaviour_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
       ],
       "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular."
     },
@@ -81,7 +82,8 @@
       "evidence": [
         "app/test/dify_spec/dify_ui/bottom_toolbar_test.dart",
         "app/tool/phone_gallery_main.dart",
-        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
       ],
       "note": "dify-sf phone toolbar and selection bar (no Dify counterpart): 11 px DifyPhoneType labels and system-md-semibold titles through DifyText; geometry, hit areas and colours are tested."
     },
@@ -362,7 +364,8 @@
         "app/test/dify_spec/dify_ui/navigation_bar_test.dart",
         "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
         "app/tool/phone_gallery_main.dart",
-        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
       ],
       "note": "dify-sf bottom navigation (no Dify counterpart): system-xs labels through DifyText, count badge text-[11px]; selection, badges, semantics and insets are tested."
     },
@@ -477,7 +480,8 @@
       "evidence": [
         "app/tool/control_gallery.dart",
         "app/test/control_gallery_typography_test.dart",
-        "app/test/dify_spec/dify_ui/segmented_control_touch_test.dart"
+        "app/test/dify_spec/dify_ui/segmented_control_touch_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
@@ -660,7 +664,8 @@
         "app/test/dify_spec/dify_ui/top_app_bar_test.dart",
         "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
         "app/tool/phone_gallery_main.dart",
-        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
       ],
       "note": "dify-sf phone app bar (no Dify counterpart): DifyPhoneType title / large title and system-xs-regular subtitle through DifyText; height, ellipsis, back and insets are tested."
     },
@@ -670,7 +675,8 @@
         "app/test/dify_spec/dify_ui/touch_target_test.dart",
         "app/test/dify_spec/dify_ui/segmented_control_touch_test.dart",
         "app/tool/phone_gallery_main.dart",
-        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
       ],
       "note": "Hit-area expansion and the icon-only touch button; no text of their own."
     },
