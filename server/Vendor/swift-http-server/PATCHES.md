@@ -1,5 +1,21 @@
 # dify-sf local patches to swift-http-server 0.3.0
 
+## HTTP/1.1 failure diagnostics
+
+`HTTPFailureDiagnostics.swift` and the setup in `NIOHTTPServer+HTTP1_1.swift`
+observe HTTP parser failures and 4xx responses at warning level. The standard NIO
+parser, protocol error handler, and response bytes are unchanged. A counter before
+HTTP decoding (after TLS) records connection bytes received; it is explicitly not
+an exact per-request size, because reads may include pipelined requests. Decoded
+body bytes and normalized framing headers are included only when a request head
+is available. An ended request's headers are never attributed to a subsequent
+malformed request head.
+
+Only fixed parser descriptions, byte counts, status, normalized Content-Length /
+Transfer-Encoding, and a validated 32-character hexadecimal request ID are logged.
+Request paths, query strings, other headers, and request/response bodies are not
+retained. Storage per connection is bounded independently of body size.
+
 Upstream: https://github.com/swift-server/swift-http-server, revision `cc494f5ceebd06727c6e250bb502c405f912836b` (tag
 0.3.0, the revision Vapor 5.0.0-beta.4 resolves to), Apache License 2.0 (see LICENSE.txt). Copied without `.git` and
 `.github`; everything else is upstream except the files listed below.

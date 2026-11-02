@@ -106,6 +106,8 @@ let package = Package(
             .product(name: "Configuration", package: "swift-configuration"),
             .product(name: "VaporTesting", package: "vapor"),
             .product(name: "NIOPosix", package: "swift-nio"),
+            .product(name: "NIOEmbedded", package: "swift-nio"),
+            .product(name: "NIOHTTPServer", package: "swift-http-server"),
         ]),
     ]
 )

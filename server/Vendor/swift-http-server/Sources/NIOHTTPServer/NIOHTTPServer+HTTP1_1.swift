@@ -141,7 +141,15 @@ extension NIOHTTPServer {
         channel: any Channel,
         isSecure: Bool
     ) -> EventLoopFuture<HTTPRequestChannelAndCancellationSignal> {
-        channel.pipeline.configureHTTPServerPipeline().flatMapThrowing {
+        let diagnostics = HTTPFailureDiagnosticsState()
+        return channel.eventLoop.submit {
+            try channel.pipeline.syncOperations.addHandler(HTTPIncomingByteCounter(state: diagnostics))
+        }.flatMap {
+            channel.pipeline.configureHTTPServerPipeline()
+        }.flatMapThrowing {
+            try channel.pipeline.syncOperations.addHandler(
+                HTTPFailureDiagnosticsHandler(state: diagnostics, logger: self.logger)
+            )
 
             try channel.pipeline.syncOperations.addHandler(HTTP1ToHTTPServerCodec(secure: isSecure))
             try channel.pipeline.syncOperations.addHandler(HTTPKeepAliveHandler())
