@@ -348,9 +348,25 @@ class _DifyInputState extends State<DifyInput> with DifyControlledText<DifyInput
       maxLength: w.maxLength,
       textInputAction: w.textInputAction,
     );
-    final height = DifyTouch.compactOf(context)
+    final compact = DifyTouch.compactOf(context);
+    final height = compact
         ? (w.height == null || w.height! < DifyTouch.controlHeight ? DifyTouch.controlHeight : w.height)
         : w.height;
+    if (compact) {
+      // A phone: the field is one node with the input's name and state, as tall as the box, border included
+      // (TalkBack's focus and the target's size are the 44 px box, not the 16 px text line); a tap in the box's
+      // padding focuses the field. The
+      // name is not left to the node above (a picker's search read as a stop of its own before the field).
+      field = DifyTouchTarget(
+        accessible: true,
+        minSize: height!,
+        child: Semantics(
+          label: w.semanticLabel,
+          validationResult: w.invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
+          child: field,
+        ),
+      );
+    }
     if (height != null) {
       field = SizedBox(
         height: height - 2,
@@ -392,8 +408,8 @@ class _DifyInputState extends State<DifyInput> with DifyControlledText<DifyInput
       );
     }
     return Semantics(
-      label: w.semanticLabel,
-      validationResult: w.invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
+      label: compact ? null : w.semanticLabel,
+      validationResult: w.invalid && !compact ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
       child: DifyInputBox(
         focusNode: _focus,
         disabled: w.disabled,

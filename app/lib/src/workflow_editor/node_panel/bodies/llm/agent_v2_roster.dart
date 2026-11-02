@@ -811,6 +811,18 @@ class _AgentSelectorContentState extends State<AgentSelectorContent> {
     }
   }
 
+  /// The search field's node: named "Search agents". In a phone's sheet it is one node as tall as the 44 px box
+  /// (TalkBack's focus was the 16 px text line, after a separate unfocusable name node).
+  Widget _searchNode(BuildContext context, Widget field) {
+    final label = _a('roster.searchLabel');
+    if (!DifyFloating.inSheet(context)) return Semantics(label: label, textField: true, child: field);
+    return DifyTouchTarget(
+      accessible: true,
+      minSize: DifyTouch.controlHeight,
+      child: Semantics(label: label, child: field),
+    );
+  }
+
   void _onSearch(String v) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
@@ -896,10 +908,9 @@ class _AgentSelectorContentState extends State<AgentSelectorContent> {
                     child: RemixIcon('search-line', size: 16, color: DifyColors.componentsInputTextPlaceholder),
                   ),
                   Expanded(
-                    child: Semantics(
-                      label: _a('roster.searchLabel'),
-                      textField: true,
-                      child: Align(
+                    child: _searchNode(
+                      context,
+                      Align(
                         alignment: Alignment.centerLeft,
                         child: DifySurface(
                           child: DifyTextField(

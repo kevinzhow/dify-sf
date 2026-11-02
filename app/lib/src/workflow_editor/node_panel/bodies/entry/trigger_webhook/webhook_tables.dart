@@ -64,7 +64,12 @@ List<({Json row, int? index})> displayRows(List<Json> data, Json emptyRow, bool 
 /// table (an `h-7` header row with [showHeader]); editing the trailing virtual row appends one from [emptyRowData],
 /// a row with a primary key (`key` or `name`) can be deleted on hover. Read-only without rows: the [placeholder] box.
 /// [onTextFocus] tells when a text cell gains or loses the focus (a typing draft begins or ends).
-class GenericTable extends StatelessWidget {
+///
+/// A phone (a dify-sf divergence): each row is one named item ("city, String, Required": its key, the selects' values
+/// and the checked toggles) whose cells stay editable, at touch size (48 px rows; the text field, the select and the
+/// checkbox are 48 px nodes), with Delete under a "…" in a column of its own inside the table's borders (the header and
+/// the rows without a key keep that column empty, so the columns line up) and on a long press.
+class GenericTable extends StatefulWidget {
   const GenericTable({
     super.key,
     required this.title,
@@ -87,31 +92,46 @@ class GenericTable extends StatelessWidget {
   final String? placeholder;
   final ValueChanged<bool>? onTextFocus;
 
-  String get _primaryKey => columns.where((c) => c.key == 'key' || c.key == 'name').firstOrNull?.key ?? 'key';
+  @override
+  State<GenericTable> createState() => _GenericTableState();
+}
+
+class _GenericTableState extends State<GenericTable> {
+  String get _primaryKey => widget.columns.where((c) => c.key == 'key' || c.key == 'name').firstOrNull?.key ?? 'key';
 
   void _update(int? index, String key, Object? value) {
-    if (readonly) return;
+    final data = widget.data;
+    if (widget.readonly) return;
     if (index != null && index < data.length) {
-      onChange([
+      widget.onChange([
         for (final (i, r) in data.indexed) i == index ? {...r, key: value} : r,
       ]);
       return;
     }
-    onChange([
+    widget.onChange([
       ...data,
-      {...emptyRowData, key: value},
+      {...widget.emptyRowData, key: value},
     ]);
   }
 
-  void _remove(int index) {
-    if (readonly || index < 0 || index >= data.length) return;
-    onChange([
+  /// Deletes the row whose primary key is [key], from the table as it is when the action runs (a phone's action
+  /// sheet may have been open while a collaborator added, removed or changed rows): the row at [at] if it still has
+  /// that key, else the first that has it; nothing once no row has it. The other rows are the latest ones.
+  void _remove(String key, int at) {
+    final data = widget.data, primary = _primaryKey;
+    if (widget.readonly) return;
+    final index = at < data.length && '${data[at][primary] ?? ''}' == key
+        ? at
+        : data.indexWhere((r) => '${r[primary] ?? ''}' == key);
+    if (index < 0) return;
+    widget.onChange([
       for (final (i, r) in data.indexed)
         if (i != index) r,
     ]);
   }
 
-  Widget _cell(TableColumn c, Json row, int? index) {
+  Widget _cell(TableColumn c, Json row, int? index, bool phone) {
+    final readonly = widget.readonly;
     void change(Object? v) => _update(index, c.key, v);
     final value = row[c.key];
     return switch (c.type) {
@@ -122,20 +142,13 @@ class GenericTable extends StatelessWidget {
         disabled: readonly,
         varName: c.key == 'key' || c.key == 'name',
         onChanged: change,
-        onFocus: onTextFocus,
+        onFocus: widget.onTextFocus,
       ),
       ColumnType.select => _SelectCell(column: c, value: value, disabled: readonly, onChanged: change),
-      ColumnType.toggle => SizedBox(
-        height: 28,
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: DifyCheckbox(
-            checked: value == true,
-            label: c.title,
-            disabled: readonly,
-            onChanged: change,
-          ),
-        ),
+      ColumnType.toggle => _toggleCell(
+        phone,
+        DifyCheckbox(checked: value == true, label: c.title, disabled: readonly, onChanged: change),
+        readonly ? null : () => change(value != true),
       ),
       ColumnType.custom => c.render?.call(value, row, index ?? -1, change) ?? const SizedBox.shrink(),
       ColumnType.unsupported => const SizedBox.shrink(),
@@ -156,10 +169,21 @@ class GenericTable extends StatelessWidget {
     return c.width == null ? Expanded(child: box) : box;
   }
 
+  /// A phone row's name: its key, then the selects' values and the checked toggles' titles.
+  String _rowName(Json row) => [
+    '${row[_primaryKey] ?? ''}',
+    for (final c in widget.columns)
+      if (c.type == ColumnType.select)
+        ?c.options.where((o) => o.value == row[c.key]).firstOrNull?.name
+      else if (c.type == ColumnType.toggle && row[c.key] == true)
+        c.title,
+  ].where((s) => s.isNotEmpty).join(', ');
+
   @override
   Widget build(BuildContext context) {
+    final w = widget;
     final Widget body;
-    if (readonly && data.isEmpty) {
+    if (w.readonly && w.data.isEmpty) {
       body = Container(
         height: 28,
         alignment: Alignment.center,
@@ -169,13 +193,16 @@ class GenericTable extends StatelessWidget {
           borderRadius: BorderRadius.circular(DifyRadius.lg),
         ),
         child: DifyTextLine(
-          placeholder ?? '',
+          w.placeholder ?? '',
           style: difyStyle(DifyType.systemXsRegular, DifyColors.textQuaternary).copyWith(height: 18 / 12),
         ),
       );
     } else {
       final primary = _primaryKey;
-      final rows = displayRows(data, emptyRowData, readonly);
+      final rows = displayRows(w.data, w.emptyRowData, w.readonly);
+      final phone = DifyTouch.compactOf(context);
+      // A phone's "…" column (none when nothing can be deleted).
+      final moreColumn = phone && !w.readonly;
       body = Container(
         decoration: BoxDecoration(
           border: Border.all(color: DifyColors.dividerRegular),
@@ -186,21 +213,22 @@ class GenericTable extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (showHeader)
+              if (w.showHeader)
                 SizedBox(
                   height: 28,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final (i, c) in columns.indexed)
+                      for (final (i, c) in w.columns.indexed)
                         _sized(
                           c,
-                          i == columns.length - 1,
+                          i == w.columns.length - 1,
                           Align(
                             alignment: Alignment.centerLeft,
                             child: DifyText(c.title, DifyType.systemXsMediumUppercase, color: DifyColors.textTertiary),
                           ),
                         ),
+                      if (moreColumn) const SizedBox(width: _moreWidth),
                     ],
                   ),
                 ),
@@ -208,11 +236,16 @@ class GenericTable extends StatelessWidget {
                 _TableRow(
                   key: ValueKey('row-$i'),
                   label: '${r.row[primary] ?? ''}',
+                  name: _rowName(r.row),
                   last: i == rows.length - 1,
                   hasContent: _present(r.row[primary]),
-                  onDelete: !readonly && r.index != null && _present(r.row[primary]) ? () => _remove(r.index!) : null,
+                  moreColumn: moreColumn,
+                  onDelete: !w.readonly && r.index != null && _present(r.row[primary])
+                      ? () => _remove('${r.row[primary]}', r.index!)
+                      : null,
                   children: [
-                    for (final (j, c) in columns.indexed) _sized(c, j == columns.length - 1, _cell(c, r.row, r.index)),
+                    for (final (j, c) in w.columns.indexed)
+                      _sized(c, j == w.columns.length - 1, _cell(c, r.row, r.index, phone)),
                   ],
                 ),
             ],
@@ -226,7 +259,7 @@ class GenericTable extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: DifyText(title, DifyType.systemSmSemiboldUppercase, color: DifyColors.textSecondary),
+          child: DifyText(w.title, DifyType.systemSmSemiboldUppercase, color: DifyColors.textSecondary),
         ),
         body,
       ],
@@ -234,22 +267,40 @@ class GenericTable extends StatelessWidget {
   }
 }
 
+/// The width of a phone row's "…" column (its 44 px button).
+const _moreWidth = 44.0;
+
+/// A toggle cell: the checkbox on the cell's text line (`h-7`). A phone: the whole 48 px cell is the checkbox's target
+/// and its node (a tap anywhere in it toggles), the box still at the cell's start, under its column's title.
+Widget _toggleCell(bool phone, Widget checkbox, VoidCallback? toggle) {
+  final cell = SizedBox(
+    height: phone ? DifyTouch.minTarget : 28,
+    child: Align(alignment: Alignment.centerLeft, child: checkbox),
+  );
+  if (!phone) return cell;
+  return MergeSemantics(
+    child: GestureDetector(behavior: HitTestBehavior.opaque, excludeFromSemantics: true, onTap: toggle, child: cell),
+  );
+}
+
 /// A row: `border-t border-divider-regular`, at least 28 px, and but for the [last] the rows' `divide-y
 /// divide-divider-subtle` line below; hovered `bg-state-destructive-hover` when it has a primary key (else
-/// `bg-state-base-hover`) and showing the "Delete row" bin on the right.
+/// `bg-state-base-hover`) and showing the "Delete row" bin on the right. A phone: see [GenericTable].
 class _TableRow extends StatefulWidget {
   const _TableRow({
     super.key,
     required this.label,
+    required this.name,
     required this.last,
     required this.hasContent,
+    required this.moreColumn,
     required this.children,
     this.onDelete,
   });
 
-  /// The row's key (its primary column), its name on a phone.
-  final String label;
-  final bool last, hasContent;
+  /// The row's key (its primary column); [name] is what a phone reads for the row (the key and its attributes).
+  final String label, name;
+  final bool last, hasContent, moreColumn;
   final List<Widget> children;
   final VoidCallback? onDelete;
 
@@ -262,27 +313,29 @@ class _TableRowState extends State<_TableRow> {
 
   @override
   Widget build(BuildContext context) {
-    // A phone: no invisible bin (a blind tap there deleted the row); "…" and a long press offer Delete. The cells stay
-    // the row's own fields.
+    // A phone: no invisible bin (a blind tap there deleted the row); "…" (inside the row) and a long press offer
+    // Delete. The cells stay the row's own fields.
     final phone = DifyTouch.compactOf(context);
-    final row = _row(showBin: !phone);
+    if (!phone) return _row(showBin: true);
     final delete = widget.onDelete;
-    if (!phone || delete == null) return row;
-    return DifyActionRow(
+    if (delete == null) return _row(showBin: false, more: widget.moreColumn ? const SizedBox(width: _moreWidth) : null);
+    return DifyActionRow.builder(
       label: widget.label,
-      childInteractive: true,
+      semanticLabel: widget.name,
       actions: [DifyActionRow.delete(delete)],
-      child: row,
+      builder: (context, more) => _row(showBin: false, more: more),
     );
   }
 
-  Widget _row({required bool showBin}) => MouseRegion(
+  Widget _row({required bool showBin, Widget? more}) => MouseRegion(
     onEnter: (_) => setState(() => _hovered = true),
     onExit: (_) => setState(() => _hovered = false),
     child: Container(
-      constraints: const BoxConstraints(minHeight: 28),
+      constraints: BoxConstraints(minHeight: more != null ? DifyTouch.minTarget : 28),
       decoration: BoxDecoration(
-        color: _hovered ? (widget.hasContent ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
+        color: showBin && _hovered
+            ? (widget.hasContent ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover)
+            : null,
         border: Border(
           top: BorderSide(color: DifyColors.dividerRegular),
           bottom: widget.last ? BorderSide.none : BorderSide(color: DifyColors.dividerSubtle),
@@ -291,7 +344,13 @@ class _TableRowState extends State<_TableRow> {
       child: Stack(
         children: [
           IntrinsicHeight(
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: widget.children),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ...widget.children,
+                if (more != null) Center(child: more),
+              ],
+            ),
           ),
           if (widget.onDelete != null && showBin)
             Positioned(
@@ -365,32 +424,41 @@ class _InputCellState extends State<_InputCell> {
   @override
   Widget build(BuildContext context) {
     final style = difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary);
+    final field = DifyTextField(
+      controller: _controller,
+      focusNode: _focus,
+      enabled: !widget.disabled,
+      style: style,
+      cursorColor: DifyColors.primary600, // caret-primary-600
+      cursorWidth: 1,
+      inputFormatters: widget.varName ? [varNameFormatter] : null,
+      onChanged: widget.onChanged,
+      onSubmitted: (_) => _focus.unfocus(),
+      decoration: DifyFieldDecoration.collapsed(
+        hintText: widget.placeholder,
+        hintStyle: style.copyWith(color: DifyColors.textQuaternary),
+      ),
+    );
+    // A phone: the field is one node named by its column, as tall as the 48 px row (not the 24 px line); a tap
+    // anywhere in the cell's height focuses it.
+    if (DifyTouch.compactOf(context)) {
+      return SizedBox(
+        height: DifyTouch.minTarget,
+        child: Center(
+          child: DifyTouchTarget(
+            accessible: true,
+            child: Semantics(label: widget.label, child: field),
+          ),
+        ),
+      );
+    }
     return Semantics(
       label: widget.label,
       textField: true,
       // The `h-6` input stands on the cell's text line, half a pixel down.
       child: Padding(
         padding: const EdgeInsets.only(top: 0.5, bottom: 3.5),
-        child: SizedBox(
-          height: 24,
-          child: Center(
-            child: DifyTextField(
-              controller: _controller,
-              focusNode: _focus,
-              enabled: !widget.disabled,
-              style: style,
-              cursorColor: DifyColors.primary600, // caret-primary-600
-              cursorWidth: 1,
-              inputFormatters: widget.varName ? [varNameFormatter] : null,
-              onChanged: widget.onChanged,
-              onSubmitted: (_) => _focus.unfocus(),
-              decoration: DifyFieldDecoration.collapsed(
-                hintText: widget.placeholder,
-                hintStyle: style.copyWith(color: DifyColors.textQuaternary),
-              ),
-            ),
-          ),
-        ),
+        child: SizedBox(height: 24, child: Center(child: field)),
       ),
     );
   }
@@ -408,11 +476,14 @@ class _SelectCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = column.options.where((o) => o.value == value).firstOrNull;
+    // A phone: the trigger is the 48 px cell (its node too), named by its column and value.
+    final phone = DifyTouch.compactOf(context);
+    final name = selected?.name ?? column.placeholder;
     // The `h-6` trigger at the cell's top.
     return SizedBox(
-      height: 28,
+      height: phone ? DifyTouch.minTarget : 28,
       child: Align(
-        alignment: Alignment.topLeft,
+        alignment: phone ? Alignment.centerLeft : Alignment.topLeft,
         child: DifyDropdownMenu(
           placement: DifyPlacement.bottomStart,
           sideOffset: 4,
@@ -422,9 +493,9 @@ class _SelectCell extends StatelessWidget {
           builder: (context, controller) => DifyPressable(
             disabled: disabled,
             onPressed: controller.toggle,
-            semanticLabel: selected?.name ?? column.placeholder,
+            semanticLabel: phone && name != null ? '${column.title}, $name' : name,
             builder: (context, hovered, _) => SizedBox(
-              height: 24,
+              height: phone ? DifyTouch.minTarget : 24,
               child: Padding(
                 padding: const EdgeInsets.only(right: 24),
                 child: Row(

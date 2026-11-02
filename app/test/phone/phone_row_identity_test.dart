@@ -1,0 +1,332 @@
+// Row actions find their row by its identity when they run (PR #90 review, Winnie): a phone's "…" sheet (Edit, Delete,
+// Move up / down) or an edit form may be open while a collaborator changes the list. The action applies to the row it
+// was opened on (by its name, id or key), wherever that row is now, or does nothing once it is gone; it writes only
+// its own change on the latest list (rows added or changed meanwhile survive). At 411x914.
+//
+// The first seven cases are Winnie's review tests (pr90_row_identity_review2_test.dart: 4, review7: 1, review8: 2),
+// adapted to this suite's harness.
+
+import 'package:dify_sf_app/src/design/dify_theme.dart';
+import 'package:dify_sf_app/src/design/widgets/widgets.dart';
+import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/start_panel.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/trigger_webhook/webhook_tables.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/pe_params.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../support/app_fonts.dart';
+import 'phone_harness.dart';
+
+typedef _Json = Map<String, Object?>;
+
+_Json _item(String id, {String? label}) => {
+  'variable': id,
+  'label': label ?? id,
+  'type': 'text-input',
+  'required': false,
+};
+
+/// A Start input list on a phone page whose list another client can change ([update]).
+class _StartHost {
+  _StartHost(this.items);
+  List<_Json> items;
+  late StateSetter update;
+
+  List<Object?> get names => [for (final v in items) v['variable']];
+
+  Future<void> pump(WidgetTester t) async {
+    phoneWindow(t);
+    await t.pumpWidget(
+      DifyApplication(
+        theme: difyTheme(),
+        home: DifyPage(
+          edgeToEdge: true,
+          body: StatefulBuilder(
+            builder: (context, set) {
+              update = set;
+              return Padding(
+                padding: const EdgeInsets.only(top: 80),
+                child: StartVarList(
+                  readonly: false,
+                  list: items,
+                  onChange: (next, [more]) => update(() => items = next.cast<_Json>()),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await settle(t, 400);
+  }
+
+  /// Another client's change: the page rebuilds with [next].
+  Future<void> remote(WidgetTester t, List<_Json> next) async {
+    update(() => items = next);
+    await settle(t, 300);
+  }
+}
+
+Finder _more(String rowName) => find.byKey(ValueKey('dify-action-row-more-$rowName'));
+
+Future<void> _openMenu(WidgetTester t, String rowName) async {
+  await t.tap(_more(rowName));
+  await settle(t, 600);
+}
+
+void main() {
+  setUpAll(() async {
+    await DifyI18n.load('en-US');
+    await useAppFonts();
+  });
+
+  group("Winnie's review cases", () {
+    for (final change in ['none', 'reorder', 'remove']) {
+      testWidgets('Delete from an open alpha menu keeps the selected identity after $change', (t) async {
+        final h = _StartHost([_item('alpha'), _item('beta')]);
+        await h.pump(t);
+        await _openMenu(t, 'alpha, alpha, Short Text');
+        expect(find.text('Delete'), findsOneWidget);
+        if (change == 'reorder') await h.remote(t, [h.items[1], h.items[0]]);
+        if (change == 'remove') await h.remote(t, [h.items[1]]);
+        await t.tap(find.text('Delete'));
+        await settle(t, 700);
+        expect(h.names, ['beta'], reason: 'menu targeted alpha; a current row at its old index must not be deleted');
+        expect(t.takeException(), isNull);
+        await unmount(t);
+      });
+    }
+
+    testWidgets('Move down from an open alpha menu targets alpha after another row is inserted before it', (t) async {
+      final h = _StartHost([_item('alpha'), _item('beta')]);
+      await h.pump(t);
+      await _openMenu(t, 'alpha, alpha, Short Text');
+      await h.remote(t, [_item('new'), ...h.items]);
+      await t.tap(find.text('Move down'));
+      await settle(t, 700);
+      expect(h.names, ['new', 'beta', 'alpha'], reason: 'the selected alpha moves down from its CURRENT position');
+      expect(t.takeException(), isNull);
+      await unmount(t);
+    });
+
+    testWidgets('Edit safely does nothing after the selected row disappeared while its menu was open', (t) async {
+      final h = _StartHost([_item('alpha'), _item('beta')]);
+      try {
+        await h.pump(t);
+        await _openMenu(t, 'alpha, alpha, Short Text');
+        await h.remote(t, [h.items[1]]);
+        await t.tap(find.text('Edit'));
+        await settle(t, 700);
+        expect(
+          t.takeException(),
+          isNull,
+          reason: 'an action for a deleted row must not use its disposed State/context',
+        );
+        expect(find.byKey(const Key('config-var-modal')), findsNothing);
+        expect(h.names, ['beta']);
+      } finally {
+        await unmount(t);
+      }
+    });
+
+    for (final updateKind in ['insert', 'edit']) {
+      testWidgets('Webhook row deletion preserves the latest table after an external $updateKind', (t) async {
+        phoneWindow(t);
+        var rows = <_Json>[
+          {'key': 'alpha', 'value': '1'},
+          {'key': 'beta', 'value': 'old'},
+        ];
+        late StateSetter update;
+        try {
+          await t.pumpWidget(
+            DifyApplication(
+              theme: difyTheme(),
+              home: DifyPage(
+                edgeToEdge: true,
+                body: StatefulBuilder(
+                  builder: (context, set) {
+                    update = set;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 80),
+                      child: GenericTable(
+                        title: 'Headers',
+                        columns: const [
+                          TableColumn(key: 'key', title: 'Key', type: ColumnType.input),
+                          TableColumn(key: 'value', title: 'Value', type: ColumnType.input),
+                        ],
+                        data: rows,
+                        onChange: (next) => update(() => rows = next),
+                        emptyRowData: const {'key': '', 'value': ''},
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+          await settle(t, 400);
+          await _openMenu(t, 'alpha');
+          if (updateKind == 'insert') {
+            update(
+              () => rows = [
+                {'key': 'new', 'value': 'added'},
+                ...rows,
+              ],
+            );
+          } else {
+            update(
+              () => rows = [
+                rows[0],
+                {'key': 'beta', 'value': 'updated'},
+              ],
+            );
+          }
+          await settle(t, 300);
+          await t.tap(find.text('Delete'));
+          await settle(t, 700);
+          if (updateKind == 'insert') {
+            expect(rows, [
+              {'key': 'new', 'value': 'added'},
+              {'key': 'beta', 'value': 'old'},
+            ], reason: 'deleting alpha must preserve the new row');
+          } else {
+            expect(rows, [
+              {'key': 'beta', 'value': 'updated'},
+            ], reason: 'deleting alpha must preserve the latest value of beta');
+          }
+          expect(t.takeException(), isNull);
+        } finally {
+          await unmount(t);
+        }
+      });
+    }
+  });
+
+  group('Start inputs: Edit and the latest list', () {
+    testWidgets('Delete of B with its menu open: C changed and D added meanwhile survive', (t) async {
+      final h = _StartHost([_item('a'), _item('b'), _item('c')]);
+      await h.pump(t);
+      await _openMenu(t, 'b, b, Short Text');
+      await h.remote(t, [h.items[0], h.items[1], _item('c', label: 'C changed'), _item('d')]);
+      await t.tap(find.text('Delete'));
+      await settle(t, 700);
+      expect(h.names, ['a', 'c', 'd']);
+      expect(h.items[1]['label'], 'C changed', reason: "the other client's change to c survives");
+      expect(t.takeException(), isNull);
+      await unmount(t);
+    });
+
+    testWidgets("Edit from alpha's menu after a reorder opens alpha's form; its Save goes to alpha", (t) async {
+      final h = _StartHost([_item('alpha'), _item('beta')]);
+      await h.pump(t);
+      await _openMenu(t, 'alpha, alpha, Short Text');
+      await h.remote(t, [h.items[1], h.items[0]]);
+      await t.tap(find.text('Edit'));
+      await settle(t, 800);
+      final modal = find.byKey(const Key('config-var-modal'));
+      expect(modal, findsOneWidget);
+      final fields = find.descendant(of: modal, matching: find.byType(EditableText));
+      expect(t.widget<EditableText>(fields.first).controller.text, 'alpha', reason: "alpha's form, not beta's");
+      await t.enterText(fields.at(1), 'Alpha label');
+      await t.tap(find.widgetWithText(DifyButton, 'Save').last);
+      await settle(t, 800);
+      expect(h.names, ['beta', 'alpha']);
+      expect(h.items[1]['label'], 'Alpha label');
+      expect(h.items[0]['label'], 'beta', reason: 'beta untouched');
+      expect(t.takeException(), isNull);
+      await unmount(t);
+    });
+
+    testWidgets("an open edit form's Save writes its own row on the latest list: C changed meanwhile survives; once "
+        'its row is deleted underneath, Save closes the form and writes nothing', (t) async {
+      final h = _StartHost([_item('a'), _item('b'), _item('c')]);
+      await h.pump(t);
+      await t.tap(find.bySemanticsLabel('b, b, Short Text'));
+      await settle(t, 800);
+      final modal = find.byKey(const Key('config-var-modal'));
+      expect(modal, findsOneWidget);
+      await h.remote(t, [_item('new'), h.items[0], h.items[1], _item('c', label: 'C changed')]);
+      final fields = find.descendant(of: modal, matching: find.byType(EditableText));
+      await t.enterText(fields.at(1), 'B label');
+      await t.tap(find.widgetWithText(DifyButton, 'Save').last);
+      await settle(t, 800);
+      expect(h.names, ['new', 'a', 'b', 'c']);
+      expect([for (final v in h.items) v['label']], ['new', 'a', 'B label', 'C changed']);
+
+      // The form open on b; b deleted by another client; Save writes nothing.
+      await t.tap(find.bySemanticsLabel('b, B label, Short Text'));
+      await settle(t, 800);
+      await h.remote(t, [h.items[0], h.items[1], h.items[3]]);
+      await t.enterText(find.descendant(of: modal, matching: find.byType(EditableText)).at(1), 'stale');
+      await t.tap(find.widgetWithText(DifyButton, 'Save').last);
+      await settle(t, 800);
+      expect(modal, findsNothing, reason: 'the form closes');
+      expect(h.names, ['new', 'a', 'c']);
+      expect([for (final v in h.items) v['label']], ['new', 'a', 'C changed'], reason: 'nothing written');
+      expect(t.takeException(), isNull);
+      await unmount(t);
+    });
+  });
+
+  testWidgets('extract parameters: Delete and Edit from a menu find the parameter by its name in the latest list', (
+    t,
+  ) async {
+    phoneWindow(t);
+    _Json p(String name, [String description = 'd']) => {
+      'name': name,
+      'type': 'string',
+      'required': false,
+      'description': description,
+    };
+    var list = [p('alpha'), p('beta')];
+    late StateSetter update;
+    await t.pumpWidget(
+      DifyApplication(
+        theme: difyTheme(),
+        home: DifyPage(
+          edgeToEdge: true,
+          body: StatefulBuilder(
+            builder: (context, set) {
+              update = set;
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+                child: ExtractParamList(list: list, onChange: (next, _) => update(() => list = next)),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await settle(t, 400);
+    List<Object?> names() => [for (final x in list) x['name']];
+
+    await _openMenu(t, 'alpha, String, d');
+    update(() => list = [p('new'), list[0], p('beta', 'changed')]);
+    await settle(t, 300);
+    await t.tap(find.text('Delete'));
+    await settle(t, 700);
+    expect(names(), ['new', 'beta']);
+    expect(list[1]['description'], 'changed', reason: "the other client's change survives");
+
+    // Edit from beta's menu after beta moved: beta's form; once beta is gone, Edit does nothing.
+    await _openMenu(t, 'beta, String, changed');
+    update(() => list = [list[1], list[0]]);
+    await settle(t, 300);
+    await t.tap(find.text('Edit'));
+    await settle(t, 800);
+    final name = find.descendant(of: find.byType(ExtractParameterForm), matching: find.byType(EditableText)).first;
+    expect(t.widget<EditableText>(name).controller.text, 'beta');
+    await t.tap(find.widgetWithText(DifyButton, 'Cancel').last);
+    await settle(t, 600);
+    await _openMenu(t, 'beta, String, changed');
+    update(() => list = [list[1]]);
+    await settle(t, 300);
+    await t.tap(find.text('Edit'));
+    await settle(t, 800);
+    expect(find.byType(ExtractParameterForm), findsNothing);
+    expect(names(), ['new']);
+    expect(t.takeException(), isNull);
+    await unmount(t);
+  });
+}

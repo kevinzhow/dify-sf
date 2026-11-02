@@ -689,7 +689,8 @@ class _FileDefaultPlaceholder extends StatelessWidget {
 
 // ---- small form parts --------------------------------------------------------------------------------------------
 
-/// A `label` row: the checkbox and its `system-sm-semibold` text (a tap on either toggles), `h-6 space-x-2`.
+/// A `label` row: the checkbox and its `system-sm-semibold` text (a tap on either toggles), `h-6 space-x-2`
+/// ([DifyCheckboxLabel]: one node; on a phone the whole row, touch-high), then [trailing].
 class _CheckRow extends StatelessWidget {
   const _CheckRow({
     required this.label,
@@ -704,28 +705,25 @@ class _CheckRow extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 24,
-    child: Row(
-      spacing: 8,
-      children: [
-        DifyCheckbox(checked: checked, disabled: disabled, label: label, onChanged: onChanged),
-        Flexible(
-          child: GestureDetector(
-            onTap: disabled ? null : () => onChanged(!checked),
-            child: ExcludeSemantics(
-              child: DifyTextLine(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
-              ),
-            ),
+  Widget build(BuildContext context) => Row(
+    spacing: 8,
+    children: [
+      Flexible(
+        child: DifyCheckboxLabel(
+          label: label,
+          checked: checked,
+          disabled: disabled,
+          onChanged: onChanged,
+          child: DifyTextLine(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
           ),
         ),
-        ?trailing,
-      ],
-    ),
+      ),
+      ?trailing,
+    ],
   );
 }
 

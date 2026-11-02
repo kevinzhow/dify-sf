@@ -227,6 +227,45 @@ class _StartVarListState extends State<StartVarList> {
     widget.onChange(list);
   }
 
+  /// The current index of the input field named [variable] (a row's identity), or -1 once it is gone. A row's actions
+  /// find their row by it when they run: the list may have changed since the row was built (a collaborator added,
+  /// removed or moved a field while a phone's action sheet or the edit dialog was open).
+  int _indexOf(String variable) => widget.list.indexWhere((v) => jsKey(v['variable']) == variable);
+
+  /// [_change] on the field named [variable] where it is now; nothing (the dialog closes) once it is gone.
+  bool _changeVar(String variable, Map<String, Object?> payload, VarChange? moreInfo) {
+    final index = _indexOf(variable);
+    return index < 0 || _change(index, payload, moreInfo);
+  }
+
+  /// Opens Edit Input Field on the field named [variable] as it is now (nothing once it is gone); its Save goes to that
+  /// field wherever it is then, and writes nothing once it is gone (the dialog just closes).
+  void _editVar(String variable) {
+    final index = _indexOf(variable);
+    if (index < 0) return;
+    final host = CorePanelHost.of(context);
+    showConfigVarModal(
+      context,
+      payload: widget.list[index],
+      supportFile: true,
+      maxFileUploadLimit: host.workflowFileUploadLimit,
+      toastError: host.toastError,
+      onConfirm: (p, m) => _changeVar(variable, p, m),
+    );
+  }
+
+  /// [_remove] of the field named [variable] where it is now; nothing once it is gone.
+  void _removeVar(String variable) {
+    final index = _indexOf(variable);
+    if (index >= 0) _remove(index);
+  }
+
+  /// Moves the field named [variable] by [delta] from where it is now; nothing once it is gone or at the end.
+  void _moveVar(String variable, int delta) {
+    final from = _indexOf(variable), to = from + delta;
+    if (from >= 0 && to >= 0 && to < widget.list.length) _move(from, to);
+  }
+
   void _remove(int index) {
     if (_session != null) setState(() => _session = null);
     widget.onChange(
@@ -276,16 +315,19 @@ class _StartVarListState extends State<StartVarList> {
       itemBuilder: (context, position) {
         final index = _keyOf(position);
         final item = shown[position];
+        final variable = jsKey(item['variable']);
         final faded = canDrag && (_hovered == index || _focused.contains(index) || active == position);
         Widget row = StartVarItem(
           readonly: w.readonly,
           payload: item,
           varKeys: keys,
           iconHidden: faded,
-          onChange: (p, m) => _change(index, p, m),
-          onRemove: () => _remove(index),
-          onMoveUp: position == 0 ? null : () => _move(position, position - 1),
-          onMoveDown: position == shown.length - 1 ? null : () => _move(position, position + 1),
+          // By the field's name, where it is when the action runs (not this build's index).
+          onEdit: () => _editVar(variable),
+          onChange: (p, m) => _changeVar(variable, p, m),
+          onRemove: () => _removeVar(variable),
+          onMoveUp: position == 0 ? null : () => _moveVar(variable, -1),
+          onMoveDown: position == shown.length - 1 ? null : () => _moveVar(variable, 1),
         );
         if (canDrag) row = DifyReorderableDragStartListener(index: position, enabled: c == null, child: row);
         return MouseRegion(
@@ -383,10 +425,15 @@ class StartVarItem extends StatefulWidget {
     this.iconHidden = false,
     this.onMoveUp,
     this.onMoveDown,
+    this.onEdit,
   });
 
   final bool readonly;
   final Map<String, Object?> payload;
+
+  /// Opens the edit dialog (the tap, the hover edit button, a phone's Edit); null: the row opens it on [payload] and
+  /// saves through [onChange]. A list passes one that finds the row by its name when it runs.
+  final VoidCallback? onEdit;
 
   /// A phone's Move up / Move down (null: the row is first / last, or the list does not reorder).
   final VoidCallback? onMoveUp, onMoveDown;
@@ -409,6 +456,8 @@ class _StartVarItemState extends State<StartVarItem> {
   bool _hovered = false;
 
   void _edit() {
+    if (widget.onEdit case final edit?) return edit();
+    if (!mounted) return;
     final host = CorePanelHost.of(context);
     showConfigVarModal(
       context,

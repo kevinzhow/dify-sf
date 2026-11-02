@@ -12,7 +12,7 @@ library;
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, listEquals;
 import 'package:flutter/material.dart' show MaterialLocalizations, ModalBottomSheetRoute;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
@@ -1476,6 +1476,9 @@ class DifyPortalSheetFrame extends StatelessWidget {
 /// into the sheet unless it is there already (a portal's own scope around it), so a field behind it gives up the
 /// keyboard; the node that had the focus is remembered and, when the sheet goes with the focus still in it, gets it
 /// back after the frame (a text field keeps its selection, so an insert lands at its caret).
+///
+/// A screen reader's focus comes back too, as a route's does ([Navigator]): the node it was on when the sheet opened
+/// (the control that opened it) gets it again when the sheet goes, not the page's route name.
 class _SheetFocus extends StatefulWidget {
   const _SheetFocus({required this.take, required this.child});
 
@@ -1490,9 +1493,32 @@ class _SheetFocusState extends State<_SheetFocus> {
   final _scope = FocusScopeNode(debugLabel: 'DifyPortalSheetFrame');
   FocusNode? _previous;
 
+  /// The semantics node a screen reader had its focus on when the sheet opened (the trigger), if any.
+  int? _accessibilityFocus;
+
+  /// As [Navigator] waits before it moves a screen reader's focus back on Android: the system's own refocus first.
+  static const _androidRefocusDelay = Duration(milliseconds: 300);
+
+  /// Gives the screen reader's focus back to [_accessibilityFocus] once the sheet's nodes are gone.
+  void _restoreAccessibilityFocus() {
+    final node = _accessibilityFocus;
+    if (node == null) return;
+    final delay = switch (defaultTargetPlatform) {
+      TargetPlatform.android => _androidRefocusDelay,
+      TargetPlatform.iOS => Duration.zero,
+      _ => null,
+    };
+    if (delay == null) return;
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(delay);
+      await SystemChannels.accessibility.send(const FocusSemanticEvent().toMap(nodeId: node));
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _accessibilityFocus = ServicesBinding.instance.accessibilityFocus.value;
     if (!widget.take) return;
     _previous = FocusManager.instance.primaryFocus;
     SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -1505,6 +1531,7 @@ class _SheetFocusState extends State<_SheetFocus> {
 
   @override
   void deactivate() {
+    _restoreAccessibilityFocus();
     // Before the sheet's nodes are taken out: is the focus still in it?
     final previous = _previous;
     if (widget.take && previous != null && _scope.hasFocus) {

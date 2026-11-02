@@ -431,10 +431,16 @@ class _MethodItemState extends State<MethodItem> {
     _ => null,
   };
 
+  // The row's actions read the row as it is when they run (its current widget: the rows are keyed by id), and do
+  // nothing once the method is gone: the list may change while a dialog or a phone's action sheet is open.
   Future<void> _configure() async {
-    final w = widget;
-    final config = await showEmailConfigureModal(context, config: _config, email: w.email);
-    if (config != null) w.onChange({...w.method, 'config': config});
+    if (!mounted) return;
+    final config = await showEmailConfigureModal(context, config: _config, email: widget.email);
+    if (config != null && mounted) widget.onChange({...widget.method, 'config': config});
+  }
+
+  void _delete() {
+    if (mounted) widget.onDelete('${widget.method['type']}');
   }
 
   Future<void> _test() async {
@@ -454,6 +460,7 @@ class _MethodItemState extends State<MethodItem> {
     final type = '${w.method['type']}';
     final config = _config;
     final isEmail = type == DeliveryMethodType.email;
+    final phone = DifyTouch.compactOf(context);
     final debug = isEmail && jsTruthy(config?['debug_mode']);
     final userEmail = HumanInputHost.of(context).userEmail;
     final testTip = !isEmail
@@ -498,16 +505,20 @@ class _MethodItemState extends State<MethodItem> {
           boxShadow: _hovered ? DifyShadows.sm : DifyShadows.xs,
         ),
         child: JustifyBetween(
-          lead: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 6,
-            children: [
-              ?methodTile(type),
-              Flexible(
-                child: DifyText(cssCapitalize(type), DifyType.systemXsMedium, color: DifyColors.textSecondary),
-              ),
-              if (debug) const HiBadge('DEBUG', height: 18),
-            ],
+          // A phone's row node already says the method's name (and DEBUG): its text is not read a second time.
+          lead: ExcludeSemantics(
+            excluding: phone && !w.readonly,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 6,
+              children: [
+                ?methodTile(type),
+                Flexible(
+                  child: DifyText(cssCapitalize(type), DifyType.systemXsMedium, color: DifyColors.textSecondary),
+                ),
+                if (debug) const HiBadge('DEBUG', height: 18),
+              ],
+            ),
           ),
           trail: FittedBox(
             fit: BoxFit.scaleDown,
@@ -526,6 +537,8 @@ class _MethodItemState extends State<MethodItem> {
                 if (config != null || type == DeliveryMethodType.webapp)
                   DifySwitch(
                     checked: jsTruthy(w.method['enabled']),
+                    // A phone reads the row's controls on their own: the switch says which method it turns on.
+                    semanticLabel: phone ? cssCapitalize(type) : null,
                     disabled: w.readonly,
                     onCheckedChange: (v) => w.onChange({...w.method, 'enabled': v}),
                   ),
@@ -567,7 +580,7 @@ class _MethodItemState extends State<MethodItem> {
             onTap: () => unawaited(_test()),
           ),
         ],
-        DifyActionRow.delete(() => w.onDelete(type), label: cm('operation.remove')),
+        DifyActionRow.delete(_delete, label: cm('operation.remove')),
       ],
       child: row,
     );

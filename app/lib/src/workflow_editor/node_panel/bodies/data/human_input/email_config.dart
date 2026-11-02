@@ -846,6 +846,8 @@ class _MemberRow extends StatelessWidget {
       disabled: selected,
       onPressed: () => onSelect(member.id),
       builder: (context, hovered, _) => Container(
+        // A phone's sheet: touch-high rows, as the other pickers' rows.
+        constraints: BoxConstraints(minHeight: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 0),
         padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
         decoration: BoxDecoration(
           color: hovered && !selected ? DifyColors.stateBaseHover : null,
@@ -928,6 +930,8 @@ class _MemberSelectorState extends State<MemberSelector> {
     placement: DifyPlacement.bottomEnd,
     sideOffset: 4,
     alignOffset: 35,
+    // A phone's sheet is titled (TalkBack names the sheet by it): the recipient card's title.
+    sheetTitle: hi('deliveryMethod.emailConfigure.memberSelector.title'),
     // Long translations shrink the button rather than overflow its 86 px.
     builder: (context, c) => FittedBox(
       fit: BoxFit.scaleDown,

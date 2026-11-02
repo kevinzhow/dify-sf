@@ -199,15 +199,58 @@ class _ExtractParamItemState extends State<ExtractParamItem> {
 // ---- list.tsx ----------------------------------------------------------------------------------------------------
 
 /// List: the "Extract Parameters not setup" placeholder, or the items; editing opens the dialog and replaces the
-/// item ([onChange] with the rename the dialog reports), deleting drops it.
-class ExtractParamList extends StatelessWidget {
+/// item ([onChange] with the rename the dialog reports), deleting drops it. Both find the item by its name in the list
+/// as it is when they run (a collaborator may have changed it while the dialog or a phone's action sheet was open);
+/// an item no longer there is left alone.
+class ExtractParamList extends StatefulWidget {
   const ExtractParamList({super.key, required this.list, required this.onChange, this.readonly = false});
   final List<Json> list;
   final void Function(List<Json> list, ParamRename? rename) onChange;
   final bool readonly;
 
   @override
+  State<ExtractParamList> createState() => _ExtractParamListState();
+}
+
+class _ExtractParamListState extends State<ExtractParamList> {
+  /// Where the parameter named [name] is now: [at] if it is still there, else the first of that name; -1 once gone.
+  int _indexOf(String name, int at) {
+    final list = widget.list;
+    if (at < list.length && '${list[at]['name'] ?? ''}' == name) return at;
+    return list.indexWhere((p) => '${p['name'] ?? ''}' == name);
+  }
+
+  void _replace(String name, int at, Json param, ParamRename? rename) {
+    final i = _indexOf(name, at);
+    if (i < 0) return;
+    widget.onChange([for (final (j, x) in widget.list.indexed) j == i ? param : x], rename);
+  }
+
+  /// Opens the dialog on the parameter named [name] as it is now (nothing once it is gone); Save replaces it wherever
+  /// it is then, or writes nothing once it is gone.
+  void _edit(String name, int at) {
+    final i = _indexOf(name, at);
+    if (i < 0) return;
+    showExtractParameterDialog(
+      context,
+      isAdd: false,
+      payload: widget.list[i],
+      onSave: (p, rename) => _replace(name, i, p, rename),
+    );
+  }
+
+  void _delete(String name, int at) {
+    final i = _indexOf(name, at);
+    if (i < 0) return;
+    widget.onChange([
+      for (final (j, x) in widget.list.indexed)
+        if (j != i) x,
+    ], null);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final list = widget.list;
     if (list.isEmpty) return ListNoDataPlaceholder(_w('$_p.extractParametersNotSet'));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -217,16 +260,8 @@ class ExtractParamList extends StatelessWidget {
           ExtractParamItem(
             key: ValueKey('param-$i'),
             payload: item,
-            onEdit: () => showExtractParameterDialog(
-              context,
-              isAdd: false,
-              payload: item,
-              onSave: (p, rename) => onChange([for (final (j, x) in list.indexed) j == i ? p : x], rename),
-            ),
-            onDelete: () => onChange([
-              for (final (j, x) in list.indexed)
-                if (j != i) x,
-            ], null),
+            onEdit: () => _edit('${item['name'] ?? ''}', i),
+            onDelete: () => _delete('${item['name'] ?? ''}', i),
           ),
       ],
     );
@@ -269,7 +304,8 @@ Future<void> showExtractParameterDialog(
       child: DifyDialogSurface(
         label: _w('$_p.addExtractParameter'),
         width: 400,
-        padding: const EdgeInsets.all(16),
+        // A phone's sheet: the parts pad themselves (the sheet's header, the fields, the pinned actions).
+        padding: DifyDialogFrame.sheetOf(ctx) ? EdgeInsets.zero : const EdgeInsets.all(16),
         child: ExtractParameterForm(
           isAdd: isAdd,
           payload: isAdd ? defaultParam() : {...?payload},
@@ -361,98 +397,117 @@ class _ExtractParameterFormState extends State<ExtractParameterForm> {
     final nameLabel = _w('$_p.addExtractParameterContent.name');
     final descLabel = _w('$_p.addExtractParameterContent.description');
     final type = '${_param['type'] ?? 'string'}';
+    // Dify titles the dialog "Add Extract Parameter" for an edit too (update.tsx: one DialogTitle, no edit string).
+    final title = _w('$_p.addExtractParameter');
+    final fields = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 8,
+      children: [
+        _field(
+          nameLabel,
+          DifyInput(
+            value: '${_param['name'] ?? ''}',
+            semanticLabel: nameLabel,
+            placeholder: _w('$_p.addExtractParameterContent.namePlaceholder'),
+            onChanged: (v) => _change('name', v),
+          ),
+        ),
+        _field(
+          _w('$_p.addExtractParameterContent.type'),
+          DifySelect<String>(
+            value: type,
+            capitalize: true,
+            options: [for (final t in paramTypes) (value: t, label: t)],
+            onChanged: (v) => _change('type', v),
+          ),
+        ),
+        if (type == 'select')
+          _field(
+            _d('variableConfig.options'),
+            ConfigSelect(
+              options: [for (final o in jsList(_param['options'])) '$o'],
+              onChange: (o) => _change('options', o),
+            ),
+          ),
+        _field(
+          descLabel,
+          DifyTextarea(
+            value: '${_param['description'] ?? ''}',
+            semanticLabel: descLabel,
+            verticalPadding: 6,
+            placeholder: _w('$_p.addExtractParameterContent.descriptionPlaceholder'),
+            onChanged: (v) => _change('description', v),
+          ),
+        ),
+        _field(
+          _w('$_p.addExtractParameterContent.required'),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: DifyTextLine(
+                  _w('$_p.addExtractParameterContent.requiredContent'),
+                  style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
+                ),
+              ),
+              DifySwitch(
+                size: DifySwitchSize.lg,
+                checked: _param['required'] == true,
+                semanticLabel: _w('$_p.addExtractParameterContent.required'),
+                onCheckedChange: (v) => _change('required', v),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    final buttons = [
+      SizedBox(
+        width: 95,
+        child: DifyButton(
+          onPressed: widget.onCancel,
+          child: Center(child: DifyTextLine(_c('operation.cancel'))),
+        ),
+      ),
+      SizedBox(
+        width: 95,
+        child: DifyButton(
+          variant: DifyButtonVariant.primary,
+          onPressed: _save,
+          child: Center(child: DifyTextLine(_c(widget.isAdd ? 'operation.add' : 'operation.save'))),
+        ),
+      ),
+    ];
+    // A phone: the sheet's header with its close, the fields scrolling, Cancel / Add pinned at the bottom (the
+    // dialog primitive's sheet form). Add's check shows Dify's toast ("Description is required").
+    if (DifyDialogFrame.sheetOf(context)) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DifyDialogTitle(
+            title: title,
+            onClose: widget.onCancel,
+            child: DifyText(title, DifyType.title2xlSemiBold, maxLines: null),
+          ),
+          Flexible(
+            child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: fields),
+          ),
+          DifyAlertDialogActions(children: buttons),
+        ],
+      );
+    }
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          DifyText(_w('$_p.addExtractParameter'), DifyType.title2xlSemiBold, maxLines: null),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 8,
-            children: [
-              _field(
-                nameLabel,
-                DifyInput(
-                  value: '${_param['name'] ?? ''}',
-                  semanticLabel: nameLabel,
-                  placeholder: _w('$_p.addExtractParameterContent.namePlaceholder'),
-                  onChanged: (v) => _change('name', v),
-                ),
-              ),
-              _field(
-                _w('$_p.addExtractParameterContent.type'),
-                DifySelect<String>(
-                  value: type,
-                  capitalize: true,
-                  options: [for (final t in paramTypes) (value: t, label: t)],
-                  onChanged: (v) => _change('type', v),
-                ),
-              ),
-              if (type == 'select')
-                _field(
-                  _d('variableConfig.options'),
-                  ConfigSelect(
-                    options: [for (final o in jsList(_param['options'])) '$o'],
-                    onChange: (o) => _change('options', o),
-                  ),
-                ),
-              _field(
-                descLabel,
-                DifyTextarea(
-                  value: '${_param['description'] ?? ''}',
-                  semanticLabel: descLabel,
-                  verticalPadding: 6,
-                  placeholder: _w('$_p.addExtractParameterContent.descriptionPlaceholder'),
-                  onChanged: (v) => _change('description', v),
-                ),
-              ),
-              _field(
-                _w('$_p.addExtractParameterContent.required'),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: DifyTextLine(
-                        _w('$_p.addExtractParameterContent.requiredContent'),
-                        style: difyTextStyle(DifyTw.textXsLeading18, DifyColors.textTertiary),
-                      ),
-                    ),
-                    DifySwitch(
-                      size: DifySwitchSize.lg,
-                      checked: _param['required'] == true,
-                      semanticLabel: _w('$_p.addExtractParameterContent.required'),
-                      onCheckedChange: (v) => _change('required', v),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          DifyText(title, DifyType.title2xlSemiBold, maxLines: null),
+          fields,
           Padding(
             padding: const EdgeInsets.only(top: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              spacing: 8,
-              children: [
-                SizedBox(
-                  width: 95,
-                  child: DifyButton(
-                    onPressed: widget.onCancel,
-                    child: Center(child: DifyTextLine(_c('operation.cancel'))),
-                  ),
-                ),
-                SizedBox(
-                  width: 95,
-                  child: DifyButton(
-                    variant: DifyButtonVariant.primary,
-                    onPressed: _save,
-                    child: Center(child: DifyTextLine(_c(widget.isAdd ? 'operation.add' : 'operation.save'))),
-                  ),
-                ),
-              ],
-            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.end, spacing: 8, children: buttons),
           ),
         ],
       ),

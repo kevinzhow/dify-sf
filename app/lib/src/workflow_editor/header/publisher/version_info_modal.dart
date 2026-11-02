@@ -278,7 +278,9 @@ class _DifyTextControlState extends State<DifyTextControl> {
         ? (DifyColors.componentsInputBgHover, DifyColors.componentsInputBorderHover)
         : (DifyColors.componentsInputBgNormal, Colors.transparent);
     final style = difyTextStyle(DifyType.systemSmRegular, DifyColors.componentsInputTextFilled);
-    final field = DifyTextField(
+    // A phone: the one-line input is touch-high, as DifyInput is there, and its node is the box (not the 16 px line).
+    final phone = DifyTouch.compactOf(context) && !widget.multiline;
+    Widget field = DifyTextField(
       controller: widget.controller,
       focusNode: _focus,
       style: style,
@@ -293,6 +295,7 @@ class _DifyTextControlState extends State<DifyTextControl> {
         hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
       ),
     );
+    if (phone) field = DifyTouchTarget(accessible: true, minSize: DifyTouch.controlHeight, child: field);
     return MouseRegion(
       cursor: SystemMouseCursors.text,
       onEnter: (_) => setState(() => _hovered = true),
@@ -300,10 +303,17 @@ class _DifyTextControlState extends State<DifyTextControl> {
       child: AnimatedContainer(
         duration: difyTransitionDuration,
         curve: difyTransitionCurve,
-        height: widget.multiline ? 80 : null,
+        height: widget.multiline
+            ? 80
+            : phone
+            ? DifyTouch.controlHeight
+            : null,
+        alignment: phone ? Alignment.centerLeft : null,
+        // A phone's line is centred in the box by the alignment, so the box (not its padding) holds the field's
+        // touch area.
         padding: widget.multiline
             ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
-            : const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            : EdgeInsets.symmetric(horizontal: 12, vertical: phone ? 0 : 7),
         decoration: BoxDecoration(
           color: bg,
           border: Border.all(color: border),

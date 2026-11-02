@@ -112,10 +112,15 @@ class StartConfig {
     onChanged?.call();
   }
 
-  /// onRemoveVarConfirm (removeVarInNode).
+  /// onRemoveVarConfirm (removeVarInNode). The field is found by its name in the list as it is now (Dify splices the
+  /// index it had when the confirmation opened; a collaborator may have changed the list since): the remembered
+  /// index if it still holds that field, else where the field is; nothing is removed once it is gone.
   void onRemoveVarConfirm() {
     final list = [..._variables];
-    if (_removedIndex < list.length) list.removeAt(_removedIndex);
+    final key = _removedVar.length > 1 ? _removedVar[1] : '';
+    bool named(int i) => i >= 0 && i < list.length && jsKey(jsGet(list[i], 'variable')) == key;
+    final index = named(_removedIndex) ? _removedIndex : list.indexWhere((v) => jsKey(jsGet(v, 'variable')) == key);
+    if (index >= 0) list.removeAt(index);
     setInputs({...inputs(), 'variables': list});
     removeUsedVarInNodes?.call(_removedVar);
     isShowRemoveVarConfirm = false;

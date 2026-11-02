@@ -3,6 +3,7 @@
 // reference Knowledge, Email Configuration with a picker over it, Create from Blank; Start's input rows (tap edits,
 // "…" and a long press: Edit, Delete with Dify's confirmation, Move up / down), and the other touch rows.
 import 'dart:async';
+import 'dart:ui' show CheckedState, SemanticsAction;
 
 import 'package:collab_client/collab_client.dart' show Document, Edge, Node;
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
@@ -20,6 +21,9 @@ import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/human_inp
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/human_input/human_input_kit.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/human_input/user_action.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/data/data_common.dart' show DataPanelHost;
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/entry/trigger_webhook/webhook_tables.dart';
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/agent_v2_roster.dart';
+import 'package:dify_sf_app/src/workflow_editor/block_selector/block_selector.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/group_host.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/kr_datasets.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/pe_params.dart';
@@ -583,5 +587,352 @@ void main() {
     expect(style, findsOneWidget);
     expect(t.getSize(style), const Size(44, 44), reason: "Delete's 44 dp box");
     expect(find.descendant(of: find.byType(ButtonStyleDropdown), matching: find.byType(DifyButton)), findsNothing);
+  });
+
+  // ---- Emulator recheck fixes (2): at 411x914, what TalkBack gets (the platform's semantics tree). -------------------
+
+  group('emulator recheck 2', () {
+    bool tappable(PlatformNode n) =>
+        n.data.hasAction(SemanticsAction.tap) || n.data.hasAction(SemanticsAction.longPress);
+    bool textField(PlatformNode n) => n.data.flagsCollection.isTextField;
+
+    testWidgets('item 1: a webhook table row on a phone is one named item ("city, String, Required") with its own '
+        'Delete; the name field, the type and Required are 48 dp nodes; the "…" is inside the row, the columns line '
+        'up', (t) async {
+      final semantics = t.ensureSemantics();
+      await _app(
+        t,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+          child: Column(
+            spacing: 16,
+            children: [
+              ParameterTable(
+                title: 'Query Parameters',
+                parameters: const [
+                  {'name': 'city', 'type': 'string', 'required': true},
+                  {'name': 'days', 'type': 'number', 'required': false},
+                ],
+                onChange: (_) {},
+              ),
+              HeaderTable(
+                headers: const [
+                  {'name': 'X-Token', 'required': true},
+                ],
+                onChange: (_) {},
+              ),
+            ],
+          ),
+        ),
+      );
+      final nodes = platformNodes(t);
+      final dump = describeStops(platformStops(t));
+      PlatformNode node(String label) =>
+          nodes.where((n) => n.data.label == label).singleOrNull ?? (throw TestFailure('no "$label" in:\n$dump'));
+      for (final (name, cells) in [
+        ('city, String, Required', ['Variable name', 'Type, String', 'Required', 'More actions for city']),
+        ('days, Number', ['Variable name', 'Type, Number', 'Required', 'More actions for days']),
+        ('X-Token, Required', ['Variable name', 'Required', 'More actions for X-Token']),
+      ]) {
+        final row = node(name);
+        expect(row.rect.height, greaterThanOrEqualTo(48), reason: name);
+        expect(row.data.hasAction(SemanticsAction.longPress), isTrue, reason: '$name: its actions');
+        expect(row.data.customSemanticsActionIds, isNotEmpty, reason: '$name: Delete as an action of the row');
+        final inRow = [
+          for (final n in nodes)
+            if (n.node != row.node && row.rect.inflate(0.5).contains(n.rect.center) && spokenText(n).isNotEmpty) n,
+        ];
+        expect(inRow.where(textField), hasLength(1), reason: '$name: one field node, no name node beside it\n$dump');
+        final field = inRow.firstWhere(textField);
+        expect(field.data.label, contains(cells.first), reason: dump);
+        expect(field.rect.height, greaterThanOrEqualTo(48), reason: '$name field: ${field.rect}');
+        for (final cell in cells.skip(1)) {
+          final n = inRow.where((n) => n.data.label == cell).singleOrNull;
+          expect(n, isNotNull, reason: '$name: "$cell" in\n$dump');
+          expect(n!.rect.height, greaterThanOrEqualTo(44), reason: '$name: $cell ${n.rect}');
+          expect(tappable(n), isTrue, reason: '$name: $cell acts');
+          expect(row.rect.inflate(0.5).contains(n.rect.bottomRight), isTrue, reason: '$name: $cell inside the row');
+        }
+        final required = inRow.firstWhere((n) => n.data.label == 'Required');
+        expect(required.data.flagsCollection.isChecked, isNot(CheckedState.none), reason: 'a checkbox');
+        expect(required.rect.width, greaterThanOrEqualTo(48));
+        expect(inRow.where((n) => spokenText(n).isEmpty && tappable(n)), isEmpty, reason: 'no unlabelled stop');
+      }
+      expect(nodes.where((n) => spokenText(n).isEmpty && tappable(n)), isEmpty, reason: 'no unlabelled stop:\n$dump');
+      // The "…" stands inside the row's borders, which run under it to the table's edge; the header's columns line up
+      // with the rows' (the header keeps the "…" column empty).
+      final table = t.getRect(find.byType(ParameterTable));
+      final more = node('More actions for city').rect;
+      final rowBox = t.getRect(find.ancestor(of: find.text('city'), matching: find.byType(DifyActionRow)).first);
+      expect(rowBox.right, closeTo(table.right - 1, 1), reason: 'the row (and its dividers) spans the table');
+      expect(more.right, lessThanOrEqualTo(rowBox.right + 0.5));
+      final requiredHeader = t.getRect(find.text('REQUIRED').first);
+      final requiredCell = t.getRect(
+        find.descendant(of: find.byType(ParameterTable), matching: find.byType(DifyCheckbox)).first,
+      );
+      expect(requiredCell.left, closeTo(requiredHeader.left, 1), reason: 'the Required column lines up');
+      expect(t.takeException(), isNull);
+      semantics.dispose();
+    });
+
+    testWidgets('item 2: Add Input Field\'s checkboxes are named 44 dp rows, without unlabelled stops beside them', (
+      t,
+    ) async {
+      final semantics = t.ensureSemantics();
+      final (_, demo) = await _editor(t, const Size(411, 914));
+      await _openStart(t);
+      await t.tap(find.bySemanticsLabel('Add Input Field').first);
+      await settle(t, 800);
+      final dump = describeStops(platformStops(t));
+      final unlabelled = [
+        for (final n in platformNodes(t))
+          if (spokenText(n).isEmpty && tappable(n)) n,
+      ];
+      expect(unlabelled, isEmpty, reason: 'unlabelled stops ("Button", "Unlabelled"):\n$dump');
+      for (final label in ['Required', 'Hidden & Pre-Filled']) {
+        final box = platformNodes(t)
+            .where((n) => n.data.label == label && n.data.flagsCollection.isChecked != CheckedState.none);
+        expect(box, hasLength(1), reason: '$label: one checkbox node\n$dump');
+        expect(box.single.rect.height, greaterThanOrEqualTo(44), reason: '$label: ${box.single.rect}');
+      }
+      final required = platformNodes(t).firstWhere((n) => n.data.label == 'Required');
+      expect(required.data.hasAction(SemanticsAction.tap), isTrue, reason: 'the checkbox node toggles');
+      expect(t.takeException(), isNull);
+      semantics.dispose();
+      await _close(t, demo);
+    });
+
+    testWidgets('item 2: Name this version\'s Title field node is the 44 dp box; the roster\'s search field is one '
+        '44 dp node', (t) async {
+      final semantics = t.ensureSemantics();
+      final nav = await _app(t, const SizedBox.expand());
+      unawaited(showVersionInfoModal(nav.currentContext!, onPublish: (_) {}));
+      await settle(t, 600);
+      var fields = platformNodes(t).where(textField).toList();
+      expect(fields, hasLength(2), reason: describeStops(platformStops(t)));
+      expect(fields.first.rect.height, greaterThanOrEqualTo(44), reason: 'Title: ${fields.first.rect}');
+      Navigator.of(nav.currentContext!).pop();
+      await settle(t, 600);
+
+      await _app(
+        t,
+        Padding(
+          padding: const EdgeInsets.only(top: 80),
+          child: BlockSelectorScope(
+            data: BlockSelectorData(searchAgents: (_) async => const []),
+            child: DifyPopupSheetScope(
+              child: AgentSelectorContent(onSelect: (_) {}, onClose: () {}, onStartFromScratch: () {}),
+            ),
+          ),
+        ),
+      );
+      fields = platformNodes(t).where(textField).toList();
+      expect(fields, hasLength(1), reason: 'one node, no name node beside it:\n${describeStops(platformStops(t))}');
+      expect(fields.single.data.label, contains('Search agents'));
+      expect(fields.single.rect.height, greaterThanOrEqualTo(44), reason: '${fields.single.rect}');
+      semantics.dispose();
+    });
+
+    testWidgets('item 2: Select reference Knowledge\'s Cancel / Add are end-aligned like the other sheets', (t) async {
+      await _app(
+        t,
+        LlmGroupScope(
+          services: LlmGroupServices(
+            fetchDatasetPage: (page) async => (
+              data: [
+                for (var i = 0; i < 3; i++)
+                  {
+                    'id': 'd$i',
+                    'name': 'Knowledge $i',
+                    'indexing_technique': 'high_quality',
+                    'embedding_available': true,
+                  },
+              ],
+              hasMore: false,
+            ),
+          ),
+          child: Builder(
+            builder: (context) => DifyButton(
+              key: const ValueKey('open'),
+              onPressed: () => showSelectDataset(context, selectedIds: const []),
+              child: const DifyTextLine('open'),
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.byKey(const ValueKey('open')));
+      await settle(t, 800);
+      final add = t.getRect(find.widgetWithText(DifyButton, _tc('operation.add')));
+      final cancel = t.getRect(find.widgetWithText(DifyButton, _tc('operation.cancel')));
+      expect(add.right, closeTo(411 - 16, 1), reason: 'Add at the end: $add');
+      expect(add.left - cancel.right, closeTo(8, 1), reason: 'Cancel just before it: $cancel');
+    });
+
+    testWidgets('item 3: the prompt\'s variable picker reads its search as the field (no container stop before it); '
+        'Back gives TalkBack\'s focus back to {x}', (t) async {
+      final semantics = t.ensureSemantics();
+      final sent = <Map<Object?, Object?>>[];
+      t.binding.defaultBinaryMessenger.setMockDecodedMessageHandler<Object?>(SystemChannels.accessibility, (m) async {
+        if (m is Map) sent.add(m);
+        return null;
+      });
+      addTearDown(
+        () =>
+            t.binding.defaultBinaryMessenger.setMockDecodedMessageHandler<Object?>(SystemChannels.accessibility, null),
+      );
+      final (_, demo) = await _editor(t, const Size(411, 914));
+      await t.tap(find.descendant(of: find.byType(WorkflowStepsView), matching: find.text('Answer')).first);
+      await settle(t, 800);
+      final insert = find.byKey(const Key('prompt-editor-insert')).first;
+      await _show(t, insert);
+      final trigger = t.getSemantics(insert).id;
+      // TalkBack is on {x} (the engine reports it) when it is double-tapped.
+      ServicesBinding.instance.accessibilityFocus.value = trigger;
+      await t.tap(insert);
+      await settle(t, 800);
+      final nodes = platformNodes(t);
+      final search = nodes.where((n) => n.data.label.contains('Search variable') || n.data.hint == 'Search variable');
+      expect(search, hasLength(1), reason: 'one stop: ${describeStops(platformStops(t))}');
+      expect(textField(search.single), isTrue, reason: 'the stop is the field');
+      expect(search.single.rect.height, greaterThanOrEqualTo(44));
+
+      sent.clear();
+      expect(await systemBack(t), isTrue);
+      await t.pump(const Duration(milliseconds: 400));
+      await settle(t, 300);
+      expect(find.byKey(const Key('prompt-editor-picker-sheet')), findsNothing);
+      expect(t.getSemantics(insert).id, trigger, reason: '{x} keeps its node');
+      expect(sent.where((m) => m['type'] == 'focus').map((m) => m['nodeId']), [trigger], reason: '$sent');
+      ServicesBinding.instance.accessibilityFocus.value = null;
+      semantics.dispose();
+      await _close(t, demo);
+    });
+
+    testWidgets('item 3: the member picker over Email Configuration has a title and 48 dp rows; Back gives TalkBack\'s '
+        'focus back to Select; the email row reads "Email" once', (t) async {
+      final semantics = t.ensureSemantics();
+      final sent = <Map<Object?, Object?>>[];
+      t.binding.defaultBinaryMessenger.setMockDecodedMessageHandler<Object?>(SystemChannels.accessibility, (m) async {
+        if (m is Map) sent.add(m);
+        return null;
+      });
+      addTearDown(
+        () =>
+            t.binding.defaultBinaryMessenger.setMockDecodedMessageHandler<Object?>(SystemChannels.accessibility, null),
+      );
+      await _app(
+        t,
+        DataPanelHost(
+          child: HumanInputHost(
+            members: const [HiMember(id: 'm1', email: 'kim@example.com', name: 'Kim')],
+            userEmail: 'owner@example.com',
+            userName: 'Owner',
+            workspaceName: 'Lab',
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+              child: Column(
+                children: [
+                  Builder(
+                    builder: (context) => DifyButton(
+                      key: const ValueKey('open'),
+                      onPressed: () => showEmailConfigureModal(context, email: const EmailContext(nodeId: 'n')),
+                      child: const DifyTextLine('open'),
+                    ),
+                  ),
+                  MethodItem(
+                    method: const {'id': 'm', 'type': 'email', 'enabled': false},
+                    onChange: (_) {},
+                    onDelete: (_) {},
+                    email: const EmailContext(nodeId: 'n'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      final rowLabels = [
+        for (final n in platformNodes(t))
+          if (RegExp(r'\bEmail\b').hasMatch(n.data.label) && !n.data.label.startsWith('More actions')) n.data.label,
+      ];
+      expect(rowLabels, ['Email, Not configured'], reason: 'the row says "Email" once');
+
+      await t.tap(find.byKey(const ValueKey('open')));
+      await settle(t, 800);
+      final select = find.widgetWithText(DifyButton, 'Select').last;
+      await t.ensureVisible(select);
+      await settle(t, 300);
+      final trigger = t.getSemantics(select).id;
+      ServicesBinding.instance.accessibilityFocus.value = trigger;
+      await t.tap(select);
+      await settle(t, 800);
+      final title = DifyI18n.tr('workflow', 'nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.title');
+      expect(find.widgetWithText(DifySheetHeader, title), findsOneWidget, reason: 'the picker is titled');
+      final row = find.ancestor(of: find.text('kim@example.com'), matching: find.byType(DifyPressable)).first;
+      expect(t.getSize(row).height, greaterThanOrEqualTo(48));
+
+      sent.clear();
+      expect(await systemBack(t), isTrue);
+      await t.pump(const Duration(milliseconds: 400));
+      await settle(t, 300);
+      expect(find.widgetWithText(DifySheetHeader, title), findsNothing);
+      expect(t.getSemantics(select).id, trigger, reason: 'Select keeps its node');
+      expect(sent.where((m) => m['type'] == 'focus').map((m) => m['nodeId']), [trigger], reason: '$sent');
+      ServicesBinding.instance.accessibilityFocus.value = null;
+      semantics.dispose();
+    });
+
+    testWidgets('item 4: Add Extract Parameter is a sheet with its header close and Cancel / Add pinned; Add with no '
+        'description shows Dify\'s toast over the sheet; an edit keeps Dify\'s title', (t) async {
+      phoneWindow(t);
+      final nav = GlobalKey<NavigatorState>();
+      await t.pumpWidget(
+        DifyApplication(
+          theme: difyTheme(),
+          edgeToEdge: true,
+          navigatorKey: nav,
+          builder: (context, child) => Stack(children: [child!, const DifyToastHost()]),
+          home: const DifyPage(edgeToEdge: true, body: SizedBox.expand()),
+        ),
+      );
+      await settle(t, 300);
+      Map<String, Object?>? saved;
+      unawaited(showExtractParameterDialog(nav.currentContext!, isAdd: true, onSave: (p, _) => saved = p));
+      await settle(t, 800);
+      _header(t, 'Add Extract Parameter');
+      _pinned(t, _tc('operation.add'), const Size(411, 914));
+      _pinned(t, _tc('operation.cancel'), const Size(411, 914));
+      final name = find.descendant(of: find.byType(ExtractParameterForm), matching: find.byType(EditableText)).first;
+      await t.enterText(name, 'city');
+      await t.tap(find.widgetWithText(DifyButton, _tc('operation.add')));
+      await settle(t, 400);
+      final message = DifyI18n.tr('workflow', 'errorMsg.fieldRequired', {
+        'field': DifyI18n.tr('workflow', 'nodes.parameterExtractor.addExtractParameterContent.description'),
+      });
+      final toastText = find.text(message);
+      expect(toastText, findsOneWidget, reason: 'the validation message');
+      expect(t.getRect(toastText).top, greaterThanOrEqualTo(gestureInsets.top), reason: 'below the status bar');
+      expect(t.getRect(toastText).bottom, lessThan(t.getRect(_dialogHeader).top), reason: 'clear of the sheet');
+      expect(saved, isNull);
+      expect(find.byType(ExtractParameterForm), findsOneWidget, reason: 'the sheet stays');
+      Navigator.of(nav.currentContext!).pop();
+      await settle(t, 6000);
+
+      unawaited(
+        showExtractParameterDialog(
+          nav.currentContext!,
+          isAdd: false,
+          payload: const {'name': 'city', 'type': 'string', 'required': false, 'description': 'The city'},
+          onSave: (p, _) => saved = p,
+        ),
+      );
+      await settle(t, 800);
+      _header(t, 'Add Extract Parameter');
+      _pinned(t, _tc('operation.save'), const Size(411, 914));
+      await t.tap(find.widgetWithText(DifyButton, _tc('operation.save')));
+      await settle(t, 600);
+      expect(saved?['name'], 'city');
+      expect(t.takeException(), isNull);
+    });
   });
 }

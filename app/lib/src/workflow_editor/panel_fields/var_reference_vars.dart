@@ -97,9 +97,10 @@ class _SearchBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = DifyI18n.tr('workflow', 'common.searchVar');
     // A node of its own for the input's label: without it the label went to the node above (a sheet's whole list
-    // was read as "Search variable", before the sheet's title).
+    // was read as "Search variable", before the sheet's title). A phone's input is that node itself (the field,
+    // named): no container around it, which TalkBack read as a stop of its own before the field.
     return Semantics(
-      container: true,
+      container: !DifyTouch.compactOf(context),
       child: DifyInput(
         focusInteractiveAddons: false,
         value: value,

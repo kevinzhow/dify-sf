@@ -402,7 +402,9 @@ class _SelectDatasetState extends State<SelectDataset> {
           )
         else if (sheet)
           // The sheet's body: the list scrolls between the header and the actions.
-          Flexible(child: Padding(padding: const EdgeInsets.only(top: 8), child: list))
+          Flexible(
+            child: Padding(padding: const EdgeInsets.only(top: 8), child: list),
+          )
         else
           Padding(
             padding: const EdgeInsets.only(top: 28),
@@ -420,15 +422,14 @@ class _SelectDatasetState extends State<SelectDataset> {
                     color: DifyColors.textSecondary,
                   ),
                 ),
-                Flexible(
-                  child: DifyButton(
+                // A phone's sheet: the buttons at the end, as the other sheets' actions (as Flexible slots beside the
+                // count they sat in the middle of the row).
+                for (final (i, b) in [
+                  DifyButton(
                     onPressed: cancel,
                     child: DifyTextLine(_c('operation.cancel')),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: DifyButton(
+                  DifyButton(
                     variant: DifyButtonVariant.primary,
                     disabled: hasNoData,
                     onPressed: () => widget.onSelect([
@@ -436,7 +437,10 @@ class _SelectDatasetState extends State<SelectDataset> {
                     ]),
                     child: DifyTextLine(_c('operation.add')),
                   ),
-                ),
+                ].indexed) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  sheet ? b : Flexible(child: b),
+                ],
               ],
             ),
           ),
