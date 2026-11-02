@@ -373,4 +373,48 @@ void main() {
       content: find.text('workflow.nodes.humanInput.deliveryMethod.types.webapp.title'),
     );
   });
+
+  // ----- emulator recheck (item 5) -----
+
+  /// The Containers around [f] that draw a card (a shadow).
+  Iterable<Container> cardsAround(WidgetTester t, Finder f) => t
+      .widgetList<Container>(find.ancestor(of: f, matching: find.byType(Container)))
+      .where((c) => c.decoration is BoxDecoration && (c.decoration! as BoxDecoration).boxShadow != null);
+
+  testWidgets('the delivery method sheet has no bordered card inside it (the sheet is the surface); a wide window '
+      'keeps Dify\'s card', (t) async {
+    final option = find.text('workflow.nodes.humanInput.deliveryMethod.types.webapp.title');
+    await _pump(t, MethodSelector(data: const [], onAdd: (_) {}, onShowUpgradeTip: () {}));
+    await t.tap(named('workflow.nodes.humanInput.deliveryMethod.title'));
+    await _frames(t);
+    _isSheet(t, 'delivery method');
+    expect(cardsAround(t, option.first), isEmpty, reason: 'no card in the sheet');
+    expect(t.takeException(), isNull);
+    t.view.physicalSize = const Size(1280, 900);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpWidget(
+      DifyApplication(
+        theme: difyTheme(),
+        home: DifyPage(
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: MethodSelector(data: const [], onAdd: (_) {}, onShowUpgradeTip: () {}),
+          ),
+        ),
+      ),
+    );
+    await _frames(t);
+    await t.tap(named('workflow.nodes.humanInput.deliveryMethod.title'));
+    await _frames(t);
+    expect(cardsAround(t, option.first), isNotEmpty, reason: 'Dify\'s card in the popover');
+  });
+
+  testWidgets('the strategy sheet without an installed strategy says so: "No agent strategy available"', (t) async {
+    await _pump(t, SizedBox(width: 379, child: AgentStrategySelector(onChange: (_) {})));
+    await t.tap(named('workflow.nodes.agent.strategy.selectTip'));
+    await _frames(t);
+    _isSheet(t, 'agent strategy selector');
+    expect(find.text('tools.addToolModal.agent.title'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
 }
