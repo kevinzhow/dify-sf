@@ -103,6 +103,10 @@ class PhoneEditorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// How much of the canvas's bottom the phone's docked sheets cover (the run sheet's peek); the run reveals a running
+  /// node above it. Set by the phone editor's sheets.
+  double Function()? canvasCover;
+
   String? _singleRunNodeId;
 
   /// The node whose single-step run the run sheet shows (null: none); set when a step starts running, cleared when

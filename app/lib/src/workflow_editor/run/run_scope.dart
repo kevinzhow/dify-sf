@@ -11,6 +11,7 @@ import '../../canvas/run_view.dart';
 import '../../canvas/workflow_canvas.dart' show CanvasDefaults;
 import '../../editor/editor_controller.dart';
 import '../context_menu/workflow_actions.dart' show cancelNodesSelectedOn;
+import '../phone/phone_editor_controller.dart' show PhoneEditorScope;
 import '../store/workflow_store.dart';
 import '../store/workflow_store_scope.dart';
 import 'debug_chat.dart';
@@ -33,6 +34,10 @@ class RunCanvasBinding {
     store.nodeRunData.addListener(_syncNodes);
     store.nodesWithInspectVars.addListener(_syncNodes);
     store.edgeRunData.addListener(_syncEdges);
+    store.workflowRunningData.addListener(_runChanged);
+    store.isListening.addListener(_runChanged);
+    store.isRestoring.addListener(_runChanged);
+    store.showDebugAndPreviewPanel.addListener(_runChanged);
     _syncNodes();
     _syncEdges();
   }
@@ -40,32 +45,90 @@ class RunCanvasBinding {
   final WorkflowStore store;
   final CanvasController canvas;
 
+  /// dify-sf phones: the canvas and the Steps view show the current run's statuses only. Dify marks a node with
+  /// inspect values as succeeded (`hasVarValue`; after a run it clears the succeeded statuses and leaves the marks to
+  /// that): on a phone that mark shows only while a run is kept (its panel open, or its data not closed) and not on a
+  /// step the run still waits for, so it goes with the closed run and does not show the last run's success during
+  /// the next. No status shows while a version is browsed (its graph is not the run's), and no node is left running
+  /// or waiting once the run has ended (a stop leaves the running node's status as it was).
+  bool get runOnly => _runOnly;
+  bool _runOnly = false;
+  set runOnly(bool value) {
+    if (value == _runOnly) return;
+    _runOnly = value;
+    _views = {};
+    _syncNodes();
+    _syncEdges();
+  }
+
+  /// The run's state as [runOnly] reads it: going (or listening) or not, a version browsed, and a run kept.
+  (bool, bool, bool) _run = (false, false, false);
+
+  (bool, bool, bool) get _runNow => (
+    resultOf(store.workflowRunningData.value)['status'] == NodeRunningStatus.running || store.isListening.value,
+    store.isRestoring.value,
+    store.showDebugAndPreviewPanel.value || store.workflowRunningData.value != null,
+  );
+
+  void _runChanged() {
+    final now = _runNow;
+    if (now == _run) return;
+    _run = now;
+    if (!_runOnly) return;
+    _syncNodes();
+    _syncEdges();
+  }
+
   /// The view made from each node's run fields (the store replaces only the entries a run event changes, so the
-  /// others are reused as they are).
-  var _views = <String, (DifyJson, bool, NodeRunView)>{};
+  /// others are reused as they are), with whether it had inspect values and whether the run had ended.
+  var _views = <String, (DifyJson, bool, bool, NodeRunView)>{};
+
+  static bool _stillGoing(DifyJson data) =>
+      data['_runningStatus'] == NodeRunningStatus.running ||
+      data['_runningStatus'] == NodeRunningStatus.waiting ||
+      data['_waitingRun'] == true;
 
   void _syncNodes() {
-    final withVars = {for (final n in store.nodesWithInspectVars.value) n['nodeId']};
+    _run = _runNow;
+    final (going, restoring, kept) = _run;
+    if (_runOnly && restoring) {
+      _views = {};
+      if (canvas.nodeRun.value.isNotEmpty) canvas.nodeRun.value = const {};
+      return;
+    }
+    final withVars = _runOnly && !kept
+        ? const <Object?>{}
+        : {for (final n in store.nodesWithInspectVars.value) n['nodeId']};
+    final ended = _runOnly && !going;
     final next = <String, NodeRunView>{};
-    final views = <String, (DifyJson, bool, NodeRunView)>{};
+    final views = <String, (DifyJson, bool, bool, NodeRunView)>{};
     store.nodeRunData.value.forEach((id, data) {
-      final hasVar = withVars.contains(id);
+      final hasVar = withVars.contains(id) && !(_runOnly && _stillGoing(data));
       final old = _views[id];
-      final v = old != null && identical(old.$1, data) && old.$2 == hasVar
-          ? old.$3
-          : NodeRunView.fromRunData(data, hasVarValue: hasVar);
-      views[id] = (data, hasVar, v);
+      final v = old != null && identical(old.$1, data) && old.$2 == hasVar && old.$3 == ended
+          ? old.$4
+          : NodeRunView.fromRunData(
+              ended && _stillGoing(data) ? {...data, '_runningStatus': null, '_waitingRun': false} : data,
+              hasVarValue: hasVar,
+            );
+      views[id] = (data, hasVar, ended, v);
       if (v != NodeRunView.idle) next[id] = v;
     });
     _views = views;
     for (final id in withVars) {
-      if (id is String && !next.containsKey(id)) next[id] = const NodeRunView(hasVarValue: true);
+      if (id is String && !next.containsKey(id) && !views.containsKey(id)) {
+        next[id] = const NodeRunView(hasVarValue: true);
+      }
     }
     if (!mapEquals(canvas.nodeRun.value, next)) canvas.nodeRun.value = next;
   }
 
   void _syncEdges() {
     final next = <String, EdgeRunView>{};
+    if (_runOnly && store.isRestoring.value) {
+      if (canvas.edgeRun.value.isNotEmpty) canvas.edgeRun.value = const {};
+      return;
+    }
     store.edgeRunData.value.forEach((id, data) {
       final v = EdgeRunView.fromRunData(data);
       if (v != EdgeRunView.idle) next[id] = v;
@@ -77,6 +140,10 @@ class RunCanvasBinding {
     store.nodeRunData.removeListener(_syncNodes);
     store.nodesWithInspectVars.removeListener(_syncNodes);
     store.edgeRunData.removeListener(_syncEdges);
+    store.workflowRunningData.removeListener(_runChanged);
+    store.isListening.removeListener(_runChanged);
+    store.isRestoring.removeListener(_runChanged);
+    store.showDebugAndPreviewPanel.removeListener(_runChanged);
   }
 }
 
@@ -150,7 +217,7 @@ class WorkflowRunHostState extends State<WorkflowRunHost> {
     store: store,
     service: service,
     graph: graph,
-    viewport: CanvasRunViewport(widget.canvas),
+    viewport: _viewport,
     isChatMode: () => widget.isChatMode?.call() ?? false,
     fetchInspectVars: () => widget.fetchInspectVars?.call(),
     onCancelSelection: () => cancelNodesSelectedOn(widget.canvas, widget.controller),
@@ -162,6 +229,7 @@ class WorkflowRunHostState extends State<WorkflowRunHost> {
     },
   );
   late final binding = RunCanvasBinding(store, widget.canvas);
+  late final _viewport = CanvasRunViewport(widget.canvas);
   final _singleRuns = <String, SingleRunController>{};
 
   SingleRunController _singleRunOf(String nodeId) => _singleRuns[nodeId] ??= SingleRunController(
@@ -197,7 +265,11 @@ class WorkflowRunHostState extends State<WorkflowRunHost> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    binding;
+    // dify-sf: on a phone the cards show the current run's statuses only ([RunCanvasBinding.runOnly]).
+    final phone = PhoneEditorScope.maybeOf(context);
+    binding.runOnly = phone != null;
+    // A running node is revealed on a phone, not centred beside the desktop's run panel.
+    _viewport.phoneCover = phone == null ? null : () => phone.canvasCover?.call() ?? 0;
     if (CanvasDefaults.reportRect && !_reporting) {
       _reporting = true;
       store.workflowRunningData.addListener(_reportRun);

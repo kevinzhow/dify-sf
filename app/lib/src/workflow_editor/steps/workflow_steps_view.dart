@@ -652,7 +652,8 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     final data = BlockSelectorScope.of(context);
     final insets = MediaQuery.paddingOf(context);
     final rows = _layout.rows;
-    _times = stepTimesOf(_store?.workflowRunningData.value);
+    // A browsed version's graph is not the run's: no times on it.
+    _times = _store?.isRestoring.value == true ? const {} : stepTimesOf(_store?.workflowRunningData.value);
     final end = 24 + insets.bottom + widget.bottomInset + _coverRoom;
     if (rows.isEmpty) {
       return Padding(
