@@ -27,7 +27,7 @@ struct HTTPConnectionCloseTests {
         let channel = try channel(connection: connection)
         defer { _ = try? channel.finish() }
         _ = try channel.writeOutbound(HTTPResponsePart.head(.init(status: .ok)))
-        let head = try #require(channel.readOutbound(as: HTTPResponsePart.self))
+        let head = try #require(try channel.readOutbound(as: HTTPResponsePart.self))
         guard case .head(let response) = head else { Issue.record("Missing head"); return }
         #expect(response.headerFields[.connection] == "close")
         #expect(channel.isActive)
@@ -50,7 +50,7 @@ struct HTTPConnectionCloseTests {
         let channel = try channel(connection: "close")
         defer { _ = try? channel.finish() }
         _ = try channel.writeOutbound(HTTPResponsePart.head(.init(status: .continue)))
-        let interim = try #require(channel.readOutbound(as: HTTPResponsePart.self))
+        let interim = try #require(try channel.readOutbound(as: HTTPResponsePart.self))
         guard case .head(let response) = interim else { Issue.record("Missing informational head"); return }
         #expect(response.headerFields[.connection] == nil)
         #expect(channel.isActive)
