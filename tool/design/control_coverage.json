@@ -2,6 +2,13 @@
   "schema": 1,
   "scope": "Exported design widgets. Inventory completeness is a review gate, not proof of visual correctness.",
   "files": {
+    "action_sheet.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/action_sheet_test.dart"
+      ],
+      "note": "dify-sf phone action sheet (no Dify counterpart): DifyText rows in DifyType/DifyPhoneType styles; functional tests cover row height, colours, close-then-act, Cancel/scrim/back, scrolling."
+    },
     "adaptive.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
@@ -54,6 +61,13 @@
         "app/test/control_gallery_typography_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+    },
+    "bottom_sheet.dart": {
+      "kind": "text-composition",
+      "evidence": [
+        "app/test/dify_spec/dify_ui/bottom_sheet_test.dart"
+      ],
+      "note": "dify-sf phone sheets on smooth_sheets (no Dify counterpart): detents, scrim, dismissal, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular."
     },
     "bottom_toolbar.dart": {
       "kind": "text-composition",
