@@ -105,7 +105,9 @@ class DifyTouchArea extends StatelessWidget {
 
 /// The phone chrome's icon button (the mockups' `.ibtn`): a [size] square (44 px) with `rounded-[10px]`, an icon
 /// (22 px by convention) in text-secondary, state-base-hover while pressed or hovered, and at least a 48 px hit area.
-/// [label] is its accessible name (there are no tooltips on touch). [destructive] tints it text-destructive.
+/// [label] is its accessible name (there are no tooltips on touch). [destructive] tints it text-destructive. A toggle
+/// passes [selected]: on, it shows state-accent-active with a text-accent icon (Dify's toggled icon buttons) and reports
+/// `toggled` to assistive technology.
 class DifyTouchIconButton extends StatelessWidget {
   const DifyTouchIconButton({
     super.key,
@@ -115,6 +117,7 @@ class DifyTouchIconButton extends StatelessWidget {
     this.disabled = false,
     this.destructive = false,
     this.size = 44,
+    this.selected,
   });
 
   final String label;
@@ -124,9 +127,13 @@ class DifyTouchIconButton extends StatelessWidget {
   final bool destructive;
   final double size;
 
+  /// On / off for a toggle; null for a plain action.
+  final bool? selected;
+
   @override
-  Widget build(BuildContext context) => DifyTouchTarget(
-    child: DifyPressable(
+  Widget build(BuildContext context) {
+    final on = selected ?? false;
+    Widget button = DifyPressable(
       onPressed: onPressed,
       disabled: disabled,
       semanticLabel: label,
@@ -136,8 +143,14 @@ class DifyTouchIconButton extends StatelessWidget {
               ? DifyColors.textDisabled
               : destructive
               ? DifyColors.textDestructive
+              : on
+              ? DifyColors.textAccent
               : DifyColors.textSecondary,
-          background: hovered && !disabled ? DifyColors.stateBaseHover : null,
+          background: on
+              ? (hovered && !disabled ? DifyColors.stateAccentActiveAlt : DifyColors.stateAccentActive)
+              : hovered && !disabled
+              ? DifyColors.stateBaseHover
+              : null,
         ),
         radius: DifyRadius.container,
         focused: focused,
@@ -146,6 +159,13 @@ class DifyTouchIconButton extends StatelessWidget {
           child: Center(child: ExcludeSemantics(child: icon)),
         ),
       ),
-    ),
-  );
+    );
+    // One node: the button with its name and, for a toggle, its state.
+    if (selected != null) {
+      button = MergeSemantics(
+        child: Semantics(toggled: selected, child: button),
+      );
+    }
+    return DifyTouchTarget(child: button);
+  }
 }

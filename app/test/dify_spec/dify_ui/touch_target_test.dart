@@ -165,5 +165,38 @@ void main() {
       expect(taps, [1]);
       expect(find.bySemanticsLabel('More'), findsOneWidget);
     });
+
+    testWidgets('a toggle: on shows state-accent-active with a text-accent icon and reports toggled', (t) async {
+      final handle = t.ensureSemantics();
+      var on = false;
+      await renderControl(
+        t,
+        StatefulBuilder(
+          builder: (context, setState) => Center(
+            child: DifyTouchIconButton(
+              label: 'User input fields',
+              selected: on,
+              icon: const RemixIcon('equalizer-2-line', size: 22),
+              onPressed: () => setState(() => on = !on),
+            ),
+          ),
+        ),
+      );
+      Color? background() => t
+          .widget<DifyButtonSurface>(
+            find.descendant(of: find.byType(DifyTouchIconButton), matching: find.byType(DifyButtonSurface)),
+          )
+          .look
+          .background;
+      expect(background(), isNull);
+      expect(t.getSemantics(find.bySemanticsLabel('User input fields')).flagsCollection.isToggled, Tristate.isFalse);
+      await t.tap(find.byType(DifyTouchIconButton));
+      await t.pump();
+      expect(on, isTrue);
+      expect(background(), DifyColors.stateAccentActive);
+      expect(t.getSemantics(find.bySemanticsLabel('User input fields')).flagsCollection.isToggled, Tristate.isTrue);
+      expect(t.getSize(find.byType(DifyTouchIconButton)), const Size(44, 44));
+      handle.dispose();
+    });
   });
 }

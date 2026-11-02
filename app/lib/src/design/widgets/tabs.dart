@@ -18,23 +18,51 @@ enum DifyTabStyle {
   pill,
 }
 
-/// TabsList: a row of tabs, `flex gap-4` ([gap]).
+/// How tall a [DifyTab] is at least.
+enum DifyTabSize {
+  /// Dify's own geometry (the style's padding, or the tab's [DifyTab.builder]).
+  regular,
+
+  /// dify-sf phones: at least [DifyTab.touchHeight] (44 px), so a finger hits the tab anywhere on its row; the look is
+  /// the regular one, its bottom (the underline) at the bottom of the taller box.
+  touch,
+}
+
+/// TabsList: a row of tabs, `flex gap-4` ([gap]). [size] applies to every tab in it that sets none of its own.
 class DifyTabsList extends StatelessWidget {
-  const DifyTabsList({super.key, required this.children, this.gap = 16, this.label});
+  const DifyTabsList({
+    super.key,
+    required this.children,
+    this.gap = 16,
+    this.label,
+    this.size = DifyTabSize.regular,
+  });
 
   final List<Widget> children;
   final double gap;
 
   /// The tablist's accessible name (`aria-label`).
   final String? label;
+  final DifyTabSize size;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    container: true,
-    label: label,
-    explicitChildNodes: true,
-    child: Row(mainAxisSize: MainAxisSize.min, spacing: gap, children: children),
+  Widget build(BuildContext context) => _DifyTabSizeScope(
+    size: size,
+    child: Semantics(
+      container: true,
+      label: label,
+      explicitChildNodes: true,
+      child: Row(mainAxisSize: MainAxisSize.min, spacing: gap, children: children),
+    ),
   );
+}
+
+class _DifyTabSizeScope extends InheritedWidget {
+  const _DifyTabSizeScope({required this.size, required super.child});
+  final DifyTabSize size;
+
+  @override
+  bool updateShouldNotify(_DifyTabSizeScope oldWidget) => size != oldWidget.size;
 }
 
 /// TabsTab: a pressable tab (`role="tab"`), `selected` when [active]. Disabled tabs are `opacity-30` (an active one keeps its
@@ -55,6 +83,7 @@ class DifyTab extends StatelessWidget {
     this.semanticLabel,
     this.builder,
     this.onKeyEvent,
+    this.size,
   }) : assert(label != null || builder != null);
 
   /// The tab's text (with [style]).
@@ -77,6 +106,12 @@ class DifyTab extends StatelessWidget {
 
   /// Keys pressed while the tab has the focus (the tablist's arrow-key navigation).
   final KeyEventResult Function(KeyEvent event)? onKeyEvent;
+
+  /// How tall it is at least; null: its [DifyTabsList]'s size (regular outside one).
+  final DifyTabSize? size;
+
+  /// The touch size's least height ([DifyTabSize.touch]).
+  static const touchHeight = 44.0;
 
   Widget _look(bool hovered, bool focused) {
     if (builder case final b?) return Builder(builder: (context) => b(context, hovered, focused));
@@ -128,6 +163,14 @@ class DifyTab extends StatelessWidget {
       onPressed: onPressed,
       builder: (context, hovered, focused) => DifyControlLabelScope(child: _look(hovered, focused)),
     );
+    final size =
+        this.size ?? context.dependOnInheritedWidgetOfExactType<_DifyTabSizeScope>()?.size ?? DifyTabSize.regular;
+    if (size == DifyTabSize.touch) {
+      pressable = ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: touchHeight),
+        child: pressable,
+      );
+    }
     if (onKeyEvent case final onKey?) {
       pressable = Focus(
         canRequestFocus: false,
