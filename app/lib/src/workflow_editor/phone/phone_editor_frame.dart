@@ -230,7 +230,7 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _ViewRow(actions: a),
+                                _ViewRow(actions: a, sheets: _sheets),
                                 Expanded(
                                   child: MediaQuery.removePadding(
                                     context: context,
@@ -623,23 +623,27 @@ class _PhoneTopBar extends StatelessWidget {
   }
 }
 
-/// The Steps | Canvas switch and the checklist's issues.
+/// The Steps | Canvas switch and the checklist's issues (after a hidden run's chip, [PhoneEditorSheets.viewRowChips]).
 class _ViewRow extends StatelessWidget {
-  const _ViewRow({required this.actions});
+  const _ViewRow({required this.actions, required this.sheets});
   final PhoneEditorActions actions;
+  final PhoneEditorSheets sheets;
 
   @override
   Widget build(BuildContext context) {
     final phone = actions.phone!;
     final graph = WorkflowHeaderScope.of(context).graph;
     final insets = MediaQuery.paddingOf(context);
-    Widget issues(int count) => DifyFilterChip(
-      key: const ValueKey('phone-issues'),
-      label: count == 0
-          ? _tp('noIssues')
-          : count == 1
-          ? _tp('issue')
-          : _tp('issues', {'count': count}),
+    String label(int count) => count == 0
+        ? _tp('noIssues')
+        : count == 1
+        ? _tp('issue')
+        : _tp('issues', {'count': count});
+    // compact (beside a run's chip in a short row): the icon and the count.
+    Widget issues(int count, bool compact) => DifyFilterChip(
+      key: ValueKey(compact ? 'phone-issues-compact' : 'phone-issues'),
+      label: compact ? (count == 0 ? '' : '$count') : label(count),
+      semanticLabel: compact ? label(count) : null,
       leading: count == 0
           ? RemixIcon('checkbox-circle-line', size: 16, color: DifyColors.textSuccess)
           : RemixIcon('error-warning-fill', size: 16, color: DifyColors.textWarning),
@@ -668,14 +672,20 @@ class _ViewRow extends StatelessWidget {
               ),
             ],
           ),
-          const Spacer(),
-          if (graph == null)
-            issues(0)
-          else
-            ValueListenableBuilder(
-              valueListenable: graph,
-              builder: (context, facts, _) => issues(facts.checklist.length),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: sheets.viewRowChips(
+                issues: (compact) => graph == null
+                    ? issues(0, compact)
+                    : ValueListenableBuilder(
+                        valueListenable: graph,
+                        builder: (context, facts, _) => issues(facts.checklist.length, compact),
+                      ),
+              ),
             ),
+          ),
         ],
       ),
     );

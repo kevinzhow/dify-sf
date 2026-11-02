@@ -283,6 +283,11 @@ void main() {
       // Dragged up: Input | Result | Detail | Tracing, the desktop panel's own content.
       await e.drag('phone-run-sheet', -500);
       expect(_tab(e, 'input').hitTestable(), findsOneWidget);
+      // The tabs take the tab component's touch size.
+      for (final key in const ['input', 'result', 'detail', 'tracing']) {
+        final tab = find.ancestor(of: _tab(e, key), matching: find.byType(DifyTab)).first;
+        expect(t.getSize(tab).height, greaterThanOrEqualTo(DifyTab.touchHeight), reason: key);
+      }
       expect(_tab(e, 'result').hitTestable(), findsOneWidget);
       await t.tap(_tab(e, 'detail'));
       await settle(t, 300);
@@ -344,6 +349,72 @@ void main() {
       await settle(t, 600);
       expect(e.runSheet, findsNothing);
       expect(e.store.workflowRunningData.value, isNull);
+      expect(t.takeException(), isNull);
+      await e.dispose();
+    });
+
+    testWidgets('$name: Back hides a running run; its chip in the view row counts and reopens it at its peek', (
+      t,
+    ) async {
+      final e = await _pump(t, size: size);
+      e.mock.scenario = const MockRunScenario(stepDelay: Duration(milliseconds: 600));
+      final chip = find.byKey(const ValueKey('phone-run-chip'));
+      Finder runChip() => find.descendant(of: chip, matching: find.byType(DifyFilterChip)).hitTestable().first;
+      await t.tap(find.byKey(const ValueKey('phone-run')));
+      await settle(t, 800);
+      await t.enterText(
+        find.descendant(of: e.sheet('phone-run-input-sheet'), matching: find.byType(EditableText)),
+        'q',
+      );
+      await t.pump();
+      await t.tap(find.text(_tw('singleRun.startRun')));
+      await settle(t, 600);
+      expect(e.runSheet, findsOneWidget);
+      expect(chip, findsNothing, reason: 'no chip while the sheet shows');
+
+      // Back at the peek while it runs hides the sheet; the run goes on, and its chip sits beside the issues chip.
+      expect(await systemBack(t), isTrue);
+      await settle(t, 400);
+      expect(e.runSheet, findsNothing);
+      expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.running);
+      expect(chip, findsOneWidget);
+      final running = find.bySemanticsLabel(RegExp(r'^Running · \d+ s$'));
+      expect(running, findsOneWidget);
+      final row = t.getRect(find.byKey(const ValueKey('phone-view-switch')));
+      final shown = t.getRect(runChip());
+      expect(shown.left, greaterThan(row.right), reason: 'after the Steps | Canvas switch');
+      expect(t.getRect(chip).right, lessThanOrEqualTo(size.width - 16 + 0.5), reason: 'inside the row');
+      expect(t.takeException(), isNull, reason: 'the row does not overflow');
+      // It counts while the run goes.
+      final before = t.getSemantics(running).label;
+      await settle(t, 1100);
+      expect(t.getSemantics(find.bySemanticsLabel(RegExp(r'^Running · \d+ s$'))).label, isNot(before));
+
+      // A tap reopens the sheet at its peek; Back hides it again.
+      await t.tap(runChip());
+      await settle(t, 600);
+      expect(e.runSheet, findsOneWidget);
+      expect(e.top('phone-run-sheet'), closeTo(e.barTop - 72, 1));
+      expect(chip, findsNothing);
+      expect(await systemBack(t), isTrue);
+      await settle(t, 400);
+      expect(e.runSheet, findsNothing);
+
+      // It ends while hidden: the chip says so, and stops counting.
+      await settle(t, 3000);
+      expect(runningStatusOf(e.store.workflowRunningData.value), WorkflowRunningStatus.succeeded);
+      expect(find.bySemanticsLabel(_tp('runSucceeded')), findsOneWidget);
+      expect(t.takeException(), isNull);
+      // Reopened, then closed: the run is cleared and the chip goes.
+      await t.tap(runChip());
+      await settle(t, 600);
+      expect(find.descendant(of: e.runHeader, matching: find.textContaining(_tp('runSucceeded'))), findsOneWidget);
+      expect(await systemBack(t), isTrue);
+      await settle(t, 600);
+      expect(e.runSheet, findsNothing);
+      expect(e.store.workflowRunningData.value, isNull);
+      expect(chip, findsNothing);
+      expect(find.byKey(const ValueKey('phone-issues')), findsOneWidget);
       expect(t.takeException(), isNull);
       await e.dispose();
     });
@@ -531,6 +602,23 @@ void main() {
     expect(e.sheet('phone-chat-sheet'), findsOneWidget);
     expect(find.byType(DebugAndPreview), findsOneWidget);
     expect(e.top('phone-chat-sheet'), closeTo(gestureInsets.top, 1));
+    // Its header: the sheet header's touch-size buttons (44 px, 48 px targets): refresh, the user input fields'
+    // toggle (Start has a variable), close.
+    final header = find.descendant(of: e.sheet('phone-chat-sheet'), matching: find.byType(DifySheetHeader));
+    expect(find.descendant(of: header, matching: find.text(_tw('common.debugAndPreview'))), findsOneWidget);
+    final buttons = find.descendant(of: header, matching: find.byType(DifyTouchIconButton));
+    expect(buttons, findsNWidgets(3));
+    for (final b in t.widgetList<DifyTouchIconButton>(buttons)) {
+      expect(b.size, 44);
+      expect(t.getSize(find.byWidget(b)), const Size(44, 44));
+    }
+    final toggle = t.widgetList<DifyTouchIconButton>(buttons).singleWhere((b) => b.selected != null);
+    expect(toggle.label, _tw('panel.userInputField'));
+    expect(toggle.selected, isTrue);
+    await t.tap(find.byWidget(toggle));
+    await t.pump();
+    expect(t.widgetList<DifyTouchIconButton>(buttons).singleWhere((b) => b.selected != null).selected, isFalse);
+    expect(find.descendant(of: e.sheet('phone-chat-sheet'), matching: find.byType(DifyIconButton)), findsNothing);
     expect(e.runSheet, findsNothing);
     expect(await systemBack(t), isTrue);
     await settle(t, 600);

@@ -421,106 +421,133 @@ class _DebugAndPreviewState extends State<DebugAndPreview> {
   }
 
   /// The panel's header (title, restart, the user input toggle, close) over the chat.
-  Widget _panel(List<DifyJson> variables, String userInputLabel) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-        child: Row(
+  /// The desktop header: "DEBUG AND PREVIEW", refresh, the user input fields' toggle, close.
+  Widget _desktopHeader(List<DifyJson> variables, String userInputLabel) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+    child: Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 32,
+            child: DifyTextLine(
+              _tw('common.debugAndPreview').toUpperCase(),
+              style: difyStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
+            ),
+          ),
+        ),
+        Row(
+          spacing: 4,
           children: [
-            Expanded(
-              child: SizedBox(
-                height: 32,
-                child: DifyTextLine(
-                  _tw('common.debugAndPreview').toUpperCase(),
-                  style: difyStyle(DifyType.systemXlSemibold, DifyColors.textPrimary),
-                ),
+            DifyTooltip(
+              content: DifyTextLine(_tc('operation.refresh')),
+              child: DifyIconButton(
+                label: _tc('operation.refresh'),
+                icon: const DifyIcon('vender/line/arrows/refresh-ccw-01', size: 16),
+                onPressed: _restartChat,
               ),
             ),
-            Row(
-              spacing: 4,
-              children: [
-                DifyTooltip(
-                  content: DifyTextLine(_tc('operation.refresh')),
-                  child: DifyIconButton(
-                    label: _tc('operation.refresh'),
-                    icon: const DifyIcon('vender/line/arrows/refresh-ccw-01', size: 16),
-                    onPressed: _restartChat,
+            if (variables.isNotEmpty)
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  DifyTooltip(
+                    content: DifyTextLine(userInputLabel),
+                    child: ExpandedSemantics(
+                      expanded: _expanded,
+                      child: DifyPressable(
+                        semanticLabel: userInputLabel,
+                        onPressed: () => setState(() => _expanded = !_expanded),
+                        builder: (context, hovered, focused) => Container(
+                          width: 24,
+                          height: 24,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: _expanded
+                                ? (hovered ? DifyColors.stateAccentActiveAlt : DifyColors.stateAccentActive)
+                                : (hovered ? DifyColors.stateBaseHover : null),
+                            borderRadius: BorderRadius.circular(DifyRadius.md),
+                          ),
+                          child: RemixIcon(
+                            'equalizer-2-line',
+                            size: 16,
+                            color: _expanded ? DifyColors.textAccent : DifyColors.textTertiary,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                if (variables.isNotEmpty)
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      DifyTooltip(
-                        content: DifyTextLine(userInputLabel),
-                        child: ExpandedSemantics(
-                          expanded: _expanded,
-                          child: DifyPressable(
-                            semanticLabel: userInputLabel,
-                            onPressed: () => setState(() => _expanded = !_expanded),
-                            builder: (context, hovered, focused) => Container(
-                              width: 24,
-                              height: 24,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: _expanded
-                                    ? (hovered ? DifyColors.stateAccentActiveAlt : DifyColors.stateAccentActive)
-                                    : (hovered ? DifyColors.stateBaseHover : null),
-                                borderRadius: BorderRadius.circular(DifyRadius.md),
+                  if (_expanded)
+                    Positioned(
+                      right: 5,
+                      bottom: -17,
+                      child: Transform.rotate(
+                        angle: 0.785398,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: DifyColors.componentsPanelOnPanelItemBg,
+                            border: Border(
+                              top: BorderSide(
+                                color: DifyColors.componentsPanelBorderSubtle,
+                                width: Css.hairline,
                               ),
-                              child: RemixIcon(
-                                'equalizer-2-line',
-                                size: 16,
-                                color: _expanded ? DifyColors.textAccent : DifyColors.textTertiary,
+                              left: BorderSide(
+                                color: DifyColors.componentsPanelBorderSubtle,
+                                width: Css.hairline,
                               ),
                             ),
                           ),
                         ),
                       ),
-                      if (_expanded)
-                        Positioned(
-                          right: 5,
-                          bottom: -17,
-                          child: Transform.rotate(
-                            angle: 0.785398,
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: DifyColors.componentsPanelOnPanelItemBg,
-                                border: Border(
-                                  top: BorderSide(
-                                    color: DifyColors.componentsPanelBorderSubtle,
-                                    width: Css.hairline,
-                                  ),
-                                  left: BorderSide(
-                                    color: DifyColors.componentsPanelBorderSubtle,
-                                    width: Css.hairline,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                Container(
-                  width: 1,
-                  height: 14,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  color: DifyColors.dividerRegular,
-                ),
-                DifyIconButton(
-                  label: _tc('operation.close'),
-                  icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
-                  onPressed: _close,
-                ),
-              ],
+                    ),
+                ],
+              ),
+            Container(
+              width: 1,
+              height: 14,
+              margin: const EdgeInsets.symmetric(horizontal: 12),
+              color: DifyColors.dividerRegular,
+            ),
+            DifyIconButton(
+              label: _tc('operation.close'),
+              icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+              onPressed: _close,
             ),
           ],
         ),
+      ],
+    ),
+  );
+
+  /// dify-sf: the header in a phone sheet: the sheet header with touch-size buttons (refresh, the user input fields'
+  /// toggle) and the sheet's close.
+  Widget _sheetHeader(PanelSheetScope sheet, List<DifyJson> variables, String userInputLabel) => DifySheetHeader(
+    title: _tw('common.debugAndPreview'),
+    onClose: sheet.onClose,
+    actions: [
+      DifyTouchIconButton(
+        label: _tc('operation.refresh'),
+        icon: const DifyIcon('vender/line/arrows/refresh-ccw-01', size: 20),
+        onPressed: _restartChat,
       ),
+      if (variables.isNotEmpty)
+        DifyTouchIconButton(
+          label: userInputLabel,
+          selected: _expanded,
+          icon: const RemixIcon('equalizer-2-line', size: 22),
+          onPressed: () => setState(() => _expanded = !_expanded),
+        ),
+    ],
+  );
+
+  Widget _panel(List<DifyJson> variables, String userInputLabel) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (PanelSheetScope.maybeOf(context) case final sheet?)
+        _sheetHeader(sheet, variables, userInputLabel)
+      else
+        _desktopHeader(variables, userInputLabel),
       Expanded(
         child: ClipRRect(
           borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(DifyRadius.xxl)),

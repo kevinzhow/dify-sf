@@ -106,11 +106,12 @@ DifyTab runPanelTab({
 }
 
 /// The run panels' [DifyTabsList] (the tabs carry their own `mr-6`); tabs past the panel's edge are clipped (the
-/// browser lets them overflow), or, when [scrollable] (dify-sf: a phone's run sheet), reached by swiping.
-Widget runPanelTabs(List<Widget> tabs, {bool scrollable = false}) => SingleChildScrollView(
+/// browser lets them overflow). [inSheet] (dify-sf: a phone's run sheet): the tabs take the tab component's touch
+/// size and are reached by swiping.
+Widget runPanelTabs(List<Widget> tabs, {bool inSheet = false}) => SingleChildScrollView(
   scrollDirection: Axis.horizontal,
-  physics: scrollable ? null : const NeverScrollableScrollPhysics(),
-  child: DifyTabsList(gap: 0, children: tabs),
+  physics: inSheet ? null : const NeverScrollableScrollPhysics(),
+  child: DifyTabsList(gap: 0, size: inSheet ? DifyTabSize.touch : DifyTabSize.regular, children: tabs),
 );
 
 /// dify-sf: lays a run panel's parts out somewhere else than its desktop panel (the phone editor's run sheet): [tabs]
@@ -341,7 +342,7 @@ class _WorkflowPreviewState extends State<WorkflowPreview> {
   );
 
   Widget _tabRow(DifyJson? data) => runPanelTabs(
-    scrollable: widget.layout != null,
+    inSheet: widget.layout != null,
     [
       if (store.showInputsPanel.value)
         runPanelTab(label: _tr('input'), active: _tab == _Tab.input, onTap: () => _switch(_Tab.input)),

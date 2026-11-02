@@ -281,7 +281,7 @@ class _RunPanelState extends State<RunPanel> {
     final seen = <Object?>{};
     final agents = _list.reversed.where((n) => n['node_type'] == 'agent' && seen.add(n['node_id'])).toList();
     final tabs = runPanelTabs(
-      scrollable: widget.layout != null,
+      inSheet: widget.layout != null,
       [
         if (agents.isNotEmpty)
           runPanelTab(

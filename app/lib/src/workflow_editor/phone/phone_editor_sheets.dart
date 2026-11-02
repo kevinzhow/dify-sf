@@ -15,6 +15,7 @@ library;
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart' show Node;
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
@@ -133,9 +134,13 @@ class PhoneEditorSheets {
     if (store == _store) return;
     _store?.pendingSingleRun.removeListener(_pendingSingleRun);
     _store?.nodeRunData.removeListener(_nodeRunChanged);
+    _store?.workflowRunningData.removeListener(_liveChanged);
     _store = store
       ..pendingSingleRun.addListener(_pendingSingleRun)
-      ..nodeRunData.addListener(_nodeRunChanged);
+      ..nodeRunData.addListener(_nodeRunChanged)
+      ..workflowRunningData.addListener(_liveChanged);
+    _liveStatus = null;
+    _liveChanged();
     _singleStatus
       ..clear()
       ..addAll({for (final e in store.nodeRunData.value.entries) e.key: e.value['_singleRunningStatus'] as String?});
@@ -144,6 +149,7 @@ class PhoneEditorSheets {
   void dispose() {
     _store?.pendingSingleRun.removeListener(_pendingSingleRun);
     _store?.nodeRunData.removeListener(_nodeRunChanged);
+    _store?.workflowRunningData.removeListener(_liveChanged);
     for (final c in [run, runInput, chat, stepInput, inspect, variables, comments, versions]) {
       c.dispose();
     }
@@ -163,6 +169,36 @@ class PhoneEditorSheets {
     store.controlMode,
     store.nodeRunData,
   ];
+
+  // ----- the test run's time -----
+
+  /// The test run's time, counted from when it started running here (the sheet's header and the view row's chip
+  /// both read it, whichever shows), on the frame clock: the frames the ticking time asks for advance it, and tests'
+  /// pumps do too.
+  Duration? _liveStart, _liveEnd;
+  String? _liveStatus;
+
+  static Duration get _now => SchedulerBinding.instance.currentSystemFrameTimeStamp;
+
+  void _liveChanged() {
+    final status = runningStatusOf(_store?.workflowRunningData.value);
+    final running = status == WorkflowRunningStatus.running;
+    if (running && _liveStatus != WorkflowRunningStatus.running) {
+      _liveStart = _now;
+      _liveEnd = null;
+    } else if (!running && _liveStatus == WorkflowRunningStatus.running) {
+      _liveEnd = _now;
+    }
+    _liveStatus = status;
+  }
+
+  /// Seconds since the test run started (while it runs; frozen once it ended).
+  double get liveSeconds {
+    final start = _liveStart;
+    if (start == null) return 0;
+    final d = (_liveEnd ?? _now) - start;
+    return d.isNegative ? 0 : d.inMilliseconds / 1000;
+  }
 
   // ----- single-step runs -----
 
@@ -374,6 +410,15 @@ class PhoneEditorSheets {
     if (context == null) return;
     WorkflowRunScope.maybeOf(context)?.singleRunOf(nodeId).hideSingleRun();
   }
+
+  /// The view row's chips: [issues] (the checklist's chip; `compact` asks for its short form), with the test run's
+  /// chip before it while the run sheet is hidden and the run is going, or has ended and was not closed ("Running ·
+  /// 12 s", "Succeeded", "Failed"...); a tap reopens the run sheet at its peek. In a short row the issues chip, then the
+  /// run chip, take their short forms.
+  Widget viewRowChips({required Widget Function(bool compact) issues}) => _RunChipRow(sheets: this, issues: issues);
+
+  /// Shows the hidden test run's sheet again (at its peek).
+  void reopenRun() => _store?.setShowDebugAndPreviewPanel(true);
 
   /// The non-modal sheets (the run, the version list, the comment list): put it last in the Stack between the view
   /// switch and the bottom bar.
@@ -670,6 +715,7 @@ class _RunSheet extends StatelessWidget {
                   final elapsed = resultOf(data)['elapsed_time'];
                   return _RunHeader(
                     status: status,
+                    counted: () => sheets.liveSeconds,
                     title: _tw('common.run'),
                     run: data?['task_id'] ?? resultOf(data)['workflow_run_id'],
                     seconds: elapsed is num ? elapsed : null,
@@ -792,6 +838,36 @@ class _StepRun extends StatelessWidget {
   }
 }
 
+/// A `WorkflowRunningStatus` / `NodeRunningStatus` that is still going.
+bool _isRunning(String status) =>
+    status == NodeRunningStatus.running || status == NodeRunningStatus.listening || status == NodeRunningStatus.waiting;
+
+/// The run's state in words (the run sheet's header, the view row's run chip).
+String _stateLabel(String status) => switch (status) {
+  NodeRunningStatus.running || NodeRunningStatus.waiting => _tw('common.running'),
+  NodeRunningStatus.listening => _tw('common.listening'),
+  NodeRunningStatus.succeeded || 'partial-succeeded' => _tp('runSucceeded'),
+  NodeRunningStatus.failed || NodeRunningStatus.exception => _tp('runFailed'),
+  NodeRunningStatus.stopped => _tp('runStopped'),
+  NodeRunningStatus.paused => _tp('runPaused'),
+  _ => status,
+};
+
+/// The run's state as an icon: a spinner while it goes, then a check, an error, stop or pause.
+Widget _stateIcon(String status, double size) {
+  if (_isRunning(status)) {
+    return DifySpinner(key: const ValueKey('phone-run-state-running'), size: size, color: DifyColors.textAccent);
+  }
+  final (icon, color) = switch (status) {
+    NodeRunningStatus.succeeded || 'partial-succeeded' => ('checkbox-circle-fill', DifyColors.textSuccess),
+    NodeRunningStatus.failed || NodeRunningStatus.exception => ('error-warning-fill', DifyColors.textDestructive),
+    NodeRunningStatus.stopped => ('stop-circle-fill', DifyColors.textWarningSecondary),
+    NodeRunningStatus.paused => ('pause-circle-fill', DifyColors.textWarningSecondary),
+    _ => ('checkbox-circle-line', DifyColors.textTertiary),
+  };
+  return RemixIcon(icon, key: ValueKey('phone-run-state-$status'), size: size, color: color);
+}
+
 /// The run sheet's header (mockup 7): the run's state as an icon and in words with its time (counting while it
 /// runs), Stop while it runs, close once it is over, and the tabs under it.
 class _RunHeader extends StatelessWidget {
@@ -804,7 +880,12 @@ class _RunHeader extends StatelessWidget {
     this.onStop,
     this.leading,
     this.tabs,
+    this.counted,
   });
+
+  /// The run's time while it goes, when it is kept elsewhere (the test run's); null: counted from when this header
+  /// first showed it running.
+  final double Function()? counted;
 
   /// A `WorkflowRunningStatus` / `NodeRunningStatus`.
   final String status;
@@ -819,34 +900,9 @@ class _RunHeader extends StatelessWidget {
   final VoidCallback onClose;
   final Widget? leading, tabs;
 
-  bool get _running =>
-      status == NodeRunningStatus.running ||
-      status == NodeRunningStatus.listening ||
-      status == NodeRunningStatus.waiting;
-
-  String get _state => switch (status) {
-    NodeRunningStatus.running || NodeRunningStatus.waiting => _tw('common.running'),
-    NodeRunningStatus.listening => _tw('common.listening'),
-    NodeRunningStatus.succeeded || 'partial-succeeded' => _tp('runSucceeded'),
-    NodeRunningStatus.failed || NodeRunningStatus.exception => _tp('runFailed'),
-    NodeRunningStatus.stopped => _tp('runStopped'),
-    NodeRunningStatus.paused => _tp('runPaused'),
-    _ => status,
-  };
-
-  Widget _icon() {
-    if (_running) {
-      return DifySpinner(key: const ValueKey('phone-run-state-running'), size: 20, color: DifyColors.textAccent);
-    }
-    final (icon, color) = switch (status) {
-      NodeRunningStatus.succeeded || 'partial-succeeded' => ('checkbox-circle-fill', DifyColors.textSuccess),
-      NodeRunningStatus.failed || NodeRunningStatus.exception => ('error-warning-fill', DifyColors.textDestructive),
-      NodeRunningStatus.stopped => ('stop-circle-fill', DifyColors.textWarningSecondary),
-      NodeRunningStatus.paused => ('pause-circle-fill', DifyColors.textWarningSecondary),
-      _ => ('checkbox-circle-line', DifyColors.textTertiary),
-    };
-    return RemixIcon(icon, key: ValueKey('phone-run-state-$status'), size: 20, color: color);
-  }
+  bool get _running => _isRunning(status);
+  String get _state => _stateLabel(status);
+  Widget _icon() => _stateIcon(status, 20);
 
   @override
   Widget build(BuildContext context) {
@@ -856,6 +912,7 @@ class _RunHeader extends StatelessWidget {
       run: run,
       running: running,
       seconds: seconds,
+      counted: counted,
       builder: (context, time) => DifySheetHeader(
         key: const ValueKey('phone-run-sheet-header'),
         leading: Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: [_icon(), ?leading]),
@@ -884,10 +941,17 @@ class _RunHeader extends StatelessWidget {
 /// The run's time: counted from when this run was first shown running (tenths of a second, only while it runs),
 /// then the run's own time once it has one.
 class _RunTime extends StatefulWidget {
-  const _RunTime({required this.run, required this.running, required this.seconds, required this.builder});
+  const _RunTime({
+    required this.run,
+    required this.running,
+    required this.seconds,
+    required this.builder,
+    this.counted,
+  });
   final Object? run;
   final bool running;
   final num? seconds;
+  final double Function()? counted;
   final Widget Function(BuildContext context, String? time) builder;
 
   @override
@@ -895,8 +959,11 @@ class _RunTime extends StatefulWidget {
 }
 
 class _RunTimeState extends State<_RunTime> {
-  final _watch = Stopwatch();
+  /// When this run was first shown running, and when it stopped, on the frame clock.
+  Duration? _start, _end;
   Timer? _tick;
+
+  static Duration get _now => SchedulerBinding.instance.currentSystemFrameTimeStamp;
 
   @override
   void initState() {
@@ -907,18 +974,19 @@ class _RunTimeState extends State<_RunTime> {
   @override
   void didUpdateWidget(_RunTime old) {
     super.didUpdateWidget(old);
-    if (old.run != widget.run) _watch.reset();
+    if (old.run != widget.run) _start = _end = null;
     _sync();
   }
 
   void _sync() {
     if (widget.running) {
-      _watch.start();
+      _start ??= _now;
+      _end = null;
       _tick ??= Timer.periodic(const Duration(milliseconds: 100), (_) {
         if (mounted) setState(() {});
       });
     } else {
-      _watch.stop();
+      if (_start != null) _end ??= _now;
       _tick?.cancel();
       _tick = null;
     }
@@ -930,15 +998,184 @@ class _RunTimeState extends State<_RunTime> {
     super.dispose();
   }
 
+  double get _counted {
+    final start = _start;
+    if (start == null) return 0;
+    final d = (_end ?? _now) - start;
+    return d.isNegative ? 0 : d.inMilliseconds / 1000;
+  }
+
   @override
   Widget build(BuildContext context) {
     final own = widget.seconds;
-    final counted = _watch.elapsedMilliseconds / 1000;
+    final counted = widget.counted?.call() ?? _counted;
     final time = !widget.running && own != null
         ? formatStepSeconds(own)
-        : _watch.elapsedMilliseconds > 0
+        : counted > 0
         ? formatStepSeconds(counted)
         : null;
     return widget.builder(context, time);
   }
+}
+
+/// The view row's run chip before the issues chip ([PhoneEditorSheets.viewRowChips]).
+class _RunChipRow extends StatefulWidget {
+  const _RunChipRow({required this.sheets, required this.issues});
+  final PhoneEditorSheets sheets;
+  final Widget Function(bool compact) issues;
+
+  @override
+  State<_RunChipRow> createState() => _RunChipRowState();
+}
+
+class _RunChipRowState extends State<_RunChipRow> {
+  WorkflowStore? _store;
+  Listenable? _watched;
+  Timer? _tick;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final store = WorkflowStoreScope.of(context);
+    if (store == _store) return;
+    _watched?.removeListener(_changed);
+    _store = store;
+    _watched = Listenable.merge([
+      store.workflowRunningData,
+      store.showDebugAndPreviewPanel,
+      store.historyWorkflowData,
+      store.isListening,
+      store.isRestoring,
+    ])..addListener(_changed);
+  }
+
+  @override
+  void dispose() {
+    _watched?.removeListener(_changed);
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  void _changed() {
+    if (!mounted) return;
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => _changed());
+      return;
+    }
+    setState(() {});
+  }
+
+  /// The hidden test run's state, or null when there is no chip to show.
+  String? get _status {
+    final store = _store!;
+    final data = store.workflowRunningData.value;
+    if (widget.sheets._panels.isChatMode ||
+        data == null ||
+        store.showDebugAndPreviewPanel.value ||
+        store.historyWorkflowData.value != null ||
+        store.isRestoring.value) {
+      return null;
+    }
+    return store.isListening.value
+        ? NodeRunningStatus.listening
+        : runningStatusOf(data) ?? WorkflowRunningStatus.running;
+  }
+
+  /// Ticks once a second while a hidden run is going (its time in the chip), not otherwise.
+  void _syncTick(bool running) {
+    if (running) {
+      _tick ??= Timer.periodic(const Duration(seconds: 1), (_) => _changed());
+    } else {
+      _tick?.cancel();
+      _tick = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _status;
+    _syncTick(status == WorkflowRunningStatus.running);
+    if (status == null) return widget.issues(false);
+    final running = status == WorkflowRunningStatus.running;
+    final seconds = '${widget.sheets.liveSeconds.floor()} s';
+    final full = running ? '${_stateLabel(status)} · $seconds' : _stateLabel(status);
+    Widget chip({required bool compact}) => DifyFilterChip(
+      label: compact ? (running ? seconds : '') : full,
+      semanticLabel: full,
+      leading: SizedBox.square(dimension: 16, child: Center(child: _stateIcon(status, 16))),
+      onPressed: widget.sheets.reopenRun,
+    );
+    Widget row(Widget run, bool compactIssues) =>
+        Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: [run, widget.issues(compactIssues)]);
+    return _FirstThatFits(
+      key: const ValueKey('phone-run-chip'),
+      children: [
+        row(chip(compact: false), false),
+        row(chip(compact: false), true),
+        row(chip(compact: true), true),
+      ],
+    );
+  }
+}
+
+/// Lays out its [children] (the same content, longest form first) and shows the first that fits the width it is
+/// given, else the last; only that one paints, takes pointers and is read out.
+class _FirstThatFits extends MultiChildRenderObjectWidget {
+  const _FirstThatFits({super.key, required super.children});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderFirstThatFits();
+}
+
+class _FitParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderFirstThatFits extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _FitParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _FitParentData> {
+  RenderBox? _shown;
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _FitParentData) child.parentData = _FitParentData();
+  }
+
+  @override
+  void performLayout() {
+    final loose = BoxConstraints(maxHeight: constraints.maxHeight);
+    _shown = null;
+    var child = firstChild;
+    while (child != null) {
+      child.layout(loose, parentUsesSize: true);
+      if (_shown == null && (child.size.width <= constraints.maxWidth || childAfter(child) == null)) _shown = child;
+      child = childAfter(child);
+    }
+    size = constraints.constrain(_shown?.size ?? Size.zero);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (_shown case final child?) context.paintChild(child, offset);
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      _shown?.hitTest(result, position: position) ?? false;
+
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    if (_shown case final child?) visitor(child);
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => lastChild?.getMinIntrinsicWidth(height) ?? 0;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => firstChild?.getMaxIntrinsicWidth(height) ?? 0;
+
+  @override
+  double computeMinIntrinsicHeight(double width) => firstChild?.getMinIntrinsicHeight(width) ?? 0;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => firstChild?.getMaxIntrinsicHeight(width) ?? 0;
 }
