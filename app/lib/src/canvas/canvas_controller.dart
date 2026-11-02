@@ -35,6 +35,20 @@ class CanvasController {
   /// The nodes on the canvas (set while a WorkflowCanvas shows this controller).
   CanvasGraph? graph;
 
+  /// Where the canvas's viewport is in the window (set while a WorkflowCanvas shows this controller).
+  Offset? Function()? viewportOrigin;
+
+  /// Pans the least so that node [id] is clear above the window's y [coveredFromY] (a phone's half sheet over the
+  /// canvas), only when it is covered; its top stays in view.
+  void revealAbove(String id, double coveredFromY, {double margin = 16}) {
+    final origin = viewportOrigin?.call(), node = graph?[id];
+    if (origin == null || node == null) return;
+    final r = view.rectToScreen(node.rect).shift(origin);
+    final dy = min(r.bottom + margin - coveredFromY, r.top - origin.dy - margin);
+    if (dy <= 0) return;
+    view.center = view.center + Offset(0, dy / view.scale);
+  }
+
   /// The node drawn by a live widget instead of its card (the selected note's editor), if any.
   final liveCard = ValueNotifier<LiveCard?>(null);
 

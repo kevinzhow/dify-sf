@@ -94,7 +94,8 @@ class _HostedStepsViewState extends State<_HostedStepsView> {
     _phone = phone?..stepsReveal = _reveal;
   }
 
-  void _reveal(String id, double coveredFromY) => _view.currentState?.revealNode(id, coveredFromY: coveredFromY);
+  void _reveal(String? id, double? coveredFromY) =>
+      id == null ? _view.currentState?.clearCover() : _view.currentState?.revealNode(id, coveredFromY: coveredFromY);
 
   @override
   void dispose() {

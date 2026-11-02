@@ -711,4 +711,43 @@ void main() {
     expect(find.byType(AppPublisher), findsNothing);
     await e.dispose();
   });
+
+  testWidgets('a short flow: the last step opened is brought above the half sheet (the list gets the room); the room '
+      'goes when the sheet closes', (t) async {
+    final e = await _pump(t);
+    final view = find.byType(WorkflowStepsView);
+    final end = find.descendant(of: view, matching: find.text('End'));
+    expect(
+      t.getRect(end.first).bottom,
+      greaterThan(914 / 2 - gestureInsets.bottom),
+      reason: 'End is in the lower half',
+    );
+    await t.tap(end.first);
+    await settle(t, 1200);
+    expect(_sheet, findsOneWidget);
+    expect(t.getRect(end.first).bottom, lessThanOrEqualTo(_sheetTop(t)), reason: 'End above the sheet');
+    expect(await systemBack(t), isTrue);
+    await settle(t, 600);
+    final scroll = t.state<ScrollableState>(find.descendant(of: view, matching: find.byType(Scrollable)).first);
+    expect(scroll.position.maxScrollExtent, 0, reason: 'the room went with the sheet');
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('the canvas: Settings from the selection bar pans the selected node above the half sheet when it is '
+      'covered', (t) async {
+    final e = await _pump(t);
+    await e.showCanvas();
+    await t.tapAt(e.node('n-end'));
+    await settle(t, 600);
+    Rect nodeRect() => e.canvas.view.rectToScreen(e.canvas.graph!['n-end']!.rect).shift(t.getTopLeft(e.canvasFinder));
+    final half = 914 / 2 - gestureInsets.bottom;
+    expect(nodeRect().bottom, greaterThan(half), reason: 'covered by a half sheet before');
+    await t.tap(find.byKey(const ValueKey('phone-node-settings')));
+    await settle(t, 1200);
+    expect(nodeRect().bottom, lessThanOrEqualTo(_sheetTop(t)), reason: 'above the sheet');
+    expect(nodeRect().top, greaterThanOrEqualTo(t.getTopLeft(e.canvasFinder).dy), reason: 'still in the canvas');
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
 }

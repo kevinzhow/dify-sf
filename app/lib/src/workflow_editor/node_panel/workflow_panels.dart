@@ -212,8 +212,14 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
     final sheetNode = phone != null && custom != null && phone.settingsNodeId == custom.id ? custom : null;
     if (sheetNode != null) _sheetNode = sheetNode;
     if (phone != null && sheetNode?.id != _revealed) {
+      final was = _revealed;
       _revealed = sheetNode?.id;
-      if (sheetNode != null) _revealAbove(phone, sheetNode.id);
+      if (sheetNode != null) {
+        _revealAbove(phone, sheetNode.id);
+      } else if (was != null) {
+        // Closed: the Steps view's room for it goes.
+        SchedulerBinding.instance.addPostFrameCallback((_) => phone.stepsReveal?.call(null, null));
+      }
     }
     final sheet = phone == null ? null : _settingsSheet(phone, sheetNode);
     return ListenableBuilder(
@@ -311,7 +317,13 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
           if (frames < 5) _revealAbove(phone, nodeId, frames + 1);
           return;
         }
-        phone.stepsReveal?.call(nodeId, MediaQuery.sizeOf(context).height - offset);
+        final top = MediaQuery.sizeOf(context).height - offset;
+        // The Steps view brings the step above the sheet; the canvas pans the node above it if it is covered.
+        if (phone.view == PhoneEditorView.canvas) {
+          widget.canvas.revealAbove(nodeId, top);
+        } else {
+          phone.stepsReveal?.call(nodeId, top);
+        }
       });
 
   /// The phone's node settings: the node panel's content in a sheet, open while [open] is the settings node.

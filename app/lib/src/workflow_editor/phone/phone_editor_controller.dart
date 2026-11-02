@@ -41,8 +41,9 @@ class PhoneEditorController extends ChangeNotifier {
   Future<bool> Function()? stepsAddAtEnd;
 
   /// The Steps view's reveal while it shows (it registers itself): the node settings sheet asks it to bring step
-  /// [nodeId] above the window's y [coveredFromY] (the sheet's top at half).
-  void Function(String nodeId, double coveredFromY)? stepsReveal;
+  /// [nodeId] above the window's y [coveredFromY] (the sheet's top at half), with room at the list's end for it; both
+  /// null when the sheet closed (the room goes).
+  void Function(String? nodeId, double? coveredFromY)? stepsReveal;
   bool _viewChosen = false, _disposed = false;
   Future<SharedPreferences>? _prefs;
 

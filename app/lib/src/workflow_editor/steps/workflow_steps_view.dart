@@ -283,8 +283,19 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
   }
 
   /// What covers the list's bottom besides the system bar and the toolbar during a reveal (the node settings sheet):
-  /// the window's y from which it is covered.
+  /// the window's y from which it is covered; and the room the list's end gets meanwhile, so even a short list can
+  /// scroll its last step above the sheet.
   double? _coveredFromY;
+  double _coverRoom = 0;
+
+  /// The sheet over the list closed: its room goes.
+  void clearCover() {
+    if (_coveredFromY == null && _coverRoom == 0) return;
+    setState(() {
+      _coveredFromY = null;
+      _coverRoom = 0;
+    });
+  }
 
   /// Whether row [key] is on screen whole, clear of the system bar and the chrome's toolbar at the bottom (and of a
   /// sheet over the list, [_coveredFromY]).
@@ -310,6 +321,8 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
   void revealNode(String id, {bool highlight = false, double? coveredFromY}) {
     if (!mounted) return;
     _coveredFromY = coveredFromY;
+    final viewport = _scroll.hasClients ? _scroll.position.context.storageContext.findRenderObject() : null;
+    _coverRoom = viewport is RenderBox && viewport.hasSize ? _sheetCover(viewport) : 0;
     _layout = _cache.layoutOf(_doc);
     final index = _layout.rowOfNode(id);
     if (index == null) return;
@@ -627,7 +640,7 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     final data = BlockSelectorScope.of(context);
     final insets = MediaQuery.paddingOf(context);
     final rows = _layout.rows;
-    final end = 24 + insets.bottom + widget.bottomInset;
+    final end = 24 + insets.bottom + widget.bottomInset + _coverRoom;
     if (rows.isEmpty) {
       return Padding(
         padding: EdgeInsets.only(bottom: end),
