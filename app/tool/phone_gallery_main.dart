@@ -129,6 +129,10 @@ class _GalleryState extends State<_Gallery> {
                     ],
                   ),
                 ),
+                const _Section(
+                  'From the page\'s tree: DifySheetPortal, DifyPortalPage, a picker sheet',
+                  child: _PortalDemos(),
+                ),
                 _Section(
                   'DifyTopAppBar',
                   child: _Framed(
@@ -901,6 +905,84 @@ class _RenameFieldState extends State<_RenameField> {
     placeholder: 'App name',
     semanticLabel: 'App name',
     onChanged: (v) => setState(() => _value = v),
+  );
+}
+
+/// Batch 4a's components: a modal sheet and a full-screen page shown from the page's own tree (they keep its state),
+/// and a select that opens as a sheet of 48 px rows in a compact window.
+class _PortalDemos extends StatefulWidget {
+  const _PortalDemos();
+
+  @override
+  State<_PortalDemos> createState() => _PortalDemosState();
+}
+
+class _PortalDemosState extends State<_PortalDemos> {
+  bool _sheet = false, _page = false;
+  String _type = 'string';
+  String _code = 'def main(text: str) -> dict:\n    return {"words": len(text.split())}';
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      DifyButton(onPressed: () => setState(() => _sheet = true), child: const DifyTextLine('Sheet portal')),
+      DifyButton(onPressed: () => setState(() => _page = true), child: const DifyTextLine('Portal page')),
+      SizedBox(
+        width: 160,
+        child: DifySelect<String>(
+          value: _type,
+          semanticLabel: 'Type',
+          options: const [
+            (value: 'string', label: 'String'),
+            (value: 'number', label: 'Number'),
+            (value: 'object', label: 'Object'),
+          ],
+          onChanged: (v) => setState(() => _type = v),
+        ),
+      ),
+      DifySheetPortal(
+        open: _sheet,
+        onDismiss: () => setState(() => _sheet = false),
+        builder: (context) => Column(
+          children: [
+            DifySheetHeader(
+              title: 'Summarize',
+              subtitle: 'LLM',
+              leading: const _Block(icon: 'brain-line', size: 32),
+              actions: [
+                DifyTouchIconButton(
+                  label: 'Run step',
+                  icon: const RemixIcon('play-large-fill', size: 22),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+            Expanded(
+              child: ListView(
+                primary: true,
+                padding: const EdgeInsets.all(16),
+                children: [
+                  const DifyInput(value: '', placeholder: 'Variable name'),
+                  for (var i = 0; i < 20; i++) SizedBox(height: 48, child: DifyTextLine('Setting $i')),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      DifyPortalPage(
+        open: _page,
+        onClose: () => setState(() => _page = false),
+        title: 'Code',
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: DifyInput(value: _code, onChanged: (v) => _code = v),
+        ),
+      ),
+    ],
   );
 }
 
