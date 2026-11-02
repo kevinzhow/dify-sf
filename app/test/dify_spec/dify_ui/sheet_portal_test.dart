@@ -66,6 +66,21 @@ class _PortalHostState extends State<_PortalHost> {
   );
 }
 
+/// The labels of the semantics tree as the platform gets it (traversal order: an overlay child counts under its
+/// OverlayPortal's place, and is dropped when that place is), what TalkBack and uiautomator read.
+List<String> _platformLabels(WidgetTester t) {
+  final out = <String>[];
+  void walk(SemanticsNode n) {
+    if (n.label.isNotEmpty) out.add(n.label);
+    n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder).forEach(walk);
+  }
+
+  for (final view in t.binding.renderViews) {
+    if (view.owner?.semanticsOwner?.rootSemanticsNode case final root?) walk(root);
+  }
+  return out;
+}
+
 double _top(WidgetTester t) => t.getRect(find.byType(DifySheetGrabHandle)).top;
 
 Future<void> _settle(WidgetTester t) async {
@@ -113,6 +128,26 @@ void main() {
       await t.pumpAndSettle();
       expect(find.text('Summarize'), findsNothing, reason: 'a drag down');
       expect(host.dismissals, 5);
+    });
+
+    testWidgets('is modal for accessibility, like a route: the sheet is in the semantics tree the platform gets, '
+        'the page behind is not; the page comes back after closing', (t) async {
+      final semantics = t.ensureSemantics();
+      phoneView(t, size: const Size(411, 914), padding: gestureInsets);
+      await pumpPhoneApp(t, const _PortalHost(), edgeToEdge: true);
+      expect(_platformLabels(t), contains('Open'));
+      await t.tap(find.text('Open'));
+      await _settle(t);
+      final open = _platformLabels(t);
+      expect(open, contains(startsWith('Summarize')), reason: 'the sheet\'s header: $open');
+      expect(open, contains('Row 0'), reason: 'the sheet\'s content: $open');
+      expect(open, isNot(contains('Open')), reason: 'the page behind is blocked: $open');
+      await t.binding.handlePopRoute();
+      await _settle(t);
+      final closed = _platformLabels(t);
+      expect(closed, isNot(contains(startsWith('Summarize'))));
+      expect(closed, contains('Open'), reason: 'the page is back: $closed');
+      semantics.dispose();
     });
 
     testWidgets('pulled up it stops at the status bar; a vetoed close slides it back; the keyboard lifts it', (
@@ -231,9 +266,14 @@ void main() {
           ),
         ),
       );
+      final semantics = t.ensureSemantics();
+      expect(_platformLabels(t), contains('Pick'));
       await t.tap(find.text('Pick'));
       await _settle(t);
       expect(inSheet, isTrue);
+      // Modal for accessibility: the sheet in the platform's tree, the page (its trigger) not.
+      expect(_platformLabels(t), contains('scope: trigger scope'));
+      expect(_platformLabels(t), isNot(contains('Pick')));
       expect(find.text('Insert variable'), findsOneWidget);
       expect(find.text('scope: trigger scope'), findsOneWidget);
       expect(search.hasFocus, isFalse);
@@ -241,6 +281,8 @@ void main() {
       expect(await t.binding.handlePopRoute(), isTrue);
       await _settle(t);
       expect(find.text('Insert variable'), findsNothing, reason: 'back closed the sheet');
+      expect(_platformLabels(t), contains('Pick'));
+      semantics.dispose();
     });
   });
 
@@ -387,9 +429,13 @@ void main() {
       edgeToEdge: true,
     );
     final state = t.state(find.byType(EditableText));
+    final semantics = t.ensureSemantics();
     set(() => open = true);
     await _settle(t);
     final page = find.byKey(const ValueKey('dify-portal-page'));
+    expect(_platformLabels(t), contains(startsWith('Code')), reason: 'the page\'s app bar in the platform\'s tree');
+    expect(_platformLabels(t), contains(contains('scope: panel')), reason: 'the page\'s content');
+    semantics.dispose();
     expect(t.getRect(page), Offset.zero & const Size(411, 914));
     expect(find.descendant(of: page, matching: find.byType(DifyTopAppBar)), findsOneWidget);
     expect(find.descendant(of: page, matching: find.text('scope: panel')), findsOneWidget);

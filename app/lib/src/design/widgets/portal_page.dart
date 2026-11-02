@@ -7,7 +7,7 @@ import 'package:flutter/widgets.dart';
 
 import '../dify_tokens.g.dart';
 import 'back_dismiss.dart';
-import 'bottom_sheet.dart' show DifySheetRecipe;
+import 'bottom_sheet.dart' show DifyPortalSemantics, DifySheetRecipe;
 import 'page.dart' show DifyWindowInsets;
 import 'top_app_bar.dart';
 
@@ -97,7 +97,9 @@ class _DifyPortalPageState extends State<DifyPortalPage> with SingleTickerProvid
   }
 
   @override
-  Widget build(BuildContext context) => OverlayPortal(
+  Widget build(BuildContext context) => DifyPortalSemantics(modal: widget.open, child: _portalWidget());
+
+  Widget _portalWidget() => OverlayPortal(
     controller: _portal,
     overlayLocation: OverlayChildLocation.rootOverlay,
     overlayChildBuilder: (context) {
@@ -126,8 +128,8 @@ class _DifyPortalPageState extends State<DifyPortalPage> with SingleTickerProvid
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // The page covers what is under it.
-                  const ModalBarrier(dismissible: false),
+                  // The page covers what is under it (its semantics are blocked from the page: DifyPortalSemantics).
+                  const _Absorb(),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -171,9 +173,24 @@ class _DifyPortalPageState extends State<DifyPortalPage> with SingleTickerProvid
       );
       return SlideTransition(
         position: Tween(begin: const Offset(1, 0), end: Offset.zero).animate(_curve),
-        child: IgnorePointer(ignoring: !widget.open, child: page),
+        // A page for accessibility, as a route's: its parts are separate nodes.
+        child: Semantics(
+          scopesRoute: true,
+          explicitChildNodes: true,
+          child: IgnorePointer(ignoring: !widget.open, child: page),
+        ),
       );
     },
-    child: widget.child,
+    child: DifyPortalSemantics.place(modal: widget.open, child: widget.child),
+  );
+}
+
+/// Takes every pointer that reaches it, without semantics.
+class _Absorb extends StatelessWidget {
+  const _Absorb();
+
+  @override
+  Widget build(BuildContext context) => const ExcludeSemantics(
+    child: Listener(behavior: HitTestBehavior.opaque, child: SizedBox.expand()),
   );
 }

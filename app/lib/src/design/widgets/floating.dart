@@ -325,6 +325,16 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
       child: Builder(builder: (context) => widget.builder(context, _controller)),
     );
     if (widget.triggerInsideTapRegion) trigger = TapRegion(groupId: _group, child: trigger);
+    // A picker sheet is modal for accessibility, as a route (an anchored popup is not).
+    // The trigger is where the sheet's semantics hang (its OverlayPortal's place): it stays, without its own.
+    final modal = _visible && _sheet;
+    return DifyPortalSemantics(
+      modal: modal,
+      child: _portalFor(ExcludeSemantics(excluding: modal, child: trigger)),
+    );
+  }
+
+  Widget _portalFor(Widget trigger) {
     return OverlayPortal.overlayChildLayoutBuilder(
       controller: _portal,
       overlayLocation: OverlayChildLocation.rootOverlay,

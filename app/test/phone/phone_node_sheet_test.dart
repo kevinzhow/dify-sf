@@ -193,6 +193,7 @@ final _scrims = find.byKey(const ValueKey('dify-sheet-scrim'));
 final _membersPage = find.byWidgetPredicate((w) => '${w.key}'.contains('var-members-page-'));
 
 String _tw(String key) => DifyI18n.tr('workflow', key);
+String _tp(String key) => DifyI18n.tr('phone-editor', key);
 String _tc(String key) => DifyI18n.tr('common', key);
 String get _insertVariable => DifyI18n.tr('phone-editor', 'insertVariable');
 
@@ -230,6 +231,20 @@ void _whole(WidgetTester t, Finder field, String text) {
 Future<void> _scrollTo(WidgetTester t, Finder f) async {
   await t.ensureVisible(f);
   await settle(t, 300);
+}
+
+/// The labels of the semantics tree as the platform gets it (traversal order), what TalkBack and uiautomator read.
+List<String> _platformLabels(WidgetTester t) {
+  final out = <String>[];
+  void walk(SemanticsNode n) {
+    if (n.label.isNotEmpty) out.add(n.label);
+    n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder).forEach(walk);
+  }
+
+  for (final view in t.binding.renderViews) {
+    if (view.owner?.semanticsOwner?.rootSemanticsNode case final root?) walk(root);
+  }
+  return out;
 }
 
 void main() {
@@ -651,6 +666,33 @@ void main() {
     expect(sheet, findsNothing);
     expect(state.controller.prompt, '$before{{#n-start.query#}}');
     expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  testWidgets('accessibility: with the settings sheet open the platform gets the sheet, not the editor behind; a '
+      'picker sheet over it is in the tree too; closing brings the editor back', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+    final run = _tp('run');
+    expect(_platformLabels(t), contains(run), reason: 'the app bar\'s Run');
+    await _openFromSteps(t, 'Count words');
+    var labels = _platformLabels(t);
+    expect(labels, contains(_tw('debug.lastRunTab')), reason: 'the sheet\'s tabs: $labels');
+    expect(labels, isNot(contains(run)), reason: 'the editor behind is blocked: $labels');
+    // A picker sheet over the settings: its rows, not the settings behind it.
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final trigger = _inSheet(find.byKey(const Key('var-reference-picker-trigger'))).first;
+    await _scrollTo(t, trigger);
+    await t.tap(trigger);
+    await settle(t, 800);
+    labels = _platformLabels(t);
+    expect(labels, contains(_insertVariable), reason: labels.toString());
+    expect(labels, isNot(contains(run)), reason: 'the editor stays blocked: $labels');
+    expect(await systemBack(t), isTrue);
+    expect(await systemBack(t), isTrue);
+    labels = _platformLabels(t);
+    expect(labels, contains(run), reason: 'the editor is back: $labels');
+    semantics.dispose();
     await e.dispose();
   });
 }

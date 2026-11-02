@@ -1193,11 +1193,15 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
     );
     return DifySurface(
       child: _withShortcutPopups(
-        OverlayPortal.overlayChildLayoutBuilder(
-          controller: _portal,
-          overlayLocation: OverlayChildLocation.rootOverlay,
-          overlayChildBuilder: _menu,
-          child: KeyedSubtree(key: _fieldKey, child: field),
+        DifyPortalSemantics(
+          // The phone's picker sheet is modal for accessibility, as a route.
+          modal: _asSheet && _portal.isShowing,
+          child: OverlayPortal.overlayChildLayoutBuilder(
+            controller: _portal,
+            overlayLocation: OverlayChildLocation.rootOverlay,
+            overlayChildBuilder: _menu,
+            child: KeyedSubtree(key: _fieldKey, child: field),
+          ),
         ),
       ),
     );

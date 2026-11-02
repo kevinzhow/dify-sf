@@ -958,39 +958,72 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
   }
 
   @override
-  Widget build(BuildContext context) => OverlayPortal(
-    controller: _portal,
-    overlayLocation: OverlayChildLocation.rootOverlay,
-    overlayChildBuilder: (context) {
-      if (widget.open) _content = Builder(builder: widget.builder);
-      return Shortcuts(
-        shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
-        child: Actions(
-          actions: {
-            DismissIntent: CallbackAction<DismissIntent>(
-              onInvoke: (_) {
-                _dismiss();
-                return null;
-              },
-            ),
-          },
-          child: FocusScope(
-            node: _scope,
-            child: DifyPortalSheetFrame(
-              animation: _curved,
-              detents: widget.detents,
-              initialDetent: widget.initialDetent,
-              controller: widget.controller,
-              onDismiss: widget.dismissible ? _dismiss : null,
-              isOpen: () => mounted && widget.open,
-              barrierLabel: widget.barrierLabel,
-              child: IgnorePointer(ignoring: !widget.open, child: _content ?? const SizedBox.shrink()),
-            ),
+  Widget build(BuildContext context) {
+    final modal = _portal.isShowing && widget.open;
+    return DifyPortalSemantics(
+      modal: modal,
+      child: OverlayPortal(
+        controller: _portal,
+        overlayLocation: OverlayChildLocation.rootOverlay,
+        overlayChildBuilder: _overlay,
+        child: DifyPortalSemantics.place(modal: modal, child: widget.child),
+      ),
+    );
+  }
+
+  Widget _overlay(BuildContext context) {
+    if (widget.open) _content = Builder(builder: widget.builder);
+    return Shortcuts(
+      shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
+      child: Actions(
+        actions: {
+          DismissIntent: CallbackAction<DismissIntent>(
+            onInvoke: (_) {
+              _dismiss();
+              return null;
+            },
+          ),
+        },
+        child: FocusScope(
+          node: _scope,
+          child: DifyPortalSheetFrame(
+            animation: _curved,
+            detents: widget.detents,
+            initialDetent: widget.initialDetent,
+            controller: widget.controller,
+            onDismiss: widget.dismissible ? _dismiss : null,
+            isOpen: () => mounted && widget.open,
+            barrierLabel: widget.barrierLabel,
+            child: IgnorePointer(ignoring: !widget.open, child: _content ?? const SizedBox.shrink()),
           ),
         ),
-      );
-    },
-    child: widget.child,
+      ),
+    );
+  }
+}
+
+/// How a modal layer shown through an [OverlayPortal] from a page's tree ([DifySheetPortal], a [DifyFloating] picker
+/// sheet, [DifyPortalPage]) is modal for accessibility, as a route is: put it around the [OverlayPortal]; while
+/// [modal], everything of the page painted before it is dropped from the semantics tree (a [BlockSemantics] in the
+/// page, up to the route) and the layer's own semantics stay.
+///
+/// The layer itself must not block (no [ModalBarrier] or [BlockSemantics] in the overlay child): on Android and iOS the
+/// overlay child's semantics are sent as a traversal child of the [OverlayPortal]'s place in the page, so blocking the
+/// page from the overlay would drop that place and the layer with it, leaving the window with no semantics at all.
+class DifyPortalSemantics extends StatelessWidget {
+  const DifyPortalSemantics({super.key, required this.modal, required this.child});
+
+  final bool modal;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => BlockSemantics(blocking: modal, child: child);
+
+  /// The [OverlayPortal]'s child, [child], at least 1 x 1 while [modal]: the layer's semantics hang from that place,
+  /// and an empty place (a zero-size placeholder) would be dropped as invisible, with the layer.
+  static Widget place({required bool modal, required Widget child}) => ConstrainedBox(
+    constraints: modal ? const BoxConstraints(minWidth: 1, minHeight: 1) : const BoxConstraints(),
+    child: child,
   );
 }
 
@@ -1033,21 +1066,23 @@ class DifyPortalSheetFrame extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
+            // The scrim takes every pointer (a tap dismisses); for accessibility it is the dismiss button a route's barrier
+            // is. It does not block the page's semantics itself ([DifyPortalSemantics] does, from the page).
             FadeTransition(
               opacity: animation,
-              child: ModalBarrier(
+              child: _PortalScrim(
                 key: const ValueKey('dify-sheet-scrim'),
-                color: DifySheetRecipe.scrim,
-                dismissible: dismiss != null,
                 onDismiss: dismiss,
-                semanticsLabel: barrierLabel ?? DifyI18n.tr('common', 'operation.close'),
+                label: barrierLabel ?? DifyI18n.tr('common', 'operation.close'),
               ),
             ),
             Align(
               alignment: Alignment.bottomCenter,
               child: SlideTransition(
                 position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(animation),
-                child: BlockSemantics(
+                child: Semantics(
+                  scopesRoute: true,
+                  explicitChildNodes: true,
                   child: _DifySheet(
                     detents: detents,
                     initialDetent: initialDetent,
@@ -1070,5 +1105,27 @@ class DifyPortalSheetFrame extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The scrim of a sheet shown from a page's tree: window-wide, taking every pointer; a tap calls [onDismiss] (none:
+/// the taps are only absorbed). For accessibility a dismiss button named [label], as a route's barrier.
+class _PortalScrim extends StatelessWidget {
+  const _PortalScrim({super.key, required this.onDismiss, required this.label});
+
+  final VoidCallback? onDismiss;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scrim = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      excludeFromSemantics: true,
+      onTap: onDismiss,
+      child: ColoredBox(color: DifySheetRecipe.scrim, child: const SizedBox.expand()),
+    );
+    final dismiss = onDismiss;
+    if (dismiss == null) return ExcludeSemantics(child: scrim);
+    return Semantics(container: true, button: true, label: label, onTap: dismiss, onDismiss: dismiss, child: scrim);
   }
 }
