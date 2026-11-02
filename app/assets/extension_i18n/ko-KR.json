@@ -33,7 +33,10 @@
     "modelProvider.plugins.refresh": "새로 고침",
     "modelProvider.plugins.missingTip": "통합 페이지의 모델 플러그인 관리에서 설치하세요. 저장된 설정은 유지됩니다.",
     "modelProvider.metadataMissing": "모델을 인식할 수 없음",
-    "modelProvider.metadataMissingTip": "이 플러그인은 모델을 인식하지 못합니다. 모델 이름과 플러그인 버전을 확인하세요."
+    "modelProvider.metadataMissingTip": "이 플러그인은 모델을 인식하지 못합니다. 모델 이름과 플러그인 버전을 확인하세요.",
+    "mobile.switchWorkspace": "워크스페이스 전환",
+    "mobile.logoutConfirm": "이 계정에서 로그아웃하시겠습니까?",
+    "mobile.unstarApp": "별표 해제"
   },
   "agent-v-2": {
     "inline.executorProfile": "실행 환경",

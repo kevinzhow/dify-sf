@@ -14,10 +14,12 @@ import '../design/css_metrics.dart';
 import '../design/dify_icon.dart';
 import '../design/dify_tokens.g.dart';
 import '../design/widgets/app_icon_picker.dart' show UploadAppIcon;
+import '../active_page.dart';
 import '../design/widgets/widgets.dart';
 import '../i18n/dify_i18n.dart';
 import '../settings/workspace_members.dart';
 import 'app_card.dart';
+import 'app_row.dart';
 import 'app_list_controller.dart';
 import 'create_app_modal.dart';
 import 'create_from_dsl_modal.dart';
@@ -44,6 +46,7 @@ class StudioPage extends StatefulWidget {
     this.pickDslFile = pickDslFileData,
     this.fetchDslUrl,
     this.uploadIcon,
+    this.onOpenAccount,
   });
 
   final AppsApi api;
@@ -63,6 +66,9 @@ class StudioPage extends StatefulWidget {
   final Future<String> Function(String url)? fetchDslUrl;
   final UploadAppIcon? uploadIcon;
 
+  /// The phone layout's workspace avatar opens the Account tab (where the workspace switcher is); null hides it.
+  final VoidCallback? onOpenAccount;
+
   @override
   State<StudioPage> createState() => StudioPageState();
 }
@@ -73,6 +79,9 @@ class StudioPageState extends State<StudioPage> {
   late final drop = DslDragDrop(onDslFileDropped: (f) => unawaited(_droppedFile(f)), enabled: _canCreate);
   final _scroll = ScrollController();
   int _dialogs = 0;
+
+  /// The phone layout's inline search is open (the app bar shows the field).
+  bool _searching = false;
 
   String? get _role => widget.members?.myRole ?? widget.role;
   bool get _canCreate => AppPermissionKeys.canCreate(_role);
@@ -216,6 +225,7 @@ class StudioPageState extends State<StudioPage> {
   @override
   Widget build(BuildContext context) {
     final members = widget.members;
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) return _phone(members);
     return StudioScope(
       services: _services,
       child: DslDropZone(
@@ -256,6 +266,271 @@ class StudioPageState extends State<StudioPage> {
           ),
         ),
       ),
+    );
+  }
+
+  // ----- the phone layout (compact windows; a dify-sf divergence, mockup 1) -----
+
+  void _openSearch() => setState(() => _searching = true);
+
+  /// Closes the inline search; its query goes with it (the list shows every app again).
+  void _closeSearch() {
+    if (!_searching) return;
+    setState(() => _searching = false);
+    if (list.keywords.isNotEmpty) {
+      _resetScroll();
+      list.setKeywords('');
+    }
+  }
+
+  /// The large "Studio" app bar (search, the workspace avatar) or, while searching, the search field; a chip row of
+  /// the filters; the apps as rows (pull to refresh on touch); "Create" as a floating button.
+  Widget _phone(WorkspaceMembers? members) {
+    final active = ActivePage.of(context);
+    final workspace = members?.workspaceName;
+    final bar = _searching
+        ? DifyTopAppBar.search(
+            key: const ValueKey('studio-search-bar'),
+            onBack: _closeSearch,
+            field: DifySearchInput(
+              key: const ValueKey('studio-search'),
+              value: list.keywords,
+              height: 40,
+              autofocus: true,
+              placeholder: _a('gotoAnything.actions.searchApplications'),
+              semanticLabel: _a('gotoAnything.actions.searchApplications'),
+              onValueChange: (v) {
+                _resetScroll();
+                list.setKeywords(v);
+              },
+            ),
+          )
+        : DifyTopAppBar.large(
+            title: _c('menus.apps'),
+            actions: [
+              DifyTouchIconButton(
+                key: const ValueKey('studio-search-open'),
+                label: _c('operation.search'),
+                icon: const RemixIcon('search-line', size: 22),
+                onPressed: _openSearch,
+              ),
+              if (widget.onOpenAccount case final open? when workspace != null)
+                DifyTouchIconButton(
+                  key: const ValueKey('studio-workspace'),
+                  label: '$workspace ${_c('mainNav.workspace.openMenu')}',
+                  icon: DifyWorkspaceAvatar(name: workspace, size: DifyWorkspaceAvatarSize.lg),
+                  onPressed: open,
+                ),
+            ],
+          );
+    return DifyBackDismiss(
+      // Back closes the search before it leaves the Studio (only while the Studio is the tab on screen).
+      enabled: _searching && active,
+      onDismiss: _closeSearch,
+      child: StudioScope(
+        services: _services,
+        child: DifySurface(
+          child: ColoredBox(
+            color: DifyColors.backgroundBody,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                bar,
+                DifyChipBar(key: const ValueKey('studio-filter-chips'), children: _phoneFilters(members)),
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ColoredBox(color: DifyColors.componentsPanelBg, child: _phoneCatalog()),
+                      if (_canCreate && !_searching)
+                        Positioned(
+                          right: 16,
+                          bottom: 16,
+                          child: DifyFab.extended(
+                            key: const ValueKey('studio-create-fab'),
+                            icon: const RemixIcon('add-line', size: 22),
+                            label: _c('operation.create'),
+                            onPressed: _openCreateSheet,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The filters as chips: the app types (All, Workflow, Chatflow) inline, Creators and the sort order as pickers in
+  /// bottom sheets. The same list state as the desktop header.
+  List<Widget> _phoneFilters(WorkspaceMembers? members) {
+    final creators = list.creatorIds.length;
+    return [
+      for (final c in studioAppListCategories)
+        DifyFilterChip(
+          key: ValueKey('studio-type-chip-$c'),
+          label: AppTypeFilter.option(c).$1,
+          selected: list.category == c,
+          onPressed: () {
+            _resetScroll();
+            list.setCategory(c);
+          },
+        ),
+      DifyFilterChip(
+        key: const ValueKey('studio-creators-chip'),
+        label: creators > 0 ? '${_a('studio.filters.creators')} · $creators' : _a('studio.filters.creators'),
+        selected: creators > 0,
+        leading: const RemixIcon('filter-3-line', size: 16),
+        onPressed: () => unawaited(_pickCreators(members)),
+      ),
+      DifyFilterChip(
+        key: const ValueKey('studio-sort-chip'),
+        label: AppSortFilter.label(list.sortBy),
+        semanticLabel: '${_a('studio.sort.sortBy')} ${AppSortFilter.label(list.sortBy)}',
+        leading: const RemixIcon('sort-desc', size: 16),
+        onPressed: _pickSort,
+      ),
+    ];
+  }
+
+  void _pickSort() => unawaited(
+    showDifyActionSheet(
+      context,
+      title: _a('studio.sort.sortBy'),
+      actions: [
+        for (final s in AppSortBy.all)
+          DifyActionSheetAction(
+            label: AppSortFilter.label(s),
+            icon: s == list.sortBy ? const RemixIcon('check-line', size: 20) : const SizedBox.square(dimension: 20),
+            onTap: () {
+              _resetScroll();
+              list.setSortBy(s);
+            },
+          ),
+      ],
+    ),
+  );
+
+  Future<void> _pickCreators(WorkspaceMembers? members) => showDifyBottomSheet<void>(
+    context,
+    (context) => CreatorsSheet(
+      members: members,
+      value: list.creatorIds,
+      currentUserId: members?.meAsMember?.id ?? widget.currentUserId,
+      onChange: (v) {
+        _resetScroll();
+        list.setCreatorIds(v);
+      },
+    ),
+  );
+
+  /// Create's options (the desktop dropdown's): from blank, import DSL. dify-sf has no templates.
+  void _openCreateSheet() => unawaited(
+    showDifyActionSheet(
+      context,
+      title: _c('operation.create'),
+      actions: [
+        DifyActionSheetAction(
+          label: _a('newApp.startFromBlank'),
+          icon: const RemixIcon('sticky-note-add-line', size: 20),
+          onTap: () => unawaited(openCreateBlank()),
+        ),
+        DifyActionSheetAction(
+          label: _a('importDSL'),
+          icon: const RemixIcon('file-upload-line', size: 20),
+          onTap: () => unawaited(openImportDsl()),
+        ),
+      ],
+    ),
+  );
+
+  /// The phone catalog: the same states as the grid (loading, error, first empty, no match, the starred section,
+  /// infinite scroll), as rows.
+  Widget _phoneCatalog() {
+    if (list.error != null && list.pages.isEmpty) return _errorState();
+    if (list.loadingFirstPage) {
+      return Semantics(
+        key: const ValueKey('studio-catalog-loading'),
+        label: _c('loading'),
+        role: SemanticsRole.status,
+        container: true,
+        child: ListView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          children: [for (var i = 0; i < 8; i++) const AppListRowSkeleton()],
+        ),
+      );
+    }
+    final hasAnyApp = list.hasAnyApp;
+    final placeholder = list.isPlaceholderData;
+    final emptyStatus = !placeholder && list.pages.isNotEmpty && !hasAnyApp ? _a('filterEmpty.noApps') : '';
+    final showFirstEmpty = !placeholder && !hasAnyApp && _canCreate && !list.hasActiveFilters;
+    final starred = list.starredApps;
+    Widget catalog = CustomScrollView(
+      key: const ValueKey('studio-catalog'),
+      controller: _scroll,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        if (starred.isNotEmpty) ...[
+          SliverToBoxAdapter(child: DifyListSectionHeader(_a('studio.starred'))),
+          SliverList.list(
+            children: [
+              for (final a in starred)
+                KeyedSubtree(
+                  key: ValueKey('starred-${a.id}'),
+                  child: AppListRow(app: a),
+                ),
+            ],
+          ),
+          SliverToBoxAdapter(child: DifyListSectionHeader(_a('studio.allApps'))),
+        ],
+        if (hasAnyApp) ...[
+          SliverList.list(
+            children: [
+              for (final a in list.apps)
+                KeyedSubtree(
+                  key: ValueKey('row-${a.id}'),
+                  child: AppListRow(app: a),
+                ),
+              if (list.hasNextPage) ...[for (var i = 0; i < 3; i++) const AppListRowSkeleton()],
+            ],
+          ),
+          if (list.hasNextPage && list.isFetchNextPageError) SliverToBoxAdapter(child: _nextPageError()),
+          if (list.hasNextPage)
+            SliverToBoxAdapter(
+              child: InfiniteScrollSentinel(
+                canLoadMore: !list.isFetching && !list.isFetchNextPageError,
+                onLoadMore: () => unawaited(list.fetchNextPage()),
+                preloadDistance: (p) => (p.viewportDimension * 0.25).clamp(160, 320).toDouble(),
+              ),
+            ),
+        ] else
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: SizedBox(height: 360, child: StudioEmpty(message: _a('filterEmpty.noApps'))),
+          ),
+        // Room for the floating Create button under the last row.
+        const SliverToBoxAdapter(child: SizedBox(height: DifyFab.size + 32)),
+      ],
+    );
+    // Pulling is a touch gesture: a narrow desktop window gets the phone layout without it.
+    if (DifyTouch.isCoarse(context)) catalog = DifyRefreshIndicator(onRefresh: list.refresh, child: catalog);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SrOnlyStatus(emptyStatus),
+        Expanded(
+          child: showFirstEmpty
+              ? FirstEmptyState(
+                  onCreateBlank: () => unawaited(openCreateBlank()),
+                  onImportDSL: () => unawaited(openImportDsl()),
+                )
+              : catalog,
+        ),
+      ],
     );
   }
 

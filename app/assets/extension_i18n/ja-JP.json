@@ -33,7 +33,10 @@
     "modelProvider.plugins.refresh": "再読み込み",
     "modelProvider.plugins.missingTip": "連携ページの「モデルプラグインの管理」からインストールしてください。保存済みの設定は保持されます。",
     "modelProvider.metadataMissing": "モデルを認識できません",
-    "modelProvider.metadataMissingTip": "このプラグインはモデルを認識できません。モデル名とプラグインのバージョンを確認してください。"
+    "modelProvider.metadataMissingTip": "このプラグインはモデルを認識できません。モデル名とプラグインのバージョンを確認してください。",
+    "mobile.switchWorkspace": "ワークスペースを切り替え",
+    "mobile.logoutConfirm": "このアカウントからログアウトしますか？",
+    "mobile.unstarApp": "スターを外す"
   },
   "agent-v-2": {
     "inline.executorProfile": "実行環境",

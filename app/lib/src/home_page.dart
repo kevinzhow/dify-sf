@@ -14,6 +14,7 @@ import 'app_detail/detail_page_slot.dart';
 import 'app_detail/detail_sidebar.dart';
 import 'app_detail/detail_pages.dart';
 import 'account/account_page.dart';
+import 'account/account_tab.dart';
 import 'app_root.dart';
 import 'auth/account_dropdown.dart';
 import 'auth/account_time.dart';
@@ -38,6 +39,7 @@ import 'settings/integrations_page.dart';
 import 'settings/model_provider/model_provider_env.dart';
 import 'settings/workspace_card.dart';
 import 'settings/workspace_members.dart';
+import 'shell/phone_home_shell.dart';
 import 'studio/studio_page.dart';
 import 'workflow/workspace_models.dart';
 import 'workflow_editor/node_panel/bodies/entry/trigger_schedule/schedule_host.dart';
@@ -91,7 +93,16 @@ class _HomePageState extends State<HomePage> {
   String? _error;
   bool _busy = false;
   bool _mobileNavOpen = false;
-  bool _showIntegrations = false;
+
+  /// The home's destination: the phone navigation bar's, of which wider windows show Studio and Integrations (the
+  /// main navigation frame's links). It is the page's state, so it survives a rotation (which can change the layout)
+  /// and a theme or language change.
+  HomeTab _tab = HomeTab.studio;
+  bool get _showIntegrations => _tab == HomeTab.integrations;
+
+  /// Phones (compact windows) get the phone home ([PhoneHomeShell]); wider windows keep Dify's main navigation.
+  bool _phone(BuildContext context) =>
+      DifyWindowClass.of(context) == DifyWindowClass.compact && AuthScope.of(context).account != null;
 
   @override
   void initState() {
@@ -251,6 +262,8 @@ class _HomePageState extends State<HomePage> {
     final account = demo && signedIn != null ? signedIn.copyWith(role: AccountRole.owner) : signedIn;
     await Navigator.of(context).push(
       difyPageRoute<void>(
+        // On a phone the page's own background reaches under the system bars (its content stays safe).
+        edgeToEdge: _phone(context),
         // The schedule trigger reads the account's time zone (Dify's `userProfile.timezone`).
         builder: (_) => Builder(
           builder: (context) => ScheduleHost(
@@ -294,7 +307,11 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openApp(AppInfo app, {required String path}) async {
     await _remember();
     if (!mounted) return;
-    await Navigator.of(context).push(difyPageRoute<void>(builder: (_) => _appDetail(app, path)));
+    // On a phone the page's own background reaches under the system bars (its content stays safe); back returns to
+    // the Studio.
+    await Navigator.of(
+      context,
+    ).push(difyPageRoute<void>(edgeToEdge: _phone(context), builder: (_) => _appDetail(app, path)));
   }
 
   Map<Type, Object> _appDetailServices(AuthController auth) {
@@ -321,7 +338,9 @@ class _HomePageState extends State<HomePage> {
       canCreateApp: AppPermissionKeys.canCreate(account?.role),
       environmentVariables: _environmentVariables,
       openApp: (copy, path) => unawaited(
-        Navigator.of(context).pushReplacement(difyPageRoute<void>(builder: (_) => _appDetail(copy, path))),
+        Navigator.of(
+          context,
+        ).pushReplacement(difyPageRoute<void>(edgeToEdge: _phone(context), builder: (_) => _appDetail(copy, path))),
       ),
       editor: (context, host) => ValueListenableBuilder(
         valueListenable: host.app,
@@ -354,6 +373,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_phone(context)) return _phoneHome(context);
     final account = AuthScope.of(context).account;
     final apps = _apps;
     final nav = account == null
@@ -365,11 +385,11 @@ class _HomePageState extends State<HomePage> {
             apps: apps,
             integrationsActive: _showIntegrations,
             onIntegrations: () => setState(() {
-              _showIntegrations = true;
+              _tab = HomeTab.integrations;
               _mobileNavOpen = false;
             }),
             onStudio: () => setState(() {
-              _showIntegrations = false;
+              _tab = HomeTab.studio;
               _mobileNavOpen = false;
             }),
           );
@@ -444,6 +464,46 @@ class _HomePageState extends State<HomePage> {
                 Expanded(child: content),
               ],
             ),
+    );
+  }
+
+  /// The phone home: Studio, Integrations and Account above the navigation bar, edge to edge.
+  Widget _phoneHome(BuildContext context) {
+    final account = AuthScope.of(context).account!;
+    final apps = _apps;
+    return DifyPage(
+      edgeToEdge: true,
+      backgroundColor: DifyColors.backgroundBody,
+      body: DifyBackDismiss(
+        // Back from Integrations or Account returns to the Studio first (then the system leaves the app).
+        enabled: _tab != HomeTab.studio,
+        onDismiss: () => setState(() => _tab = HomeTab.studio),
+        child: PhoneHomeShell(
+          tab: _tab,
+          onTab: (tab) => setState(() => _tab = tab),
+          // Read above the page's Scaffold, which takes the keyboard out of its body's MediaQuery.
+          keyboardOpen: MediaQuery.viewInsetsOf(context).bottom > 0,
+          studio: (context) => apps == null
+              ? SafeArea(bottom: false, child: _form(context))
+              : StudioPage(
+                  key: const ValueKey('studio-page'),
+                  api: apps,
+                  uploadIcon: appIconUploader(AuthScope.of(context)),
+                  members: _members,
+                  role: account.role,
+                  currentUserId: account.id,
+                  pollInterval: widget.studioPollInterval,
+                  openApp: _openApp,
+                  environmentVariables: _environmentVariables,
+                  onOpenAccount: () => setState(() => _tab = HomeTab.account),
+                ),
+          integrations: (context) => ModelProviderScope(
+            env: ModelProviderEnv.forRole(_models!, account.role),
+            child: const IntegrationsPage(),
+          ),
+          account: (context) => AccountTab(members: _members!, apps: apps),
+        ),
+      ),
     );
   }
 
