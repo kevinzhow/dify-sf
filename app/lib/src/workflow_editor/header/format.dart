@@ -23,8 +23,14 @@ String formatDateFields(DateTime d, String format) {
 }
 
 /// dayjs `fromNow()` (relativeTime plugin, default thresholds, en): "a few seconds ago", "5 minutes ago", "in 2 hours".
-String formatTimeFromNow(int milliseconds, {DateTime? now}) {
-  final diff = (now ?? DateTime.now()).millisecondsSinceEpoch - milliseconds;
+///
+/// dify-sf: the time of something that happened ([happened], the default: a publish, a save, a comment) up to
+/// [clockSkew] in the future is now ("a few seconds ago", dayjs's words for now; Dify has no "just now" string of its
+/// own): the server's clock a little ahead of the device's made a version just published read "in a few seconds". A
+/// time that is meant to lie ahead (a form's expiry) passes [happened] false and keeps dayjs's "in …".
+String formatTimeFromNow(int milliseconds, {DateTime? now, bool happened = true}) {
+  var diff = (now ?? DateTime.now()).millisecondsSinceEpoch - milliseconds;
+  if (happened && diff < 0 && -diff <= clockSkew.inMilliseconds) diff = 0;
   final past = diff >= 0;
   final s = diff.abs() / 1000;
   final m = s / 60, h = m / 60, d = h / 24;
@@ -52,6 +58,9 @@ String formatTimeFromNow(int milliseconds, {DateTime? now}) {
       : n(d / 365, 'a year', 'years');
   return past ? '$text ago' : 'in $text';
 }
+
+/// How far in the future [formatTimeFromNow] still reads a time as now: a server clock ahead of the device's.
+const clockSkew = Duration(minutes: 1);
 
 /// workflow/utils/common.ts `formatWorkflowRunIdentifier`: ` (02:30:25 PM)` from a run's `finished_at` (seconds; the
 /// en-US `toLocaleTimeString` with 2-digit hour, minute and second), else ` (Running)` (the capitalized fallback).

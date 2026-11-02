@@ -34,7 +34,8 @@ typedef HumanInputFormSubmit = Future<void> Function(String formToken, DifyJson 
 typedef HumanInputNodeData = DifyJson? Function(String nodeId);
 
 /// `getRelativeTime` (dayjs `fromNow`, English for every locale).
-String getRelativeTime(int utcMilliseconds, [String locale = 'en-US']) => formatTimeFromNow(utcMilliseconds);
+String getRelativeTime(int utcMilliseconds, [String locale = 'en-US']) =>
+    formatTimeFromNow(utcMilliseconds, happened: false);
 
 final _outputVar = RegExp(r'\{\{#\$output\.([^#]+)#\}\}');
 
@@ -422,7 +423,8 @@ class HumanInputExpirationTime extends StatelessWidget {
             child: DifyText(
               future
                   ? _ts('humanInput.expirationTimeNowOrFuture', {
-                      'relativeTime': formatTimeFromNow(expirationTime, now: current),
+                      // An expiry lies ahead: "in a few seconds" stays.
+                      'relativeTime': formatTimeFromNow(expirationTime, now: current, happened: false),
                     })
                   : _ts('humanInput.expiredTip'),
               DifyType.systemXsRegular,
