@@ -44,6 +44,35 @@ Future<GlobalKey<NavigatorState>> _app(WidgetTester t, {Widget? home}) async {
   return pumpPhoneApp(t, home ?? const DifyPage(body: SizedBox()));
 }
 
+/// Content that loads: no scroll view at first, then a list; counts how often its State is created.
+class _Loading extends StatefulWidget {
+  const _Loading(this.created);
+  final List<int> created;
+  @override
+  State<_Loading> createState() => _LoadingState();
+}
+
+class _LoadingState extends State<_Loading> {
+  bool loaded = false;
+  @override
+  void initState() {
+    super.initState();
+    widget.created.add(1);
+    Future<void>.delayed(const Duration(milliseconds: 50), () {
+      if (mounted) setState(() => loaded = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => loaded
+      ? ListView(
+          primary: true,
+          shrinkWrap: true,
+          children: [for (var i = 0; i < 30; i++) SizedBox(height: 40, child: Text('row $i'))],
+        )
+      : const SizedBox(height: 80, child: Center(child: Text('loading')));
+}
+
 void main() {
   testWidgets('a modal sheet is the framework modal bottom sheet route with draggable detents', (t) async {
     final nav = await _app(t);
@@ -51,6 +80,17 @@ void main() {
     await t.pumpAndSettle();
     expect(ModalRoute.of(t.element(find.byType(DifySheetGrabHandle))), isA<ModalBottomSheetRoute<void>>());
     expect(find.byType(DraggableScrollableSheet), findsOneWidget);
+  });
+
+  testWidgets('content that gains a scroll view after loading keeps its State (no rebuild loop)', (t) async {
+    final nav = await _app(t);
+    final created = <int>[];
+    showDifyBottomSheet<void>(nav.currentContext!, (_) => _Loading(created));
+    await t.pumpAndSettle();
+    await t.pump(const Duration(milliseconds: 100));
+    await t.pumpAndSettle();
+    expect(find.text('row 0'), findsOneWidget);
+    expect(created.length, 1, reason: 'the scroll anchor coming and going must not recreate the content');
   });
 
   testWidgets('a persistent sheet is a draggable sheet without a route of its own', (t) async {
