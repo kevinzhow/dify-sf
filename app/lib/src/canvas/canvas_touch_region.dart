@@ -101,7 +101,8 @@ class _CanvasTouchRegionState extends State<CanvasTouchRegion> {
   void _beginSingle() {
     if (_single || _pinched || _first == null) return;
     widget.onInteraction();
-    input.down(_first!, touchPan: true, recognizeDoubleTap: false);
+    // One finger on empty canvas pans, unless the phone editor's select mode draws a box with it.
+    input.down(_first!, touchPan: !input.touchMarquee(), recognizeDoubleTap: false);
     _single = true;
   }
 

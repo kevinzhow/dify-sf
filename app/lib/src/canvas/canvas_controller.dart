@@ -63,6 +63,14 @@ class CanvasController {
 
   static bool _never() => false;
 
+  /// The phone editor's select mode (dify-sf, compact windows): one finger on empty canvas draws a selection box
+  /// (in pointer mode) instead of panning. Off by default, so touch pans everywhere else as before.
+  final touchSelect = ValueNotifier<bool>(false);
+
+  /// A finger tapped (pressed and released without dragging) a node's source handle: the phone editor adds the next
+  /// node there. Null: such a tap does nothing (a drag from the handle connects either way).
+  void Function(String nodeId, String handle)? onHandleTap;
+
   /// React Flow's `isValidConnection` (with Dify's handleNodeConnect checks): whether dropping a connection from
   /// [sourceHandle] of [source] on [target] adds an edge. The workflow editor points it at Dify's rules.
   bool Function(String source, String sourceHandle, String target) isValidConnection = _anyConnection;
@@ -121,6 +129,7 @@ class CanvasController {
     dimming.dispose();
     selection.dispose();
     controlMode.dispose();
+    touchSelect.dispose();
     liveCard.dispose();
     nodeRun.dispose();
     edgeRun.dispose();
