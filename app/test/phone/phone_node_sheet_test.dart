@@ -13,6 +13,7 @@ import 'package:dify_sf_app/src/editor/editor_controller.dart';
 import 'package:dify_sf_app/src/editor/editor_page.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/dify_editor.dart';
+import 'package:dify_sf_app/src/workflow_editor/header/publisher/app_publisher.dart' show AppPublisher;
 import 'package:collab_client/collab_client.dart' show Document, Edge, Node;
 import 'package:dify_sf_app/src/editor/undo_manager.dart' show HistoryEvent;
 import 'package:dify_sf_app/src/workflow_editor/context_menu/clipboard.dart' show nodeFromDify;
@@ -693,6 +694,21 @@ void main() {
     labels = _platformLabels(t);
     expect(labels, contains(run), reason: 'the editor is back: $labels');
     semantics.dispose();
+    await e.dispose();
+  });
+
+  testWidgets('"…" → Publish opens the publisher in a sheet without an error (it failed since batch 3a: a clip without '
+      'a decoration)', (t) async {
+    final e = await _pump(t);
+    await t.tap(find.byKey(const ValueKey('phone-editor-more')));
+    await settle(t, 800);
+    await t.tap(find.text(_tw('common.publish')).last);
+    await settle(t, 1200);
+    expect(t.takeException(), isNull);
+    expect(find.byType(AppPublisher), findsOneWidget);
+    expect(find.byType(ErrorWidget), findsNothing);
+    expect(await systemBack(t), isTrue);
+    expect(find.byType(AppPublisher), findsNothing);
     await e.dispose();
   });
 }

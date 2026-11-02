@@ -309,7 +309,8 @@ class _AppPublisherState extends State<AppPublisher> {
     return Container(
       width: w.panelOnly ? null : 352,
       constraints: w.panelOnly ? null : BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height - 32),
-      clipBehavior: Clip.antiAlias,
+      // The phone's sheet (panelOnly) has no surface of its own to clip to (a Container may not clip without one).
+      clipBehavior: w.panelOnly ? Clip.none : Clip.antiAlias,
       decoration: w.panelOnly
           ? null
           : BoxDecoration(
