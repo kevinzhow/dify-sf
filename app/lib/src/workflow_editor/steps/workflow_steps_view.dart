@@ -481,11 +481,9 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
                 ? DifyI18n.tr('workflow', 'debug.variableInspect.trigger.stop')
                 : DifyI18n.tr('workflow', 'panel.runThisStep'),
             icon: RemixIcon(a.isSingleRunning(id) ? 'stop-circle-line' : 'play-circle-line', size: 20),
-            // The request (run or stop) is consumed by the step's node panel: open it, as the canvas's Run step does.
-            onTap: () {
-              a.runStep(id);
-              _open(id);
-            },
+            // The request (run or stop) is taken by the phone editor's sheets (the step's form or its result in the run
+            // sheet), or by the step's settings when they are open: one tap does not also open the settings.
+            onTap: () => a.runStep(id),
           ),
         if (_canInsert(row.before, data))
           DifyActionSheetAction(

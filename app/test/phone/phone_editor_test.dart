@@ -204,9 +204,11 @@ void main() {
     await e.dispose();
   });
 
-  testWidgets('Steps view: Run this step from the long press opens the step\'s panel, which takes the request', (
+  testWidgets('Steps view: Run this step from the long press runs the step from the sheets, settings stay closed', (
     t,
   ) async {
+    // (Reviewer Winnie's reproduction; since batch 4b the phone's sheets take the request: the step's input form as a
+    // sheet when it needs values, otherwise its result in the run sheet. One tap no longer also opens the settings.)
     final e = await _pump(t);
     final card = find.byKey(const ValueKey('step-card-code'));
     await t.ensureVisible(card);
@@ -215,14 +217,24 @@ void main() {
     await settle(t, 600);
     await t.tap(find.text(DifyI18n.tr('workflow', 'panel.runThisStep')));
     await settle(t, 800);
-    expect(find.byType(WorkflowNodePanel), findsOneWidget);
-    expect(e.store.pendingSingleRun.value, isNull, reason: 'the panel consumed the run request');
+    expect(e.store.pendingSingleRun.value, isNull, reason: 'the run request was consumed');
+    expect(find.byType(WorkflowNodePanel), findsNothing, reason: 'no settings sheet opened');
+    expect(e.phone.settingsNodeId, isNull);
+    final form = find.byKey(const ValueKey('phone-step-input-sheet')).evaluate().isNotEmpty;
+    final result =
+        e.phone.singleRunNodeId == 'code' && find.byKey(const ValueKey('phone-run-sheet')).evaluate().isNotEmpty;
+    expect(form || result, isTrue, reason: 'the step\'s input form or its result in the run sheet');
+    expect(
+      e.store.nodeRunDataOf('code')['_singleRunningStatus'],
+      isNotNull,
+      reason: 'the step ran (or waits for its form)',
+    );
     expect(t.takeException(), isNull);
     await e.dispose();
   });
 
-  testWidgets('Steps view: Stop from the long press reaches the step\'s panel and stops the run', (t) async {
-    // (From the PR review's reproduction.)
+  testWidgets('Steps view: Stop from the long press stops the running step, settings stay closed', (t) async {
+    // (Reviewer Winnie's reproduction; since batch 4b the phone's sheets take the stop request, no panel needed.)
     final e = await _pump(t);
     e.store.setNodeRunData('code', {'_singleRunningStatus': 'running'});
     await settle(t, 300);
@@ -235,8 +247,10 @@ void main() {
     expect(find.text(stop), findsOneWidget);
     await t.tap(find.text(stop));
     await settle(t, 800);
-    expect(e.store.pendingSingleRun.value, isNull, reason: 'the panel consumed the stop request');
+    expect(e.store.pendingSingleRun.value, isNull, reason: 'the stop request was consumed');
     expect(e.store.nodeRunDataOf('code')['_singleRunningStatus'], 'stopped');
+    expect(find.byType(WorkflowNodePanel), findsNothing, reason: 'no settings sheet opened');
+    expect(e.phone.settingsNodeId, isNull);
     await e.dispose();
   });
 
