@@ -112,6 +112,23 @@ The supervisor (`sandbox_supervisor`) reads:
 Both binaries accept `--healthcheck`: `GET /v1/health` on their own port with their own key, exit 0 on HTTP 200 (the
 compose health checks; the image has no curl). The supervisor answers 200 only while the Docker socket answers.
 
+## Diagnosing HTTP request failures
+
+The Codex gateway templates emit JSON access logs with a generated `request_id`,
+the gateway and upstream status, normalized Content-Length / Transfer-Encoding,
+byte counts and timings. The gateway forwards that ID as `X-Request-ID` and
+returns it to the caller, replacing any caller-supplied value. An empty upstream
+status means the request was rejected before proxying.
+
+The Swift HTTP/1.1 listener logs parser failures at warning level, including the
+fixed `HTTPParserError` description and connection bytes received. Decoded body
+bytes, framing and request ID are included when a current request head exists.
+Connection counts can include earlier requests on a reused connection; gateway
+`request_bytes_including_headers` also includes headers. Neither is a body-size
+measurement. Application 4xx errors separately record the error category/code.
+These diagnostics retain no URLs, authorization headers, bodies or free-form
+error messages; parser failures may occur before a request ID can be decoded.
+
 ## Development
 
 ```sh

@@ -99,6 +99,13 @@ struct Routes: Sendable {
     /// Runs the handler in its own unstructured task: a client that hangs up (timeout, reset, retry) must not
     /// cancel work that is half-way through the database (a cancelled COMMIT is an uncertain commit).
     func handle(_ req: Request, cancellable: Bool = false, _ body: @escaping @Sendable () async throws -> Response) async -> Response {
+        func failure(_ status: HTTPResponse.Status, _ code: String, _ message: String, _ kind: String) -> Response {
+            if (400..<500).contains(status.code) {
+                logger.warning("HTTP application request rejected", metadata: HTTPFailureDiagnostics.metadata(
+                    requestID: req.headers[HTTPField.Name("X-Request-ID")!], status: status.code, code: code, failureCase: kind))
+            }
+            return error(status, code, message)
+        }
         do {
             // Read-only streaming callbacks must observe a disconnected caller,
             // including while awaiting upstream response headers. Mutating API
@@ -107,23 +114,23 @@ struct Routes: Sendable {
             return try await Task { try await body() }.value
         } catch let e as ServerError {
             switch e {
-            case .badRequest(let m): return error(.badRequest, "bad_request", m)
-            case .notFound: return error(.notFound, "not_found", "unknown document")
-            case .missing(let m): return error(.notFound, "not_found", m)
-            case .forbidden(let code, let m): return error(.forbidden, code, m)
-            case .payloadTooLarge: return error(.contentTooLarge, "payload_too_large", "request body over \(Self.maxBodyBytes) bytes")
+            case .badRequest(let m): return failure(.badRequest, "bad_request", m, "badRequest")
+            case .notFound: return failure(.notFound, "not_found", "unknown document", "notFound")
+            case .missing(let m): return failure(.notFound, "not_found", m, "missing")
+            case .forbidden(let code, let m): return failure(.forbidden, code, m, "forbidden")
+            case .payloadTooLarge: return failure(.contentTooLarge, "payload_too_large", "request body over \(Self.maxBodyBytes) bytes", "payloadTooLarge")
             case .unavailable(let m):
                 logger.warning("503: \(m)")
                 return error(.serviceUnavailable, "unavailable", m)
             case .internalError(let m): return error(.internalServerError, "internal", m)
-            case .unauthorized(let m): return error(.unauthorized, "unauthorized", m)
-            case .http(let status, let code, let m): return error(HTTPResponse.Status(code: status), code, m)
-            case .appDeleted: return error(.notFound, "app_deleted", "the app was deleted")
+            case .unauthorized(let m): return failure(.unauthorized, "unauthorized", m, "unauthorized")
+            case .http(let status, let code, let m): return failure(HTTPResponse.Status(code: status), code, m, "http")
+            case .appDeleted: return failure(.notFound, "app_deleted", "the app was deleted", "appDeleted")
             }
         } catch is SecretsKeyMissing {
             return error(.serviceUnavailable, "secrets_key_missing", "the server has no secrets key (COLLAB_SECRETS_KEY), so it cannot store secrets")
         } catch let e as Abort where e.status == .contentTooLarge {
-            return error(.contentTooLarge, "payload_too_large", "request body over \(Self.maxBodyBytes) bytes")
+            return failure(.contentTooLarge, "payload_too_large", "request body over \(Self.maxBodyBytes) bytes", "bodyCollection")
         } catch {
             logger.error("unhandled error: \(error)")
             return self.error(.internalServerError, "internal", "\(error)")

@@ -149,6 +149,7 @@ struct AgentResponsesRouteTests {
             #expect(req.headers[.authorization] == "Bearer sk-native-fixture-only")
             #expect(req.headers[HTTPField.Name("X-Fixture")!] == "native-extra")
             #expect(req.headers[HTTPField.Name("X-Agent-Run-Token")!] == nil)
+            #expect(req.headers[HTTPField.Name("X-Request-ID")!] == nil, "Gateway diagnostics stay at our API boundary")
             let raw = try await req.body.collect(max: .specified(ByteCount(value: 1 << 20))) ?? Data()
             let payload = try JSONValue.parse(raw); seen.withLock { $0.append(payload) }
             return Response(status: .ok, headers: [.contentType: "text/event-stream"], body: .init(string: AgentResponsesTests.stream))
@@ -159,7 +160,8 @@ struct AgentResponsesRouteTests {
                     var payload = AgentResponsesTests.body(scope).object!
                     let opaque: JSONValue = ["type": "reasoning", "encrypted_content": "opaque-input-fixture-ONLY", "future": ["preserve": true]]
                     payload["input"] = .array([opaque] + payload["input"]!.array!)
-                    let answer = try await api.send(.post, Self.path, JSONValue.object(payload).compactJSON(), token: AgentModelGatewayRouteTests.serviceKey, headers: Self.headers(token))
+                    let answer = try await api.send(.post, Self.path, JSONValue.object(payload).compactJSON(), token: AgentModelGatewayRouteTests.serviceKey,
+                        headers: Self.headers(token) + [("X-Request-ID", String(repeating: "d", count: 32))])
                     #expect(answer.status == 200 && answer.text == AgentResponsesTests.stream, "\(answer.status): \(answer.text)")
                     let sent = try #require(seen.withLock { $0.first })
                     #expect(sent["model"] == "vendor-stub" && sent["input"]?.array?.first == opaque)

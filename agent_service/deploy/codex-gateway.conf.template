@@ -5,8 +5,29 @@ pid /tmp/nginx.pid;
 error_log /dev/stderr warn;
 events { worker_connections 128; }
 http {
-    log_format codex_size 'length=$request_length content_length=$http_content_length seconds=$request_time status=$status upstream=$upstream_status';
-    access_log /dev/stdout codex_size;
+    # Keep diagnostics bounded: framing metadata, never URLs, headers or bodies.
+    map $http_content_length $codex_content_length {
+        default invalid;
+        "" absent;
+        "~^[0-9]{1,20}$" $http_content_length;
+    }
+    map $http_transfer_encoding $codex_transfer_encoding {
+        default other;
+        "" absent;
+        ~*^chunked$ chunked;
+    }
+    map $upstream_http_content_length $codex_upstream_content_length {
+        default invalid;
+        "" absent;
+        "~^[0-9]{1,20}$" $upstream_http_content_length;
+    }
+    map $upstream_http_transfer_encoding $codex_upstream_transfer_encoding {
+        default other;
+        "" absent;
+        ~*^chunked$ chunked;
+    }
+    log_format codex_diagnostics escape=json '{"event":"codex_gateway","request_id":"$request_id","request_bytes_including_headers":$request_length,"content_length":"$codex_content_length","transfer_encoding":"$codex_transfer_encoding","status":$status,"upstream_status":"$upstream_status","upstream_bytes_sent":"$upstream_bytes_sent","upstream_content_length":"$codex_upstream_content_length","upstream_transfer_encoding":"$codex_upstream_transfer_encoding","seconds":$request_time,"upstream_seconds":"$upstream_response_time"}';
+    access_log /dev/stdout codex_diagnostics;
     client_body_temp_path /tmp/client_body;
     proxy_temp_path /tmp/proxy;
     fastcgi_temp_path /tmp/fastcgi;
@@ -32,6 +53,8 @@ http {
             proxy_set_header Authorization $http_authorization;
             proxy_set_header Content-Type application/json;
             proxy_set_header Accept text/event-stream;
+            proxy_set_header X-Request-ID $request_id;
+            add_header X-Request-ID $request_id always;
             proxy_set_header X-DifySF-Require-Incremental $http_x_difysf_require_incremental;
             proxy_buffering off;
             proxy_request_buffering off;
