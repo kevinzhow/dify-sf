@@ -271,6 +271,7 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
                   openSettings: (id) => _actions.openSettings(id),
                   insert: (at) => _actions.insert(at),
                   showNodeActions: (id) => unawaited(_actions.showNodeSheet(id)),
+                  registerAddAtEnd: (fn) => phone.stepsAddAtEnd = fn,
                 ),
               ),
             ),

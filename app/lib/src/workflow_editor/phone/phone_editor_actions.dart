@@ -312,6 +312,12 @@ class PhoneEditorActions {
     if (readOnly) return;
     final selected = at == null ? selectedNodeId : null;
     if (selected == null ? null : doc.nodes[selected] case final n? when canAddAfter(n)) return addAfter(n.id);
+    // In the Steps view, with no step selected, Add continues the flow: the last "+" of the main flow.
+    final p = phone;
+    if (at == null && selected == null && p != null && p.view == PhoneEditorView.steps) {
+      if (await p.stepsAddAtEnd?.call() ?? false) return;
+      if (!context.mounted) return;
+    }
     final data = BlockSelectorScope.of(context);
     await BlockSelector(
       availableBlocksTypes: useAvailableBlocks(

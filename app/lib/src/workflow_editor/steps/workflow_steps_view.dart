@@ -365,6 +365,25 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     _repaint();
   }
 
+  /// The phone toolbar's Add with no step selected: opens the block selector for the main flow's last "+" (the one
+  /// above its final step, or after its last step) and reveals the step it adds. False when the flow has no such
+  /// "+" (an empty workflow, read-only).
+  Future<bool> addAtEnd() async {
+    if (!mounted || _readOnly) return false;
+    _layout = _cache.layoutOf(_doc);
+    StepRow? last;
+    for (final r in _layout.rows) {
+      if (r.kind == StepRowKind.section) break; // "Not connected" and later sections are not the flow
+      if (r.depth == 0 && r.insert != null && (r.kind == StepRowKind.connector || r.kind == StepRowKind.addStep)) {
+        last = r;
+      }
+    }
+    if (last == null) return false;
+    _scrollTo(last.key);
+    await _insert(last.key, last.insert!);
+    return true;
+  }
+
   /// Opens the block selector for [insert] at row [key]'s "+" and reveals the step it adds.
   Future<void> _insert(String key, StepInsert insert, {Rect? anchor}) async {
     final before = _doc.nodes.keys.toSet();

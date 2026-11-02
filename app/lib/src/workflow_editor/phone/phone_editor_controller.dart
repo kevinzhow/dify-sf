@@ -35,6 +35,10 @@ class PhoneEditorController extends ChangeNotifier {
   static String storageKey(String docId) => 'dify-sf-phone-editor-view:$docId';
 
   PhoneEditorView _view = PhoneEditorView.steps;
+
+  /// The Steps view's "add at the end of the flow" while it shows (it registers itself); the toolbar's Add uses it
+  /// when no step is selected.
+  Future<bool> Function()? stepsAddAtEnd;
   bool _viewChosen = false, _disposed = false;
   Future<SharedPreferences>? _prefs;
 

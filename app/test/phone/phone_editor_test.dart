@@ -23,6 +23,7 @@ import 'package:dify_sf_app/src/workflow_editor/phone/steps_view_slot.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:flutter/widgets.dart';
 import 'package:dify_sf_app/src/workflow_editor/header/view_history.dart';
+import 'package:dify_sf_app/src/workflow_editor/steps/workflow_steps_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -132,9 +133,9 @@ void main() {
       expect(find.byKey(const ValueKey('phone-editor-more')), findsOneWidget);
       expect(find.byKey(const ValueKey('phone-view-switch')), findsOneWidget);
       expect(find.byKey(const ValueKey('phone-issues')), findsOneWidget);
-      // Steps by default, with the placeholder until the Steps view is plugged in.
+      // Steps by default: the Steps view.
       expect(e.phone.view, PhoneEditorView.steps);
-      expect(find.byKey(const ValueKey('steps-view-placeholder')), findsOneWidget);
+      expect(find.byType(WorkflowStepsView), findsOneWidget);
       // The toolbar reaches the bottom edge; its actions and the Add button stay above the system bar.
       final toolbar = t.getRect(find.byKey(const ValueKey('phone-toolbar')));
       expect(toolbar.bottom, w.size.height);
@@ -199,6 +200,22 @@ void main() {
     expect(e.c.selectedNodeId, 'code');
     expect(await systemBack(t), isTrue);
     expect(find.byType(WorkflowNodePanel), findsNothing);
+    await e.dispose();
+  });
+
+  testWidgets('Steps view: Add with no step selected continues the flow (connected, not a free spot)', (t) async {
+    final e = await _pump(t);
+    expect(e.phone.view, PhoneEditorView.steps);
+    expect(e.c.selectedNodeId, isNull);
+    final before = e.c.doc.nodes.keys.toSet();
+    await t.tap(find.byKey(const ValueKey('phone-add')));
+    await settle(t, 800);
+    expect(find.byType(BlockSelectorCard), findsOneWidget);
+    await e.pick('Template');
+    final added = e.c.doc.nodes.keys.toSet().difference(before).single;
+    final edges = e.c.doc.edges.values;
+    expect(edges.where((x) => x.target == added), isNotEmpty, reason: 'connected after the flow\'s last step');
+    expect(t.takeException(), isNull);
     await e.dispose();
   });
 

@@ -12,6 +12,7 @@ import '../../editor/editor_controller.dart';
 import '../../i18n/dify_i18n.dart';
 import '../context_menu/context_menu.dart';
 import '../node_insertion/insert_block.dart';
+import '../steps/workflow_steps_view.dart';
 
 /// What the phone chrome hands the Steps view. The view is built inside the editor, so it also finds the editor's
 /// scopes: `WorkflowStoreScope.of` (the store: run data, read-only state), `WorkflowHeaderScope.of(context).graph`
@@ -26,6 +27,7 @@ class StepsViewHost {
     required this.openSettings,
     required this.insert,
     required this.showNodeActions,
+    this.registerAddAtEnd,
   });
 
   /// The collaborative document, its selection ([EditorController.selectNode]) and its undo history.
@@ -48,13 +50,57 @@ class StepsViewHost {
   /// The node's action sheet (settings, run step, add next, connect, duplicate, delete...), as a long press on the
   /// canvas opens it.
   final void Function(String nodeId) showNodeActions;
+
+  /// The view hands the chrome its "add at the end of the flow" (null when it goes away): the toolbar's Add with no
+  /// step selected uses it while the Steps view shows.
+  final void Function(Future<bool> Function()? addAtEnd)? registerAddAtEnd;
 }
 
 /// Builds the Steps view for the phone editor.
 typedef StepsViewBuilder = Widget Function(BuildContext context, StepsViewHost host);
 
-/// The Steps view the phone editor shows: plug the real one in here (`(context, host) => WorkflowStepsView(...)`).
-const StepsViewBuilder workflowStepsView = placeholderStepsView;
+/// The Steps view the phone editor shows.
+const StepsViewBuilder workflowStepsView = _stepsView;
+
+Widget _stepsView(BuildContext context, StepsViewHost host) => _HostedStepsView(host: host);
+
+/// [WorkflowStepsView] in the phone chrome: the editor's read-only state and store from its actions, settings
+/// through the chrome, and its "add at the end" registered with the chrome while it shows.
+class _HostedStepsView extends StatefulWidget {
+  const _HostedStepsView({required this.host});
+  final StepsViewHost host;
+  @override
+  State<_HostedStepsView> createState() => _HostedStepsViewState();
+}
+
+class _HostedStepsViewState extends State<_HostedStepsView> {
+  final _view = GlobalKey<WorkflowStepsViewState>();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.host.registerAddAtEnd?.call(() async => _view.currentState?.addAtEnd() ?? Future.value(false));
+  }
+
+  @override
+  void dispose() {
+    widget.host.registerAddAtEnd?.call(null);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = widget.host.actions();
+    return WorkflowStepsView(
+      key: _view,
+      controller: widget.host.controller,
+      canvas: widget.host.canvas,
+      options: actions.options,
+      store: actions.store,
+      onOpenNode: widget.host.openSettings,
+    );
+  }
+}
 
 /// Until the Steps view exists: a short note pointing to the canvas.
 Widget placeholderStepsView(BuildContext context, StepsViewHost host) => Center(
