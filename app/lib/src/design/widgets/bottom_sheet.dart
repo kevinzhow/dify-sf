@@ -400,7 +400,7 @@ class _DifySheet extends StatefulWidget {
   State<_DifySheet> createState() => _DifySheetState();
 }
 
-class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
+class _DifySheetState extends State<_DifySheet> with SingleTickerProviderStateMixin implements _SheetPointerDrag {
   final _sheet = DraggableScrollableController();
 
   /// The detent the sheet rests at or is settling on; kept across keyboard and size changes.
@@ -433,15 +433,16 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
   /// The scroll controller the sheet's [DraggableScrollableSheet] hands its content.
   ScrollController? _scroll;
 
-  /// The sheet can be moved: its controller has exactly one scroll view (the content's, or the anchor). For the frame
-  /// in which content gains a scroll view while the anchor is still there it has two; the anchor goes at once, and
-  /// moves wait for it.
+  /// The sheet can be moved: its controller has exactly one scroll view (the content's, or the anchor). In the frame
+  /// in which content gains a scroll view while the anchor is still there it has two, and after content dropped its
+  /// scroll view (a list that turns back into a loading state) none: the anchor follows at once, and moves wait for it.
   bool get _ready {
-    if (!_sheet.isAttached) return false;
     final scroll = _scroll;
-    if (scroll == null || scroll.positions.length == 1) return true;
-    _syncAnchor(scroll);
-    return false;
+    if (scroll != null && scroll.positions.length != 1) {
+      _syncAnchor(scroll);
+      return false;
+    }
+    return _sheet.isAttached;
   }
 
   @override
@@ -449,6 +450,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
     super.initState();
     widget.controller?._attach(this);
     _sheet.addListener(_moved);
+    _move.addListener(_moveTick);
     if (widget.slideIn && widget.requestClose == null) {
       _entering = true;
       SchedulerBinding.instance.addPostFrameCallback((_) => _enter());
@@ -465,7 +467,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
       return;
     }
     if (_ready && _room > 0) {
-      await _sheet.animateTo(_fraction(_resting), duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+      await _runTo(_fraction(_resting), duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
     }
     if (!mounted) return;
     setState(() => _entering = false);
@@ -486,7 +488,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
       setState(() {});
       await SchedulerBinding.instance.endOfFrame;
       if (_ready) {
-        await _sheet.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
+        await _runTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
       }
     }
     if (!mounted) return;
@@ -511,6 +513,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
   @override
   void dispose() {
     widget.controller?._detach(this);
+    _move.dispose();
     _sheet
       ..removeListener(_moved)
       ..dispose();
@@ -518,6 +521,47 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
   }
 
   void _moved() => widget.controller?._moved();
+
+  /// The sheet's own moves (to a detent, rising in, sliding away).
+  late final _move = AnimationController(vsync: this);
+  double _moveFrom = 0, _moveTo = 0;
+  Curve _moveCurve = Curves.linear;
+
+  /// Moves the sheet to [target] (a fraction of the room) with its own animation, a jump per frame. The framework's
+  /// [DraggableScrollableController.animateTo] reads the controller's single scroll position on every tick, which
+  /// throws in the frame a second scroll view attaches (content that turns from a loading state into a list while
+  /// the sheet rises); here a frame with two scroll views is skipped and the move goes on.
+  Future<void> _runTo(double target, {required Duration duration, required Curve curve}) async {
+    if (!_sheet.isAttached) return;
+    _move.stop();
+    _moveFrom = _sheet.size;
+    _moveTo = target;
+    _moveCurve = curve;
+    _move
+      ..duration = duration
+      ..value = 0;
+    try {
+      await _move.forward().orCancel;
+    } on TickerCanceled {
+      return; // another move took over
+    }
+    if (!mounted) return;
+    // The last frame may have been skipped: land exactly, now or once one scroll view is attached.
+    if (_ready) {
+      _sheet.jumpTo(_moveTo.clamp(0.0, 1.0));
+    } else {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _ready && !_move.isAnimating && !_dragging) _sheet.jumpTo(_moveTo.clamp(0.0, 1.0));
+      });
+      SchedulerBinding.instance.scheduleFrame();
+    }
+  }
+
+  void _moveTick() {
+    if (!_ready) return;
+    final t = _moveCurve.transform(_move.value);
+    _sheet.jumpTo((_moveFrom + (_moveTo - _moveFrom) * t).clamp(0.0, 1.0));
+  }
 
   /// [d] as a fraction of the room.
   double _fraction(DifySheetDetent d) {
@@ -555,7 +599,7 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
       _snaps = snaps;
       final target = _fraction(_resting);
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _dragging || _entering || _dismissing || !_ready) return;
+        if (!mounted || _dragging || _entering || _dismissing || _move.isAnimating || !_ready) return;
         if ((_sheet.size - target).abs() > 1e-4) _sheet.jumpTo(target.clamp(_min, _max));
       });
     }
@@ -572,23 +616,23 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
     Curve curve = Curves.easeOut,
   }) {
     _resting = detent;
-    if (!_sheet.isAttached) return Future.value();
     if (!_ready) {
-      // The anchor is going this frame: move after it.
+      // The anchor comes or goes this frame: move after it.
       final done = Completer<void>();
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_ready || _resting != detent) return done.complete();
-        done.complete(_sheet.animateTo(_fraction(detent).clamp(_min, _max), duration: duration, curve: curve));
+        done.complete(_runTo(_fraction(detent).clamp(_min, _max), duration: duration, curve: curve));
       });
       SchedulerBinding.instance.scheduleFrame();
       return done.future;
     }
-    return _sheet.animateTo(_fraction(detent).clamp(_min, _max), duration: duration, curve: curve);
+    return _runTo(_fraction(detent).clamp(_min, _max), duration: duration, curve: curve);
   }
 
   @override
   void update(double dy) {
     if (!_ready || _room <= 0) return;
+    if (_move.isAnimating) _move.stop();
     _dragging = true;
     if (dy > 0 && _keyboard > 0) FocusManager.instance.primaryFocus?.unfocus();
     // Held just above the bottom: reaching it is a request to close, asked once when the drag ends.
@@ -636,7 +680,8 @@ class _DifySheetState extends State<_DifySheet> implements _SheetPointerDrag {
   }
 
   bool _onExtent(DraggableScrollableNotification n) {
-    if (_entering || _dismissing) return false;
+    // A move passing a detent does not rest there.
+    if (_entering || _dismissing || _move.isAnimating) return false;
     // The scroll view's drag (or a settle) reached the bottom.
     if (_canClose && n.extent <= n.minExtent + 0.001 && !_dragging) _close();
     // Settled on a detent: it is where the sheet rests now.

@@ -361,6 +361,59 @@ void main() {
     });
   });
 
+  group('DifyPersistentSheet moves', () {
+    testWidgets('a move that is running when the content gains its scroll view lands at its detent '
+        '(device: a viewed run rose with a list arriving; Too many elements)', (t) async {
+      phoneView(t);
+      final controller = DifySheetController();
+      addTearDown(controller.dispose);
+      final loaded = ValueNotifier(false);
+      addTearDown(loaded.dispose);
+      await pumpPhoneApp(
+        t,
+        DifyPage(
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              DifyPersistentSheet(
+                controller: controller,
+                slideIn: true,
+                detents: const [DifySheetDetent.peek(120), DifySheetDetent.half, DifySheetDetent.full],
+                child: ValueListenableBuilder(
+                  valueListenable: loaded,
+                  builder: (context, on, _) => on
+                      ? ListView(
+                          children: [for (var i = 0; i < 40; i++) SizedBox(height: 48, child: DifyTextLine('Row $i'))],
+                        )
+                      : const Center(child: DifyTextLine('Loading')),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      // The sheet rises; halfway through, the content's list arrives.
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 16));
+      await t.pump(const Duration(milliseconds: 100));
+      loaded.value = true;
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      expect(_top(t), closeTo(_h - 120, 0.5), reason: 'it lands at its peek');
+
+      // The same while the controller moves it.
+      loaded.value = false;
+      await t.pumpAndSettle();
+      unawaited(controller.animateTo(DifySheetDetent.full));
+      await t.pump(const Duration(milliseconds: 16));
+      await t.pump(const Duration(milliseconds: 100));
+      loaded.value = true;
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      expect(_top(t), closeTo(0, 0.5), reason: 'it lands at full');
+    });
+  });
+
   group('DifySheetHeader', () {
     testWidgets('leading, title, subtitle, actions and a tabs row over a divider', (t) async {
       await renderControl(
