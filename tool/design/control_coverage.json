@@ -457,7 +457,8 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/segmented_control_touch_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
@@ -643,7 +644,8 @@
     "touch_target.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
-        "app/test/dify_spec/dify_ui/touch_target_test.dart"
+        "app/test/dify_spec/dify_ui/touch_target_test.dart",
+        "app/test/dify_spec/dify_ui/segmented_control_touch_test.dart"
       ],
       "note": "Hit-area expansion and the icon-only touch button; no text of their own."
     },
