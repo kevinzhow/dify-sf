@@ -757,6 +757,8 @@ class OutputTypeSelect extends StatelessWidget {
     final selected = getOutputTypeOption(value);
     final label = _w('nodes.agent.outputVars.typeLabel');
     return DifyDropdownMenu(
+      // A picker (value choices as plain items): a sheet on a phone.
+      sheetOnCompact: true,
       placement: DifyPlacement.bottomStart,
       sideOffset: 4,
       width: 160,

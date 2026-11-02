@@ -667,6 +667,8 @@ class _ActionsMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DifyFloating(
+    // An action menu: anchored on a phone too (raft keeps menus anchored).
+    sheetOnCompact: false,
     open: open,
     onOpenChange: onOpenChange,
     placement: DifyPlacement.bottomEnd,

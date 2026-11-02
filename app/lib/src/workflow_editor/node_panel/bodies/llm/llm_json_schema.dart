@@ -711,11 +711,14 @@ class _JsonImporterState extends State<JsonImporter> {
       explicitChildNodes: true,
       child: Container(
         width: 400,
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBg,
-          borderRadius: BorderRadius.circular(DifyRadius.xxl),
-          border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-          boxShadow: DifyShadows.n2xl,
+        decoration: DifyFloating.surface(
+          context,
+          BoxDecoration(
+            color: DifyColors.componentsPanelBg,
+            borderRadius: BorderRadius.circular(DifyRadius.xxl),
+            border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+            boxShadow: DifyShadows.n2xl,
+          ),
         ),
         child: StatefulBuilder(
           builder: (context, setLocal) => Column(
@@ -825,11 +828,14 @@ class _JsonSchemaGeneratorState extends State<JsonSchemaGenerator> {
     popupBuilder: (context) => Container(
       width: 480,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: DifyColors.componentsPanelBg,
-        borderRadius: BorderRadius.circular(DifyRadius.xxl),
-        border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-        boxShadow: DifyShadows.n2xl,
+      decoration: DifyFloating.surface(
+        context,
+        BoxDecoration(
+          color: DifyColors.componentsPanelBg,
+          borderRadius: BorderRadius.circular(DifyRadius.xxl),
+          border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+          boxShadow: DifyShadows.n2xl,
+        ),
       ),
       child: StatefulBuilder(
         builder: (context, setLocal) {
@@ -1678,6 +1684,8 @@ class SchemaTypeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = items.where((i) => i.value == currentValue).firstOrNull?.text ?? currentValue;
     return DifyDropdownMenu(
+      // A picker (the schema types as plain items): a sheet on a phone.
+      sheetOnCompact: true,
       placement: DifyPlacement.bottomStart,
       sideOffset: 4,
       width: 160,

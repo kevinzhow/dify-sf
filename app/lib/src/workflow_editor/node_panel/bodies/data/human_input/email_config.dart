@@ -758,11 +758,14 @@ class MemberList extends StatelessWidget {
     final search = cm('operation.search');
     return Container(
       constraints: const BoxConstraints(minWidth: 320, maxWidth: 320),
-      decoration: BoxDecoration(
-        color: DifyColors.componentsPanelBgBlur,
-        borderRadius: BorderRadius.circular(DifyRadius.xl),
-        border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-        boxShadow: DifyShadows.lg,
+      decoration: DifyFloating.surface(
+        context,
+        BoxDecoration(
+          color: DifyColors.componentsPanelBgBlur,
+          borderRadius: BorderRadius.circular(DifyRadius.xl),
+          border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+          boxShadow: DifyShadows.lg,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

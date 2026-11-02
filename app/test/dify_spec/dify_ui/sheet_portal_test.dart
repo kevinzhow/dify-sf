@@ -244,6 +244,56 @@ void main() {
     });
   });
 
+  testWidgets('a compact window: an action menu stays anchored (raft keeps menus); a menu of choices is a sheet', (
+    t,
+  ) async {
+    phoneView(t, size: const Size(411, 914), padding: gestureInsets);
+    String? picked;
+    await pumpPhoneApp(
+      t,
+      DifyPage(
+        body: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DifyDropdownMenu(
+                builder: (context, c) => DifyButton(onPressed: c.toggle, child: const DifyTextLine('More')),
+                children: [DifyMenuItem(onSelect: () {}, child: const DifyTextLine('Duplicate'))],
+              ),
+              DifyDropdownMenu(
+                builder: (context, c) => DifyButton(onPressed: c.toggle, child: const DifyTextLine('Operator')),
+                children: [
+                  DifyMenuRadioGroup<String>(
+                    value: 'is',
+                    onValueChange: (v) => picked = v,
+                    children: const [
+                      DifyMenuRadioItem(value: 'is', closeOnClick: true, child: DifyTextLine('is')),
+                      DifyMenuRadioItem(value: 'contains', closeOnClick: true, child: DifyTextLine('contains')),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await t.tap(find.text('More'));
+    await _settle(t);
+    expect(find.text('Duplicate'), findsOneWidget);
+    expect(find.byKey(const ValueKey('dify-sheet-scrim')), findsNothing, reason: 'an action menu is anchored');
+    expect(find.byType(DifyFloatingLayout), findsOneWidget);
+    await t.binding.handlePopRoute();
+    await _settle(t);
+    await t.tap(find.text('Operator'));
+    await _settle(t);
+    expect(find.byKey(const ValueKey('dify-sheet-scrim')), findsOneWidget, reason: 'a menu of choices is a picker');
+    expect(t.getSize(find.ancestor(of: find.text('contains'), matching: find.byType(Container)).first).height, 48);
+    await t.tap(find.text('contains'));
+    await _settle(t);
+    expect(picked, 'contains');
+  });
+
   testWidgets('DifyTouchArea: a 24 px button in a 24 px row gets a 48 px box and the taps in it', (t) async {
     phoneView(t);
     var taps = 0;

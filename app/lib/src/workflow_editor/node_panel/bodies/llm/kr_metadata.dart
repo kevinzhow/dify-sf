@@ -88,14 +88,17 @@ Widget _chevronButton(String label, VoidCallback onPressed, {bool disabled = fal
 );
 
 /// The popovers' blurred list surface (`rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1 shadow-lg`).
-Widget _listSurface({required Widget child, double? width}) => Container(
+Widget _listSurface(BuildContext context, {required Widget child, double? width}) => Container(
   width: width,
   padding: const EdgeInsets.all(4),
-  decoration: BoxDecoration(
-    color: DifyColors.componentsPanelBgBlur,
-    borderRadius: BorderRadius.circular(DifyRadius.xl),
-    border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-    boxShadow: DifyShadows.lg,
+  decoration: DifyFloating.surface(
+    context,
+    BoxDecoration(
+      color: DifyColors.componentsPanelBgBlur,
+      borderRadius: BorderRadius.circular(DifyRadius.xl),
+      border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+      boxShadow: DifyShadows.lg,
+    ),
   ),
   child: child,
 );
@@ -181,6 +184,7 @@ class MetadataFilterSelector extends StatelessWidget {
         child: DifyTextLine(selected.title),
       ),
       popupBuilder: (context, close) => _listSurface(
+        context,
         width: 280,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -408,11 +412,14 @@ class MetadataPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: 420,
-    decoration: BoxDecoration(
-      color: DifyColors.componentsPanelBg,
-      borderRadius: BorderRadius.circular(DifyRadius.xxl),
-      border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-      boxShadow: DifyShadows.n2xl,
+    decoration: DifyFloating.surface(
+      context,
+      BoxDecoration(
+        color: DifyColors.componentsPanelBg,
+        borderRadius: BorderRadius.circular(DifyRadius.xxl),
+        border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+        boxShadow: DifyShadows.n2xl,
+      ),
     ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
@@ -485,6 +492,7 @@ class _AddConditionState extends State<AddCondition> {
         builder: (context, setLocal) {
           final list = widget.metadataList.where((m) => '${m['name'] ?? ''}'.contains(_search));
           return _listSurface(
+            context,
             width: 320,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -819,6 +827,7 @@ class ConditionOperator extends StatelessWidget {
         opacity: selected == null ? 0.5 : 1,
       ),
       popupBuilder: (context, close) => _listSurface(
+        context,
         child: IntrinsicWidth(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -855,6 +864,7 @@ class ConditionValueMethod extends StatelessWidget {
       placement: DifyPlacement.bottomStart,
       builder: (context, c) => _chevronButton(_cap(valueMethod), c.toggle),
       popupBuilder: (context, close) => _listSurface(
+        context,
         width: 112,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1134,6 +1144,7 @@ class ConditionCommonVariableSelector extends StatelessWidget {
         ),
       ),
       popupBuilder: (context, close) => _listSurface(
+        context,
         width: 296,
         child: Column(
           mainAxisSize: MainAxisSize.min,

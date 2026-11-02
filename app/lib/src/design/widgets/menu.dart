@@ -288,7 +288,7 @@ class DifyDropdownMenu extends StatefulWidget {
     this.width,
     this.semanticLabel,
     this.popupStyle = DifyMenuPopupStyle.menu,
-    this.sheetOnCompact = true,
+    this.sheetOnCompact,
     this.sheetTitle,
   });
 
@@ -304,10 +304,17 @@ class DifyDropdownMenu extends StatefulWidget {
   final String? semanticLabel;
   final DifyMenuPopupStyle popupStyle;
 
-  /// In a compact window the menu opens as a bottom sheet of 48 px rows ([DifyFloating.sheetOnCompact]), under
-  /// [sheetTitle] when given.
-  final bool sheetOnCompact;
+  /// Whether it is a picker, which opens as a bottom sheet of 48 px rows in a compact window
+  /// ([DifyFloating.sheetOnCompact]), under [sheetTitle] when given. Null: a select ([DifyMenuPopupStyle.select]) or a
+  /// menu of choices (a radio group, radio or checkbox items) is a picker; an action menu stays anchored, as
+  /// raft-flutter keeps menus.
+  final bool? sheetOnCompact;
   final String? sheetTitle;
+
+  bool get _picker =>
+      sheetOnCompact ??
+      (popupStyle == DifyMenuPopupStyle.select ||
+          children.any((c) => c is DifyMenuRadioGroup || c is DifyMenuRadioItem || c is DifyMenuCheckboxItem));
 
   @override
   State<DifyDropdownMenu> createState() => _DifyDropdownMenuState();
@@ -336,7 +343,7 @@ class _DifyDropdownMenuState extends State<DifyDropdownMenu> {
       collision: DifyCollision.dropdown,
       constrainHeight: true,
       initialFocus: _popupNode,
-      sheetOnCompact: widget.sheetOnCompact,
+      sheetOnCompact: widget._picker,
       sheetTitle: widget.sheetTitle,
       builder: widget.builder,
       popupBuilder: (context) => DifyMenuPopup._(

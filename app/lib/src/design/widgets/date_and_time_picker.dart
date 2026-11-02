@@ -85,17 +85,20 @@ class _DifyCalendarState extends State<DifyCalendar> {
     final start = first.subtract(Duration(days: first.weekday % 7));
     final today = DateTime.now();
     bool same(DateTime a, DateTime? b) => b != null && a.year == b.year && a.month == b.month && a.day == b.day;
-    return Semantics(
+    final calendar = Semantics(
       role: SemanticsRole.dialog,
       explicitChildNodes: true,
       child: Container(
         width: 252,
         margin: const EdgeInsets.only(top: 4),
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBg,
-          borderRadius: BorderRadius.circular(DifyRadius.xl),
-          border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-          boxShadow: DifyShadows.lg,
+        decoration: DifyFloating.surface(
+          context,
+          BoxDecoration(
+            color: DifyColors.componentsPanelBg,
+            borderRadius: BorderRadius.circular(DifyRadius.xl),
+            border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+            boxShadow: DifyShadows.lg,
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -198,6 +201,8 @@ class _DifyCalendarState extends State<DifyCalendar> {
         ),
       ),
     );
+    // In a sheet (a phone) the calendar keeps its width, centred on the sheet's surface.
+    return DifyFloating.inSheet(context) ? Center(heightFactor: 1, child: calendar) : calendar;
   }
 }
 

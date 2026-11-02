@@ -65,13 +65,15 @@ enum DifyFloatingTransition { scaleFade, fade }
 /// [dismissible] popup also closes on Android back before the page under it does (a [DifyBackStep] on the trigger's
 /// route while it is open).
 ///
-/// A picker ([sheetOnCompact]: selects, the variable and model pickers, popovers) opens as a bottom sheet in a compact
-/// window instead (dify-sf's phones; raft-flutter's picker policy: a sheet below the breakpoint, a popover above). This
-/// is the one switch every picker goes through ([presentsAsSheet]): the same popup content, in the same overlay (it
-/// keeps the trigger's inherited state), over a window-wide scrim, under an optional [sheetTitle] header, full width
-/// and without its own surface ([inSheet] tells the content so: menus and lists grow their rows to 48 px). Its focus
-/// stays on the sheet itself, so a search field in it does not open the keyboard until it is tapped. The scrim, a
-/// drag down, Escape and Android back close it.
+/// A picker opens as a bottom sheet in a compact window instead (dify-sf's phones; raft-flutter's picker policy: a
+/// sheet below the breakpoint, a popover above). By default every dismissible popup that takes the focus is a picker
+/// (selects, lists, forms, popovers); tooltips and hover cards (no focus), submenus (not dismissible) and context
+/// menus (anchored to a point) are not, and action menus opt out ([sheetOnCompact] false: raft keeps menus anchored).
+/// This is the one switch ([presentsAsSheet]): the same popup content, in the same overlay (it keeps the trigger's
+/// inherited state), over a window-wide scrim, under an optional [sheetTitle] header, full width and without its own
+/// surface ([inSheet] and [surface] tell the content so: menus and lists grow their rows to 48 px). Its focus stays on
+/// the sheet itself, so a search field in it does not open the keyboard until it is tapped. The scrim, a drag down,
+/// Escape and Android back close it.
 class DifyFloating extends StatefulWidget {
   const DifyFloating({
     super.key,
@@ -93,7 +95,7 @@ class DifyFloating extends StatefulWidget {
     this.constrainHeight = false,
     this.instantTransition,
     this.pointAnchor = false,
-    this.sheetOnCompact = false,
+    this.sheetOnCompact,
     this.sheetTitle,
     this.sheetDetents = const [DifySheetDetent.full],
   });
@@ -136,8 +138,11 @@ class DifyFloating extends StatefulWidget {
   /// origin (Base UI's initial context-menu anchor).
   final bool pointAnchor;
 
-  /// A picker: in a compact window it opens as a bottom sheet ([presentsAsSheet]).
-  final bool sheetOnCompact;
+  /// Whether it is a picker, which opens as a bottom sheet in a compact window ([presentsAsSheet]); null: when it is
+  /// [dismissible], takes the focus ([focusPopup]) and is anchored to its trigger (not [pointAnchor]).
+  final bool? sheetOnCompact;
+
+  bool get _picker => sheetOnCompact ?? (dismissible && focusPopup && !pointAnchor);
 
   /// The sheet's header title (a [DifySheetHeader] with a close button); none: the sheet starts with its grab handle.
   final String? sheetTitle;
@@ -154,6 +159,10 @@ class DifyFloating extends StatefulWidget {
   /// and its rows take touch height (48 px).
   static bool inSheet(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<DifyPopupSheetScope>() != null;
+
+  /// A popup's own surface ([decoration]: its panel colour, border, radius and shadow), or none in a sheet, where the
+  /// sheet is the surface.
+  static Decoration? surface(BuildContext context, Decoration decoration) => inSheet(context) ? null : decoration;
 
   @override
   State<DifyFloating> createState() => _DifyFloatingState();
@@ -255,7 +264,7 @@ class _DifyFloatingState extends State<DifyFloating> with SingleTickerProviderSt
   bool _instant(bool requested) => requested || _reduceMotion;
 
   /// Whether the popup shows as a sheet (read live: the window's class).
-  bool get _sheet => mounted && DifyFloating.presentsAsSheet(context, sheetOnCompact: widget.sheetOnCompact);
+  bool get _sheet => mounted && DifyFloating.presentsAsSheet(context, sheetOnCompact: widget._picker);
 
   void _show({required bool instant, bool rebuild = true}) {
     _visible = true;

@@ -55,7 +55,7 @@ class DifyPopover extends StatelessWidget {
     this.initialFocus,
     this.surface = true,
     this.semanticLabel,
-    this.sheetOnCompact = true,
+    this.sheetOnCompact,
     this.sheetTitle,
   });
 
@@ -73,9 +73,9 @@ class DifyPopover extends StatelessWidget {
   /// The dialog's name (`PopoverTitle`).
   final String? semanticLabel;
 
-  /// In a compact window the popover opens as a bottom sheet ([DifyFloating.sheetOnCompact]), under [sheetTitle]
-  /// when given.
-  final bool sheetOnCompact;
+  /// In a compact window the popover opens as a bottom sheet ([DifyFloating.sheetOnCompact]; null: as a picker), under
+  /// [sheetTitle] when given.
+  final bool? sheetOnCompact;
   final String? sheetTitle;
 
   @override
