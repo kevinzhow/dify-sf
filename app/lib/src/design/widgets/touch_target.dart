@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../dify_tokens.g.dart';
+import 'bottom_sheet.dart' show DifySheetRecipe;
 import 'button_style.dart';
 import 'responsive.dart';
 
@@ -20,24 +21,66 @@ import 'responsive.dart';
 /// parent is exactly the control's size, give the control a real 48 px box instead. Between siblings, the one
 /// hit-tested first (the later one in a Stack, the first one in a Row or Column) wins an overlapping area.
 class DifyTouchTarget extends SingleChildRenderObjectWidget {
-  const DifyTouchTarget({super.key, this.minSize = DifyTouch.minTarget, required Widget super.child});
+  const DifyTouchTarget({
+    super.key,
+    this.minSize = DifyTouch.minTarget,
+    this.accessible = false,
+    required Widget super.child,
+  });
 
   /// The smallest width and height of the hit area.
   final double minSize;
 
-  @override
-  RenderDifyTouchTarget createRenderObject(BuildContext context) => RenderDifyTouchTarget(minSize: minSize);
+  /// The hit area is also the control's bounds for accessibility (raft-flutter's `RaftTouchTarget`): one node, the
+  /// control's semantics merged into it, as large as the hit area, so TalkBack's focus and what the platform reports
+  /// as the target's size match what a finger can hit. Only inside a box of the control's own that holds the whole hit
+  /// area (the touch segmented control's 48 px box): hit testing stops at the parent's edge (the limitation above), so
+  /// elsewhere the node would claim more than a finger can hit; give the control a [DifyTouchArea] box there.
+  final bool accessible;
 
   @override
-  void updateRenderObject(BuildContext context, RenderDifyTouchTarget renderObject) => renderObject.minSize = minSize;
+  RenderDifyTouchTarget createRenderObject(BuildContext context) =>
+      RenderDifyTouchTarget(minSize: minSize, accessible: accessible);
+
+  @override
+  void updateRenderObject(BuildContext context, RenderDifyTouchTarget renderObject) => renderObject
+    ..minSize = minSize
+    ..accessible = accessible;
 }
 
 /// The render object of [DifyTouchTarget]: laid out like its child, hit-tested over [touchRect].
 class RenderDifyTouchTarget extends RenderProxyBox {
-  RenderDifyTouchTarget({this.minSize = DifyTouch.minTarget});
+  RenderDifyTouchTarget({this._minSize = DifyTouch.minTarget, this._accessible = false});
 
-  /// The smallest width and height of the hit area (only hit testing reads it, so changing it needs no layout).
-  double minSize;
+  /// The smallest width and height of the hit area (hit testing reads it, and the semantics when [accessible]).
+  double get minSize => _minSize;
+  double _minSize;
+  set minSize(double value) {
+    if (value == _minSize) return;
+    _minSize = value;
+    if (_accessible) markNeedsSemanticsUpdate();
+  }
+
+  /// See [DifyTouchTarget.accessible].
+  bool get accessible => _accessible;
+  bool _accessible;
+  set accessible(bool value) {
+    if (value == _accessible) return;
+    _accessible = value;
+    markNeedsSemanticsUpdate();
+  }
+
+  @override
+  Rect get semanticBounds => _accessible ? touchRect : super.semanticBounds;
+
+  @override
+  void describeSemanticsConfiguration(SemanticsConfiguration config) {
+    super.describeSemanticsConfiguration(config);
+    if (!_accessible) return;
+    config
+      ..isSemanticBoundary = true
+      ..isMergingSemanticsOfDescendants = true;
+  }
 
   static const _edge = 1e-6;
 
@@ -88,6 +131,20 @@ class DifyTouchArea extends StatelessWidget {
   final double minSize;
   final bool accessibleBox;
   final Widget child;
+
+  /// A small control (a 24 px icon button, a field header's "+") in a sheet on a phone: in a touch box of
+  /// [DifyTouch.controlHeight] that is also its accessible bounds, as a [DifyButton] there is touch-high; elsewhere
+  /// the control as it is. The one rule of the controls' touch size in phone sheets ([DifyIconButton] uses it).
+  ///
+  /// The box sends a tap at its edges to the nearest point of [control], so that point must be the control's: padding
+  /// or a border with no tap of its own at the control's edge leaves that edge of the reported box dead (keep such
+  /// spacing outside the control, or leave it out in a phone sheet: [appliesIn]).
+  static Widget inPhoneSheet(BuildContext context, Widget control) => appliesIn(context)
+      ? DifyTouchArea(minSize: DifyTouch.controlHeight, accessibleBox: true, child: control)
+      : control;
+
+  /// Whether [inPhoneSheet] boxes a control in [context]: a sheet in a compact window.
+  static bool appliesIn(BuildContext context) => DifyTouch.compactOf(context) && DifySheetRecipe.contains(context);
 
   @override
   Widget build(BuildContext context) {

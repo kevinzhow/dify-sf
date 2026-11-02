@@ -166,7 +166,8 @@ class _MethodSelectorState extends State<MethodSelector> {
         icon: const RemixIcon('add-line', size: 16),
       ),
       popupBuilder: (context) => SizedBox(
-        width: 360,
+        // A phone's sheet: the sheet's width.
+        width: DifyFloating.inSheet(context) ? null : 360,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -308,11 +309,15 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: padding,
-    decoration: BoxDecoration(
-      color: DifyColors.componentsPanelBgBlur,
-      borderRadius: BorderRadius.circular(DifyRadius.xl),
-      border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-      boxShadow: DifyShadows.lg,
+    // A phone's sheet is the surface: no bordered card inside it.
+    decoration: DifyFloating.surface(
+      context,
+      BoxDecoration(
+        color: DifyColors.componentsPanelBgBlur,
+        borderRadius: BorderRadius.circular(DifyRadius.xl),
+        border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+        boxShadow: DifyShadows.lg,
+      ),
     ),
     child: child,
   );

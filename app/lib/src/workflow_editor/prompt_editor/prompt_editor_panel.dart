@@ -250,7 +250,8 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (w.isSupportJinja) _jinjaSwitch(),
+          if (w.isSupportJinja)
+            DifyTouchArea(minSize: DifyTouch.controlHeight, accessibleBox: true, child: _jinjaSwitch(touch: true)),
           // A phone: no tooltip (no hover), and the button is named for what it does, not the desktop's "/" tip.
           if (!w.readOnly)
             DifyTouchArea(
@@ -318,10 +319,19 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
     );
   }
 
-  Widget _jinjaSwitch() {
+  /// The Jinja switch; on a phone ([touch]) the icon has no hover tip (no hover there), the switch alone is read, and
+  /// a tap anywhere on the control (its border and padding too, where its touch box sends taps at its edges) toggles
+  /// it, so the touch box reported to the platform is all hittable.
+  Widget _jinjaSwitch({bool touch = false}) {
     final on = widget.editionType == PromptEditionType.jinja2;
     final label = DifyI18n.tr('workflow', 'common.enableJinja');
-    return _Hover(
+    void toggle(bool v) => widget.onEditionTypeChange?.call(v ? PromptEditionType.jinja2 : PromptEditionType.basic);
+    final icon = SizedBox(
+      width: 28,
+      height: 16,
+      child: Center(child: DifyIcon('vender/workflow/jinja', size: 24, color: DifyColors.textQuaternary)),
+    );
+    final control = _Hover(
       builder: (context, hovered) => Container(
         height: 22,
         padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -334,38 +344,38 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
           spacing: 2,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _HoverPopover(
-              label: label,
-              trigger: SizedBox(
-                width: 28,
-                height: 16,
-                child: Center(child: DifyIcon('vender/workflow/jinja', size: 24, color: DifyColors.textQuaternary)),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  DifyTextLine(label),
-                  GestureDetector(
-                    onTap: () => widget.onOpenUrl?.call('https://jinja.palletsprojects.com/en/2.10.x/'),
-                    child: DifyTextLine(
-                      DifyI18n.tr('workflow', 'common.learnMore'),
-                      style: TextStyle(color: DifyColors.textAccent),
+            if (touch)
+              ExcludeSemantics(child: icon)
+            else
+              _HoverPopover(
+                label: label,
+                trigger: icon,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DifyTextLine(label),
+                    GestureDetector(
+                      onTap: () => widget.onOpenUrl?.call('https://jinja.palletsprojects.com/en/2.10.x/'),
+                      child: DifyTextLine(
+                        DifyI18n.tr('workflow', 'common.learnMore'),
+                        style: TextStyle(color: DifyColors.textAccent),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            DifySwitch(
-              size: DifySwitchSize.sm,
-              checked: on,
-              semanticLabel: label,
-              onCheckedChange: (v) =>
-                  widget.onEditionTypeChange?.call(v ? PromptEditionType.jinja2 : PromptEditionType.basic),
-            ),
+            DifySwitch(size: DifySwitchSize.sm, checked: on, semanticLabel: label, onCheckedChange: toggle),
           ],
         ),
       ),
+    );
+    if (!touch) return control;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      excludeFromSemantics: true,
+      onTap: () => toggle(!on),
+      child: control,
     );
   }
 

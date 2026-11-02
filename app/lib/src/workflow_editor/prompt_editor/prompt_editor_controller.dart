@@ -26,12 +26,54 @@ class PromptEditorController extends TextEditingController {
 
   static const _firstCode = 0xE000, _lastCode = 0xF8FF;
 
+  /// A letter or a digit: a name next to one is read apart from it ([readableText]).
+  static final _wordCharacter = RegExp(r'[\p{L}\p{N}]', unicode: true);
+
   final _codeOf = <String, int>{};
   final _blockOf = <int, PromptBlock>{};
   int _next = _firstCode;
 
   /// Builds block widgets ([DifyPromptEditor] sets it); without one, blocks show as their text.
   PromptChipBuilder? chipBuilder;
+
+  /// What a block reads as for a screen reader ([DifyPromptEditor] sets it): its name in [readableText], and its widget
+  /// left out of the semantics tree (it would be read again, apart from the text). Null for a block that keeps its own
+  /// semantics (a form field or an output with controls of their own).
+  String? Function(PromptBlock block)? blockLabel;
+
+  /// The prompt as a sentence a screen reader reads with the field (its hint), each named block's name in its place
+  /// ("Summarize Start query in one sentence."); null when no block has a name. A name next to a word or another name
+  /// is read apart from it ("text Slow count", not "textSlow count"). The field's value stays the text it edits (one
+  /// character per block, the editor's own), so every offset the platform sends or is told, and every text it sets,
+  /// is the editor's.
+  String? get readableText {
+    final label = blockLabel;
+    if (label == null) return null;
+    final out = StringBuffer();
+    var named = false;
+    int? last;
+    void write(String s) {
+      out.write(s);
+      if (s.isNotEmpty) last = s.codeUnitAt(s.length - 1);
+    }
+
+    bool word(int? unit) => unit != null && _wordCharacter.hasMatch(String.fromCharCode(unit));
+    for (var i = 0; i < text.length; i++) {
+      final unit = text.codeUnitAt(i);
+      final block = _blockOf[unit];
+      if (block == null) {
+        write(String.fromCharCode(unit));
+      } else if (block.kind == PromptBlockKind.literal) {
+        write(block.text);
+      } else if (label(block) case final name?) {
+        final next = i + 1 < text.length ? text.codeUnitAt(i + 1) : null;
+        write('${word(last) ? ' ' : ''}$name${next != null && _blockOf[next] == null && word(next) ? ' ' : ''}');
+        named = true;
+      }
+      // A block with semantics of its own is read as its own node.
+    }
+    return named ? out.toString() : null;
+  }
 
   /// Called for each block a transform or an insert creates (Dify's `onInsert`) and each block that leaves the text
   /// (`onDelete`).
@@ -300,24 +342,45 @@ class PromptEditorController extends TextEditingController {
       } else if (block.kind == PromptBlockKind.literal || chipBuilder == null) {
         children.add(TextSpan(text: block.kind == PromptBlockKind.literal ? block.text : '￼'));
       } else {
-        children.add(
-          WidgetSpan(
-            alignment: PlaceholderAlignment.baseline,
-            baseline: TextBaseline.alphabetic,
-            child: CssMiddle(
-              key: ValueKey((c, seen[c] = (seen[c] ?? 0) + 1)),
-              fontSize: style?.fontSize ?? 14,
-              style: style,
-              lineHeight: strutLine ?? (style?.height ?? 0) * (style?.fontSize ?? 14),
-              child: chipBuilder!(context, block, i),
-            ),
+        final label = blockLabel?.call(block);
+        final chip = ExcludeSemantics(
+          key: ValueKey((c, seen[c] = (seen[c] ?? 0) + 1)),
+          excluding: label != null,
+          child: CssMiddle(
+            fontSize: style?.fontSize ?? 14,
+            style: style,
+            lineHeight: strutLine ?? (style?.height ?? 0) * (style?.fontSize ?? 14),
+            child: chipBuilder!(context, block, i),
           ),
+        );
+        children.add(
+          _BlockSpan(code: c, alignment: PlaceholderAlignment.baseline, baseline: TextBaseline.alphabetic, child: chip),
         );
       }
     }
     addText(runStart, t.length);
     return TextSpan(style: style, children: children);
   }
+}
+
+/// A block's widget in the text whose semantics value is the block's own character in the editor's text (a plain
+/// [WidgetSpan] reports U+FFFC): the field's value is then exactly the text it edits, so a text the platform sets
+/// keeps every block it kept (U+FFFC would turn them into plain characters).
+class _BlockSpan extends WidgetSpan {
+  const _BlockSpan({required this.code, required super.child, super.alignment, super.baseline});
+
+  /// The block's character in the editor's text.
+  final int code;
+
+  @override
+  void computeSemanticsInformation(List<InlineSpanSemanticsInformation> collector) =>
+      collector.add(InlineSpanSemanticsInformation(String.fromCharCode(code)));
+
+  @override
+  bool operator ==(Object other) => super == other && other is _BlockSpan && other.code == code;
+
+  @override
+  int get hashCode => Object.hash(super.hashCode, code);
 }
 
 /// [s] with no `height` (TextStyle cannot unset one by copyWith or merge).

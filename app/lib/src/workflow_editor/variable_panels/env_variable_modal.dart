@@ -253,42 +253,47 @@ class _TypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final card = Semantics(
-      toggled: selected,
-      child: DifyPressable(
-        semanticLabel: label,
-        disabled: disabled,
-        onPressed: onPressed,
-        builder: (context, hovered, focused) {
-          final hover = hovered && !disabled;
-          return Container(
-            height: 32,
-            padding: EdgeInsets.fromLTRB(8, 0, tip == null ? 8 : 20, 0),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected
-                  ? DifyColors.componentsOptionCardOptionSelectedBg
-                  : hover
-                  ? DifyColors.componentsOptionCardOptionBgHover
-                  : DifyColors.componentsOptionCardOptionBg,
-              border: Border.all(
+    // One node per card, read as a choice among the types (a radio button), not a button plus a nameless switch.
+    final card = MergeSemantics(
+      child: Semantics(
+        checked: selected,
+        inMutuallyExclusiveGroup: true,
+        child: DifyPressable(
+          semanticLabel: label,
+          disabled: disabled,
+          onPressed: onPressed,
+          builder: (context, hovered, focused) {
+            final hover = hovered && !disabled;
+            return Container(
+              // A phone: touch-high, as the form's fields are (DifyTouch.controlHeight).
+              height: DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 32,
+              padding: EdgeInsets.fromLTRB(8, 0, tip == null ? 8 : 20, 0),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
                 color: selected
-                    ? DifyColors.componentsOptionCardOptionSelectedBorder
+                    ? DifyColors.componentsOptionCardOptionSelectedBg
                     : hover
-                    ? DifyColors.componentsOptionCardOptionBorderHover
-                    : DifyColors.componentsOptionCardOptionBorder,
-                width: selected ? 1.5 : 1,
+                    ? DifyColors.componentsOptionCardOptionBgHover
+                    : DifyColors.componentsOptionCardOptionBg,
+                border: Border.all(
+                  color: selected
+                      ? DifyColors.componentsOptionCardOptionSelectedBorder
+                      : hover
+                      ? DifyColors.componentsOptionCardOptionBorderHover
+                      : DifyColors.componentsOptionCardOptionBorder,
+                  width: selected ? 1.5 : 1,
+                ),
+                borderRadius: BorderRadius.circular(DifyRadius.lg),
+                boxShadow: selected || hover ? DifyShadows.xs : null,
               ),
-              borderRadius: BorderRadius.circular(DifyRadius.lg),
-              boxShadow: selected || hover ? DifyShadows.xs : null,
-            ),
-            child: DifyText(
-              label,
-              selected ? DifyType.systemSmMedium : DifyType.systemSmRegular,
-              color: selected ? DifyColors.textPrimary : DifyColors.textSecondary,
-            ),
-          );
-        },
+              child: DifyText(
+                label,
+                selected ? DifyType.systemSmMedium : DifyType.systemSmRegular,
+                color: selected ? DifyColors.textPrimary : DifyColors.textSecondary,
+              ),
+            );
+          },
+        ),
       ),
     );
     if (tip == null) return card;

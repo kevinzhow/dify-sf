@@ -141,7 +141,9 @@ TextField difyTextField({
 }) => TextField(
   controller: controller,
   focusNode: focusNode,
-  autofocus: autofocus,
+  // A picker shown as a sheet (a phone) keeps the focus on itself (DifyFloating): a field in it (a search) opens the
+  // keyboard only when tapped, also one that asks to take the focus at once.
+  autofocus: autofocus && !DifyFloating.inSheet(context),
   readOnly: readOnly,
   enabled: !disabled,
   obscureText: obscureText,
@@ -220,6 +222,9 @@ class _InputAddonState extends State<_InputAddon> {
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: widget.focusInput,
+        // The tap only focuses the field, which a screen reader reaches itself: an addon (a search icon) is no
+        // unlabelled button of its own; an interactive addon (a clear button) keeps its own semantics.
+        excludeFromSemantics: true,
         child: TextFieldTapRegion(child: widget.child),
       ),
     ),

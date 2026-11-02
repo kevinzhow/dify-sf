@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 
 import '../dify_tokens.g.dart';
 import 'button_style.dart';
+import 'responsive.dart' show DifyTouch;
+import 'touch_target.dart' show DifyTouchArea;
 
 /// IconButton sizes (icon-button/variants.ts): box, radius, padding.
 enum DifyIconButtonSize {
@@ -19,6 +21,10 @@ enum DifyIconButtonSize {
 
 /// dify-ui's IconButton: a square button around one icon, with a required accessible [label]. The icon takes the
 /// variant's colour (a [DifyIcon] or [RemixIcon] without a colour of its own).
+///
+/// In a sheet on a phone (a compact window) it sits in a touch box ([DifyTouchArea], [DifyTouch.controlHeight]
+/// square) that is also its bounds for accessibility, as a [DifyButton] there is touch-high: the icon and its look
+/// keep Dify's size, the slot around them grows. Elsewhere Dify's sizes.
 class DifyIconButton extends StatelessWidget {
   const DifyIconButton({
     super.key,
@@ -31,6 +37,7 @@ class DifyIconButton extends StatelessWidget {
     this.disabled = false,
     this.focusNode,
     this.restyle,
+    this.touchBox = true,
   });
 
   /// `aria-label`.
@@ -46,8 +53,14 @@ class DifyIconButton extends StatelessWidget {
   /// A call site's classes over the variant's look ([difyDarkGlass]).
   final DifyButtonRestyle? restyle;
 
+  /// Takes the touch box in a phone's sheet (see the class). False for a control a finger does not tap: a drag
+  /// handle or a button shown only on hover, which keep Dify's size (and take no room they do not use).
+  final bool touchBox;
+
   @override
-  Widget build(BuildContext context) => DifyPressable(
+  Widget build(BuildContext context) => touchBox ? DifyTouchArea.inPhoneSheet(context, _button()) : _button();
+
+  Widget _button() => DifyPressable(
     onPressed: onPressed,
     disabled: disabled,
     focusNode: focusNode,

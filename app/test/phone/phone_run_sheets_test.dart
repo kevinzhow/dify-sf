@@ -5,9 +5,12 @@
 // history and the version list as sheets; Android back closes the newest first. At 411x914 and 360x780 with gesture
 // insets and the real Noto Sans.
 
+import 'dart:ui' show CheckedState, Tristate;
+
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/demo/demo_backend.dart';
+import 'package:dify_sf_app/src/design/dify_icon.dart' show RemixIcon;
 import 'package:dify_sf_app/src/design/dify_theme.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/editor/editor_controller.dart';
@@ -46,6 +49,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/app_fonts.dart';
 import '../support/platform_semantics.dart';
+import '../support/touch_targets.dart';
 import 'phone_harness.dart';
 
 class _Backend extends DemoBackend {
@@ -1243,6 +1247,94 @@ void main() {
     await e.dispose();
   });
 
+  testWidgets('the conversation variables sheet\'s header has one Close, the sheet\'s; the tips fold with their own '
+      '"Tips" button (polish 2)', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t, chat: true);
+    await overflow(t, _tw('chatVariable.panelTitle'));
+    final sheet = e.sheet('phone-variables-sheet');
+    expect(find.descendant(of: sheet, matching: find.byType(ChatVariablePanel)), findsOneWidget);
+    final header = find.descendant(of: sheet, matching: find.byType(DifySheetHeader));
+    expect(find.descendant(of: header, matching: find.text(_tw('chatVariable.panelTitle'))), findsOneWidget);
+    // One close in the header, on screen and for the platform: the sheet's (the panel's own Dify close was a second
+    // "×" beside it). The platform reads the header as title, Tips, Close (the scrim, which closes the sheet too, is
+    // the design's for every sheet and is not part of the header).
+    final closes = find.descendant(
+      of: header,
+      matching: find.byWidgetPredicate((w) => w is RemixIcon && w.name == 'close-line'),
+    );
+    expect(closes, findsOneWidget);
+    final labels = platformLabels(t);
+    final title = labels.indexOf(_tw('chatVariable.panelTitle'));
+    expect(title, isNot(-1), reason: '$labels');
+    expect(labels.sublist(title, title + 4), [
+      _tw('chatVariable.panelTitle'),
+      _tw('chatVariable.tips'),
+      _tc('operation.close'),
+      _tw('chatVariable.button'),
+    ], reason: '$labels');
+    // Dify's intent: the book button folds the tips (a collapsible); the tips have no close of their own.
+    final tips = find.descendant(of: header, matching: find.bySemanticsLabel(_tw('chatVariable.tips')));
+    expect(tips, findsOneWidget);
+    // The header's boxes (Tips; Close is the sheet's touch button): 44 dp, all of them hittable.
+    await expectTouchTarget(t, tips.evaluate().single, 'Tips');
+    expect(find.descendant(of: sheet, matching: find.text('TIPS')), findsOneWidget);
+    Tristate tipsOn() => t.getSemantics(tips).getSemanticsData().flagsCollection.isToggled;
+    expect(tipsOn(), Tristate.isTrue, reason: 'Tips reports on (recheck 4)');
+    await t.tap(tips);
+    await settle(t, 400);
+    expect(find.descendant(of: sheet, matching: find.text('TIPS')), findsNothing);
+    expect(tipsOn(), Tristate.isFalse, reason: 'and off');
+    await t.tap(tips);
+    await settle(t, 400);
+    expect(find.descendant(of: sheet, matching: find.text('TIPS')), findsOneWidget);
+    // The one close closes the sheet.
+    await t.tap(_close(sheet));
+    await settle(t, 600);
+    expect(e.store.showChatVariablePanel.value, isFalse);
+    expect(e.sheet('phone-variables-sheet'), findsNothing);
+    expect(t.takeException(), isNull);
+    semantics.dispose();
+    await e.dispose();
+  });
+
+  testWidgets('the environment variable form\'s type cards (String, Number, Secret, LLM) are touch-high: 44 dp for '
+      'touch and accessibility (polish 1)', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+    await overflow(t, _tw('env.envPanelTitle'));
+    await t.tap(find.text(_tw('env.envPanelButton')));
+    await settle(t, 800);
+    for (final type in ['String', 'Number', 'Secret']) {
+      final card = find.bySemanticsLabel(type);
+      expect(card, findsOneWidget, reason: type);
+      final node = t.getSemantics(card);
+      expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$type ${node.rect}');
+      expectHittable(t, card.evaluate().single, node, type);
+      // One node per card (recheck 4): a choice among the types, named, the current one checked.
+      final d = node.getSemanticsData();
+      expect(d.label, type);
+      expect(d.flagsCollection.isInMutuallyExclusiveGroup, isTrue, reason: type);
+      expect(d.flagsCollection.isChecked, type == 'String' ? CheckedState.isTrue : CheckedState.isFalse, reason: type);
+    }
+    // No nameless switch beside the cards (each card was two stops).
+    void nameless(SemanticsNode n) {
+      final d = n.getSemanticsData();
+      if (!n.isMergedIntoParent && d.flagsCollection.isToggled != Tristate.none) {
+        expect(d.label, isNotEmpty, reason: 'a nameless switch at ${n.rect}');
+      }
+      n.visitChildren((c) {
+        nameless(c);
+        return true;
+      });
+    }
+
+    nameless(t.binding.renderViews.first.owner!.semanticsOwner!.rootSemanticsNode!);
+    expect(t.takeException(), isNull);
+    semantics.dispose();
+    await e.dispose();
+  });
+
   testWidgets('touch sizes: Start Run, the environment variable form and its cards\' actions', (t) async {
     final e = await _pump(t);
     // Start Run: 44 px, the design's button height in a phone sheet.
@@ -1301,6 +1393,8 @@ void main() {
       expect(node.rect.width, greaterThanOrEqualTo(44), reason: '$what: accessible width ${node.rect}');
       expect(node.rect.height, greaterThanOrEqualTo(44), reason: '$what: accessible height ${node.rect}');
       expect(t.getSize(area), const Size(44, 44), reason: '$what: the box');
+      // All of it hittable: a tap 2 dp inside each edge reaches the control.
+      expectHittable(t, area.evaluate().single, node, what);
     }
 
     // Comment mode: the comment list at its peek; back ends comment mode.

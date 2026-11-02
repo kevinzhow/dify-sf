@@ -73,13 +73,24 @@ class VariablePanelShell extends StatelessWidget {
   );
 }
 
-/// The header's close control: `flex size-6 items-center justify-center` with `RiCloseLine size-4 text-text-tertiary`.
+/// The header's close control: `flex size-6 items-center justify-center` with `RiCloseLine size-4 text-text-tertiary`;
+/// [iconButton]: Dify's `IconButton` around the same icon (the conversation variables panel's). In a phone sheet the
+/// sheet's own close takes its place ([VariablePanelShell] leaves it out), so the header has one close.
 class PanelCloseButton extends StatelessWidget {
-  const PanelCloseButton({super.key, required this.onPressed});
+  const PanelCloseButton({super.key, required this.onPressed, this.iconButton = false});
   final VoidCallback onPressed;
+  final bool iconButton;
 
   @override
-  Widget build(BuildContext context) => DifyPressable(
+  Widget build(BuildContext context) => iconButton
+      ? DifyIconButton(
+          label: tc('operation.close'),
+          onPressed: onPressed,
+          icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+        )
+      : _plain();
+
+  Widget _plain() => DifyPressable(
     semanticLabel: tc('operation.close'),
     onPressed: onPressed,
     builder: (context, hovered, focused) => SizedBox.square(

@@ -218,9 +218,10 @@ class _ModelSelectorRootState extends State<ModelSelectorRoot> {
       placement: DifyPlacement.bottomStart,
       sideOffset: 8,
       constrainHeight: true,
-      // A phone: the model list in a sheet.
+      // A phone: the model list in a sheet, titled as the other select sheets: with the label of the field it is in
+      // ("Model" in the LLM panel), else Dify's "Model" (the model inside Model Settings, in no field).
       sheetOnCompact: true,
-      sheetTitle: configureModelLabel,
+      sheetTitle: DifyFieldLabel.titleOf(context) ?? _c('modelProvider.model'),
       builder: (context, controller) => LayoutBuilder(
         builder: (context, c) {
           if (c.maxWidth.isFinite) _anchorWidth = c.maxWidth;
@@ -464,7 +465,8 @@ class ModelSelectorButton extends StatelessWidget {
       builder: (context, hovered, focused) => Semantics(
         expanded: open,
         child: Container(
-          height: medium ? 32 : 24,
+          // A phone: touch-high, as a select's trigger is there.
+          height: medium ? (DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 32) : 24,
           padding: EdgeInsets.all(medium ? 4 : 2),
           decoration: BoxDecoration(
             color: background(hovered),
@@ -1099,6 +1101,8 @@ class ModelSelectorModelRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = renderI18nObject(model.label, language);
     final tip = _c('modelProvider.selector.suggestionTip');
+    // A phone's sheet: 48 px touch rows, the current model marked as every select sheet marks its current choice.
+    final sheet = DifyFloating.inSheet(context);
     return DifyPressable(
       semanticLabel: suggested ? '$label $tip' : label,
       disabled: !selectable,
@@ -1106,12 +1110,15 @@ class ModelSelectorModelRow extends StatelessWidget {
       builder: (context, hovered, focused) => Semantics(
         selected: selected,
         child: Container(
-          // A 48 px touch row in a phone's sheet.
-          height: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 32,
+          height: sheet ? DifyTouch.minTarget : 32,
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: hovered ? (selectable ? DifyColors.stateBaseHover : DifyColors.stateBaseHoverAlt) : null,
+            color: sheet && selected
+                ? DifyChoiceMark.row
+                : hovered
+                ? (selectable ? DifyColors.stateBaseHover : DifyColors.stateBaseHoverAlt)
+                : null,
             borderRadius: BorderRadius.circular(DifyRadius.lg),
           ),
           child: Row(
@@ -1162,7 +1169,10 @@ class ModelSelectorModelRow extends StatelessWidget {
                   ],
                 ),
               ),
-              if (selected) DifyIcon('vender/line/general/check', size: 16, color: DifyColors.textAccent),
+              if (selected)
+                sheet
+                    ? DifyChoiceMark.check
+                    : DifyIcon('vender/line/general/check', size: 16, color: DifyColors.textAccent),
             ],
           ),
         ),
@@ -1171,6 +1181,7 @@ class ModelSelectorModelRow extends StatelessWidget {
   }
 }
 
-/// [child] with a 48 px hit area in a phone's sheet (its row is 48 px there).
-Widget _touchInSheet(BuildContext context, Widget child) =>
-    DifyFloating.inSheet(context) ? DifyTouchTarget(child: child) : child;
+/// [child] in a phone's sheet: in a 44 px box that is its hit area and its accessible bounds (its row is 48 px there).
+Widget _touchInSheet(BuildContext context, Widget child) => DifyFloating.inSheet(context)
+    ? DifyTouchArea(minSize: DifyTouch.controlHeight, accessibleBox: true, child: child)
+    : child;

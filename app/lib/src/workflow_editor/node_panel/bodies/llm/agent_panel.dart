@@ -345,7 +345,8 @@ class _AgentStrategySelectorState extends State<AgentStrategySelector> {
         disabled: widget.disabled,
         onPressed: c.toggle,
         builder: (context, hovered, focused) => Container(
-          height: 32,
+          // A phone: touch-high, as a select's trigger is there.
+          height: DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 32,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: hovered ? DifyColors.stateBaseHoverAlt : DifyColors.componentsInputBgNormal,
@@ -422,6 +423,8 @@ class _AgentStrategySelectorState extends State<AgentStrategySelector> {
                     shrinkWrap: true,
                     padding: const EdgeInsets.only(bottom: 4),
                     children: [
+                      // tools.tsx's Empty (`py-10`, tools/provider/empty for an agent): no strategy to show.
+                      if (filtered.isEmpty) const _NoStrategies(),
                       for (final p in filtered) ...[
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 6, 12, 2),
@@ -460,6 +463,28 @@ class _AgentStrategySelectorState extends State<AgentStrategySelector> {
       ),
     );
   }
+}
+
+/// tools/provider/empty for agents (`isAgent`): the no-tool placeholder and "No agent strategy available" in `py-10`.
+class _NoStrategies extends StatelessWidget {
+  const _NoStrategies();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 40),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const DifyIcon('vender/other/no-tool-placeholder', size: 64),
+        const SizedBox(height: 8),
+        DifyText(
+          DifyI18n.tr('tools', 'addToolModal.agent.title'),
+          DifyType.systemSmMedium,
+          color: DifyColors.textPrimary,
+        ),
+      ],
+    ),
+  );
 }
 
 class _StrategyRow extends StatelessWidget {

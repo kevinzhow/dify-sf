@@ -201,6 +201,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
   void _attach(PromptEditorController c) {
     c
       ..chipBuilder = _chip
+      ..blockLabel = _blockLabel
       ..variableValueStyle = TextStyle(color: DifyColors.textAccent)
       ..onBlockCreated = ((b) {
         _configOf(b.kind)?.onInsert?.call();
@@ -217,6 +218,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
     c
       ..removeListener(_onChanged)
       ..chipBuilder = null
+      ..blockLabel = null
       ..onBlockCreated = null
       ..onBlockRemoved = null;
   }
@@ -845,6 +847,13 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
 
   // -- blocks
 
+  /// What a block reads as in the field's semantics (its chip is left out of the tree).
+  String? _blockLabel(PromptBlock b) => promptBlockReadName(
+    b,
+    variables: widget.workflowVariableBlock ?? const WorkflowVariableBlockConfig(),
+    generatorType: widget.currentBlock?.generatorType ?? PromptGeneratorType.prompt,
+  );
+
   Widget _chip(BuildContext context, PromptBlock b, int offset) {
     final sel = controller.selection;
     final selected = sel.isValid && sel.start == offset && sel.end == offset + 1;
@@ -1134,7 +1143,13 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
         ),
       ),
     );
-    field = Semantics(label: w.semanticLabel, child: field);
+    // The field's value is the text it edits (a block is its one character), so the platform's offsets and the text it
+    // sets are the editor's; the sentence with each variable's name in place is its hint, read with the field (the
+    // chips are out of the tree).
+    field = Semantics(
+      label: w.semanticLabel,
+      child: _PromptFieldSemantics(hint: controller.readableText, child: field),
+    );
     // The Stack stays when the placeholder goes, so the field keeps its state.
     field = Stack(
       children: [
@@ -1294,4 +1309,38 @@ class _MenuLayout extends SingleChildLayoutDelegate {
 
   @override
   bool shouldRelayout(_MenuLayout old) => old.anchor != anchor || old.insets != insets;
+}
+
+/// The prompt field's semantics node: the text field's own (its value, selection, cursor moves, set text, copy and
+/// paste unchanged), with [hint], the prompt read with each variable's name in place
+/// ([PromptEditorController.readableText]), so the platform reads that sentence with the field.
+class _PromptFieldSemantics extends SingleChildRenderObjectWidget {
+  const _PromptFieldSemantics({required this.hint, required super.child});
+
+  final String? hint;
+
+  @override
+  _RenderPromptFieldSemantics createRenderObject(BuildContext context) => _RenderPromptFieldSemantics(hint);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderPromptFieldSemantics renderObject) => renderObject.hint = hint;
+}
+
+class _RenderPromptFieldSemantics extends RenderProxyBox {
+  _RenderPromptFieldSemantics(this._hint);
+
+  String? _hint;
+  set hint(String? value) {
+    if (value == _hint) return;
+    _hint = value;
+    markNeedsSemanticsUpdate();
+  }
+
+  @override
+  void describeSemanticsConfiguration(SemanticsConfiguration config) {
+    super.describeSemanticsConfiguration(config);
+    // The field's node is formed here (its configuration merges into this one), so the hint is the field's.
+    config.isSemanticBoundary = true;
+    if (_hint case final hint?) config.hint = hint;
+  }
 }

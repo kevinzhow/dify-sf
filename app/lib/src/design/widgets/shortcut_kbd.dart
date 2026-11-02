@@ -123,7 +123,7 @@ String formatHotkeyForDisplay(String hotkey, {DifyPlatform? platform}) {
 
 /// Dify's ShortcutKbd (workflow/shortcuts/shortcut-kbd.tsx): a hotkey split on `+`, one [DifyKbd] per key, each
 /// formatted for display. Give a workflow [shortcut] id, a [hotkey] (`Mod+Shift+L`) or a single [displayKey].
-class DifyShortcutKbd extends StatelessWidget {
+class DifyShortcutKbd extends StatelessWidget implements DifyKeycaps {
   const DifyShortcutKbd({
     super.key,
     this.shortcut,

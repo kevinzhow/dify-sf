@@ -109,9 +109,10 @@
         "app/test/design/page_selection_test.dart",
         "app/test/human_input/m1_second_review_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
-        "app/test/phone/phone_node_sheet_test.dart"
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Batch 4a device check: touch-high (44 px) inside a sheet in a compact window, Dify's sizes elsewhere."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Batch 4a device check: touch-high (44 px) inside a sheet in a compact window, Dify's sizes elsewhere. Polish (after batch 4): a leading or trailing DifyKeycaps a phone does not show leaves the row with its gap (the label stays centred)."
     },
     "button_style.dart": {
       "kind": "text-composition",
@@ -291,9 +292,10 @@
         "app/test/design_widgets_test.dart",
         "app/test/editor_test.dart",
         "app/test/dify_spec/dify_ui/alert_dialog_test.dart",
-        "app/test/dify_spec/dify_ui/icon_button_test.dart"
+        "app/test/dify_spec/dify_ui/icon_button_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Polish (after batch 4): in a sheet on a phone an icon button sits in a 44 px box that is its accessible bounds (DifyTouchArea.inPhoneSheet), as a DifyButton there is touch-high; touchBox false for hover-only and drag handles."
     },
     "infotip.dart": {
       "kind": "text-composition",
@@ -324,9 +326,11 @@
         "app/tool/control_gallery.dart",
         "app/test/control_gallery_typography_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
-        "app/test/dify_spec/dify_ui/phone_lists_test.dart"
+        "app/test/dify_spec/dify_ui/phone_lists_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart",
+        "app/test/phone/phone_body_targets_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: at least 44 px tall in a compact window."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: at least 44 px tall in a compact window. Polish (after batch 4): difyTextField (DifyInput and the fields built on it) ignores autofocus in a picker sheet, as DifyTextField does. Polish recheck (PR #89): an addon's focusing tap is excluded from semantics (a search icon is no unlabelled button; an interactive addon keeps its own)."
     },
     "input_mode.dart": {
       "kind": "text-composition",
@@ -342,9 +346,10 @@
         "app/tool/control_gallery.dart",
         "app/test/control_gallery_typography_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
-        "app/test/phone/phone_node_sheet_test.dart"
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Round 2: no keycaps on a compact window (phones have no keyboard shortcuts)."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Round 2: no keycaps on a compact window (phones have no keyboard shortcuts). Polish (after batch 4): DifyKeycaps marks keycaps (DifyKbd, DifyKbdGroup, DifyShortcutKbd); DifyKbd.shownIn is the one rule; a DifyButton leaves hidden keycaps (and their gap) out of its row."
     },
     "keyboard_scroll_view.dart": {
       "kind": "layout-or-non-text",
@@ -392,9 +397,10 @@
         "app/test/control_gallery_typography_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
-        "app/test/phone/phone_panel_pickers_test.dart"
+        "app/test/phone/phone_panel_pickers_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: a dropdown is a sheet on a phone only as a picker (select style, radio or checkbox items); action menus stay anchored."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: a dropdown is a sheet on a phone only as a picker (select style, radio or checkbox items); action menus stay anchored. Polish (after batch 4): DifyChoiceMark (menu_items.dart), how every sheet of choices marks the current one (highlighted row, accent check), shared with lists of their own (the model selector)."
     },
     "menu_items.dart": {
       "kind": "text-composition",
@@ -434,9 +440,10 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Polish recheck (PR #89): touch-high (44 px) on a phone, as DifyInput."
     },
     "page.dart": {
       "kind": "layout-or-non-text",
@@ -565,9 +572,10 @@
         "app/tool/control_gallery.dart",
         "app/test/control_gallery_typography_test.dart",
         "app/test/dify_spec/dify_ui/segmented_control_touch_test.dart",
-        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart"
+        "app/test/dify_spec/dify_ui/touch_target_edges_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Polish (after batch 4): the touch size's items are 44 px tall accessible nodes inside the 48 px box."
     },
     "select.dart": {
       "kind": "gallery",
@@ -586,18 +594,20 @@
         "app/test/design/page_selection_test.dart",
         "app/test/workflow_editor/canvas_connect_and_drag_test.dart",
         "app/test/workflow_editor/canvas_touch_test.dart",
-        "app/test/dify_spec/access_point/embedded_settings_test.dart"
+        "app/test/dify_spec/access_point/embedded_settings_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. Polish recheck (PR #89): items the menu has no name for (the platform's Share, Look Up, Search Web) are left out (no blank rows)."
     },
     "shortcut_kbd.dart": {
       "kind": "text-composition",
       "evidence": [
         "app/test/design_typography_test.dart",
         "app/test/design_widgets_test.dart",
-        "app/test/dify_spec/dify_ui/shortcut_kbd_test.dart"
+        "app/test/dify_spec/dify_ui/shortcut_kbd_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Polish (after batch 4): a DifyKeycaps, so a button on a phone leaves it out with its gap."
     },
     "skeleton.dart": {
       "kind": "layout-or-non-text",
@@ -651,9 +661,10 @@
       "evidence": [
         "app/tool/control_gallery.dart",
         "app/test/control_gallery_typography_test.dart",
-        "app/test/phone/phone_node_sheet_test.dart"
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Polish (after batch 4, PR #89 review): on a phone the track sits in a 44 px box (DifyTouchArea) that is its hit area and its accessible bounds, all of it hittable; the track keeps Dify's size."
     },
     "tab_slider_plain.dart": {
       "kind": "gallery",
@@ -706,9 +717,10 @@
         "app/tool/control_gallery.dart",
         "app/test/control_gallery_typography_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
-        "app/test/phone/phone_node_sheet_test.dart"
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Round 2: the caret is the accent on a compact window, whatever the call site's desktop caret colour."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Round 2: the caret is the accent on a compact window, whatever the call site's desktop caret colour. Polish (after batch 4): a field in a picker sheet does not take the focus at once (autofocus ignored in DifyFloating.inSheet): no keyboard over the list until tapped."
     },
     "text_input_scope.dart": {
       "kind": "layout-or-non-text",
@@ -779,9 +791,10 @@
         "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
         "app/test/dify_spec/dify_ui/touch_target_edges_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
-        "app/test/phone/phone_node_sheet_test.dart"
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
       ],
-      "note": "Hit-area expansion and the icon-only touch button (with its toggle state); no text of their own. DifyTouchArea (batch 4a): a small control in a real 48 px box with its target. Round 2: DifyTouchArea.accessibleBox makes the box the control's accessible bounds (MergeSemantics)."
+      "note": "Hit-area expansion and the icon-only touch button (with its toggle state); no text of their own. DifyTouchArea (batch 4a): a small control in a real 48 px box with its target. Round 2: DifyTouchArea.accessibleBox makes the box the control's accessible bounds (MergeSemantics). Polish (after batch 4): DifyTouchTarget.accessible (raft-flutter's RaftTouchTarget: the hit area is also the control's accessible bounds, one merged node; only inside a box of the control's own that holds the whole hit area) and DifyTouchArea.inPhoneSheet / appliesIn (a small control in a phone sheet: a 44 px box that is its accessible bounds; the control's edge must be hittable, no dead padding inside the box). PR #89 review: every reported box tapped 2 dp inside each edge in the tests."
     },
     "workspace_avatar.dart": {
       "kind": "text-composition",

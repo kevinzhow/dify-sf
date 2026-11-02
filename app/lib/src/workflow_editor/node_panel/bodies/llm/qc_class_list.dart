@@ -508,7 +508,11 @@ class _ClassListState extends State<ClassList> {
               child: Builder(
                 builder: (context) {
                   final visible = hovered || pressed || _handle(id).hasFocus;
-                  return Semantics(
+                  // A node of its own (not merged into the class item); none on a phone (hover and keys only).
+                  return ExcludeSemantics(
+                    excluding: DifyTouch.compactOf(context),
+                    child: Semantics(
+                    container: true,
                     button: true,
                     toggled: pressed,
                     label: label,
@@ -519,12 +523,14 @@ class _ClassListState extends State<ClassList> {
                         enabled: c == null,
                         child: DifyIconButton(
                           key: ValueKey('class-sort-handle-$position'),
+                          touchBox: false, // A drag handle shown on hover.
                           focusNode: _handle(id),
                           label: label,
                           icon: const RemixIcon('draggable', size: 12),
                         ),
                       ),
                     ),
+                  ),
                   );
                 },
               ),

@@ -165,6 +165,12 @@ class PublisherSummarySection extends StatelessWidget {
       );
     }
 
+    // A phone: the version line's small links ("Name it", the pencil) each in a touch box that is also their
+    // accessible bounds (DifyTouch.controlHeight); the line grows to it.
+    Widget touch(Widget link) => DifyTouch.compactOf(context)
+        ? DifyTouchArea(minSize: DifyTouch.controlHeight, accessibleBox: true, child: link)
+        : link;
+
     final Widget head;
     if (!hasPublishedVersion) {
       head = DifyTextLine(_w('common.notPublishedYet'), style: tertiary);
@@ -196,56 +202,60 @@ class PublisherSummarySection extends StatelessWidget {
                 ),
                 ExcludeSemantics(child: DifyTextLine('·', style: tertiary)),
                 if (named)
-                  PublisherPressable(
-                    label: _w('versionHistory.editVersionInfo'),
-                    disabled: editDisabled,
-                    onPressed: onEditVersion,
-                    builder: (context, hovered, focused) => Container(
-                      width: 16,
-                      height: 16,
-                      alignment: Alignment.center,
-                      decoration: DifyFocusDecoration(
-                        borderRadius: BorderRadius.circular(DifyRadius.sm),
-                        boxShadow: difyFocusRing(focused),
-                      ),
-                      child: RemixIcon(
-                        'edit-line',
-                        size: 14,
-                        color: hovered ? DifyColors.textAccent : DifyColors.textTertiary,
+                  touch(
+                    PublisherPressable(
+                      label: _w('versionHistory.editVersionInfo'),
+                      disabled: editDisabled,
+                      onPressed: onEditVersion,
+                      builder: (context, hovered, focused) => Container(
+                        width: 16,
+                        height: 16,
+                        alignment: Alignment.center,
+                        decoration: DifyFocusDecoration(
+                          borderRadius: BorderRadius.circular(DifyRadius.sm),
+                          boxShadow: difyFocusRing(focused),
+                        ),
+                        child: RemixIcon(
+                          'edit-line',
+                          size: 14,
+                          color: hovered ? DifyColors.textAccent : DifyColors.textTertiary,
+                        ),
                       ),
                     ),
                   )
                 else
                   Flexible(
-                    child: PublisherPressable(
-                      label: _w('versionHistory.nameIt'),
-                      disabled: editDisabled,
-                      waitCursorWhenDisabled: true,
-                      onPressed: onEditVersion,
-                      builder: (context, hovered, focused) {
-                        final color = hovered ? DifyColors.textAccentSecondary : DifyColors.textAccent;
-                        return Container(
-                          decoration: DifyFocusDecoration(
-                            borderRadius: BorderRadius.circular(DifyRadius.sm),
-                            boxShadow: difyFocusRing(focused),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            spacing: 4,
-                            children: [
-                              RemixIcon('edit-line', size: 14, color: color),
-                              Flexible(
-                                child: DifyTextLine(
-                                  _w('versionHistory.nameIt'),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: difyTextStyle(DifyType.systemXsMedium, color),
+                    child: touch(
+                      PublisherPressable(
+                        label: _w('versionHistory.nameIt'),
+                        disabled: editDisabled,
+                        waitCursorWhenDisabled: true,
+                        onPressed: onEditVersion,
+                        builder: (context, hovered, focused) {
+                          final color = hovered ? DifyColors.textAccentSecondary : DifyColors.textAccent;
+                          return Container(
+                            decoration: DifyFocusDecoration(
+                              borderRadius: BorderRadius.circular(DifyRadius.sm),
+                              boxShadow: difyFocusRing(focused),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              spacing: 4,
+                              children: [
+                                RemixIcon('edit-line', size: 14, color: color),
+                                Flexible(
+                                  child: DifyTextLine(
+                                    _w('versionHistory.nameIt'),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: difyTextStyle(DifyType.systemXsMedium, color),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
               ],
@@ -317,21 +327,16 @@ class PublisherSummarySection extends StatelessWidget {
                 disabled: buttonDisabled,
                 onPressed: onPublish,
                 semanticLabel: buttonLabel,
-                child: publishDisabled
-                    ? DifyTextLine(buttonLabel)
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        spacing: 4,
+                // The keycaps in the button's trailing slot (its 4 px gap): a phone shows none, and no gap.
+                trailing: publishDisabled
+                    ? null
+                    : DifyKbdGroup(
                         children: [
-                          Flexible(child: DifyTextLine(buttonLabel)),
-                          DifyKbdGroup(
-                            children: [
-                              for (final k in appPublishHotkey.split('+'))
-                                DifyKbd(formatHotkeyForDisplay(k), color: DifyKbdColor.white, disabled: buttonDisabled),
-                            ],
-                          ),
+                          for (final k in appPublishHotkey.split('+'))
+                            DifyKbd(formatHotkeyForDisplay(k), color: DifyKbdColor.white, disabled: buttonDisabled),
                         ],
                       ),
+                child: DifyTextLine(buttonLabel),
               ),
               if (startNodeLimitExceeded) const _StartNodeLimitHint(),
             ],

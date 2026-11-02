@@ -3,6 +3,7 @@
 // and close order; the panel's fields at phone density; every picker as a sheet; the keyboard; at 411x914 and
 // 360x780 with the system bars' insets.
 import 'dart:async';
+import 'dart:ui' show Tristate;
 
 import 'package:dify_sf_app/src/canvas/canvas_controller.dart';
 import 'package:dify_sf_app/src/canvas/workflow_canvas.dart';
@@ -19,6 +20,9 @@ import 'package:dify_sf_app/src/workflow_editor/header/publisher/app_publisher.d
 import 'package:collab_client/collab_client.dart' show Document, Edge, Node;
 import 'package:dify_sf_app/src/editor/undo_manager.dart' show HistoryEvent;
 import 'package:dify_sf_app/src/workflow_editor/context_menu/clipboard.dart' show nodeFromDify;
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/core/core_kit.dart' show FieldAddButton;
+import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_parameter_modal.dart'
+    show ModelSettingsTrigger;
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/model_selector.dart' show ModelSelectorButton;
 import 'package:dify_sf_app/src/workflow_editor/node_panel/title_description_input.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/panel_fields.dart';
@@ -37,6 +41,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/app_fonts.dart';
 import '../support/platform_semantics.dart';
+import '../support/touch_targets.dart';
 import 'phone_harness.dart';
 
 /// The editor on the demo document (Start → "Answer the question" (LLM) → "Post-process" (code) → Answer).
@@ -186,6 +191,44 @@ void _difyWorkflow(EditorController c) {
     addEdges: [
       for (final (i, (a, b)) in const [('n-start', 'n-llm'), ('n-llm', 'n-code'), ('n-code', 'n-end')].indexed)
         Edge(id: 'e-$i', source: a, target: b),
+    ],
+  );
+  c.selectNode(null);
+}
+
+/// Start → "Review" (Human Input: a form, an Approve action, a 3-day timeout) → End.
+void _humanInputWorkflow(EditorController c) {
+  final nodes = <Node>[];
+  void add(String id, String type, String title, Map<String, Object?> data) => nodes.add(
+    nodeFromDify(
+      {
+        'id': id,
+        'position': {'x': nodes.length * 300, 'y': 0},
+        'data': {'type': type, 'title': title, ...data},
+      },
+      Document(nodes: nodes),
+      id: id,
+    ),
+  );
+  add('h-start', 'start', 'Start', {'variables': <Object?>[]});
+  add('h-review', 'human-input', 'Review', {
+    'delivery_methods': <Object?>[],
+    'user_actions': [
+      {'id': 'approve', 'title': 'Approve', 'button_style': 'primary'},
+    ],
+    'form_content': 'Please review the request.',
+    'inputs': <Object?>[],
+    'timeout': 3,
+    'timeout_unit': 'day',
+  });
+  add('h-end', 'end', 'End', {'outputs': <Object?>[]});
+  c.applyGraphChange(
+    event: HistoryEvent.nodeAdd,
+    removeNodes: [...c.doc.nodes.keys],
+    addNodes: nodes,
+    addEdges: [
+      Edge(id: 'he-0', source: 'h-start', target: 'h-review'),
+      Edge(id: 'he-1', source: 'h-review', target: 'h-end'),
     ],
   );
   c.selectNode(null);
@@ -833,9 +876,18 @@ void main() {
     await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
     final panel = _inSheet(find.byType(DifyPromptEditorPanel)).first;
     await _scrollTo(t, panel);
+    // The header's boxes, side by side (Generate and the Jinja switch have theirs too since the polish round).
     final boxes = find.descendant(of: panel, matching: find.byType(DifyTouchArea));
-    expect(boxes, findsNWidgets(2));
-    final rects = [for (final b in boxes.evaluate()) t.getRect(find.byWidget(b.widget))];
+    final outer = [
+      for (final b in boxes.evaluate())
+        if (find
+            .ancestor(of: find.byElementPredicate((x) => x == b), matching: find.byType(DifyTouchArea))
+            .evaluate()
+            .isEmpty)
+          b,
+    ];
+    expect(outer.length, 4, reason: 'Generate, Jinja, insert, "…"');
+    final rects = [for (final b in outer) t.getRect(find.byElementPredicate((x) => x == b))];
     for (final r in rects) {
       expect(r.width, greaterThanOrEqualTo(44));
       expect(r.height, greaterThanOrEqualTo(44));
@@ -953,6 +1005,262 @@ void main() {
     final python = find.text('Python3').last;
     expect(t.getRect(python).left, closeTo(typeInset, 0.5), reason: 'one row inset');
     expect(typeInset, closeTo(16, 0.5));
+    expect(t.takeException(), isNull);
+    await e.dispose();
+  });
+
+  // ----- polish after batch 4 (brief-polish.md) -----
+
+  for (final size in phoneSizes) {
+    final name = '${size.width.toInt()}x${size.height.toInt()}';
+    testWidgets('$name: touch targets (polish 1): the small controls of the Start, LLM, Code and End settings, the '
+        'field headers\' icon buttons, "+", switches, fold rows and the model\'s Variable / Constant, Remove, Model '
+        'Settings and the model, Generate, the code language, each a 44 dp node for touch and accessibility, none '
+        'overlapping', (t) async {
+      final semantics = t.ensureSemantics();
+      final e = await _pump(t, size: size);
+      // An icon button the platform reads (its own name in its node; not one shown only on hover).
+      bool read(Element el) =>
+          el.widget is! DifyIconButton ||
+          semanticsNodeOf(t, el).getSemanticsData().label.contains((el.widget as DifyIconButton).label);
+      Iterable<Element> controls() => [
+        for (final type in [DifyIconButton, FieldAddButton, DifySwitch, ModelSettingsTrigger, ModelSelectorButton])
+          ..._inSheet(find.byType(type)).evaluate(),
+        // The default trigger of a TypeSelector (the code language): its text.
+        ..._inSheet(find.text('PYTHON3')).evaluate(),
+        // A collapse's fold row (output variables, error handling).
+        ..._inSheet(find.byType(PanelCollapse)).evaluate(),
+        // The model field's Variable / Constant switch: each item.
+        for (final key in ['variable', 'input'])
+          ..._inSheet(find.bySemanticsLabel(_tw('nodes.common.typeSwitch.$key'))).evaluate(),
+      ].where(read);
+      for (final step in [_llmTitle, 'Count words', 'Start', 'End']) {
+        await _openFromSteps(t, step);
+        await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+        final found = controls().toList();
+        expect(found, isNotEmpty, reason: step);
+        final targets = [for (final el in found) await expectTouchTarget(t, el, step)];
+        expectApart(targets, step);
+        // The brief's controls are among them.
+        final names = [for (final x in targets) x.$2].join(' | ');
+        final expected = switch (step) {
+          _llmTitle => ['Generate', 'Model Settings', 'ModelSelectorButton', 'Use variable', 'Input value', 'Jinja'],
+          'Count words' => ['Remove', 'PYTHON3', 'Add Input Variables', 'retry on failure'],
+          'Start' => ['Add Input Field'],
+          _ => ['Remove', 'Add output variable'],
+        };
+        for (final name in expected) {
+          expect(names, contains(name), reason: '$step: $names');
+        }
+        expect(await systemBack(t), isTrue);
+      }
+      // A variable's drill chevron in the variable sheet (End's output: Start's file variable has members).
+      await _openFromSteps(t, 'End');
+      await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+      final trigger = _inSheet(find.byKey(const Key('var-reference-picker-trigger'))).first;
+      await _scrollTo(t, trigger);
+      await t.tap(trigger);
+      await settle(t, 800);
+      await expectTouchTarget(t, find.byKey(const ValueKey('var-members-attachment')).evaluate().single, 'the chevron');
+      expect(t.takeException(), isNull);
+      semantics.dispose();
+      await e.dispose();
+    });
+  }
+
+  for (final size in phoneSizes) {
+    final name = '${size.width.toInt()}x${size.height.toInt()}';
+    testWidgets(
+      '$name: touch targets in the Human Input settings (recheck 3): the form content\'s Copy and Expand, the '
+      'timeout field and its Days / Hours, a user action\'s button style and Delete; each a 44 dp node, all of it '
+      'hittable, none overlapping',
+      (t) async {
+        final semantics = t.ensureSemantics();
+        final e = await _pump(t, size: size);
+        _humanInputWorkflow(e.c);
+        await settle(t, 800);
+        await _openFromSteps(t, 'Review');
+        await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+        String h(String key) => DifyI18n.tr('workflow', 'nodes.humanInput.$key');
+        final labels = [
+          _tc('operation.copy'),
+          DifyI18n.tr('share', 'chat.expand'),
+          h('timeout.days'),
+          h('timeout.hours'),
+          h('userActions.chooseStyle'),
+          _tc('operation.delete'),
+        ];
+        final targets = <(Rect, String)>[];
+        for (final label in labels) {
+          final f = _inSheet(find.bySemanticsLabel(label));
+          expect(f, findsWidgets, reason: label);
+          targets.add(await expectTouchTarget(t, f.evaluate().first, 'Human Input'));
+        }
+        // The timeout field: touch-high (as a DifyInput on a phone).
+        final timeout = _inSheet(find.byType(DifyNumberField)).first;
+        await _scrollTo(t, timeout);
+        expect(t.getSize(timeout).height, greaterThanOrEqualTo(44));
+        expectApart(targets, 'Human Input');
+        expect(t.takeException(), isNull);
+        semantics.dispose();
+        await e.dispose();
+      },
+    );
+  }
+
+  testWidgets('accessibility (recheck 2, 4): a USER message is not one "switch" node: its role is a button of its own, '
+      'the hover drag handle is not read on a phone; the code editor\'s resize handle covers nothing; a drill chevron '
+      'says what it does', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+    await _openFromSteps(t, _llmTitle);
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final add = _inSheet(find.text(_tw('nodes.llm.addMessage'))).first;
+    await _scrollTo(t, add);
+    await t.tap(add);
+    await settle(t, 600);
+    final role = _inSheet(find.text('USER')).first;
+    await _scrollTo(t, role);
+    final node = semanticsNodeOf(t, role.evaluate().single);
+    final data = node.getSemanticsData();
+    expect(data.label, 'USER', reason: 'the role trigger is its own node');
+    expect(data.flagsCollection.isButton, isTrue);
+    expect(data.flagsCollection.isToggled, Tristate.none, reason: 'not a switch');
+    await expectTouchTarget(t, role.evaluate().single, 'the role');
+    // The messages can be reordered: the hover drag handle is there (it swallowed the block).
+    expect(_inSheet(find.byWidgetPredicate((w) => '${w.key}'.contains('sort-handle-'))), findsWidgets);
+    final reorder = DifyI18n.tr('common', 'sort.handle', {'item': 'user'});
+    final labels = platformLabels(t);
+    expect(labels.where((l) => l.contains(reorder) || l.contains('USER') && l != 'USER'), isEmpty, reason: '$labels');
+    void noSwitch(SemanticsNode n) {
+      final d = n.getSemanticsData();
+      if (!n.isMergedIntoParent && d.flagsCollection.isToggled != Tristate.none) {
+        expect(d.label, isNotEmpty, reason: 'a nameless switch at ${n.rect}');
+        expect(d.label, isNot(contains('USER')), reason: 'the message block read as a switch');
+      }
+      n.visitChildren((c) {
+        noSwitch(c);
+        return true;
+      });
+    }
+
+    noSwitch(t.binding.renderViews.first.owner!.semanticsOwner!.rootSemanticsNode!);
+    expect(await systemBack(t), isTrue);
+    // The code step: no "Resize editor" node over the editor on a phone; the header's buttons are read.
+    await _openFromSteps(t, 'Count words');
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final copy = _inSheet(find.bySemanticsLabel(_tc('operation.copy'))).first;
+    await _scrollTo(t, copy);
+    expect(platformLabels(t), isNot(contains(_tc('resize.editor'))));
+    expect(platformLabels(t), contains(_tc('operation.copy')));
+    expect(await systemBack(t), isTrue);
+    // A drill chevron: "View Details" (its row is read with the variable's name).
+    await _openFromSteps(t, 'End');
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final trigger = _inSheet(find.byKey(const Key('var-reference-picker-trigger'))).first;
+    await _scrollTo(t, trigger);
+    await t.tap(trigger);
+    await settle(t, 800);
+    final chevron = find.byKey(const ValueKey('var-members-attachment')).evaluate().single;
+    expect(semanticsNodeOf(t, chevron).getSemanticsData().label, _tc('operation.viewDetails'));
+    expect(t.takeException(), isNull);
+    semantics.dispose();
+    await e.dispose();
+  });
+
+  testWidgets('the prompt field (polish 3, PR #89 review): its value is the edited text (the variable is its one '
+      'character), its hint the sentence with the name in place ("Summarize Start query in one sentence."), the chip '
+      'not read apart; the platform\'s selections, moves and texts act on the edited text', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+    await _openFromSteps(t, _llmTitle);
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final panel = _inSheet(find.byType(DifyPromptEditorPanel)).first;
+    await _scrollTo(t, panel);
+    final editable = find.descendant(of: panel, matching: find.byType(EditableText)).first;
+    final controller = t.widget<EditableText>(editable).controller as PromptEditorController;
+    var data = t.getSemantics(editable).getSemanticsData();
+    expect(data.value, controller.text, reason: 'the value is the edited text');
+    expect(data.value, isNot(contains('￼')), reason: 'the block is its own character, not U+FFFC');
+    expect(data.hint, 'Summarize Start query in one sentence.');
+    expect(data.label, isNot(contains('query')), reason: 'the chip\'s texts are not merged into the field\'s name');
+    final labels = platformLabels(t);
+    expect(labels.where((l) => l.contains('query')), isEmpty, reason: 'the chip is no node of its own: $labels');
+    await t.tap(editable);
+    await settle(t, 300);
+    final block = [for (var i = 0; i < controller.text.length; i++) i].firstWhere((i) => controller.blockAt(i) != null);
+    expect(block, 10);
+    final owner = t.binding.renderViews.first.owner!.semanticsOwner!;
+    Future<SemanticsData> act(SemanticsAction action, [Object? args]) async {
+      owner.performAction(t.getSemantics(editable).id, action, args);
+      await settle(t, 300);
+      return t.getSemantics(editable).getSemanticsData();
+    }
+
+    Future<SemanticsData> caret(int offset) async {
+      controller.selection = TextSelection.collapsed(offset: offset);
+      await settle(t, 300);
+      return t.getSemantics(editable).getSemanticsData();
+    }
+
+    // The caret after the block is told as it is.
+    data = await caret(block + 1);
+    expect(data.textSelection, TextSelection.collapsed(offset: block + 1));
+    expect(data.value.substring(block + 1), ' in one sentence.');
+    // The platform puts the cursor after the block: the caret goes there, and an insert goes there.
+    await caret(0);
+    data = await act(SemanticsAction.setSelection, {'base': block + 1, 'extent': block + 1});
+    expect(controller.selection, TextSelection.collapsed(offset: block + 1));
+    t.testTextInput.updateEditingValue(controller.value.replaced(controller.selection, 'X'));
+    await settle(t, 300);
+    expect(controller.prompt, 'Summarize {{#n-start.query#}}X in one sentence.');
+    t.testTextInput.updateEditingValue(controller.value.replaced(TextRange(start: block + 1, end: block + 2), ''));
+    await settle(t, 300);
+    // A selection over the block selects it.
+    await act(SemanticsAction.setSelection, {'base': block, 'extent': block + 1});
+    expect(controller.selection, TextSelection(baseOffset: block, extentOffset: block + 1));
+    // Moves by character pass the block whole, both ways.
+    await caret(block);
+    data = await act(SemanticsAction.moveCursorForwardByCharacter, false);
+    expect(controller.selection, TextSelection.collapsed(offset: block + 1));
+    expect(data.textSelection, TextSelection.collapsed(offset: block + 1));
+    data = await act(SemanticsAction.moveCursorBackwardByCharacter, false);
+    expect(controller.selection, TextSelection.collapsed(offset: block));
+    expect(data.textSelection, TextSelection.collapsed(offset: block));
+    // By word: the field's own move, told as it is.
+    await caret(0);
+    for (final _ in [1, 2, 3]) {
+      data = await act(SemanticsAction.moveCursorForwardByWord, false);
+      expect(data.textSelection, controller.selection);
+    }
+    // The platform replaces "one" by "two" in the value: the block stays (the value carries it).
+    data = await act(SemanticsAction.setText, data.value.replaceFirst('one', 'two'));
+    expect(controller.prompt, 'Summarize {{#n-start.query#}} in two sentence.');
+    expect(data.hint, 'Summarize Start query in two sentence.');
+    // And sets the text without the block: the block is deleted, nothing else.
+    data = await act(SemanticsAction.setText, data.value.replaceRange(block, block + 1, ''));
+    expect(controller.prompt, 'Summarize  in two sentence.');
+    expect(data.hint, isEmpty, reason: 'no variable left: the value says it all');
+    expect(t.takeException(), isNull);
+    semantics.dispose();
+    await e.dispose();
+  });
+
+  testWidgets('"…" → Publish: with the keycaps hidden on a phone, the Publish button\'s label is centred (polish 5)', (
+    t,
+  ) async {
+    final e = await _pump(t);
+    await t.tap(find.byKey(const ValueKey('phone-editor-more')));
+    await settle(t, 800);
+    await t.tap(find.text(_tw('common.publish')).last);
+    await settle(t, 1200);
+    final label = find.descendant(of: find.byType(AppPublisher), matching: find.text(_tw('common.publish'))).last;
+    final button = find.ancestor(of: label, matching: find.byType(DifyButton)).first;
+    expect(
+      t.getCenter(label).dx,
+      closeTo(t.getCenter(button).dx, 0.5),
+      reason: 'label ${t.getRect(label)} in button ${t.getRect(button)}',
+    );
     expect(t.takeException(), isNull);
     await e.dispose();
   });

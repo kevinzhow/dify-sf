@@ -280,7 +280,8 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 296),
             child: SizedBox(
-              height: 32,
+              // A phone: touch-high, the model's trigger and Model Settings both (DifyTouch.controlHeight).
+              height: DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 32,
               child: Row(
                 children: [
                   Expanded(
@@ -490,6 +491,8 @@ class ModelSettingsTrigger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = DifyI18n.tr('common', 'modelProvider.modelSettings');
+    // A phone: a touch-size square (the split trigger's row is touch-high there).
+    final side = DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 32.0;
     final button = DifyPressable(
       semanticLabel: label,
       disabled: disabled,
@@ -502,8 +505,8 @@ class ModelSettingsTrigger extends StatelessWidget {
           disabled: disabled,
         );
         return Container(
-          width: 32,
-          height: 32,
+          width: side,
+          height: side,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: surface == ModelSelectorSurface.workflow ? DifyColors.workflowBlockParmaBg : look.background,

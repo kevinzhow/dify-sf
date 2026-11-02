@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import '../dify_tokens.g.dart';
 import 'button_style.dart';
 import 'bottom_sheet.dart' show DifySheetRecipe;
+import 'kbd.dart' show DifyKbd, DifyKeycaps;
 import 'loading.dart' show DifySpinner;
 import 'responsive.dart';
 
@@ -75,6 +76,10 @@ class DifyButton extends StatelessWidget {
     final height = DifyTouch.compactOf(context) && DifySheetRecipe.contains(context)
         ? math.max(size.height, DifyTouch.controlHeight)
         : size.height;
+    // Keycaps a phone does not show leave the row, with the gap before them (the label stays centred).
+    final keycaps = DifyKbd.shownIn(context);
+    final leading = this.leading is DifyKeycaps && !keycaps ? null : this.leading;
+    final trailing = this.trailing is DifyKeycaps && !keycaps ? null : this.trailing;
     // compound variant: primary + small is `gap-0.75 px-2`.
     final primarySmall = variant == DifyButtonVariant.primary && size == DifyButtonSize.small;
     return DifyPressable(

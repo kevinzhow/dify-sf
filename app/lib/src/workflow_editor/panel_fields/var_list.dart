@@ -292,9 +292,7 @@ class _VarListState extends State<VarList> {
             onChange: (sel, info) => _setSelector(index, sel, info),
             onConstantChange: (v) => _setConstant(index, v),
           );
-          final remove = w.readonly
-              ? null
-              : fieldHeaderControls(context, RemoveButton(onPressed: () => _remove(index)));
+          final remove = w.readonly ? null : fieldHeaderControl(context, RemoveButton(onPressed: () => _remove(index)));
           // A phone: the name (with its remove button) over the value, each the full width, so the variable's
           // "Node / {x} name" shows whole.
           final row = touch
@@ -516,7 +514,7 @@ class _OutputVarListState extends State<OutputVarList> {
                 value: w.outputs[key] ?? 'string',
                 onChanged: (type) => w.onChange({...w.outputs, key: type}),
               ),
-              fieldHeaderControls(context, RemoveButton(onPressed: () => w.onRemove(i))),
+              fieldHeaderControl(context, RemoveButton(onPressed: () => w.onRemove(i))),
             ],
           ),
       ],

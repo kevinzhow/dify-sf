@@ -128,7 +128,8 @@ class PromptRoleTitle extends StatelessWidget {
             )
           else
             Transform.translate(
-              offset: const Offset(-8, 0),
+              // A phone: no shift (the role's touch box would stick out of the row, where taps do not reach).
+              offset: DifyTouch.compactOf(context) ? Offset.zero : const Offset(-8, 0),
               child: TypeSelector<PromptRole>(
                 value: r,
                 options: [
@@ -419,22 +420,29 @@ class _ConfigPromptState extends State<ConfigPrompt> {
                 child: Builder(
                   builder: (context) {
                     final visible = hovered || pressed || _handle(key).hasFocus;
-                    return Semantics(
-                      button: true,
-                      toggled: pressed,
-                      label: label,
-                      child: Opacity(
-                        opacity: visible ? 1 : 0,
-                        child: IgnorePointer(
-                          ignoring: !visible,
-                          child: ReorderableDragStartListener(
-                            index: index,
-                            enabled: !w.readOnly && c == null,
-                            child: DifyIconButton(
-                              key: ValueKey('sort-handle-$index'),
-                              focusNode: _handle(key),
-                              label: label,
-                              icon: const DifyIcon('vender/line/others/drag-handle', size: 14),
+                    // A node of its own (it swallowed the message block: "USER 46 Reorder user", a switch); none
+                    // on a phone, where the handle shows on hover only and is moved with keys.
+                    return ExcludeSemantics(
+                      excluding: DifyTouch.compactOf(context),
+                      child: Semantics(
+                        container: true,
+                        button: true,
+                        toggled: pressed,
+                        label: label,
+                        child: Opacity(
+                          opacity: visible ? 1 : 0,
+                          child: IgnorePointer(
+                            ignoring: !visible,
+                            child: ReorderableDragStartListener(
+                              index: index,
+                              enabled: !w.readOnly && c == null,
+                              child: DifyIconButton(
+                                key: ValueKey('sort-handle-$index'),
+                                touchBox: false, // A drag handle shown on hover.
+                                focusNode: _handle(key),
+                                label: label,
+                                icon: const DifyIcon('vender/line/others/drag-handle', size: 14),
+                              ),
                             ),
                           ),
                         ),

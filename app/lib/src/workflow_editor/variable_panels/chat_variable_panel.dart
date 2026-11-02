@@ -77,15 +77,13 @@ class _ChatVariablePanelState extends State<ChatVariablePanel> {
     return VariablePanelShell(
       title: tw('chatVariable.panelTitle'),
       actions: [
+        // On / off for a screen reader (the tips show or not), besides Dify's aria-expanded.
         Semantics(
+          toggled: _showTip,
           expanded: _showTip,
           child: _TipsButton(open: _showTip, onPressed: () => setState(() => _showTip = !_showTip)),
         ),
-        DifyIconButton(
-          label: tc('operation.close'),
-          onPressed: () => store.setShowChatVariablePanel(false),
-          icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
-        ),
+        PanelCloseButton(iconButton: true, onPressed: () => store.setShowChatVariablePanel(false)),
       ],
       children: [
         if (_showTip) const _Tips(),
@@ -200,11 +198,14 @@ class _Tips extends StatelessWidget {
           spacing: 4,
           children: [
             if (!before) DifyText(label, DifyType.system2xsMedium, color: DifyColors.textTertiary),
-            // `h-2 grow`: the 21 x 8 arrow.
+            // `h-2 grow`: the 21 x 8 arrow. Its box is 21 px whatever the grown width (no minimum from the row: a
+            // narrow label leaves more than 21 px, which made the constraints invalid).
             Expanded(
               child: SizedBox(
                 height: 8,
                 child: OverflowBox(
+                  minWidth: 0,
+                  minHeight: 0,
                   maxWidth: 21,
                   maxHeight: 21,
                   child: DifyIcon('vender/line/others/$icon', size: 21, color: DifyColors.textQuaternary),

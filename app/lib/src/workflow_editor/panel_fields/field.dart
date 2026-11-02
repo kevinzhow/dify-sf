@@ -373,7 +373,8 @@ class _PanelCollapseState extends State<PanelCollapse> {
           excludeFromSemantics: true,
           onTap: _toggle,
           child: Container(
-            height: 24,
+            // A phone: a touch row, as a foldable Field's (48 px).
+            height: DifyTouch.compactOf(context) ? DifyTouch.minTarget : 24,
             margin: const EdgeInsets.only(left: 16),
             child: Row(
               mainAxisSize: MainAxisSize.min,

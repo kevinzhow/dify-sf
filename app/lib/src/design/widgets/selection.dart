@@ -182,12 +182,14 @@ class DifySelectionMenu extends StatelessWidget {
                 child: DifyMenuPopup(
                   focusFirst: true,
                   children: [
+                    // Items without a name of ours (the platform's Share, Look Up, Search Web) would be blank rows.
                     for (final item in buttonItems)
-                      DifyMenuItem(
-                        disabled: item.onPressed == null,
-                        onSelect: () => _activate(item),
-                        child: DifyTextLine(_label(item)),
-                      ),
+                      if (_label(item).isNotEmpty)
+                        DifyMenuItem(
+                          disabled: item.onPressed == null,
+                          onSelect: () => _activate(item),
+                          child: DifyTextLine(_label(item)),
+                        ),
                   ],
                 ),
               ),

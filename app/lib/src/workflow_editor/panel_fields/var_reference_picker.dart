@@ -443,6 +443,7 @@ class _Trigger extends StatelessWidget {
                 child: DifyIconButton(
                   label: DifyI18n.tr('common', 'operation.clear'),
                   size: DifyIconButtonSize.sm,
+                  touchBox: false, // Shown on hover only.
                   onPressed: picker._clear,
                   icon: RemixIcon('close-line', size: 14, color: DifyColors.textTertiary),
                 ),

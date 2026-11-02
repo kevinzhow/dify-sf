@@ -93,7 +93,13 @@ class _MenuRowState extends State<_MenuRow> {
         vertical: widget.autoHeight || sheet ? 4 : 0,
       ),
       decoration: BoxDecoration(
-        color: highlighted ? (widget.destructive ? DifyColors.stateDestructiveHover : DifyColors.stateBaseHover) : null,
+        color: highlighted
+            ? (widget.destructive
+                  ? DifyColors.stateDestructiveHover
+                  : current
+                  ? DifyChoiceMark.row
+                  : DifyColors.stateBaseHover)
+            : null,
         borderRadius: BorderRadius.circular(DifyRadius.lg),
       ),
       child: Row(
@@ -232,7 +238,18 @@ class DifyMenuItem extends StatelessWidget {
 
 /// The checked indicator of checkbox and radio items (`floatingItemIndicatorClassName`: `ms-auto flex shrink-0
 /// items-center text-text-accent`, `i-ri-check-line` 16 px).
-RemixIcon get _indicator => RemixIcon('check-line', size: 16, color: DifyColors.textAccent);
+RemixIcon get _indicator => DifyChoiceMark.check;
+
+/// How a sheet of choices marks the current one (every select sheet on a phone alike, a [DifyMenuRadioItem]'s or a
+/// list of its own, such as the model selector's): the row highlighted ([row]) with the accent check ([check]) at its
+/// end, focused or not.
+abstract final class DifyChoiceMark {
+  /// The current row's background (state-base-hover).
+  static Color get row => DifyColors.stateBaseHover;
+
+  /// The checked indicator: `i-ri-check-line` 16 px in text-accent.
+  static RemixIcon get check => RemixIcon('check-line', size: 16, color: DifyColors.textAccent);
+}
 
 /// A checkbox item (`DropdownMenuCheckboxItem` with its indicator). Base UI keeps the menu open on click.
 class DifyMenuCheckboxItem extends StatelessWidget {
