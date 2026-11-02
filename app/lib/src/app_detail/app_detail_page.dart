@@ -236,7 +236,8 @@ class AppDetailPageState extends State<AppDetailPage> {
     if (widget.onLeave case final leave?) {
       leave();
     } else {
-      unawaited(Navigator.of(context).maybePop());
+      // A pop, not maybePop: back would first close an open popup, and leaving must leave.
+      Navigator.of(context).pop();
     }
   }
 

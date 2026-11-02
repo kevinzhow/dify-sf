@@ -290,7 +290,8 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
       if (!await check() || !mounted) return;
       _deleted = true;
       toast.warning(DifyI18n.tr('app', 'appDeleted'));
-      Navigator.of(context).maybePop();
+      // A pop, not maybePop: back would first close an open popup, and the editor of a deleted app must go.
+      Navigator.of(context).pop();
     } on Object {
       // Unreachable server: the session keeps reconnecting; the next failure asks again.
     } finally {
