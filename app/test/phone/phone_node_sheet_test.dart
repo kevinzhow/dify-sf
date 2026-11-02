@@ -35,6 +35,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/app_fonts.dart';
+import '../support/platform_semantics.dart';
 import 'phone_harness.dart';
 
 /// The editor on the demo document (Start → "Answer the question" (LLM) → "Post-process" (code) → Answer).
@@ -233,20 +234,6 @@ void _whole(WidgetTester t, Finder field, String text) {
 Future<void> _scrollTo(WidgetTester t, Finder f) async {
   await t.ensureVisible(f);
   await settle(t, 300);
-}
-
-/// The labels of the semantics tree as the platform gets it (traversal order), what TalkBack and uiautomator read.
-List<String> _platformLabels(WidgetTester t) {
-  final out = <String>[];
-  void walk(SemanticsNode n) {
-    if (n.label.isNotEmpty) out.add(n.label);
-    n.debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder).forEach(walk);
-  }
-
-  for (final view in t.binding.renderViews) {
-    if (view.owner?.semanticsOwner?.rootSemanticsNode case final root?) walk(root);
-  }
-  return out;
 }
 
 void main() {
@@ -682,9 +669,9 @@ void main() {
     final semantics = t.ensureSemantics();
     final e = await _pump(t);
     final run = _tp('run');
-    expect(_platformLabels(t), contains(run), reason: 'the app bar\'s Run');
+    expect(platformLabels(t), contains(run), reason: 'the app bar\'s Run');
     await _openFromSteps(t, 'Count words');
-    var labels = _platformLabels(t);
+    var labels = platformLabels(t);
     expect(labels, contains(_tw('debug.lastRunTab')), reason: 'the sheet\'s tabs: $labels');
     expect(labels, isNot(contains(run)), reason: 'the editor behind is blocked: $labels');
     // A picker sheet over the settings: its rows, not the settings behind it.
@@ -693,13 +680,69 @@ void main() {
     await _scrollTo(t, trigger);
     await t.tap(trigger);
     await settle(t, 800);
-    labels = _platformLabels(t);
+    labels = platformLabels(t);
     expect(labels, contains(_insertVariable), reason: labels.toString());
     expect(labels, isNot(contains(run)), reason: 'the editor stays blocked: $labels');
     expect(await systemBack(t), isTrue);
     expect(await systemBack(t), isTrue);
-    labels = _platformLabels(t);
+    labels = platformLabels(t);
     expect(labels, contains(run), reason: 'the editor is back: $labels');
+    semantics.dispose();
+    await e.dispose();
+  });
+
+  testWidgets('accessibility: only the topmost layer is read: settings → the model selector, → a picker, → the '
+      'expanded code page; the settings come back after each', (t) async {
+    final semantics = t.ensureSemantics();
+    final e = await _pump(t);
+    final lastRun = _tw('debug.lastRunTab'), addMessage = _tw('nodes.llm.addMessage');
+    void settingsRead(String what) {
+      final labels = platformLabels(t);
+      expect(labels, containsAll([lastRun]), reason: '$what: the settings are read: $labels');
+    }
+
+    void onlyTopmost(List<String> topmost, List<String> below, String what) {
+      final labels = platformLabels(t);
+      for (final label in topmost) {
+        expect(labels, contains(contains(label)), reason: '$what is in the tree: $labels');
+      }
+      for (final label in [lastRun, _tp('run'), ...below]) {
+        expect(labels, isNot(contains(label)), reason: '$what: "$label" (a layer below) is hidden: $labels');
+      }
+    }
+
+    // The LLM step: the model selector (a picker inside the model field's own picker trigger).
+    await _openFromSteps(t, _llmTitle);
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    settingsRead('the LLM settings');
+    expect(platformLabels(t), contains(addMessage));
+    await t.tap(_inSheet(find.byType(ModelSelectorButton)).first);
+    await settle(t, 800);
+    onlyTopmost([DifyI18n.tr('plugin', 'detailPanel.configureModel')], [addMessage], 'the model selector');
+    expect(await systemBack(t), isTrue);
+    settingsRead('after the model selector');
+    // The prompt's insert-variable picker.
+    final insert = find.descendant(
+      of: _inSheet(find.byType(DifyPromptEditorPanel)).first,
+      matching: find.bySemanticsLabel(_tw('common.insertVarTip')),
+    );
+    await _scrollTo(t, insert.first);
+    await t.tap(insert.first);
+    await settle(t, 800);
+    onlyTopmost([_insertVariable, 'query'], [addMessage], 'the variable picker');
+    expect(await systemBack(t), isTrue);
+    settingsRead('after the variable picker');
+    expect(await systemBack(t), isTrue);
+    // The code step: the code editor expanded into a page.
+    await _openFromSteps(t, 'Count words');
+    await _drag(t, t.getCenter(find.byType(DifySheetGrabHandle).first), -400);
+    final expand = _inSheet(find.bySemanticsLabel(DifyI18n.tr('share', 'chat.expand'))).first;
+    await _scrollTo(t, expand);
+    await t.tap(expand);
+    await settle(t, 800);
+    onlyTopmost(['Count words'], [_tw('nodes.code.outputVars').toUpperCase()], 'the expanded code page');
+    expect(await systemBack(t), isTrue);
+    settingsRead('after the expanded page');
     semantics.dispose();
     await e.dispose();
   });

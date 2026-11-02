@@ -7,7 +7,7 @@ import 'package:flutter/widgets.dart';
 
 import '../dify_tokens.g.dart';
 import 'back_dismiss.dart';
-import 'bottom_sheet.dart' show DifyPortalSemantics, DifySheetRecipe;
+import 'bottom_sheet.dart' show DifyModalLayer, DifyPortalSemantics, DifySheetRecipe;
 import 'page.dart' show DifyWindowInsets;
 import 'top_app_bar.dart';
 
@@ -128,7 +128,7 @@ class _DifyPortalPageState extends State<DifyPortalPage> with SingleTickerProvid
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // The page covers what is under it (its semantics are blocked from the page: DifyPortalSemantics).
+                  // The page covers what is under it (for accessibility what is under it is hidden: DifyPortalSemantics).
                   const _Absorb(),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -173,11 +173,15 @@ class _DifyPortalPageState extends State<DifyPortalPage> with SingleTickerProvid
       );
       return SlideTransition(
         position: Tween(begin: const Offset(1, 0), end: Offset.zero).animate(_curve),
-        // A page for accessibility, as a route's: its parts are separate nodes.
+        // A page for accessibility, as a route's: its parts are separate nodes, and nothing in it blocks past it. A
+        // layer opened from the page (a picker) hides it.
         child: Semantics(
+          container: true,
           scopesRoute: true,
           explicitChildNodes: true,
-          child: IgnorePointer(ignoring: !widget.open, child: page),
+          child: DifyModalLayer(
+            child: IgnorePointer(ignoring: !widget.open, child: page),
+          ),
         ),
       );
     },

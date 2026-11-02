@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../dify_tokens.g.dart';
+import 'bottom_sheet.dart' show DifyModalLayer;
 import 'selection.dart';
 
 /// Inert host for text selection/overlays; it supplies no Material component
@@ -39,10 +40,13 @@ class DifyPage extends StatelessWidget {
   final Color? backgroundColor;
   final bool edgeToEdge;
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: backgroundColor ?? DifyColors.backgroundBody,
-    resizeToAvoidBottomInset: true,
-    body: edgeToEdge ? body : SafeArea(child: body),
+  Widget build(BuildContext context) => DifyModalLayer(
+    // A sheet, a picker sheet or a page the page shows from its tree hides it for accessibility, as a route would.
+    child: Scaffold(
+      backgroundColor: backgroundColor ?? DifyColors.backgroundBody,
+      resizeToAvoidBottomInset: true,
+      body: edgeToEdge ? body : SafeArea(child: body),
+    ),
   );
 }
 

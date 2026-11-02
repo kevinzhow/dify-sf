@@ -1007,28 +1007,185 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
 }
 
 /// How a modal layer shown through an [OverlayPortal] from a page's tree ([DifySheetPortal], a [DifyFloating] picker
-/// sheet, [DifyPortalPage]) is modal for accessibility, as a route is: put it around the [OverlayPortal]; while
-/// [modal], everything of the page painted before it is dropped from the semantics tree (a [BlockSemantics] in the
-/// page, up to the route) and the layer's own semantics stay.
+/// sheet, [DifyPortalPage]) is modal for accessibility, as a route is: put it around the [OverlayPortal]. While
+/// [modal], only the topmost layer is in the semantics tree the platform gets: every layer below it (the page, a
+/// lower sheet, its other popups) is hidden, and the topmost is never missing.
 ///
-/// The layer itself must not block (no [ModalBarrier] or [BlockSemantics] in the overlay child): on Android and iOS the
-/// overlay child's semantics are sent as a traversal child of the [OverlayPortal]'s place in the page, so blocking the
-/// page from the overlay would drop that place and the layer with it, leaving the window with no semantics at all.
-class DifyPortalSemantics extends StatelessWidget {
+/// On Android and iOS an overlay child's semantics are sent under its [OverlayPortal]'s place (the portal's child),
+/// and are dropped when that place is not in the tree. So the layer below is not blocked from the layer above: the
+/// nearest [DifyModalLayer] around the portal (the lower sheet's, the page's) drops its whole content from the tree
+/// and becomes that place itself, the layer above hanging from it. Without a [DifyModalLayer] around it (a page that is
+/// not a [DifyPage]) the page painted before the portal is blocked ([BlockSemantics]) from a place of its own.
+class DifyPortalSemantics extends StatefulWidget {
   const DifyPortalSemantics({super.key, required this.modal, required this.child});
 
   final bool modal;
+
+  /// The [OverlayPortal] (or a widget whose first [OverlayPortal] descendant is the layer's).
   final Widget child;
 
-  @override
-  Widget build(BuildContext context) => BlockSemantics(blocking: modal, child: child);
-
-  /// The [OverlayPortal]'s child, [child], at least 1 x 1 while [modal]: the layer's semantics hang from that place,
-  /// and an empty place (a zero-size placeholder) would be dropped as invisible, with the layer.
+  /// The [OverlayPortal]'s child, [child], at least 1 x 1 while [modal]: without a [DifyModalLayer] the layer's
+  /// semantics hang from that place, and an empty place (a zero-size placeholder) would be dropped as invisible.
   static Widget place({required bool modal, required Widget child}) => ConstrainedBox(
     constraints: modal ? const BoxConstraints(minWidth: 1, minHeight: 1) : const BoxConstraints(),
     child: child,
   );
+
+  @override
+  State<DifyPortalSemantics> createState() => _DifyPortalSemanticsState();
+}
+
+class _DifyPortalSemanticsState extends State<DifyPortalSemantics> {
+  _DifyModalLayerState? _layer;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final layer = _ModalLayerScope.of(context);
+    if (layer != _layer) {
+      _layer?._uncover(this);
+      _layer = layer;
+    }
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(DifyPortalSemantics old) {
+    super.didUpdateWidget(old);
+    _sync();
+    // The layer below reads the portal's identity when it builds its semantics: a rebuilt portal may be another one.
+    if (widget.modal) _layer?._render?.markNeedsSemanticsUpdate();
+  }
+
+  @override
+  void dispose() {
+    _layer?._uncover(this);
+    super.dispose();
+  }
+
+  void _sync() => widget.modal ? _layer?._cover(this) : _layer?._uncover(this);
+
+  /// The identity the [OverlayPortal] hangs its overlay child's semantics from (its State: `OverlayPortal`'s
+  /// `Semantics(traversalParentIdentifier: this)`).
+  Object? get _portalIdentity {
+    Object? found;
+    void visit(Element e) {
+      if (found != null) return;
+      if (e.widget is OverlayPortal && e is StatefulElement) {
+        found = e.state;
+        return;
+      }
+      e.visitChildren(visit);
+    }
+
+    if (mounted) (context as Element).visitChildren(visit);
+    return found;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Without a modal layer around it the portal blocks the page painted before it, from a place of its own.
+    final alone = widget.modal && _layer == null;
+    return BlockSemantics(
+      blocking: alone,
+      child: Semantics(container: alone, child: widget.child),
+    );
+  }
+}
+
+/// A layer that modal layers can open over ([DifyPortalSemantics]): a page ([DifyPage]), a sheet shown from a page's
+/// tree ([DifyPortalSheetFrame]), a [DifyPortalPage]. While a modal layer opened from inside it is open, its whole
+/// content is dropped from the semantics tree, and it is the place that layer's semantics hang from, so only the
+/// topmost layer is read (and it is never dropped with what it covers).
+class DifyModalLayer extends StatefulWidget {
+  const DifyModalLayer({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<DifyModalLayer> createState() => _DifyModalLayerState();
+}
+
+class _DifyModalLayerState extends State<DifyModalLayer> {
+  /// The modal layers open over this one, the last opened on top.
+  final _covers = <_DifyPortalSemanticsState>[];
+  _RenderModalLayer? _render;
+
+  void _cover(_DifyPortalSemanticsState portal) {
+    if (_covers.contains(portal)) return;
+    _covers.add(portal);
+    _render?.markNeedsSemanticsUpdate();
+  }
+
+  void _uncover(_DifyPortalSemanticsState portal) {
+    if (!_covers.remove(portal)) return;
+    _render?.markNeedsSemanticsUpdate();
+  }
+
+  /// The identity of the topmost layer open over this one.
+  Object? get _coveredBy => _covers.isEmpty ? null : _covers.last._portalIdentity;
+
+  @override
+  Widget build(BuildContext context) => _ModalLayerScope(
+    layer: this,
+    child: _ModalLayerBox(layer: this, child: widget.child),
+  );
+}
+
+class _ModalLayerScope extends InheritedWidget {
+  const _ModalLayerScope({required this.layer, required super.child});
+  final _DifyModalLayerState layer;
+
+  static _DifyModalLayerState? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_ModalLayerScope>()?.layer;
+
+  @override
+  bool updateShouldNotify(_ModalLayerScope old) => layer != old.layer;
+}
+
+class _ModalLayerBox extends SingleChildRenderObjectWidget {
+  const _ModalLayerBox({required this.layer, super.child});
+  final _DifyModalLayerState layer;
+
+  @override
+  _RenderModalLayer createRenderObject(BuildContext context) => _RenderModalLayer(layer).._attachTo(layer);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderModalLayer renderObject) => renderObject._attachTo(layer);
+
+  @override
+  void didUnmountRenderObject(_RenderModalLayer renderObject) {
+    if (layer._render == renderObject) layer._render = null;
+  }
+}
+
+/// While covered: no semantics of its content, a node of its own from which the covering layer's semantics hang.
+class _RenderModalLayer extends RenderProxyBox {
+  _RenderModalLayer(this._layer);
+  _DifyModalLayerState _layer;
+
+  void _attachTo(_DifyModalLayerState layer) {
+    if (_layer != layer) {
+      _layer = layer;
+      markNeedsSemanticsUpdate();
+    }
+    layer._render = this;
+  }
+
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    if (_layer._coveredBy == null) super.visitChildrenForSemantics(visitor);
+  }
+
+  @override
+  void describeSemanticsConfiguration(SemanticsConfiguration config) {
+    super.describeSemanticsConfiguration(config);
+    if (_layer._coveredBy case final covering?) {
+      config
+        ..isSemanticBoundary = true
+        ..traversalParentIdentifier = covering;
+    }
+  }
 }
 
 /// The scrim and the sheet of a modal sheet shown in the root overlay from a page's tree ([DifySheetPortal]; a
@@ -1067,45 +1224,50 @@ class DifyPortalSheetFrame extends StatelessWidget {
       data: media.copyWith(padding: DifyWindowInsets.of(context), viewInsets: DifyWindowInsets.viewInsetsOf(context)),
       child: _ModalSheetScope(
         close: dismiss ?? () {},
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // The scrim takes every pointer (a tap dismisses); for accessibility it is the dismiss button a route's barrier
-            // is. It does not block the page's semantics itself ([DifyPortalSemantics] does, from the page).
-            FadeTransition(
-              opacity: animation,
-              child: _PortalScrim(
-                key: const ValueKey('dify-sheet-scrim'),
-                onDismiss: dismiss,
-                label: barrierLabel ?? DifyI18n.tr('common', 'operation.close'),
+        // Layers opened from the sheet (a picker, a page, another sheet) hide it, scrim included.
+        child: DifyModalLayer(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // The scrim takes every pointer (a tap dismisses); for accessibility it is the dismiss button a route's
+              // barrier is. It does not hide the page itself ([DifyPortalSemantics] does, from the page).
+              FadeTransition(
+                opacity: animation,
+                child: _PortalScrim(
+                  key: const ValueKey('dify-sheet-scrim'),
+                  onDismiss: dismiss,
+                  label: barrierLabel ?? DifyI18n.tr('common', 'operation.close'),
+                ),
               ),
-            ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: SlideTransition(
-                position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(animation),
-                child: Semantics(
-                  scopesRoute: true,
-                  explicitChildNodes: true,
-                  child: _DifySheet(
-                    detents: detents,
-                    initialDetent: initialDetent,
-                    controller: controller,
-                    requestClose: dismiss == null
-                        ? null
-                        : () async {
-                            dismiss();
-                            await SchedulerBinding.instance.endOfFrame;
-                            return isOpen();
-                          },
-                    modalRoute: true,
-                    shadow: false,
-                    child: DifySelectionRegion(child: child),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: SlideTransition(
+                  position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(animation),
+                  // A node of its own (a semantics boundary): nothing in the sheet can block past it.
+                  child: Semantics(
+                    container: true,
+                    scopesRoute: true,
+                    explicitChildNodes: true,
+                    child: _DifySheet(
+                      detents: detents,
+                      initialDetent: initialDetent,
+                      controller: controller,
+                      requestClose: dismiss == null
+                          ? null
+                          : () async {
+                              dismiss();
+                              await SchedulerBinding.instance.endOfFrame;
+                              return isOpen();
+                            },
+                      modalRoute: true,
+                      shadow: false,
+                      child: DifySelectionRegion(child: child),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

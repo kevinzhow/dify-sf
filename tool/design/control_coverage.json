@@ -84,9 +84,11 @@
         "app/test/dify_spec/dify_ui/sheet_behaviour_test.dart",
         "app/test/dify_spec/dify_ui/touch_target_edges_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
-        "app/test/phone/phone_node_sheet_test.dart"
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/modal_layers_test.dart",
+        "app/test/dify_spec/dify_ui/nested_popover_sheet_test.dart"
       ],
-      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular. DifySheetPortal (batch 4a): the same sheet shown from a page's tree in the root overlay (keeps its scopes); DifyPortalSheetFrame; DifySheetHeader.titleWidget. Device check: DifyPortalSemantics keeps portal sheets in the platform's semantics tree (modal from the page side); DifySheetRecipe.contains."
+      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular. DifySheetPortal (batch 4a): the same sheet shown from a page's tree in the root overlay (keeps its scopes); DifyPortalSheetFrame; DifySheetHeader.titleWidget. Device check: DifyPortalSemantics keeps portal sheets in the platform's semantics tree (modal from the page side); DifySheetRecipe.contains. Batch 4a round 2: DifyModalLayer (a page, a portal sheet, a portal page) hides its whole content from accessibility while a modal layer opened from it is open and is that layer's semantics place, so only the topmost layer is read and it is never dropped; the portal sheet is a semantics boundary."
     },
     "bottom_toolbar.dart": {
       "kind": "text-composition",
@@ -437,9 +439,10 @@
         "app/test/workflow_editor/page_selection_canvas_test.dart",
         "app/test/workflow_editor/mobile_layout_test.dart",
         "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
-        "app/test/dify_spec/dify_ui/sheet_portal_test.dart"
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/dify_spec/dify_ui/modal_layers_test.dart"
       ],
-      "note": "Does not define a distinct text face; supplied children use the shared typography contract."
+      "note": "Does not define a distinct text face; supplied children use the shared typography contract. DifyPage is a DifyModalLayer (batch 4a round 2): its sheets and picker sheets hide it for accessibility."
     },
     "page_route.dart": {
       "kind": "layout-or-non-text",
@@ -481,9 +484,10 @@
       "kind": "layout-or-non-text",
       "evidence": [
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
-        "app/test/phone/phone_node_sheet_test.dart"
+        "app/test/phone/phone_node_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/modal_layers_test.dart"
       ],
-      "note": "dify-sf phone full-screen page shown from a widget's tree (the expanded code and prompt editors; no Dify counterpart): DifyTopAppBar over the content; tests cover the window-filling page, the content moving in and out with its state and scopes, and back. DifyPortalPageTitle names expanded editor pages after the step; modal for accessibility via DifyPortalSemantics."
+      "note": "dify-sf phone full-screen page shown from a widget's tree (the expanded code and prompt editors; no Dify counterpart): DifyTopAppBar over the content; tests cover the window-filling page, the content moving in and out with its state and scopes, and back. DifyPortalPageTitle names expanded editor pages after the step; modal for accessibility via DifyPortalSemantics. Round 2: a DifyModalLayer (a picker opened from the page hides it)."
     },
     "public_app_layout.dart": {
       "kind": "layout-or-non-text",
