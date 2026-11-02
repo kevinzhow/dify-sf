@@ -271,37 +271,56 @@ class _VarListState extends State<VarList> {
         () {
           final index = _keyOf(position);
           final constant = item.variableType == VarKindType.constant;
-          final row = Row(
-            spacing: 4,
-            children: [
-              SizedBox(
-                width: 120,
-                child: DifyInput(
-                  value: item.variable,
-                  semanticLabel: nameLabel,
-                  placeholder: nameLabel,
-                  disabled: w.readonly,
-                  formatters: [varNameFormatter],
-                  onChanged: (v) => _rename(index, v),
-                ),
-              ),
-              Expanded(
-                child: VarReferencePicker(
-                  value: constant ? const [] : item.valueSelector,
-                  constantValue: constant ? item.value ?? '' : '',
-                  scope: w.scope,
-                  readonly: w.readonly,
-                  isSupportConstantValue: w.isSupportConstantValue,
-                  defaultVarKindType: item.variableType ?? VarKindType.constant,
-                  filterVar: w.filterVar,
-                  isSupportFileVar: w.isSupportFileVar,
-                  onChange: (sel, info) => _setSelector(index, sel, info),
-                  onConstantChange: (v) => _setConstant(index, v),
-                ),
-              ),
-              if (!w.readonly) RemoveButton(onPressed: () => _remove(index)),
-            ],
+          final touch = DifyTouch.compactOf(context);
+          final name = DifyInput(
+            height: touch ? DifyTouch.controlHeight : null,
+            value: item.variable,
+            semanticLabel: nameLabel,
+            placeholder: nameLabel,
+            disabled: w.readonly,
+            formatters: [varNameFormatter],
+            onChanged: (v) => _rename(index, v),
           );
+          final picker = VarReferencePicker(
+            value: constant ? const [] : item.valueSelector,
+            constantValue: constant ? item.value ?? '' : '',
+            scope: w.scope,
+            readonly: w.readonly,
+            isSupportConstantValue: w.isSupportConstantValue,
+            defaultVarKindType: item.variableType ?? VarKindType.constant,
+            filterVar: w.filterVar,
+            isSupportFileVar: w.isSupportFileVar,
+            onChange: (sel, info) => _setSelector(index, sel, info),
+            onConstantChange: (v) => _setConstant(index, v),
+          );
+          final remove = w.readonly
+              ? null
+              : fieldHeaderControls(context, RemoveButton(onPressed: () => _remove(index)));
+          // A phone: the name (with its remove button) over the value, each the full width, so the variable's
+          // "Node / {x} name" shows whole.
+          final row = touch
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: 4,
+                  children: [
+                    Row(
+                      spacing: 4,
+                      children: [
+                        Expanded(child: name),
+                        ?remove,
+                      ],
+                    ),
+                    picker,
+                  ],
+                )
+              : Row(
+                  spacing: 4,
+                  children: [
+                    SizedBox(width: 120, child: name),
+                    Expanded(child: picker),
+                    ?remove,
+                  ],
+                );
           return MouseRegion(
             key: ValueKey(item.id ?? index),
             onEnter: (_) => setState(() => _hovered = index),
@@ -473,6 +492,8 @@ class _OutputVarListState extends State<OutputVarList> {
   Widget build(BuildContext context) {
     final w = widget;
     final label = DifyI18n.tr('workflow', 'common.variableNamePlaceholder');
+    // A phone: the name and the type share the row at the select's touch height; remove has its touch box.
+    final touch = DifyTouch.compactOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -484,6 +505,7 @@ class _OutputVarListState extends State<OutputVarList> {
             children: [
               Expanded(
                 child: DifyInput(
+                  height: touch ? DifyTouch.controlHeight : null,
                   value: key,
                   readOnly: w.readonly,
                   semanticLabel: label,
@@ -497,7 +519,7 @@ class _OutputVarListState extends State<OutputVarList> {
                 value: w.outputs[key] ?? 'string',
                 onChanged: (type) => w.onChange({...w.outputs, key: type}),
               ),
-              RemoveButton(onPressed: () => w.onRemove(i)),
+              fieldHeaderControls(context, RemoveButton(onPressed: () => w.onRemove(i))),
             ],
           ),
       ],

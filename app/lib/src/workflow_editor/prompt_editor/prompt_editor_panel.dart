@@ -16,7 +16,7 @@ import '../../i18n/dify_i18n.dart';
 import '../../workflow/var_types.dart' show plainOf;
 import '../code_editor/code_editor.dart';
 import '../node_panel/bodies/llm/group_host.dart' show LlmGroupScope, modelPluginInstalledIn;
-import '../panel_fields/field.dart' show ToggleExpandBtn;
+import '../panel_fields/field.dart' show ToggleExpandBtn, fieldHeaderControls;
 import '../panel_fields/var_picker_model.dart';
 import 'prompt_editor.dart';
 
@@ -148,15 +148,23 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
 
   bool get _jinja => widget.isSupportJinja && widget.editionType == PromptEditionType.jinja2;
 
+  /// A phone expands the editor into a full-screen page ([DifyPortalPage]) instead of lifting it over the panel.
+  bool get _asPage => DifyTouch.compactOf(context);
+
   void _setExpand(bool v) {
     setState(() => _isExpand = v);
+    if (_asPage) {
+      if (_portal.isShowing) _portal.hide();
+      return;
+    }
     v ? _portal.show() : _portal.hide();
   }
 
   /// handleInsertVariable: focus the editor and type `/` at the caret (PROMPT_EDITOR_INSERT_QUICKLY).
   void _insertVariable() {
     setState(() => _isFocus = true);
-    _focusNode.requestFocus();
+    // A phone opens the picker as a sheet without the keyboard: the editor takes focus only when tapped.
+    if (!_asPage) _focusNode.requestFocus();
     final c = _controller;
     if (!c.selection.isValid) c.selection = TextSelection.collapsed(offset: c.text.length);
     c.insertText('/');
@@ -212,37 +220,40 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
             margin: const EdgeInsets.symmetric(horizontal: 8),
             color: DifyColors.dividerRegular,
           ),
-          Row(
-            spacing: 2,
-            children: [
-              if (w.isSupportJinja) _jinjaSwitch(),
-              if (!w.readOnly)
-                DifyTooltip(
-                  content: DifyTextLine(DifyI18n.tr('workflow', 'common.insertVarTip')),
-                  child: DifyIconButton(
-                    label: DifyI18n.tr('workflow', 'common.insertVarTip'),
-                    onPressed: _insertVariable,
-                    icon: const DifyIcon('vender/solid/development/variable-02', size: 16),
+          fieldHeaderControls(
+            context,
+            Row(
+              spacing: 2,
+              children: [
+                if (w.isSupportJinja) _jinjaSwitch(),
+                if (!w.readOnly)
+                  DifyTooltip(
+                    content: DifyTextLine(DifyI18n.tr('workflow', 'common.insertVarTip')),
+                    child: DifyIconButton(
+                      label: DifyI18n.tr('workflow', 'common.insertVarTip'),
+                      onPressed: _insertVariable,
+                      icon: const DifyIcon('vender/solid/development/variable-02', size: 16),
+                    ),
                   ),
-                ),
-              if (w.showRemove)
+                if (w.showRemove)
+                  DifyIconButton(
+                    label: DifyI18n.tr('common', 'operation.remove'),
+                    onPressed: w.onRemove,
+                    icon: const RemixIcon('delete-bin-line', size: 16),
+                  ),
                 DifyIconButton(
-                  label: DifyI18n.tr('common', 'operation.remove'),
-                  onPressed: w.onRemove,
-                  icon: const RemixIcon('delete-bin-line', size: 16),
+                  label: DifyI18n.tr('common', 'operation.copy'),
+                  onPressed: _isCopied
+                      ? null
+                      : () {
+                          Clipboard.setData(ClipboardData(text: w.value));
+                          setState(() => _isCopied = true);
+                        },
+                  icon: DifyIcon(_isCopied ? 'vender/line/files/copy-check' : 'vender/line/files/copy', size: 16),
                 ),
-              DifyIconButton(
-                label: DifyI18n.tr('common', 'operation.copy'),
-                onPressed: _isCopied
-                    ? null
-                    : () {
-                        Clipboard.setData(ClipboardData(text: w.value));
-                        setState(() => _isCopied = true);
-                      },
-                icon: DifyIcon(_isCopied ? 'vender/line/files/copy-check' : 'vender/line/files/copy', size: 16),
-              ),
-              ToggleExpandBtn(isExpand: _isExpand, onExpandChange: _setExpand),
-            ],
+                ToggleExpandBtn(isExpand: _isExpand, onExpandChange: _setExpand),
+              ],
+            ),
           ),
         ],
       ),
@@ -417,7 +428,25 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
   }
 
   @override
-  Widget build(BuildContext context) => OverlayPortal(
+  Widget build(BuildContext context) {
+    if (_asPage) {
+      final title = widget.title;
+      return DifyPortalPage(
+        key: const Key('prompt-editor-page'),
+        open: _isExpand,
+        onClose: () => _setExpand(false),
+        title: title is String ? title : DifyI18n.tr('share', 'chat.expand'),
+        builder: (context) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: KeyedSubtree(key: _contentKey, child: _content(expand: true)),
+        ),
+        child: _isExpand ? const SizedBox.shrink() : KeyedSubtree(key: _contentKey, child: _content()),
+      );
+    }
+    return _overlay();
+  }
+
+  Widget _overlay() => OverlayPortal(
     controller: _portal,
     // Measured from the window's safe edges, as when the app kept the whole navigator inside the safe area.
     overlayChildBuilder: (context) => DifyOverlaySafeArea(

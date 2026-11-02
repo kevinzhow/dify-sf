@@ -105,6 +105,7 @@
     "nodesSelected": "노드 {{count}}개 선택됨",
     "connection": "연결",
     "insertStep": "단계 삽입",
+    "insertVariable": "변수 삽입",
     "deleteConnection": "연결 삭제",
     "selectMode": "선택 모드",
     "addAfter": "{{name}} 뒤 · 자동 연결",

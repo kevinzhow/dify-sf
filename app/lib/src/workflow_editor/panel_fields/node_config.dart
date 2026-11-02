@@ -374,22 +374,27 @@ class RetryOnPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = retryConfig?['retry_enabled'] == true;
     final label = _wf('nodes.common.retry.retryOnFailure');
+    // A phone: a touch row (the switch in its 48 px box).
+    final touch = DifyTouch.compactOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         const SizedBox(height: 8),
         Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          height: touch ? null : 40,
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: touch ? 0 : 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Flexible(child: DifyText(label, DifyType.systemSmSemiboldUppercase, color: DifyColors.textSecondary)),
-              DifySwitch(
-                checked: enabled,
-                semanticLabel: label,
-                onCheckedChange: (v) => _set(enabled: v),
+              fieldHeaderControls(
+                context,
+                DifySwitch(
+                  checked: enabled,
+                  semanticLabel: label,
+                  onCheckedChange: (v) => _set(enabled: v),
+                ),
               ),
             ],
           ),
@@ -522,37 +527,43 @@ class _ErrorHandleTypeSelectorState extends State<ErrorHandleTypeSelector> {
     placement: DifyPlacement.bottomEnd,
     sideOffset: 4,
     collision: DifyCollision.dropdown,
+    sheetOnCompact: true,
+    sheetTitle: _wf('nodes.common.errorHandle.title'),
     builder: (context, c) => DifyButton(
       size: DifyButtonSize.small,
       onPressed: c.toggle,
       trailing: const RemixIcon('arrow-down-s-line', size: 14),
       child: DifyTextLine(_wf('nodes.common.errorHandle.${_key(widget.value)}.title')),
     ),
-    popupBuilder: (context) => DifyBlurredBox(
-      blur: 5,
-      borderRadius: BorderRadius.circular(DifyRadius.xl),
-      decoration: DifyMenuPopup.decoration,
-      padding: const EdgeInsets.all(4),
-      child: SizedBox(
-        width: 272,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final t in ErrorHandleType.values)
-              _StrategyItem(
-                title: _wf('nodes.common.errorHandle.${_key(t)}.title'),
-                description: _wf('nodes.common.errorHandle.${_key(t)}.desc'),
-                checked: t == widget.value,
-                onTap: () {
-                  _c.close();
-                  widget.onSelected(t);
-                },
-              ),
-          ],
-        ),
-      ),
-    ),
+    popupBuilder: (context) {
+      final list = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final t in ErrorHandleType.values)
+            _StrategyItem(
+              title: _wf('nodes.common.errorHandle.${_key(t)}.title'),
+              description: _wf('nodes.common.errorHandle.${_key(t)}.desc'),
+              checked: t == widget.value,
+              onTap: () {
+                _c.close();
+                widget.onSelected(t);
+              },
+            ),
+        ],
+      );
+      // As a sheet (a phone): the sheet is the surface; the strategies scroll in it, each at least 48 px.
+      if (DifyFloating.inSheet(context)) {
+        return SingleChildScrollView(padding: const EdgeInsets.fromLTRB(8, 0, 8, 12), child: list);
+      }
+      return DifyBlurredBox(
+        blur: 5,
+        borderRadius: BorderRadius.circular(DifyRadius.xl),
+        decoration: DifyMenuPopup.decoration,
+        padding: const EdgeInsets.all(4),
+        child: SizedBox(width: 272, child: list),
+      );
+    },
   );
 }
 
@@ -583,6 +594,7 @@ class _StrategyItemState extends State<_StrategyItem> {
         onTap: widget.onTap,
         child: Container(
           padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
+          constraints: BoxConstraints(minHeight: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 0),
           decoration: BoxDecoration(
             color: _hovered ? DifyColors.stateBaseHover : null,
             borderRadius: BorderRadius.circular(DifyRadius.lg),

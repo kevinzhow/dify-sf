@@ -100,6 +100,7 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
       placement: DifyPlacement.bottomStart,
       sideOffset: sideOffset,
       collision: DifyCollision.dropdown,
+      sheetOnCompact: true,
       builder: (context, c) => MouseRegion(
         cursor: readonly ? SystemMouseCursors.basic : SystemMouseCursors.click,
         child: GestureDetector(
@@ -122,12 +123,15 @@ class _TypeSelectorState<T> extends State<TypeSelector<T>> {
       popupBuilder: (context) => Container(
         width: popupWidth,
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBg,
-          borderRadius: BorderRadius.circular(DifyRadius.lg),
-          border: Border.all(color: DifyColors.componentsPanelBorder),
-          boxShadow: DifyShadows.lg,
-        ),
+        // As a sheet (a phone) the sheet is the surface.
+        decoration: DifyFloating.inSheet(context)
+            ? null
+            : BoxDecoration(
+                color: DifyColors.componentsPanelBg,
+                borderRadius: BorderRadius.circular(DifyRadius.lg),
+                border: Border.all(color: DifyColors.componentsPanelBorder),
+                boxShadow: DifyShadows.lg,
+              ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -225,7 +229,8 @@ class _TypeSelectorItemState extends State<_TypeSelectorItem> {
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         child: Container(
-          height: 30,
+          // A 48 px touch row in a sheet (a phone).
+          height: DifyFloating.inSheet(context) ? DifyTouch.minTarget : 30,
           constraints: const BoxConstraints(minWidth: 44),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(

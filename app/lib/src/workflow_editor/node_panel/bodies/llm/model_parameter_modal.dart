@@ -263,6 +263,8 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
     return DifyFloating(
       open: _open,
       onOpenChange: _setOpen,
+      // A phone: the model and its parameters in a sheet.
+      sheetOnCompact: true,
       placement:
           w.placement ??
           (w.isInWorkflow
@@ -299,11 +301,11 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
               ),
             ),
           ),
-      popupBuilder: (context) => _content(value),
+      popupBuilder: (context) => _content(value, sheet: DifyFloating.inSheet(context)),
     );
   }
 
-  Widget _content(DefaultModel? value) {
+  Widget _content(DefaultModel? value, {bool sheet = false}) {
     final w = widget;
     final rules = _rules;
     final loading = _loading && w.provider.isNotEmpty && w.modelId.isNotEmpty;
@@ -316,13 +318,16 @@ class _ModelParameterModalState extends State<ModelParameterModal> {
       explicitChildNodes: true,
       child: Container(
         width: w.popupWidth,
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBg,
-          border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-          borderRadius: BorderRadius.circular(DifyRadius.xxl),
-          boxShadow: DifyShadows.lg,
-        ),
-        clipBehavior: Clip.antiAlias,
+        // In a sheet (a phone) the sheet is the surface.
+        decoration: sheet
+            ? null
+            : BoxDecoration(
+                color: DifyColors.componentsPanelBg,
+                border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+                borderRadius: BorderRadius.circular(DifyRadius.xxl),
+                boxShadow: DifyShadows.lg,
+              ),
+        clipBehavior: sheet ? Clip.none : Clip.antiAlias,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

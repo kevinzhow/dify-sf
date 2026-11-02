@@ -218,6 +218,9 @@ class _ModelSelectorRootState extends State<ModelSelectorRoot> {
       placement: DifyPlacement.bottomStart,
       sideOffset: 8,
       constrainHeight: true,
+      // A phone: the model list in a sheet.
+      sheetOnCompact: true,
+      sheetTitle: configureModelLabel,
       builder: (context, controller) => LayoutBuilder(
         builder: (context, c) {
           if (c.maxWidth.isFinite) _anchorWidth = c.maxWidth;
@@ -289,22 +292,25 @@ class ModelSelectorPopupSurface extends StatelessWidget {
     role: SemanticsRole.dialog,
     label: configureModelLabel,
     explicitChildNodes: true,
-    child: ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: 624, maxWidth: 448, minWidth: width.clamp(0, 448)),
-      child: SizedBox(
-        width: width <= 0 ? 320 : width.clamp(0, 448),
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: DifyColors.componentsPanelBg,
-            border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-            borderRadius: BorderRadius.circular(DifyRadius.xl),
-            boxShadow: DifyShadows.lg,
+    // In a sheet (a phone) the sheet is the surface and the width.
+    child: DifyFloating.inSheet(context)
+        ? DifySurface(child: child)
+        : ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: 624, maxWidth: 448, minWidth: width.clamp(0, 448)),
+            child: SizedBox(
+              width: width <= 0 ? 320 : width.clamp(0, 448),
+              child: Container(
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: DifyColors.componentsPanelBg,
+                  border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+                  borderRadius: BorderRadius.circular(DifyRadius.xl),
+                  boxShadow: DifyShadows.lg,
+                ),
+                child: DifySurface(child: child),
+              ),
+            ),
           ),
-          child: DifySurface(child: child),
-        ),
-      ),
-    ),
   );
 }
 

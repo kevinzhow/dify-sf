@@ -87,16 +87,24 @@ class SmallBlockIcon extends StatelessWidget {
 
 /// The search field of the list: an InputGroup with `i-ri-search-line` in front and, with text, a clear button.
 class _SearchBox extends StatelessWidget {
-  const _SearchBox({required this.value, required this.onChanged, required this.focusNode, required this.onKey});
+  const _SearchBox({
+    required this.value,
+    required this.onChanged,
+    required this.focusNode,
+    required this.onKey,
+    this.height,
+  });
   final String value;
   final ValueChanged<String> onChanged;
   final FocusNode focusNode;
   final FocusOnKeyEventCallback onKey;
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
     final label = DifyI18n.tr('workflow', 'common.searchVar');
     return DifyInput(
+      height: height,
       focusInteractiveAddons: false,
       value: value,
       onChanged: onChanged,
@@ -128,6 +136,10 @@ class _SearchBox extends StatelessWidget {
 
 /// VarReferenceVars: an optional search box, then the variables grouped by node (group titles in
 /// `system-xs-medium-uppercase`), "No variable" when nothing matches, and the RAG "manage input field" row.
+///
+/// Shown in a sheet ([DifyFloating.inSheet], a phone; mockup 5) it fills the sheet: a 44 px search field (it takes
+/// focus only when tapped), then the groups in the same order (the nearest node first), each under a 48 px header
+/// with the node's block icon ([nodeTypeOf] gives its type), and 48 px rows `{x} name … Type`.
 /// The first item is selected; ArrowUp / ArrowDown move the selection, Enter chooses it and Escape calls [onClose]
 /// (from the search box, or from anywhere with [hideSearch], as the prompt editor's slash menu). Object and file
 /// variables open their members to the left on hover (or a tap on the chevron).
@@ -148,11 +160,15 @@ class VarReferenceVars extends StatefulWidget {
     this.searchFocusNode,
     this.preferSchemaType = false,
     this.tapRegionGroup,
+    this.nodeTypeOf,
   });
 
   final List<VarGroup> vars;
   final VarSelected onChange;
   final bool hideSearch;
+
+  /// A group's node type (its block icon in a sheet); null or an unknown node: a variable-category icon.
+  final String? Function(String nodeId)? nodeTypeOf;
 
   /// Search text controlled from outside (the prompt editor's typed query).
   final String? searchText;
@@ -229,6 +245,8 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
     if (!_focus.hasFocus) widget.onBlur?.call();
   }
 
+  void _activate(int at) => setState(() => _selected = at);
+
   void _setSearch(String s) => setState(() {
     _search = s;
     _filtered = filterReferenceVars(widget.vars, _query);
@@ -295,6 +313,7 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
 
   @override
   Widget build(BuildContext context) {
+    if (DifyFloating.inSheet(context)) return _sheet(context);
     final w = widget;
     final groups = _filtered;
     final selected = _effective;
@@ -384,6 +403,124 @@ class _VarReferenceVarsState extends State<VarReferenceVars> {
           ),
         if (w.showManageInputField) ManageInputField(onManage: w.onManageInputField ?? () {}),
       ],
+    );
+  }
+}
+
+extension on _VarReferenceVarsState {
+  /// The list in a sheet (a phone, mockup 5): search, then each group under its node's header, in 48 px rows.
+  Widget _sheet(BuildContext context) {
+    final w = widget;
+    final groups = _filtered;
+    final selected = _effective;
+    var index = 0;
+    final rows = <Widget>[];
+    for (final g in groups) {
+      if (!g.isFlat) {
+        rows.add(
+          _SheetGroupHeader(key: ValueKey('var-group-${g.nodeId}'), group: g, type: w.nodeTypeOf?.call(g.nodeId)),
+        );
+      }
+      for (final v in g.vars) {
+        final at = index++;
+        rows.add(
+          VarReferenceItem(
+            key: at == selected ? _selectedKey : null,
+            nodeId: g.nodeId,
+            title: g.title,
+            item: v,
+            onChange: w.onChange,
+            isSupportFileVar: w.isSupportFileVar,
+            isException: v.isException,
+            isLoopVar: g.isLoop,
+            isFlat: g.isFlat,
+            isInCodeGeneratorInstructionEditor: w.isInCodeGeneratorInstructionEditor,
+            preferSchemaType: w.preferSchemaType,
+            isSelected: false,
+            onActivate: () => _activate(at),
+            tapRegionGroup: w.tapRegionGroup,
+          ),
+        );
+      }
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!w.hideSearch)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: _SearchBox(
+              value: _search,
+              onChanged: _setSearch,
+              focusNode: _focus,
+              onKey: _onSearchKey,
+              height: DifyTouch.controlHeight,
+            ),
+          ),
+        Expanded(
+          child: groups.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: DifyText(
+                    DifyI18n.tr('workflow', 'common.noVar'),
+                    DifyType.systemSmRegular,
+                    color: DifyColors.textTertiary,
+                  ),
+                )
+              : ListView(primary: true, padding: const EdgeInsets.only(bottom: 12), children: rows),
+        ),
+        if (w.showManageInputField) ManageInputField(onManage: w.onManageInputField ?? () {}),
+      ],
+    );
+  }
+}
+
+/// A group's header in the sheet: the node's 24 px block icon (a variable-category icon for the environment,
+/// conversation, system and shared-input groups) and its title, in a 48 px row.
+class _SheetGroupHeader extends StatelessWidget {
+  const _SheetGroupHeader({super.key, required this.group, this.type});
+  final VarGroup group;
+  final String? type;
+
+  @override
+  Widget build(BuildContext context) {
+    final type = this.type;
+    final Widget icon;
+    if (type != null) {
+      icon = SmallBlockIcon(type: type, size: 24);
+    } else {
+      final category = switch (group.nodeId) {
+        'env' => 'environment',
+        'conversation' => 'conversation',
+        'rag' => 'rag',
+        _ => null,
+      };
+      final (glyph, color) = varIconAndColor(const ['sys', 'x'], category: category);
+      icon = Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: DifyColors.componentsIconBgMidnightSolid,
+          borderRadius: BorderRadius.circular(DifyRadius.md),
+        ),
+        child: Center(child: DifyIcon(glyph, size: 14, color: category == null ? color : DifyTailwind.white)),
+      );
+    }
+    return Semantics(
+      header: true,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: DifyTouch.minTarget),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.centerLeft,
+        child: Row(
+          spacing: 12,
+          children: [
+            icon,
+            Expanded(child: DifyText(group.title, DifyType.systemSmSemibold, color: DifyColors.textSecondary)),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -602,6 +739,8 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
     final w = widget;
     final hovering = _itemHover || _childHover || _pinned;
     final type = w.preferSchemaType && _v.schemaType != null ? _v.schemaType : _v.type;
+    // In a sheet (a phone, mockup 5): a 48 px row under its group's icon, `{x} name … Type`.
+    final sheet = DifyFloating.inSheet(context);
     final row = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => _hover(true),
@@ -610,8 +749,10 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
         behavior: HitTestBehavior.opaque,
         onTap: _choose,
         child: Container(
-          height: 24,
-          padding: EdgeInsets.only(left: 12, right: _hasPanel ? 4 : 18),
+          height: sheet ? DifyTouch.minTarget : 24,
+          padding: sheet
+              ? EdgeInsets.only(left: w.isFlat ? 16 : 52, right: _hasPanel ? 8 : 16)
+              : EdgeInsets.only(left: 12, right: _hasPanel ? 4 : 18),
           decoration: BoxDecoration(
             color: hovering || w.isSelected
                 ? (_hasPanel ? DifyColors.componentsPanelOnPanelItemBgHover : DifyColors.stateBaseHover)
@@ -621,8 +762,14 @@ class _VarReferenceItemState extends State<VarReferenceItem> {
           child: Row(
             children: [
               _icon(),
-              const SizedBox(width: 4),
-              Expanded(child: DifyText(_name, DifyType.systemSmMedium, color: DifyColors.textSecondary)),
+              SizedBox(width: sheet ? 12 : 4),
+              Expanded(
+                child: DifyText(
+                  _name,
+                  sheet ? DifyType.systemMdRegular : DifyType.systemSmMedium,
+                  color: sheet ? DifyColors.textPrimary : DifyColors.textSecondary,
+                ),
+              ),
               const SizedBox(width: 4),
               DifyTextLine(
                 cssCapitalize(type ?? ''),
@@ -943,10 +1090,14 @@ class VarReferencePopup extends StatelessWidget {
     this.onManageInputField,
     this.onClose,
     this.tapRegionGroup,
+    this.nodeTypeOf,
   });
 
   final List<VarGroup> vars;
   final VarSelected onChange;
+
+  /// A group's node type (the sheet's group icons).
+  final String? Function(String nodeId)? nodeTypeOf;
 
   /// `assigned` / `toAssigned` (variable assigner).
   final String? popupFor;
@@ -962,15 +1113,19 @@ class VarReferencePopup extends StatelessWidget {
   Widget build(BuildContext context) {
     final empty = vars.isEmpty && popupFor != null;
     final toAssigned = popupFor == 'toAssigned';
+    // In a sheet (a phone) the sheet is the surface and the list fills it.
+    final sheet = DifyFloating.inSheet(context);
     return Container(
-      width: itemWidth ?? 228,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: DifyColors.componentsPanelBg,
-        borderRadius: BorderRadius.circular(DifyRadius.lg),
-        border: Border.all(color: DifyColors.componentsPanelBorder),
-        boxShadow: DifyShadows.lg,
-      ),
+      width: sheet ? null : itemWidth ?? 228,
+      padding: sheet ? EdgeInsets.zero : const EdgeInsets.all(4),
+      decoration: sheet
+          ? null
+          : BoxDecoration(
+              color: DifyColors.componentsPanelBg,
+              borderRadius: BorderRadius.circular(DifyRadius.lg),
+              border: Border.all(color: DifyColors.componentsPanelBorder),
+              boxShadow: DifyShadows.lg,
+            ),
       child: empty
           ? _ListEmpty(
               title: DifyI18n.tr(
@@ -992,6 +1147,7 @@ class VarReferencePopup extends StatelessWidget {
               onManageInputField: onManageInputField,
               onClose: onClose,
               tapRegionGroup: tapRegionGroup,
+              nodeTypeOf: nodeTypeOf,
             ),
     );
   }

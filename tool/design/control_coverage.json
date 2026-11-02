@@ -83,7 +83,8 @@
         "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
         "app/test/dify_spec/dify_ui/sheet_behaviour_test.dart",
         "app/test/dify_spec/dify_ui/touch_target_edges_test.dart",
-        "app/test/dify_spec/dify_ui/sheet_portal_test.dart"
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
       "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular. DifySheetPortal (batch 4a): the same sheet shown from a page's tree in the root overlay (keeps its scopes); DifyPortalSheetFrame; DifySheetHeader.titleWidget."
     },
@@ -254,7 +255,8 @@
         "app/test/dify_spec/prompt_editor/shortcuts_popup_test.dart",
         "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
         "app/test/dify_spec/dify_ui/back_and_keyboard_test.dart",
-        "app/test/dify_spec/dify_ui/sheet_portal_test.dart"
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
       "note": "Does not define a distinct text face; supplied children use the shared typography contract. sheetOnCompact (batch 4a): a picker opens as a bottom sheet in a compact window; DifyPopupSheetScope / DifyFloating.inSheet."
     },
@@ -376,7 +378,8 @@
       "evidence": [
         "app/tool/control_gallery.dart",
         "app/test/control_gallery_typography_test.dart",
-        "app/test/dify_spec/dify_ui/sheet_portal_test.dart"
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
@@ -472,7 +475,8 @@
     "portal_page.dart": {
       "kind": "layout-or-non-text",
       "evidence": [
-        "app/test/dify_spec/dify_ui/sheet_portal_test.dart"
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
       "note": "dify-sf phone full-screen page shown from a widget's tree (the expanded code and prompt editors; no Dify counterpart): DifyTopAppBar over the content; tests cover the window-filling page, the content moving in and out with its state and scopes, and back."
     },
@@ -553,7 +557,8 @@
       "evidence": [
         "app/tool/control_gallery.dart",
         "app/test/control_gallery_typography_test.dart",
-        "app/test/dify_spec/dify_ui/sheet_portal_test.dart"
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
@@ -628,7 +633,8 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
       "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
     },
@@ -752,7 +758,8 @@
         "app/tool/phone_gallery_main.dart",
         "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
         "app/test/dify_spec/dify_ui/touch_target_edges_test.dart",
-        "app/test/dify_spec/dify_ui/sheet_portal_test.dart"
+        "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
+        "app/test/phone/phone_node_sheet_test.dart"
       ],
       "note": "Hit-area expansion and the icon-only touch button; no text of their own. DifyTouchArea (batch 4a): a small control in a real 48 px box with its target."
     },

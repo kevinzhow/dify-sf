@@ -137,6 +137,7 @@
     "nodesSelected": "{{count}} nodes selected",
     "connection": "Connection",
     "insertStep": "Insert step",
+    "insertVariable": "Insert variable",
     "deleteConnection": "Delete connection",
     "selectMode": "Select mode",
     "addAfter": "after {{name}} · connects automatically",

@@ -137,6 +137,7 @@
     "nodesSelected": "已选中 {{count}} 个节点",
     "connection": "连线",
     "insertStep": "插入步骤",
+    "insertVariable": "插入变量",
     "deleteConnection": "删除连线",
     "selectMode": "框选模式",
     "addAfter": "在 {{name}} 之后 · 自动连线",

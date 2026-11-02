@@ -133,7 +133,7 @@ class DifyPromptEditor extends StatefulWidget {
 /// The typeahead state (`MenuResolution`): the trigger, where it starts and what follows it.
 typedef _Resolution = ({String trigger, int leadOffset, int caret, String query});
 
-class DifyPromptEditorState extends State<DifyPromptEditor> {
+class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerProviderStateMixin {
   PromptEditorController? _ownController;
   FocusNode? _ownFocus;
   PromptEditorController get controller => widget.controller ?? (_ownController ??= PromptEditorController());
@@ -149,6 +149,14 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
   Timer? _blurTimer;
   int _highlight = 0;
   bool _keyUsed = false;
+
+  /// A phone shows the `{` / `/` picker as a bottom sheet over the window: it slides in with this, and Android back
+  /// closes it (leaving what was typed) before anything under it.
+  late final _sheetAnim = AnimationController(vsync: this, duration: DifySheetRecipe.openDuration);
+  late final _sheetCurve = CurvedAnimation(parent: _sheetAnim, curve: Curves.easeOutCubic);
+  late final _sheetBack = DifyBackStep(onDismiss: _dismiss);
+
+  bool get _asSheet => mounted && DifyFloating.presentsAsSheet(context);
 
   @override
   void initState() {
@@ -249,6 +257,9 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
   @override
   void dispose() {
     _blurTimer?.cancel();
+    _sheetBack.detach();
+    _sheetCurve.dispose();
+    _sheetAnim.dispose();
     _detach(controller);
     _detachFocus(focusNode);
     _searchFocus.dispose();
@@ -319,7 +330,9 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
 
   bool get _menuVisible {
     final m = _match;
-    if (m == null || _blurHidden || controller.value == _dismissedAt) return false;
+    // A phone's sheet is modal: it closes through its scrim, back or a choice, not when the editor loses focus (the
+    // sheet's search field, or the panel's insert-variable button, which leaves the keyboard down).
+    if (m == null || (_blurHidden && !_asSheet) || controller.value == _dismissedAt) return false;
     return (widget.workflowVariableBlock?.show ?? false) || _options(m).isNotEmpty || _showAgentOutputAction;
   }
 
@@ -345,7 +358,18 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
 
   void _syncPortal() {
     final show = _menuVisible;
-    if (show != _portal.isShowing) show ? _portal.show() : _portal.hide();
+    if (show != _portal.isShowing) {
+      if (show) {
+        _portal.show();
+        if (_asSheet) {
+          _sheetBack.attach(context);
+          _sheetAnim.forward(from: (MediaQuery.maybeDisableAnimationsOf(context) ?? false) ? 1 : 0);
+        }
+      } else {
+        _sheetBack.detach();
+        _portal.hide();
+      }
+    }
     final view = (show, _chipSelected, controller.text.isEmpty);
     // Typing rebuilds only the text field unless the menu is open or one of those changes.
     if (show || view != _view) setState(() => _view = view);
@@ -396,7 +420,8 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
       block = PromptBlock.variable(variables);
     }
     if (block != null) controller.insertBlock(block);
-    focusNode.requestFocus();
+    // A phone's sheet picker does not bring the keyboard up when the editor did not have it.
+    if (!_asSheet) focusNode.requestFocus();
   }
 
   void _selectOption(PickerOption o) {
@@ -404,7 +429,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
     if (o.key.isNotEmpty) _removeTrigger();
     o.onSelect?.call();
     _dismiss();
-    focusNode.requestFocus();
+    if (!_asSheet) focusNode.requestFocus();
   }
 
   late final _actions = PickerActions(
@@ -917,6 +942,7 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
   }
 
   Widget _menu(BuildContext context, OverlayChildLayoutInfo info) {
+    if (_asSheet) return _sheetMenu(context, info);
     final m = _match;
     final anchor = _anchor(info);
     if (m == null || anchor == null || !_menuVisible) return const SizedBox.shrink();
@@ -955,6 +981,63 @@ class DifyPromptEditorState extends State<DifyPromptEditor> {
                   tapRegionGroup: EditableText,
                 )
               : null,
+        ),
+      ),
+    );
+  }
+
+  /// The picker on a phone: a bottom sheet over the window ("Insert variable" for `{`, the blocks for `/`), its rows
+  /// 48 px, its search not focused (the editor keeps the keyboard and the typed query); a row inserts at the trigger,
+  /// the scrim, a drag down, the close button and back dismiss it.
+  Widget _sheetMenu(BuildContext context, OverlayChildLayoutInfo info) {
+    final m = _match;
+    if (m == null || !_menuVisible) return const SizedBox.shrink();
+    final w = widget;
+    final wvb = w.workflowVariableBlock;
+    final slash = m.trigger == '/';
+    final showVars = wvb?.show ?? false;
+    final options = _options(m);
+    return DifyPortalSheetFrame(
+      animation: _sheetCurve,
+      onDismiss: _dismiss,
+      isOpen: () => mounted && _menuVisible,
+      child: TextFieldTapRegion(
+        child: DifyPopupSheetScope(
+          child: Column(
+            key: const Key('prompt-editor-picker-sheet'),
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DifySheetHeader(title: DifyI18n.tr('phone-editor', 'insertVariable')),
+              Flexible(
+                child: ComponentPickerMenu(
+                  footer: _showAgentOutputAction ? NewAgentOutputAction(onPressed: _newAgentOutput) : null,
+                  queryString: m.query,
+                  options: options,
+                  selectedIndex: null,
+                  onSelect: _selectOption,
+                  onHighlight: (i) => setState(() => _highlight = i),
+                  variables: showVars
+                      ? VarReferenceVars(
+                          key: ValueKey(m.trigger),
+                          hideSearch: slash,
+                          searchText: slash ? m.query : null,
+                          vars: _workflowVariableOptions,
+                          onChange: (sel, _) => _selectVariable(sel),
+                          isSupportFileVar: w.isSupportFileVar,
+                          onClose: _dismiss,
+                          showManageInputField: wvb!.showManageInputField,
+                          onManageInputField: wvb.onManageInputField,
+                          isInCodeGeneratorInstructionEditor: w.currentBlock?.generatorType == PromptGeneratorType.code,
+                          searchFocusNode: _searchFocus,
+                          tapRegionGroup: EditableText,
+                          nodeTypeOf: (id) => wvb.workflowNodesMap[id]?.type,
+                        )
+                      : null,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
