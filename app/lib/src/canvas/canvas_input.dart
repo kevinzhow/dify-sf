@@ -183,6 +183,9 @@ class CanvasInput {
 
   (CanvasNode, String)? _touchPortAt(Offset c, double slack) {
     final reach = touchTargetPx / view.scale;
+    // A card's own taps and drags win over a neighbour's enlarged handle area: zoomed out, that area reaches over the
+    // next card; only the handle's own box may still be hit there.
+    final card = nodeAt(c);
     (CanvasNode, String)? best;
     var bestD = double.infinity;
     for (final slot in graph.grid.near(Rect.fromCenter(center: c, width: 40 + 2 * reach, height: 40 + 2 * reach))) {
@@ -190,6 +193,7 @@ class CanvasInput {
       if (n == null) continue;
       for (final (id, box) in n.outHandles) {
         if (!touchHandleArea(box, view.scale, slack: slack).contains(c)) continue;
+        if (card != null && card.slot != n.slot && !box.inflate(slack).contains(c)) continue;
         final d = (c - box.center).distanceSquared;
         if (d < bestD) {
           best = (n, id);

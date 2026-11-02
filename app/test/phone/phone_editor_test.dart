@@ -22,6 +22,7 @@ import 'package:dify_sf_app/src/workflow_editor/phone/phone_editor_frame.dart';
 import 'package:dify_sf_app/src/workflow_editor/phone/steps_view_slot.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
 import 'package:flutter/widgets.dart';
+import 'package:dify_sf_app/src/workflow_editor/header/view_history.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -359,6 +360,33 @@ void main() {
     await t.tap(find.byKey(const ValueKey('phone-edge-delete')));
     await settle(t, 400);
     expect(e.c.doc.edges.containsKey(edge), isFalse);
+    await e.dispose();
+  });
+
+  testWidgets('the phone run history sheet opens without an inherited lookup in initState', (t) async {
+    final e = await _pump(t);
+    unawaited(showRunHistorySheet(t.element(find.byType(PhoneEditorFrame))));
+    await settle(t, 800);
+    expect(t.takeException(), isNull);
+    expect(await systemBack(t), isTrue);
+    await settle(t, 400);
+    await e.dispose();
+  });
+
+  testWidgets('zoomed out, a tap on a card selects that card, not its neighbour\'s enlarged handle area', (t) async {
+    final e = await _pump(t);
+    await e.showCanvas();
+    e.canvas.zoomTo(.25);
+    await settle(t, 400);
+    // The point 3 px inside the left edge of the card after llm: within llm's 44 px finger area at 25 %.
+    final code = e.canvas.graph!['code']!.rect;
+    final p = e.node('code', (r) => Offset(r.left, r.center.dy)) + const Offset(3, 0);
+    expect(code.width * e.canvas.view.scale, greaterThan(6));
+    await t.tapAt(p);
+    await settle(t, 600);
+    expect(e.c.selectedNodeId, 'code');
+    expect(e.c.selectedEdgeId, isNull);
+    expect(find.byKey(const ValueKey('phone-node-bar')), findsOneWidget);
     await e.dispose();
   });
 

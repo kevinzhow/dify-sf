@@ -177,10 +177,14 @@ class _RunHistorySheet extends StatefulWidget {
 
 class _RunHistorySheetState extends State<_RunHistorySheet> {
   List<DifyJson>? _history;
+  bool _fetched = false;
 
+  // The header scope is an inherited widget: read it once the element is in the tree, not in initState.
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_fetched) return;
+    _fetched = true;
     final fetch = WorkflowHeaderScope.of(context).fetchRunHistory;
     if (fetch == null) {
       _history = const [];
