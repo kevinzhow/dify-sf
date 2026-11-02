@@ -27,6 +27,9 @@ android {
     }
 
     val keystore = System.getenv("DIFYSF_ANDROID_KEYSTORE_PATH")
+    // Explicitly opted-in, optimized preview APKs can replace the existing .dev
+    // test app. Production releases still require the publisher's own key.
+    val previewRelease = System.getenv("DIFYSF_ANDROID_PREVIEW_RELEASE") == "true"
     if (!keystore.isNullOrBlank()) {
         signingConfigs.create("difyRelease") {
             storeFile = file(keystore)
@@ -44,9 +47,13 @@ android {
             applicationIdSuffix = ".dev"
         }
         release {
-            // An unsigned release is available for inspection; distribution requires the publisher's own key.
-            // Never silently sign a production APK with Flutter's shared development key.
-            signingConfig = signingConfigs.findByName("difyRelease")
+            if (previewRelease) {
+                applicationIdSuffix = ".dev"
+                signingConfig = signingConfigs.getByName("debug")
+            } else {
+                // Never silently sign a production APK with a development key.
+                signingConfig = signingConfigs.findByName("difyRelease")
+            }
         }
         matching { it.name == "profile" }.configureEach { applicationIdSuffix = ".qa" }
     }
