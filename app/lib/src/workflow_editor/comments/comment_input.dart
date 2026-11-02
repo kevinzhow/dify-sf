@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/gestures.dart';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -221,8 +222,15 @@ class _MentionInputState extends State<MentionInput> {
   }
 
   void _syncPortal() {
+    if (!mounted) return;
     final show = _showDropdown && _filtered.isNotEmpty;
     if (show == _dropdown.isShowing) return;
+    // The text controller also notifies while the tree is being built (the field leaving the tree, a focus change):
+    // an overlay portal may not be shown or hidden then, so that change waits for the end of the frame.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => _syncPortal());
+      return;
+    }
     show ? _dropdown.show() : _dropdown.hide();
   }
 
