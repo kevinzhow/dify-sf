@@ -24,6 +24,7 @@ import '../../i18n/dify_i18n.dart';
 import '../block_selector/block_selector.dart';
 import '../context_menu/context_menu.dart';
 import '../node_insertion/insert_block.dart';
+import '../node_panel/workflow_panels.dart' show confirmNodeDelete;
 import '../store/store.dart';
 import 'step_insert.dart';
 import 'step_labels.dart';
@@ -52,8 +53,9 @@ String _t(String key, [Map<String, Object?> params = const {}]) => DifyI18n.tr('
 /// [WorkflowActions.selectNode], what a tap on a canvas node does; the node panel follows the selection). A "+"
 /// opens the canvas's block selector for its point ([InsertOnEdge] between two steps, [InsertAfter] after a last
 /// step or in an empty lane; where branches meet, [StepsInsertion.insertStep]); the new step is selected and
-/// scrolled into view. A long press opens an action sheet: Settings, Run this step, Add step after, Duplicate,
-/// Delete. A "continues at" row scrolls to the step and highlights it.
+/// scrolled into view. A long press opens an action sheet: Settings, Run this step, Add step before (when the step
+/// has one incoming edge), Add step after, Duplicate (below the original), Delete (the node panel's: it asks first
+/// when other steps reference the step). A "continues at" row scrolls to the step and highlights it.
 ///
 /// Edge to edge: the list pads its end by the system's bottom inset plus [bottomInset] (the toolbar the chrome lays
 /// over the list's bottom) and its sides by the side insets; it paints no background of its own.
@@ -96,7 +98,7 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
   final _cache = StepsLayoutCache();
   StepsLayout _layout = StepsLayout.empty;
   WorkflowStore? _store;
-  late WorkflowActions _actions;
+  late StepsActions _actions;
   String? _selected;
   bool _selectingHere = false;
   String? _highlighted;
@@ -120,7 +122,7 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
 
   EditorController get _c => widget.controller;
   Document get _doc => _c.doc;
-  WorkflowActions get actions => _actions;
+  StepsActions get actions => _actions;
 
   @override
   void initState() {
@@ -170,11 +172,13 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
     } else if (!force) {
       return;
     }
-    _actions = WorkflowActions(
+    // The node panel's actions: Delete asks first when other steps reference the step, as the panel's does.
+    _actions = StepsActions(
       controller: widget.controller,
       canvas: widget.canvas,
       store: store,
       options: widget.options,
+      confirmDelete: (id, refs) => confirmNodeDelete(context, widget.controller, id, refs),
     );
   }
 
@@ -393,7 +397,7 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
 
   Future<void> _duplicate(String id) async {
     final before = _doc.nodes.keys.toSet();
-    await _actions.duplicateNodes(id);
+    await _actions.duplicateBelow(id);
     if (mounted) _revealAdded(before);
   }
 
@@ -424,6 +428,12 @@ class WorkflowStepsViewState extends State<WorkflowStepsView> {
                 : DifyI18n.tr('workflow', 'panel.runThisStep'),
             icon: RemixIcon(a.isSingleRunning(id) ? 'stop-circle-line' : 'play-circle-line', size: 20),
             onTap: () => a.runStep(id),
+          ),
+        if (_canInsert(row.before, data))
+          DifyActionSheetAction(
+            label: _t('addStepBefore'),
+            icon: const RemixIcon('add-line', size: 20),
+            onTap: () => _insert(row.key, row.before!, anchor: cardRect),
           ),
         if (_canInsert(row.insert, data))
           DifyActionSheetAction(

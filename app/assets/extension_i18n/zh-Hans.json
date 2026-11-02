@@ -152,6 +152,7 @@
   "workflow": {
     "mobile.steps.addStep": "添加步骤",
     "mobile.steps.addStepAfter": "在后面添加步骤",
+    "mobile.steps.addStepBefore": "在前面添加步骤",
     "mobile.steps.addStepHere": "在此处添加步骤",
     "mobile.steps.continuesAt": "继续执行 {{title}}",
     "mobile.steps.notConnected": "未连接",

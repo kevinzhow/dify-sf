@@ -8,6 +8,7 @@ import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/workflow_editor/block_selector/block_selector.dart';
 import 'package:dify_sf_app/src/workflow_editor/context_menu/context_menu.dart';
 import 'package:dify_sf_app/src/workflow_editor/node_insertion/insert_block.dart';
+import 'package:dify_sf_app/src/workflow_editor/steps/step_insert.dart';
 import 'package:dify_sf_app/src/workflow_editor/steps/steps_layout.dart';
 import 'package:dify_sf_app/src/workflow_editor/steps/workflow_steps_view.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
@@ -91,12 +92,30 @@ Set<(String, String, String)> _edges(h.Harness s) => {
 
 Node _added(h.Harness s, String type) => s.doc.nodes.values.singleWhere((n) => n.type == type);
 
+/// Scrolls step [id] into view (its row may not be built yet).
+Future<void> _show(WidgetTester t, String id) async {
+  t.state<WorkflowStepsViewState>(find.byType(WorkflowStepsView)).revealNode(id);
+  await _settle(t, 800);
+}
+
 void main() {
   test('the preview\'s samples: mockup 2, and every kind of branch meeting where it should', () {
     final mockup = previewDocument('mockup');
     expectWellFormed(mockup, computeStepsLayout(mockup));
     expect(outline(computeStepsLayout(mockup)), [
-      'start', '+', 'count', '+', 'check', '  [true]', '  summarize', '  +', '  [false]', '  empty', '  +', //
+      'start',
+      '+',
+      'count',
+      '+',
+      'check',
+      '  [true]',
+      '  +',
+      '  summarize',
+      '  +',
+      '  [false]',
+      '  +',
+      '  empty',
+      '  +', //
       '+join', 'end', '+end',
     ]);
     final branches = previewDocument('branches');
@@ -107,12 +126,15 @@ void main() {
       '+',
       'route',
       '  [billing]',
+      '  +',
       '  invoice',
       '    [fail-branch]',
+      '    +',
       '    notify',
       '    +end',
       '  +',
       '  [tech]',
+      '  +',
       '  each',
       '    start',
       '    search',
@@ -125,9 +147,11 @@ void main() {
       '+join',
       'merge',
       '  [source]',
+      '  +',
       '  draft',
       '  +',
       '  [source]',
+      '  +',
       '  tone',
       '  +',
       '+join',
@@ -159,9 +183,9 @@ void main() {
     expect(t.getTopLeft(_card('start')).dx, 16);
     expect(t.getTopLeft(_card('summarize')).dx, 16 + DifyStepMetrics.indent);
     expect(t.getSize(_card('count')).width, 411 - 32);
-    // "+" between the trunk's steps, at each lane's end, after the IF block, and after End (Dify offers blocks
-    // after End's handle as well).
-    expect(find.byType(DifyStepConnector), findsNWidgets(6));
+    // "+" between the trunk's steps, at each lane's start and end, after the IF block, and after End (Dify offers
+    // blocks after End's handle as well).
+    expect(find.byType(DifyStepConnector), findsNWidgets(8));
     expect(find.byKey(const ValueKey('step-plus-a:end')), findsOneWidget);
     // Edge to edge: the list's end clears the gesture bar and the toolbar.
     final padding = t.widget<SliverPadding>(find.byType(SliverPadding)).padding.resolve(TextDirection.ltr);
@@ -267,7 +291,166 @@ void main() {
     await s.dispose(t);
   });
 
-  testWidgets('long press: Settings, Run this step, Add step after, Duplicate, Delete', (t) async {
+  testWidgets('a lane\'s first "+" adds a step at the start of the branch', (t) async {
+    final s = await _start(t, previewDocument('mockup'));
+    await _pump(t, s);
+    await t.tap(_plus('c:check-true-summarize'));
+    await _settle(t);
+    await _pick(t, 'template-transform');
+    final added = _added(s, 'template-transform');
+    expect(_edges(s), containsAll({('check', 'true', added.id), (added.id, 'source', 'summarize')}));
+    expect(s.doc.edges.containsKey('check-true-summarize'), isFalse);
+    expect(s.controller.undo.past, hasLength(1));
+    final layout = computeStepsLayout(s.doc);
+    final lane = layout.rows.indexWhere((r) => r.kind == StepRowKind.laneHeader && r.handle == 'true');
+    expect(layout.rows[lane + 1].kind, StepRowKind.connector);
+    expect(layout.rows[lane + 2].nodeId, added.id, reason: 'first in the IF lane');
+    expect(t.getTopLeft(_card(added.id)).dy, lessThan(t.getTopLeft(_card('summarize')).dy));
+    await s.dispose(t);
+  });
+
+  testWidgets('Delete asks first when other steps reference the step, exactly as the node panel\'s Delete', (t) async {
+    final s = await _start(t, previewDocument('mockup'));
+    await _pump(t, s);
+    expect(s.controller.referencesTo('count'), isNotEmpty, reason: 'the IF and End read its outputs');
+    await t.longPress(_card('count'));
+    await _settle(t);
+    await t.tap(find.text('Delete'));
+    await _settle(t);
+    expect(find.byKey(const Key('delete-dialog')), findsOneWidget);
+    expect(find.textContaining('Count Android'), findsWidgets);
+    await t.tap(find.text('Cancel'));
+    await _settle(t);
+    expect(s.doc.nodes.containsKey('count'), isTrue, reason: 'cancelled');
+
+    await t.longPress(_card('count'));
+    await _settle(t);
+    await t.tap(find.text('Delete'));
+    await _settle(t);
+    await t.tap(find.byKey(const Key('confirm-delete')));
+    await _settle(t);
+    expect(s.doc.nodes.containsKey('count'), isFalse);
+    expect(_card('count'), findsNothing);
+
+    // A step nothing references goes at once, as from the panel.
+    expect(s.controller.referencesTo('empty'), isEmpty);
+    await t.longPress(_card('empty'));
+    await _settle(t);
+    await t.tap(find.text('Delete'));
+    await _settle(t);
+    expect(find.byKey(const Key('delete-dialog')), findsNothing);
+    expect(s.doc.nodes.containsKey('empty'), isFalse);
+    await s.dispose(t);
+  });
+
+  testWidgets('without a laid-out canvas, consecutive inserts and duplicates never overlap on the canvas', (t) async {
+    // A canvas-like layout: the trunk left to right, the IF's lanes one below the other.
+    final g = Graph()
+      ..add('s', 'start', y: 0)
+      ..add('a', 'code', y: 0)
+      ..ifElse('if', ['c1', 'c2'])
+      ..add('b', 'llm', y: 0)
+      ..chain(['s', 'a', 'if'])
+      ..link('if', 'b', 'c1');
+    for (final (i, id) in ['s', 'a', 'if', 'b'].indexed) {
+      final at = g.nodes.indexWhere((n) => n.id == id);
+      g.nodes[at] = Node(id: id, type: g.nodes[at].type, title: id, x: 300 * i, y: 0, config: g.nodes[at].config);
+    }
+    final s = await _start(t, g.doc);
+    s.canvas.graph = null; // the Steps view shown instead of the canvas: nothing measured
+    await _pump(t, s);
+    final actions = t.state<WorkflowStepsViewState>(find.byType(WorkflowStepsView)).actions;
+    Rect box(Node n) => Offset(n.x.toDouble(), n.y.toDouble()) & (actions.sizeOf(n) ?? stepCardSize(n, s.doc));
+    void expectNoOverlap(String when) {
+      final nodes = s.doc.nodes.values.toList();
+      for (var i = 0; i < nodes.length; i++) {
+        for (var j = i + 1; j < nodes.length; j++) {
+          expect(
+            box(nodes[i]).overlaps(box(nodes[j])),
+            isFalse,
+            reason: '$when: ${nodes[i].title} ${box(nodes[i])} and ${nodes[j].title} ${box(nodes[j])}',
+          );
+        }
+      }
+    }
+
+    String rowKey(bool Function(StepRow) test) => computeStepsLayout(s.doc).rows.firstWhere(test).key;
+    Future<void> insert(String near, String key, String type) async {
+      await _show(t, near);
+      final target = key.startsWith('p:') ? find.byKey(ValueKey('step-add-$key')) : _plus(key);
+      // The row comes after [near] (not built yet when it is further down).
+      await t.scrollUntilVisible(target, 200, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(target);
+      await _settle(t, 200);
+      await t.tap(target);
+      await _settle(t);
+      await _pick(t, type);
+    }
+
+    expectNoOverlap('before');
+    // Twice after the last step (InsertAfter), twice on one edge (InsertOnEdge), the two empty lanes one after the
+    // other (InsertAfter on the IF's handles: below its lowest next step), twice at the start of a lane.
+    for (var i = 0; i < 2; i++) {
+      final last = s.doc.nodes.values.where((n) => !s.doc.edges.values.any((e) => e.source == n.id)).last;
+      await insert(
+        last.id,
+        rowKey(
+          (r) =>
+              r.kind == StepRowKind.connector &&
+              r.insert?.at is InsertAfter &&
+              (r.insert!.at as InsertAfter).nodeId == last.id,
+        ),
+        'template-transform',
+      );
+      expectNoOverlap('after the last step, $i');
+    }
+    for (var i = 0; i < 2; i++) {
+      await insert(
+        's',
+        rowKey(
+          (r) =>
+              r.kind == StepRowKind.connector &&
+              r.insert?.at is InsertOnEdge &&
+              s.doc.edges[(r.insert!.at as InsertOnEdge).edgeId]?.source == 's',
+        ),
+        'code',
+      );
+      expectNoOverlap('on the first edge, $i');
+    }
+    await insert('if', 'p:if:c2', 'llm');
+    expectNoOverlap('the c2 lane');
+    await insert('if', 'p:if:false', 'llm');
+    expectNoOverlap('the ELSE lane');
+    for (var i = 0; i < 2; i++) {
+      await insert(
+        'if',
+        rowKey(
+          (r) =>
+              r.kind == StepRowKind.connector &&
+              r.insert?.at is InsertOnEdge &&
+              s.doc.edges[(r.insert!.at as InsertOnEdge).edgeId]?.sourceHandle == 'c1',
+        ),
+        'template-transform',
+      );
+      expectNoOverlap('at the start of the c1 lane, $i');
+    }
+    // Two duplicates of one step: below it, each below the last.
+    final count = s.doc.nodes.length;
+    for (var i = 0; i < 2; i++) {
+      await _show(t, 'b');
+      await t.longPress(_card('b'));
+      await _settle(t);
+      await t.tap(find.text('Duplicate'));
+      await _settle(t, 1500);
+      expectNoOverlap('duplicate $i');
+    }
+    expect(s.doc.nodes.length, count + 2);
+    final copies = s.doc.nodes.values.where((n) => n.title.startsWith('b (')).toList();
+    expect(copies.map((n) => n.x).toSet(), {s.doc.nodes['b']!.x}, reason: 'straight below the original');
+    await s.dispose(t);
+  });
+
+  testWidgets('long press: Settings, Run this step, Add step before and after, Duplicate, Delete', (t) async {
     final s = await _start(t, previewDocument('mockup'));
     await _pump(t, s);
     await t.longPress(_card('count'));
@@ -275,6 +458,7 @@ void main() {
     for (final label in [
       DifyI18n.tr('common', 'operation.settings'),
       DifyI18n.tr('workflow', 'panel.runThisStep'),
+      'Add step before',
       'Add step after',
       DifyI18n.tr('common', 'operation.duplicate'),
       DifyI18n.tr('common', 'operation.delete'),
@@ -308,11 +492,28 @@ void main() {
     await _pick(t, 'template-transform');
     expect(_edges(s), contains(('count', 'source', _added(s, 'template-transform').id)));
 
+    await t.longPress(_card('summarize'));
+    await _settle(t);
+    await t.tap(find.text('Add step before'));
+    await _settle(t);
+    await _pick(t, 'code');
+    final before = s.doc.nodes.values.singleWhere((n) => n.type == 'code' && n.id != 'count');
+    expect(_edges(s), containsAll({('check', 'true', before.id), (before.id, 'source', 'summarize')}));
+
+    await _show(t, 'end');
+    await t.longPress(_card('end'));
+    await _settle(t);
+    expect(find.text('Add step before'), findsNothing, reason: 'two incoming edges: ambiguous');
+    await t.tap(find.text('Cancel'));
+    await _settle(t);
+
+    await _show(t, 'start');
     await t.longPress(_card('start'));
     await _settle(t);
     // As the canvas's node menu: Start is never copied; in a workflow it may be deleted (not in a chatflow).
     expect(find.text('Duplicate'), findsNothing);
     expect(find.text('Delete'), findsOneWidget);
+    expect(find.text('Add step before'), findsNothing, reason: 'nothing leads to Start');
     await t.tap(find.text('Settings'));
     await _settle(t);
     expect(s.controller.selectedNodeId, 'start');

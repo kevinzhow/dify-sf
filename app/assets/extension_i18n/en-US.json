@@ -152,6 +152,7 @@
   "workflow": {
     "mobile.steps.addStep": "Add step",
     "mobile.steps.addStepAfter": "Add step after",
+    "mobile.steps.addStepBefore": "Add step before",
     "mobile.steps.addStepHere": "Add a step here",
     "mobile.steps.continuesAt": "Continues at {{title}}",
     "mobile.steps.notConnected": "Not connected",

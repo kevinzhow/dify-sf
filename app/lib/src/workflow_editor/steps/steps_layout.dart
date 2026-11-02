@@ -9,10 +9,11 @@
 /// 2. **Branches.** A node whose outgoing edges leave from several handles (IF/ELSE cases and ELSE, question
 ///    classifier classes, human-input actions and the timeout) or from one handle to several nodes (parallel
 ///    branches) is a branch: each handle's edge becomes a lane ([StepRowKind.laneHeader] then the lane's steps, one
-///    level deeper). A declared handle without an edge is an empty lane ([StepRowKind.addStep]). The lanes end where
-///    they meet again, at the branch's immediate post-dominator (the first node every path from the branch to the
-///    end goes through); the flow then continues there ([StepRowKind.connector] with a join insert, then the node).
-///    When no such node exists (a lane ends in its own End or Answer), each lane runs to its end.
+///    level deeper, after a "+" on the lane's first edge). A declared handle without an edge is an empty lane
+///    ([StepRowKind.addStep]). The lanes end where they meet again, at the branch's immediate post-dominator (the
+///    first node every path from the branch to the end goes through); the flow then continues there
+///    ([StepRowKind.connector] with a join insert, then the node). When no such node exists (a lane ends in its own
+///    End or Answer), each lane runs to its end.
 /// 3. **Fail branches.** A node with a `source` handle and an error-handling fail branch keeps its normal path in
 ///    the flow below it; the fail branch is a lane under the node. Its steps are placed after the normal path, so a
 ///    fail branch that rejoins the normal path shows a link to it. Fail-branch edges do not count when finding where
@@ -26,7 +27,9 @@
 ///
 /// Inserting: every [StepRowKind.connector] and [StepRowKind.addStep] row carries the [StepInsert] its "+" uses:
 /// on the edge it stands for ([InsertOnEdge]), after a node's handle where nothing follows ([InsertAfter]), or, at a
-/// join, on one of the edges into the join with the others moved onto the new node ([StepInsert.retarget]).
+/// join, on one of the edges into the join with the others moved onto the new node ([StepInsert.retarget]). A card
+/// carries its "Add step after" ([StepRow.insert]) and, when its step has exactly one incoming edge, its "Add step
+/// before" ([StepRow.before], on that edge).
 ///
 /// Cost: O(n + e) to collect the graph and emit the rows, plus the post-dominators (Cooper, Harvey and Kennedy's
 /// iterative algorithm on the reversed graph, near linear for workflow graphs).
@@ -160,6 +163,7 @@ class StepRow {
     this.lane,
     this.laneIndex = 0,
     this.insert,
+    this.before,
     this.emptyBody = false,
   });
 
@@ -183,6 +187,9 @@ class StepRow {
   /// Where the row's "+" inserts (connectors, add rows, body starts), or what a card's "Add step after" uses.
   final StepInsert? insert;
 
+  /// A card's "Add step before": on its step's only incoming edge; null when it has none or several (ambiguous).
+  final StepInsert? before;
+
   /// A body start of an empty body (drawn as an "Add step" row).
   final bool emptyBody;
 
@@ -200,6 +207,7 @@ class StepRow {
     lane: lane,
     laneIndex: laneIndex,
     insert: insert,
+    before: before,
     emptyBody: emptyBody,
   );
 
@@ -529,7 +537,16 @@ class _Builder {
       final isStart = _isContainerStart(id);
       final cardAt = out.length;
       if (!isStart) {
-        out.add(StepRow(kind: StepRowKind.card, key: _key('n:$id'), rails: rails, nodeId: id));
+        final incoming = g.inOf(id);
+        out.add(
+          StepRow(
+            kind: StepRowKind.card,
+            key: _key('n:$id'),
+            rails: rails,
+            nodeId: id,
+            before: incoming.length == 1 ? StepInsert(InsertOnEdge(incoming.single.id)) : null,
+          ),
+        );
         if (_containerTypes.contains(g.nodes[id]!.type)) {
           body(id, [...rails, StepRail(id, null, StepLaneKind.body)], out);
         }
@@ -676,6 +693,15 @@ class _Builder {
         }
         continue;
       }
+      // The lane's first "+": a step at the start of the branch (on the edge from its handle).
+      out.add(
+        StepRow(
+          kind: StepRowKind.connector,
+          key: _key('c:${e.id}'),
+          rails: laneRails,
+          insert: StepInsert(InsertOnEdge(e.id)),
+        ),
+      );
       flow(e.target, stops, laneRails, out);
     }
   }

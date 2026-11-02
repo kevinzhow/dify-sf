@@ -173,9 +173,11 @@ void main() {
         '+',
         'if',
         '  [c1]',
+        '  +',
         '  a',
         '  +',
         '  [false]',
+        '  +',
         '  b',
         '  +',
         '+join',
@@ -188,8 +190,15 @@ void main() {
       expect((join.at as InsertOnEdge).edgeId, 'a-source-j');
       expect(join.retarget, ['b-source-j']);
       expect(layout.rows[layout.rowOfNode('if')!].insert, join, reason: "the IF's Add step after: after the block");
-      final lane = layout.rows[layout.rowOfNode('a')! - 1];
+      final lane = layout.rows[layout.rowOfNode('a')! - 2];
       expect((lane.lane, lane.laneIndex, lane.nodeId), (StepLaneKind.ifCase, 0, 'if'));
+      // The lane's first "+" adds at the start of the branch, on the edge from its handle.
+      expect((layout.rows[layout.rowOfNode('a')! - 1].insert!.at as InsertOnEdge).edgeId, 'if-c1-a');
+      // "Add step before": on a step's only incoming edge; none for an entry or a join (two incoming edges).
+      expect((layout.rows[layout.rowOfNode('a')!].before!.at as InsertOnEdge).edgeId, 'if-c1-a');
+      expect((layout.rows[layout.rowOfNode('e')!].before!.at as InsertOnEdge).edgeId, 'j-source-e');
+      expect(layout.rows[layout.rowOfNode('s')!].before, isNull);
+      expect(layout.rows[layout.rowOfNode('j')!].before, isNull);
     });
 
     test('a nested IF in a lane closes at the outer join', () {
@@ -216,14 +225,18 @@ void main() {
         '+',
         'if1',
         '  [c1]',
+        '  +',
         '  if2',
         '    [d1]',
+        '    +',
         '    a',
         '    +',
         '    [false]',
+        '    +',
         '    b',
         '    +',
         '  [false]',
+        '  +',
         '  c',
         '  +',
         '+join',
@@ -253,9 +266,11 @@ void main() {
         '+',
         'qc',
         '  [k1]',
+        '  +',
         '  a',
         '  +',
         '  [k2]',
+        '  +',
         '  b',
         '  +',
         '  [k3]',
@@ -280,7 +295,7 @@ void main() {
         ..chain(['a', 'b']);
       final layout = computeStepsLayout(g.doc);
       expectWellFormed(g.doc, layout);
-      expect(outline(layout), ['s', '+', 'if', '  [c1]', '  a', '  +', '  b', '  +end', '  [false]', '  add']);
+      expect(outline(layout), ['s', '+', 'if', '  [c1]', '  +', '  a', '  +', '  b', '  +end', '  [false]', '  add']);
     });
 
     test('an unconnected IF/ELSE shows its cases as empty lanes that add after their handle', () {
@@ -315,9 +330,11 @@ void main() {
       expect(outline(layout), [
         's',
         '  [source]',
+        '  +',
         '  a',
         '  +',
         '  [source]',
+        '  +',
         '  b',
         '  +',
         '+join',
@@ -350,6 +367,7 @@ void main() {
         '+',
         'h',
         '  [fail-branch]',
+        '  +',
         '  f',
         '  +',
         '  → e',
@@ -395,12 +413,15 @@ void main() {
         '+',
         'qc',
         '  [k1]',
+        '  +',
         '  h',
         '    [fail-branch]',
+        '    +',
         '    oops',
         '    +end',
         '  +',
         '  [k2]',
+        '  +',
         '  b',
         '  +',
         '+join',
@@ -477,16 +498,19 @@ void main() {
         '+',
         'if',
         '  [c1]',
+        '  +',
         '  a',
         '  +',
         '  x',
         '  +end',
         '  [false]',
+        '  +',
         '  b',
         '    [source]',
         '    add',
         '    → a',
         '    [source]',
+        '    +',
         '    y',
         '    +end',
       ]);
@@ -569,11 +593,13 @@ void main() {
         '+',
         'if',
         '  [c1]',
+        '  +',
         '  a',
         '  +end',
         '  [false]',
         '  add',
         '  [removed-case]',
+        '  +',
         '  b',
         '  +end',
       ]);
