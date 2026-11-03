@@ -1070,7 +1070,12 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
                           vars: _workflowVariableOptions,
                           onChange: (sel, _) => _selectVariable(sel),
                           isSupportFileVar: w.isSupportFileVar,
-                          onClose: _dismissSheet,
+                          // Escape closes the picker only (Dify): the editor's own key handler must not pass it on
+                          // to the sheet under it.
+                          onClose: () {
+                            _markKeyUsed();
+                            _dismissSheet();
+                          },
                           showManageInputField: wvb!.showManageInputField,
                           onManageInputField: wvb.onManageInputField,
                           isInCodeGeneratorInstructionEditor: w.currentBlock?.generatorType == PromptGeneratorType.code,
