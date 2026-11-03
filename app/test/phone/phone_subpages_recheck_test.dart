@@ -28,10 +28,10 @@ Future<void> _page(WidgetTester t, Size size, Widget home) async {
   await settle(t, 600);
 }
 
-/// [f] is at least 44 dp in each direction.
+/// [f] is at least 44 dp in each direction, on screen (its painted rect: a FittedBox that scales it counts).
 void _touchSized(WidgetTester t, Finder f, String reason) {
   expect(f, findsOneWidget, reason: reason);
-  final size = t.getSize(f);
+  final size = t.getRect(f).size;
   expect(size.height, greaterThanOrEqualTo(44), reason: '$reason: $size');
   expect(size.width, greaterThanOrEqualTo(44), reason: '$reason: $size');
 }

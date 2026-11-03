@@ -409,29 +409,57 @@ class AnnotationDrawerFooter extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => Container(
-    height: 64,
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    decoration: BoxDecoration(
+  Widget build(BuildContext context) {
+    final decoration = BoxDecoration(
       color: DifyColors.backgroundSectionBurn,
       border: Border(top: BorderSide(color: DifyColors.dividerSubtle)),
-    ),
-    child: DefaultTextStyle.merge(
-      style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textTertiary),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        spacing: 8,
-        children: [
-          // Long translations shrink rather than overflow (the drawer is at most 480 px wide).
-          Flexible(
-            child: FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: leading),
+    );
+    final style = difyTextStyle(DifyType.systemSmMedium, DifyColors.textTertiary);
+    // A phone's page (a touch surface): the parts share a row when they fit, else the trailing one goes to a second row
+    // (the bar grows), so they keep their size and the touch targets stay 44 px; a part wider than the whole bar (a
+    // very long translation) still shrinks.
+    if (DifyTouchArea.appliesIn(context)) {
+      return Container(
+        constraints: const BoxConstraints(minHeight: 64),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        alignment: AlignmentDirectional.centerStart,
+        decoration: decoration,
+        child: DefaultTextStyle.merge(
+          style: style,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final part in [leading, ?trailing])
+                FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: part),
+            ],
           ),
-          if (trailing case final t?)
+        ),
+      );
+    }
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: decoration,
+      child: DefaultTextStyle.merge(
+        style: style,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          spacing: 8,
+          children: [
+            // Long translations shrink rather than overflow (the drawer is at most 480 px wide).
             Flexible(
-              child: FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerEnd, child: t),
+              child: FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: leading),
             ),
-        ],
+            if (trailing case final t?)
+              Flexible(
+                child: FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerEnd, child: t),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
