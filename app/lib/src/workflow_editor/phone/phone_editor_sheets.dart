@@ -11,6 +11,11 @@
 /// window from the editor's tree, with a scrim. The store's panel flags say which sheet shows, exactly as they say
 /// which desktop panel shows, and closing a sheet clears its flag the way the desktop panel's close button does. Back
 /// closes a modal sheet first (its own back step), then the docked ones ([PhoneEditorSheets.backStep]).
+///
+/// In a wider touch window ([side]: a tablet, a landscape phone) the same panels are side panels ([DifySidePanel]) the
+/// frame docks at the window's end beside the view, from the same flags: [dockedLayer] and [modalLayer] build them
+/// instead of sheets, nothing covers the canvas, and Back closes the forms, the chat, variable inspect and the variable
+/// panels first ([modalBackStep]), then the lists and the run ([backStep]).
 library;
 
 import 'dart:async';
@@ -111,6 +116,9 @@ class PhoneEditorSheets {
       variables = DifySheetController(),
       comments = DifySheetController(),
       versions = DifySheetController();
+
+  /// Whether the panels are side panels (a wider window) instead of sheets; the frame sets it as it lays out.
+  bool side = false;
 
   BuildContext? _context;
   WorkflowStore? _store;
@@ -365,6 +373,7 @@ class PhoneEditorSheets {
   /// How much of the view the non-modal sheets cover at least (their peek), so the Steps view can scroll its last
   /// step above them; 0 while none shows.
   double get dockedHeight {
+    if (side) return 0;
     final s = _shown();
     if (s.run != null) return _runPeek.height!;
     if (s.versions || s.comments) return _listPeek.height!;
@@ -446,10 +455,44 @@ class PhoneEditorSheets {
     final s = _shown();
     final store = _store;
     if (store == null) return null;
+    if (side) {
+      // Side panels close at once (they have no peek).
+      if (s.comments) return _exitCommentMode;
+      if (s.versions) return () => store.setShowWorkflowVersionHistoryPanel(false);
+      if (s.run case final kind?) return () => _closeRun(kind);
+      return null;
+    }
     if (s.comments) return _collapseOr(comments, _listPeek, _exitCommentMode);
     if (s.versions) return _collapseOr(versions, _listPeek, () => store.setShowWorkflowVersionHistoryPanel(false));
     if (s.run case final kind?) return _collapseOr(run, _runPeek, () => _closeRun(kind));
     return null;
+  }
+
+  /// What Back does to the newest side panel of the kinds a phone shows as modal sheets (the step's and the run's
+  /// forms, the chat, variable inspect, the variable panels), or null when none shows or the panels are sheets (those
+  /// hold their own back steps).
+  VoidCallback? modalBackStep() {
+    final store = _store;
+    if (!side || store == null) return null;
+    final s = _shown();
+    if (s.stepInput case final id?) return () => _hideStepInput(id);
+    if (s.runInput || s.chat) return _cancelRunPanel;
+    if (s.inspect) return () => store.setShowVariableInspectPanel(false);
+    if (s.variables) return _closeVariables;
+    return null;
+  }
+
+  /// Whether any of the panels shows (the frame's side panel area is open).
+  bool get anyShown {
+    final s = _shown();
+    return s.run != null ||
+        s.runInput ||
+        s.chat ||
+        s.stepInput != null ||
+        s.inspect ||
+        s.variables ||
+        s.comments ||
+        s.versions;
   }
 
   void _hideStepInput(String nodeId) {
@@ -528,7 +571,11 @@ class _SheetLayerState extends State<_SheetLayer> {
   Widget build(BuildContext context) {
     final store = WorkflowStoreScope.of(context);
     final s = _last = sheets._shown();
-    final children = widget.modal ? _modal(context, s, store) : _docked(context, s, store);
+    final children = sheets.side
+        ? (widget.modal ? _sideModal(context, s, store) : _sideDocked(context, s, store))
+        : widget.modal
+        ? _modal(context, s, store)
+        : _docked(context, s, store);
     if (children.isEmpty) return const SizedBox.shrink();
     return Stack(fit: StackFit.expand, children: children);
   }
@@ -576,6 +623,44 @@ class _SheetLayerState extends State<_SheetLayer> {
 
   /// The step whose form the step sheet showed last (it keeps showing it while it slides away).
   String? _stepInput;
+
+  /// A side panel showing [child] (a panel laid out as a sheet's content, closing through [onClose]).
+  Widget _side(String key, VoidCallback onClose, Widget child) => DifySidePanel(
+    key: ValueKey('$key-side'),
+    onDismiss: onClose,
+    child: PanelSheetScope(onClose: onClose, child: child),
+  );
+
+  /// The run, the version list and the comment list as side panels (the newest on top).
+  List<Widget> _sideDocked(BuildContext context, _Shown s, WorkflowStore store) => [
+    if (s.run case final kind?) _side('phone-run', () => sheets._closeRun(kind), _RunSheet(sheets: sheets, kind: kind)),
+    if (s.versions)
+      _side('phone-versions', () => store.setShowWorkflowVersionHistoryPanel(false), sheets._panels.versions!),
+    if (s.comments) _side('phone-comments', sheets._exitCommentMode, sheets._panels.comments!),
+  ];
+
+  /// The panels a phone shows as modal sheets, as side panels (the newest on top, as [PhoneEditorSheets.modalBackStep]
+  /// closes them).
+  List<Widget> _sideModal(BuildContext context, _Shown s, WorkflowStore store) {
+    final panel = RunPanelContext(
+      startVariables: startVariablesOf(sheets.controller.doc),
+      hasSelectedNode: sheets.controller.selectedNode != null,
+      canRun: sheets._panels.canRun,
+    );
+    final step = s.stepInput == null ? null : sheets.controller.doc.nodes[s.stepInput];
+    return [
+      if (s.variables) _side('phone-variables', sheets._closeVariables, sheets._panels.variables!),
+      if (s.inspect) _side('phone-inspect', () => store.setShowVariableInspectPanel(false), const InspectPanel()),
+      if (s.chat) _side('phone-chat', sheets._cancelRunPanel, DebugAndPreview(panel: panel)),
+      if (s.runInput) _side('phone-run-input', sheets._cancelRunPanel, _RunInputSheet(panel: panel, sheets: sheets)),
+      if (step != null)
+        _side(
+          'phone-step-input',
+          () => sheets._hideStepInput(step.id),
+          NodeSingleRunOverlay(node: step, doc: sheets.controller.doc, fill: false),
+        ),
+    ];
+  }
 
   List<Widget> _modal(BuildContext context, _Shown s, WorkflowStore store) {
     // Each modal sheet is a DifySheetPortal, mounted all along and open while the store says so: it slides in and out,

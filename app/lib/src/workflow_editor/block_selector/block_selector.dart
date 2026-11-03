@@ -140,11 +140,12 @@ class BlockSelector extends StatefulWidget {
   /// widgets (the canvas's handles and edges) or that the caller owns (the next-step buttons). Completes when it
   /// closes. [open], [onOpenChange] and [trigger] are not used.
   ///
-  /// In a compact window (a phone, dify-sf) the same tabs and lists open in a bottom sheet instead, under a header
-  /// naming where the block goes ([sheetTitle], "Add Node" by default, and [sheetSubtitle]); its search field does not
-  /// take focus, so the keyboard only opens when the user taps it. [anchor] is not used then.
+  /// In the touch layout (a phone, a tablet, a landscape phone: dify-sf) the same tabs and lists open in a bottom sheet
+  /// instead, under a header naming where the block goes ([sheetTitle], "Add Node" by default, and [sheetSubtitle]);
+  /// its search field does not take focus, so the soft keyboard only opens when the user taps it. [anchor] is not used
+  /// then.
   Future<void> show(BuildContext context, {Rect? anchor, String? sheetTitle, String? sheetSubtitle}) {
-    if (DifyWindowClass.of(context) == DifyWindowClass.compact) {
+    if (DifyLayoutMode.of(context) != DifyLayoutMode.desktop) {
       return _showSheet(context, title: sheetTitle, subtitle: sheetSubtitle);
     }
     final box = context.findRenderObject() as RenderBox?;

@@ -4,6 +4,15 @@
 /// floating desktop chrome: two small buttons (pan / select mode, fit to screen); everything else is in the bars and
 /// the "…" sheet. The node's settings take the whole area under the app bar; the run and the other panels are sheets
 /// ([PhoneEditorSheets]). Android back closes the newest layer first.
+///
+/// The same chrome is the editor's touch layout in a wider window (dify-sf's touch desktop: a tablet, a landscape
+/// phone; [DifyLayoutMode.touch]): the canvas (or the Steps view) with an end-docked side panel ([DifySideDock]) for
+/// the node's settings, the run and the other panels instead of sheets over it, so nothing covers the canvas. A tall
+/// window (a tablet) keeps the app bar, the view row and the bottom bar under the canvas; a short one (a landscape
+/// phone, [DifyWindowClass.shortOf]) has a 48 px app bar holding the Steps | Canvas switch and its chips, and the
+/// toolbar (or the selection's actions) as a rail on the start edge, so the canvas keeps the window's full height.
+/// Turning the device moves the panels between the sheets and the side panel: what is open, the selection and the run
+/// are the store's and the phone controller's, the canvas and the Steps view keep their state.
 library;
 
 import 'dart:async';
@@ -149,6 +158,11 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
   VoidCallback? _topLayer(PhoneEditorActions a) {
     final store = a.store, phone = _phone;
     if (phone == null) return null;
+    // Side panels (a wider window): the forms, the chat, variable inspect and the variable panels first (on a phone they
+    // are modal sheets, whose own back steps are newer than this one), then the settings, then the lists and the run.
+    if (_sheets.side) {
+      if (_sheets.modalBackStep() case final step?) return step;
+    }
     if (phone.settingsNodeId != null) return phone.closeSettings;
     // The docked sheets (the lists and the run sheet, lowered to their peek first). The modal sheets (DifySheetPortal)
     // hold their own back steps, newer than this one.
@@ -192,7 +206,13 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
       listenable: layers,
       builder: (context, _) {
         final a = _actions;
+        // A wider window (the touch desktop) docks the panels at the end instead of showing them as sheets.
+        final wide = DifyWindowClass.of(context) != DifyWindowClass.compact;
+        _sheets.side = wide;
         final close = _topLayer(a);
+        // The view and the panels keep their state when the window turns between the layouts.
+        final body = KeyedSubtree(key: _bodyKey, child: _body(context, a, phone));
+        final panels = config.body.panels == null ? null : KeyedSubtree(key: _panelsKey, child: config.body.panels!);
         return DifyBackDismiss(
           enabled: close != null,
           onDismiss: () {
@@ -206,41 +226,44 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _PhoneTopBar(config: config, actions: a),
-                    Expanded(
-                      child: MediaQuery.removePadding(
-                        context: context,
-                        removeTop: true,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _ViewRow(actions: a, sheets: _sheets),
-                                Expanded(
-                                  child: MediaQuery.removePadding(
-                                    context: context,
-                                    removeTop: true,
-                                    removeBottom: true,
-                                    child: _body(context, a, phone),
+                if (!wide)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _PhoneTopBar(config: config, actions: a),
+                      Expanded(
+                        child: MediaQuery.removePadding(
+                          context: context,
+                          removeTop: true,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _ViewRow(actions: a, sheets: _sheets),
+                                  Expanded(
+                                    child: MediaQuery.removePadding(
+                                      context: context,
+                                      removeTop: true,
+                                      removeBottom: true,
+                                      child: body,
+                                    ),
                                   ),
-                                ),
-                                _bottomBar(a, phone),
-                              ],
-                            ),
-                            // The node's settings sheet (the other panels are this frame's sheets).
-                            ?config.body.panels,
-                          ],
+                                  _bottomBar(a, phone),
+                                ],
+                              ),
+                              // The node's settings sheet (the other panels are this frame's sheets).
+                              ?panels,
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                _sheets.modalLayer(),
+                    ],
+                  )
+                else
+                  _wideLayout(context, a, phone, body, panels),
+                if (!wide) _sheets.modalLayer(),
                 ?config.body.modal,
                 config.body.confirm,
               ],
@@ -248,6 +271,72 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
           ),
         );
       },
+    );
+  }
+
+  /// The view (the Steps view or the canvas with its layers and the docked sheets), kept across layouts.
+  final _bodyKey = GlobalKey(debugLabel: 'phone editor view');
+
+  /// The node settings' host (WorkflowPanels), kept across layouts.
+  final _panelsKey = GlobalKey(debugLabel: 'phone editor panels');
+
+  /// The touch layout of a wider window: the app bar, then the view beside an end-docked side panel area holding the
+  /// lists and the run, the node's settings, and the forms and other panels (in that order, the newest on top, as Back
+  /// closes them). A tall window keeps the view row above the view and the bottom bar below it; a short one (a
+  /// landscape phone) puts the view row in a 48 px app bar and the bottom bar's actions in a rail on the start edge.
+  Widget _wideLayout(
+    BuildContext context,
+    PhoneEditorActions a,
+    PhoneEditorController phone,
+    Widget body,
+    Widget? panels,
+  ) {
+    final short = DifyWindowClass.shortOf(context);
+    final config = widget.config;
+    final dock = _SideDock(
+      sheets: _sheets,
+      phone: phone,
+      store: a.store,
+      panels: [_sheets.dockedLayer(), ?panels, _sheets.modalLayer()],
+      body: short
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _bottomBar(a, phone, rail: true),
+                Expanded(
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeLeft: Directionality.of(context) == TextDirection.ltr,
+                    removeRight: Directionality.of(context) == TextDirection.rtl,
+                    child: body,
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _ViewRow(actions: a, sheets: _sheets),
+                Expanded(
+                  child: MediaQuery.removePadding(context: context, removeTop: true, removeBottom: true, child: body),
+                ),
+                _bottomBar(a, phone),
+              ],
+            ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _PhoneTopBar(
+          config: config,
+          actions: a,
+          dense: short,
+          viewRow: short ? _ViewRow(actions: a, sheets: _sheets, inline: true) : null,
+        ),
+        Expanded(
+          child: MediaQuery.removePadding(context: context, removeTop: true, child: dock),
+        ),
+      ],
     );
   }
 
@@ -293,17 +382,21 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
               },
             ),
           ),
-        // The run sheet and the version and comment lists, over the view and above the bottom bar.
-        _sheets.dockedLayer(),
+        // The run sheet and the version and comment lists, over the view and above the bottom bar (side panels in a
+        // wider window: the frame docks them).
+        if (!_sheets.side) _sheets.dockedLayer(),
       ],
     );
   }
 
-  Widget _bottomBar(PhoneEditorActions a, PhoneEditorController phone) {
+  /// The bottom bar: the toolbar, or what is selected on the canvas, or the version browser's and the run history's
+  /// actions; as a [rail] on the start edge in a short window.
+  Widget _bottomBar(PhoneEditorActions a, PhoneEditorController phone, {bool rail = false}) {
     final store = a.store;
     if (store.isRestoring.value) {
       return DifyBottomToolbar(
         key: const ValueKey('phone-restoring-bar'),
+        vertical: rail,
         actions: [
           DifyToolbarAction(
             icon: const RemixIcon('history-line', size: 22),
@@ -321,6 +414,7 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
     if (store.historyWorkflowData.value != null) {
       return DifyBottomToolbar(
         key: const ValueKey('phone-history-bar'),
+        vertical: rail,
         actions: [
           DifyToolbarAction(
             icon: const RemixIcon('time-line', size: 22),
@@ -337,19 +431,20 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
     }
     if (phone.view == PhoneEditorView.canvas) {
       final group = a.groupSelection;
-      if (group.isNotEmpty) return _groupBar(a, group);
-      if (a.selectedEdgeId case final edge?) return _edgeBar(a, edge);
-      if (a.selectedNodeId case final id? when a.doc.nodes[id] != null) return _nodeBar(a, a.doc.nodes[id]!);
+      if (group.isNotEmpty) return _groupBar(a, group, rail);
+      if (a.selectedEdgeId case final edge?) return _edgeBar(a, edge, rail);
+      if (a.selectedNodeId case final id? when a.doc.nodes[id] != null) return _nodeBar(a, a.doc.nodes[id]!, rail);
     }
-    return _toolbar(a);
+    return _toolbar(a, rail);
   }
 
-  Widget _toolbar(PhoneEditorActions a) {
+  Widget _toolbar(PhoneEditorActions a, bool rail) {
     final store = a.store, undo = _controller.undo;
     final editable = !a.readOnly;
     final undoable = !(store.nodesReadOnly || store.workflowReadOnly);
     return DifyBottomToolbar(
       key: const ValueKey('phone-toolbar'),
+      vertical: rail,
       actions: [
         DifyToolbarAction(
           icon: const RemixIcon('arrow-go-back-line', size: 22),
@@ -386,10 +481,11 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
     );
   }
 
-  Widget _nodeBar(PhoneEditorActions a, Node n) {
+  Widget _nodeBar(PhoneEditorActions a, Node n, bool rail) {
     final running = a.actions.isSingleRunning(n.id);
     return DifySelectionBar(
       key: const ValueKey('phone-node-bar'),
+      vertical: rail,
       leading: a.iconOf(n),
       title: a.titleOf(n),
       subtitle: _tp('selected'),
@@ -442,8 +538,9 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
     );
   }
 
-  Widget _edgeBar(PhoneEditorActions a, String edgeId) => DifySelectionBar(
+  Widget _edgeBar(PhoneEditorActions a, String edgeId, bool rail) => DifySelectionBar(
     key: const ValueKey('phone-edge-bar'),
+    vertical: rail,
     leading: RemixIcon('git-commit-line', size: 22, color: DifyColors.textTertiary),
     title: a.edgeTitle(edgeId),
     onClose: a.clearSelection,
@@ -466,8 +563,9 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
     ],
   );
 
-  Widget _groupBar(PhoneEditorActions a, List<Node> group) => DifySelectionBar(
+  Widget _groupBar(PhoneEditorActions a, List<Node> group, bool rail) => DifySelectionBar(
     key: const ValueKey('phone-group-bar'),
+    vertical: rail,
     leading: RemixIcon('checkbox-multiple-line', size: 22, color: DifyColors.textTertiary),
     title: _tp('nodesSelected', {'count': group.length}),
     onClose: a.clearSelection,
@@ -501,10 +599,16 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
 /// The app bar: back (the newest layer, then the page), the app's name over its save state and collaborators, the
 /// mode's main action (Run or Stop, Restore while browsing versions) and "…".
 class _PhoneTopBar extends StatelessWidget {
-  const _PhoneTopBar({required this.config, required this.actions});
+  const _PhoneTopBar({required this.config, required this.actions, this.dense = false, this.viewRow});
 
   final PhoneEditorConfig config;
   final PhoneEditorActions actions;
+
+  /// A short window's 48 px bar ([DifyTopAppBar.dense]).
+  final bool dense;
+
+  /// The view row's switch and chips, inline before the main action (a short window).
+  final Widget? viewRow;
 
   static String _link(LinkState s) => switch (s) {
     LinkState.live => 'Live',
@@ -559,7 +663,9 @@ class _PhoneTopBar extends StatelessWidget {
         title: config.appName,
         subtitle: _subtitle(data, store),
         backgroundColor: DifyColors.backgroundBody,
+        dense: dense,
         actions: [
+          ?viewRow,
           ?_mainAction(data, store),
           DifyTouchIconButton(
             key: const ValueKey('phone-editor-more'),
@@ -614,10 +720,13 @@ class _PhoneTopBar extends StatelessWidget {
 }
 
 /// The Steps | Canvas switch and the checklist's issues (after a hidden run's chip, [PhoneEditorSheets.viewRowChips]).
+/// [inline]: in a short window's app bar (a flexible child of its row: the chips take their short forms first when the
+/// bar is narrow).
 class _ViewRow extends StatelessWidget {
-  const _ViewRow({required this.actions, required this.sheets});
+  const _ViewRow({required this.actions, required this.sheets, this.inline = false});
   final PhoneEditorActions actions;
   final PhoneEditorSheets sheets;
+  final bool inline;
 
   @override
   Widget build(BuildContext context) {
@@ -639,42 +748,55 @@ class _ViewRow extends StatelessWidget {
           : RemixIcon('error-warning-fill', size: 16, color: DifyColors.textWarning),
       onPressed: () => unawaited(actions.showChecklist()),
     );
+    final viewSwitch = DifySegmentedControl<PhoneEditorView>(
+      key: const ValueKey('phone-view-switch'),
+      size: DifySegmentedControlSize.touch,
+      semanticLabel: _tp('view'),
+      value: phone.view,
+      onChanged: (v) => phone.view = v,
+      segments: [
+        (
+          value: PhoneEditorView.steps,
+          label: _tp('steps'),
+          child: DifySegmentLabel(icon: const RemixIcon('list-unordered', size: 16), text: _tp('steps')),
+        ),
+        (
+          value: PhoneEditorView.canvas,
+          label: _tp('canvas'),
+          child: DifySegmentLabel(icon: const RemixIcon('flow-chart', size: 16), text: _tp('canvas')),
+        ),
+      ],
+    );
+    // In the app bar the issues chip is always short (its icon and count, named in full).
+    final chips = sheets.viewRowChips(
+      issues: (compact) => graph == null
+          ? issues(0, compact || inline)
+          : ValueListenableBuilder(
+              valueListenable: graph,
+              builder: (context, facts, _) => issues(facts.checklist.length, compact || inline),
+            ),
+    );
+    if (inline) {
+      // A flexible child of the app bar's row: up to half of what the title and the buttons leave.
+      return Flexible(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            viewSwitch,
+            const SizedBox(width: 8),
+            Flexible(child: chips),
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: EdgeInsets.fromLTRB(16 + insets.left, 0, 16 + insets.right, 4),
       child: Row(
         children: [
-          DifySegmentedControl<PhoneEditorView>(
-            key: const ValueKey('phone-view-switch'),
-            size: DifySegmentedControlSize.touch,
-            semanticLabel: _tp('view'),
-            value: phone.view,
-            onChanged: (v) => phone.view = v,
-            segments: [
-              (
-                value: PhoneEditorView.steps,
-                label: _tp('steps'),
-                child: DifySegmentLabel(icon: const RemixIcon('list-unordered', size: 16), text: _tp('steps')),
-              ),
-              (
-                value: PhoneEditorView.canvas,
-                label: _tp('canvas'),
-                child: DifySegmentLabel(icon: const RemixIcon('flow-chart', size: 16), text: _tp('canvas')),
-              ),
-            ],
-          ),
+          viewSwitch,
           const SizedBox(width: 8),
           Expanded(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: sheets.viewRowChips(
-                issues: (compact) => graph == null
-                    ? issues(0, compact)
-                    : ValueListenableBuilder(
-                        valueListenable: graph,
-                        builder: (context, facts, _) => issues(facts.checklist.length, compact),
-                      ),
-              ),
-            ),
+            child: Align(alignment: Alignment.centerRight, child: chips),
           ),
         ],
       ),
@@ -708,4 +830,71 @@ class _CanvasButtons extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// The touch layout's [DifySideDock] in a wider window: open while the node's settings or any of the editor's panels
+/// show ([PhoneEditorSheets.anyShown]). It rebuilds when that changes, not on every store change a run makes.
+class _SideDock extends StatefulWidget {
+  const _SideDock({
+    required this.sheets,
+    required this.phone,
+    required this.store,
+    required this.body,
+    required this.panels,
+  });
+
+  final PhoneEditorSheets sheets;
+  final PhoneEditorController phone;
+  final WorkflowStore store;
+  final Widget body;
+  final List<Widget> panels;
+
+  @override
+  State<_SideDock> createState() => _SideDockState();
+}
+
+class _SideDockState extends State<_SideDock> {
+  Listenable? _watched;
+  bool _open = false;
+
+  bool get _computed => widget.phone.settingsNodeId != null || widget.sheets.anyShown;
+
+  @override
+  void initState() {
+    super.initState();
+    _watch();
+    _open = _computed;
+  }
+
+  @override
+  void didUpdateWidget(_SideDock old) {
+    super.didUpdateWidget(old);
+    if (old.store != widget.store || old.phone != widget.phone) _watch();
+    _open = _computed;
+  }
+
+  void _watch() {
+    _watched?.removeListener(_changed);
+    _watched = Listenable.merge([...PhoneEditorSheets.watched(widget.store), widget.phone, widget.sheets.controller])
+      ..addListener(_changed);
+  }
+
+  void _changed() {
+    if (!mounted || _computed == _open) return;
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => _changed());
+      return;
+    }
+    setState(() => _open = _computed);
+  }
+
+  @override
+  void dispose() {
+    _watched?.removeListener(_changed);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      DifySideDock(key: const ValueKey('phone-side-dock'), open: _open, body: widget.body, panels: widget.panels);
 }

@@ -783,8 +783,8 @@ class _DifyWorkflowEditorState extends State<DifyWorkflowEditor> {
                         controller: controller,
                         canvas: canvas,
                         options: menuOptions,
-                        // A phone shows these as sheets ([PhoneEditorPanels] above).
-                        others: DifyWindowClass.of(context) == DifyWindowClass.compact
+                        // The touch layout shows these as sheets or side panels ([PhoneEditorPanels] above).
+                        others: DifyLayoutMode.of(context) != DifyLayoutMode.desktop
                             ? const []
                             : [
                                 // The viewed history run and the Test Run / Debug & Preview panel (workflow-panel.tsx).

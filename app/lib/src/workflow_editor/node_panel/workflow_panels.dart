@@ -63,6 +63,11 @@ class NodePanelActions extends WorkflowActions {
 /// selected node: half the window first (the step or canvas above stays visible), pulled up to full; back, the scrim,
 /// a drag down and its close button close it (the selection stays). The other panels are the phone editor's sheets
 /// (`PhoneEditorSheets`): the phone's panel row has nothing else.
+///
+/// In the touch layout of a wider window (a tablet, a landscape phone: the phone editor's chrome in a medium or
+/// expanded window) the same content is an end-docked side panel instead ([DifySidePanel], placed by the phone
+/// editor's [DifySideDock]): the canvas or the Steps view stays beside it, and a node the narrower canvas would hide
+/// is brought into view.
 class WorkflowPanels extends StatefulWidget {
   const WorkflowPanels({
     super.key,
@@ -211,17 +216,19 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
     final panelNode = phone == null ? custom : null;
     final sheetNode = phone != null && custom != null && phone.settingsNodeId == custom.id ? custom : null;
     if (sheetNode != null) _sheetNode = sheetNode;
+    // The touch layout of a wider window: a side panel beside the view instead of a sheet over it.
+    final side = phone != null && DifyWindowClass.of(context) != DifyWindowClass.compact;
     if (phone != null && sheetNode?.id != _revealed) {
       final was = _revealed;
       _revealed = sheetNode?.id;
       if (sheetNode != null) {
-        _revealAbove(phone, sheetNode.id);
-      } else if (was != null) {
+        side ? _revealBeside(phone, sheetNode.id) : _revealAbove(phone, sheetNode.id);
+      } else if (was != null && !side) {
         // Closed: the Steps view's room for it goes.
         SchedulerBinding.instance.addPostFrameCallback((_) => phone.stepsReveal?.call(null, null));
       }
     }
-    final sheet = phone == null ? null : _settingsSheet(phone, sheetNode);
+    final sheet = phone == null ? null : (side ? _settingsSide(phone, sheetNode) : _settingsSheet(phone, sheetNode));
     // On a phone the other panels are sheets of the phone editor (it gives this row none): only the settings sheet.
     if (sheet != null) return sheet;
     return ListenableBuilder(
@@ -311,6 +318,45 @@ class _WorkflowPanelsState extends State<WorkflowPanels> {
           phone.stepsReveal?.call(nodeId, top);
         }
       });
+
+  /// Once the side panel opened for [nodeId] has narrowed the canvas (two frames: the dock, then the canvas's
+  /// viewport), the node is brought into view when the canvas shows and it is out of sight.
+  void _revealBeside(PhoneEditorController phone, String nodeId, [int frames = 0]) =>
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || phone.settingsNodeId != nodeId || phone.view != PhoneEditorView.canvas) return;
+        if (frames < 1) return _revealBeside(phone, nodeId, frames + 1);
+        final n = widget.canvas.graph?[nodeId], v = widget.canvas.view;
+        if (n == null || v.viewport.isEmpty) return;
+        // The whole card when it fits, else its middle.
+        final visible = Rect.fromPoints(v.toCanvas(Offset.zero), v.toCanvas(v.viewport.bottomRight(Offset.zero)));
+        final inner = visible.deflate(16 / v.scale);
+        final fits = n.rect.width <= inner.width && n.rect.height <= inner.height;
+        final shown = fits
+            ? inner.contains(n.rect.topLeft) && inner.contains(n.rect.bottomRight)
+            : inner.contains(n.rect.center);
+        if (!shown) v.center = n.rect.center;
+      });
+
+  /// The node settings in a wider touch window: the node panel's content in an end-docked side panel while [open] is
+  /// the settings node (nothing otherwise); its close button closes it (the selection stays), as Back does.
+  Widget _settingsSide(PhoneEditorController phone, Node? open) => open == null
+      ? const SizedBox.shrink()
+      : DifySidePanel(
+          key: const ValueKey('phone-node-settings-side'),
+          onDismiss: phone.closeSettings,
+          child: WorkflowRightPanelScope(
+            panelKey: _panelKey,
+            child: WorkflowNodePanel(
+              key: ValueKey('${open.id}-${open.type}'),
+              node: open,
+              actions: _actions,
+              bodies: widget.bodies,
+              onSingleRun: widget.onSingleRun,
+              onStopSingleRun: widget.onStopSingleRun,
+              sheet: true,
+            ),
+          ),
+        );
 
   /// The phone's node settings: the node panel's content in a sheet, open while [open] is the settings node.
   Widget _settingsSheet(PhoneEditorController phone, Node? open) {

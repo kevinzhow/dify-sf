@@ -20,11 +20,16 @@ enum PhoneEditorView {
   canvas,
 }
 
-/// What the phone chrome remembers: the view (per app, stored like the editor's other preferences; Steps by default),
+/// What the phone chrome remembers: the view (per app, stored like the editor's other preferences; until one is
+/// stored, Steps on a phone and the canvas in a wider touch window: the initial view),
 /// whether the canvas is in select mode, and whose settings panel is open. The canvas and the document keep the rest
 /// (the selection, the run, the panels' store flags).
 class PhoneEditorController extends ChangeNotifier {
-  PhoneEditorController({required this.docId, Future<SharedPreferences>? preferences}) {
+  PhoneEditorController({
+    required this.docId,
+    Future<SharedPreferences>? preferences,
+    PhoneEditorView initialView = PhoneEditorView.steps,
+  }) : _view = initialView {
     unawaited(_load(preferences ?? SharedPreferences.getInstance()));
   }
 
@@ -34,7 +39,7 @@ class PhoneEditorController extends ChangeNotifier {
   /// The stored view's key: `dify-sf-phone-editor-view:<app id>`, `steps` or `canvas`.
   static String storageKey(String docId) => 'dify-sf-phone-editor-view:$docId';
 
-  PhoneEditorView _view = PhoneEditorView.steps;
+  PhoneEditorView _view;
 
   /// The Steps view's "add at the end of the flow" while it shows (it registers itself); the toolbar's Add uses it
   /// when no step is selected.

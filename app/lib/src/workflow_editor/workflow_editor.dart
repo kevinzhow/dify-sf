@@ -5,7 +5,7 @@ import '../canvas/canvas_controller.dart';
 import '../canvas/workflow_canvas.dart';
 import '../editor/editor_controller.dart';
 import '../design/widgets/adaptive.dart';
-import '../design/widgets/responsive.dart' show DifyWindowClass;
+import '../design/widgets/responsive.dart' show DifyLayoutMode;
 import 'context_menu/context_menu.dart';
 import 'hooks/use_helpline.dart';
 import 'hooks/use_workflow.dart';
@@ -26,9 +26,11 @@ import 'workflow_confirm.dart';
 ///
 /// Slots are filled as the chrome is ported; an empty slot draws nothing.
 ///
-/// In a compact window (a phone) with a [phone] layout, that layout replaces the floating desktop chrome ([header],
+/// In a compact window (a phone), and in a wider one driven by touch (a tablet, a landscape phone:
+/// [DifyLayoutMode.touch]), with a [phone] layout, that layout replaces the floating desktop chrome ([header],
 /// [control], [operator]) and places the canvas, the panels and the modal layers itself (dify-sf; Dify's editor has no
-/// phone mode). The canvas keeps its state when the window crosses between the two layouts.
+/// phone mode, and its desktop chrome is made for a mouse). The canvas keeps its state when the window crosses between
+/// the layouts.
 class WorkflowEditor extends StatefulWidget {
   const WorkflowEditor({
     super.key,
@@ -45,8 +47,9 @@ class WorkflowEditor extends StatefulWidget {
     this.phone,
   });
 
-  /// The phone layout (compact windows): builds the phone chrome around [PhoneEditorBody]; [PhoneEditorScope] is above
-  /// it and above the slots it places. Null: the desktop layout at every width.
+  /// The touch layout (compact windows, and wider ones driven by touch): builds the phone chrome around
+  /// [PhoneEditorBody]; [PhoneEditorScope] is above it and above the slots it places. Null: the desktop layout at every
+  /// width.
   final Widget Function(BuildContext context, CanvasController canvas, PhoneEditorBody body)? phone;
 
   final EditorController controller;
@@ -91,7 +94,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
   final preferences = WorkflowPreferences();
   late final bridge = WorkflowLocalStorageBridge(store, preferences);
 
-  /// The phone layout's state, made when the window is first compact.
+  /// The touch layout's state, made when it first shows (and kept while the window rotates or switches layouts).
   PhoneEditorController? _phone;
 
   /// The canvas and its layers move between the desktop and the phone layouts with their state.
@@ -236,7 +239,7 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
                   ),
                 ),
               );
-              if (w.phone != null && DifyWindowClass.of(context) == DifyWindowClass.compact) {
+              if (w.phone != null && DifyLayoutMode.of(context) != DifyLayoutMode.desktop) {
                 return _phoneLayout(context, constraints, canvasLayer);
               }
               // Viewport listeners in overlays can relayout this LayoutBuilder.
@@ -323,7 +326,11 @@ class _WorkflowEditorState extends State<WorkflowEditor> {
   /// The phone layout: [WorkflowEditor.phone] around the canvas, its layers, the panels and the modal layers.
   Widget _phoneLayout(BuildContext context, BoxConstraints constraints, Widget canvasLayer) {
     final w = widget;
-    final phone = _phone ??= PhoneEditorController(docId: w.controller.docId);
+    // A phone opens on the Steps view, a wider window on the canvas (until a view is stored for the app).
+    final phone = _phone ??= PhoneEditorController(
+      docId: w.controller.docId,
+      initialView: DifyLayoutMode.of(context) == DifyLayoutMode.phone ? PhoneEditorView.steps : PhoneEditorView.canvas,
+    );
     // There is no bottom operator bar on a phone: the desktop control bar starts from the canvas's full height when
     // the window turns wide again (until the operator bar measures itself).
     if (store.bottomPanelHeight.value != 0) {
