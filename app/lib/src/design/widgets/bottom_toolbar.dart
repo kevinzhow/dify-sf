@@ -91,18 +91,40 @@ class DifyToolbarAction extends StatelessWidget {
 ///
 /// Edge to edge: the background reaches the window's bottom and side edges, the actions stay above the bottom inset
 /// and clear of the side insets (`MediaQuery.padding`, which is zero while the keyboard covers the navigation bar).
+///
+/// [vertical]: the same bar as a rail on the start edge of a short window (a phone in landscape, dify-sf's touch
+/// desktop), [railWidth] wide, its cells stacked (the [center] slot between the halves) and scrolling when the window
+/// is too short for them all; the background reaches the window's start and bottom edges, a divider-subtle line on its
+/// end edge.
 class DifyBottomToolbar extends StatelessWidget {
-  const DifyBottomToolbar({super.key, required this.actions, this.center});
+  const DifyBottomToolbar({super.key, required this.actions, this.center, this.vertical = false});
 
   /// The bar's height above the bottom inset.
   static const height = 60.0;
 
+  /// The rail's width ([vertical]) beside the start inset.
+  static const railWidth = 72.0;
+
   final List<DifyToolbarAction> actions;
   final Widget? center;
+  final bool vertical;
 
   @override
   Widget build(BuildContext context) {
     final split = center == null ? actions.length : actions.length ~/ 2;
+    if (vertical) {
+      return _DifyRailSurface(
+        children: [
+          for (final a in actions.take(split)) a,
+          if (center case final c?)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Center(child: c),
+            ),
+          for (final a in actions.skip(split)) a,
+        ],
+      );
+    }
     return _DifyBottomBarSurface(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -128,6 +150,10 @@ class DifyBottomToolbar extends StatelessWidget {
 /// text-tertiary, and a 20 px close glyph when [onClose] is given) over a row of [actions] (48 px cells, `px-2 pb-1`),
 /// on the same surface as [DifyBottomToolbar]. The close glyph sits in a 48 px square of its own: its whole target is
 /// inside the bar and overlaps no action.
+///
+/// [vertical]: the bar as a rail on a short window's start edge, like [DifyBottomToolbar.vertical]: the close glyph on
+/// top, then [leading] over the [title] (two lines of the toolbar's label type; the subtitle is part of the rail's
+/// name), then the actions.
 class DifySelectionBar extends StatelessWidget {
   const DifySelectionBar({
     super.key,
@@ -137,7 +163,10 @@ class DifySelectionBar extends StatelessWidget {
     this.leading,
     this.onClose,
     this.closeLabel,
+    this.vertical = false,
   });
+
+  final bool vertical;
 
   final String title;
   final String? subtitle;
@@ -148,8 +177,62 @@ class DifySelectionBar extends StatelessWidget {
   /// The close glyph's accessible name (common `operation.close` by default).
   final String? closeLabel;
 
+  Widget _closeGlyph(VoidCallback close) => DifyPressable(
+    onPressed: close,
+    semanticLabel: closeLabel ?? DifyI18n.tr('common', 'operation.close'),
+    builder: (context, hovered, focused) => SizedBox.square(
+      dimension: DifyTouch.minTarget,
+      child: Center(
+        child: DecoratedBox(
+          decoration: DifyFocusDecoration(
+            borderRadius: BorderRadius.circular(DifyRadius.sm),
+            boxShadow: difyFocusRing(focused),
+          ),
+          child: RemixIcon(
+            'close-line',
+            size: 20,
+            color: hovered ? DifyColors.textSecondary : DifyColors.textTertiary,
+          ),
+        ),
+      ),
+    ),
+  );
+
   @override
-  Widget build(BuildContext context) => _DifyBottomBarSurface(
+  Widget build(BuildContext context) {
+    if (vertical) {
+      return _DifyRailSurface(
+        children: [
+          if (onClose case final close?) Center(child: _closeGlyph(close)),
+          MergeSemantics(
+            child: Semantics(
+              label: subtitle,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+                child: Column(
+                  spacing: 4,
+                  children: [
+                    ?leading,
+                    DifyText(
+                      title,
+                      DifyPhoneType.toolbarLabel,
+                      color: DifyColors.textPrimary,
+                      align: TextAlign.center,
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          ...actions,
+        ],
+      );
+    }
+    return _horizontal(context);
+  }
+
+  Widget _horizontal(BuildContext context) => _DifyBottomBarSurface(
     child: Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -163,33 +246,20 @@ class DifySelectionBar extends StatelessWidget {
               spacing: 8,
               children: [
                 ?leading,
-                Flexible(
-                  child: DifyText(title, DifyType.systemMdSemibold, color: DifyColors.textPrimary),
-                ),
-                if (subtitle case final s?) DifyText(s, DifyType.systemXsRegular, color: DifyColors.textTertiary),
-                if (onClose case final close?) ...[
-                  const Spacer(),
-                  DifyPressable(
-                    onPressed: close,
-                    semanticLabel: closeLabel ?? DifyI18n.tr('common', 'operation.close'),
-                    builder: (context, hovered, focused) => SizedBox.square(
-                      dimension: DifyTouch.minTarget,
-                      child: Center(
-                        child: DecoratedBox(
-                          decoration: DifyFocusDecoration(
-                            borderRadius: BorderRadius.circular(DifyRadius.sm),
-                            boxShadow: difyFocusRing(focused),
-                          ),
-                          child: RemixIcon(
-                            'close-line',
-                            size: 20,
-                            color: hovered ? DifyColors.textSecondary : DifyColors.textTertiary,
-                          ),
-                        ),
+                // The title and subtitle take the free width, so the close glyph sits at the bar's end (a Spacer beside
+                // a Flexible title would leave it halfway along a wide bar).
+                Expanded(
+                  child: Row(
+                    spacing: 8,
+                    children: [
+                      Flexible(
+                        child: DifyText(title, DifyType.systemMdSemibold, color: DifyColors.textPrimary),
                       ),
-                    ),
+                      if (subtitle case final s?) DifyText(s, DifyType.systemXsRegular, color: DifyColors.textTertiary),
+                    ],
                   ),
-                ],
+                ),
+                if (onClose case final close?) _closeGlyph(close),
               ],
             ),
           ),
@@ -240,6 +310,43 @@ class _DifyBottomBarSurface extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.fromLTRB(insets.left, 0, insets.right, insets.bottom),
         child: child,
+      ),
+    );
+  }
+}
+
+/// The rail form of the phone bars ([DifyBottomToolbar.vertical], [DifySelectionBar.vertical]): [railWidth] wide on the
+/// start edge, `bg-components-panel-bg` with a 1 px divider-subtle end border, painted to the window's start and bottom
+/// edges; its cells (each at least 56 px tall, the whole cell the target) are stacked from the top, clear of the start
+/// and bottom insets, and scroll when they do not fit.
+class _DifyRailSurface extends StatelessWidget {
+  const _DifyRailSurface({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final insets = MediaQuery.paddingOf(context);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DifyColors.componentsPanelBg,
+        border: BorderDirectional(end: BorderSide(color: DifyColors.dividerSubtle)),
+      ),
+      child: Padding(
+        padding: EdgeInsetsDirectional.only(start: rtl ? insets.right : insets.left, bottom: insets.bottom),
+        child: SizedBox(
+          width: DifyBottomToolbar.railWidth,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final c in children) ConstrainedBox(constraints: const BoxConstraints(minHeight: 56), child: c),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

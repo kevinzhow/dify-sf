@@ -94,9 +94,9 @@ class OverviewView extends StatelessWidget {
         openUrl: openUrl,
         headerRight: acl.canConfigureTracing ? tracingPanel : null,
         // A phone scrolls the panel away with the charts.
-        leading: DifyTouch.compactOf(context) ? panel : null,
+        leading: DifyWindowClass.of(context) == DifyWindowClass.compact ? panel : null,
       );
-      if (DifyTouch.compactOf(context)) return charts;
+      if (DifyWindowClass.of(context) == DifyWindowClass.compact) return charts;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -183,7 +183,7 @@ class _ChartViewState extends State<ChartView> {
             ),
       ],
     );
-    if (DifyTouch.compactOf(context)) {
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) {
       // A phone: one scroll (the header as tall as it needs: the description wraps, the picker is touch-high).
       return SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 16),
@@ -209,7 +209,7 @@ class _ChartViewState extends State<ChartView> {
   }
 
   Widget _header(BuildContext context) {
-    final phone = DifyTouch.compactOf(context);
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
     final side = phone ? 16.0 : 24.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

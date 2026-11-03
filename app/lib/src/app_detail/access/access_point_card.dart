@@ -127,7 +127,7 @@ class AccessPointCard extends StatelessWidget {
       }
     }
     final footer = actions;
-    final phone = DifyTouch.compactOf(context);
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
     final statusRow = Semantics(
       liveRegion: true,
       child: Row(
@@ -269,7 +269,7 @@ class AccessPointEndpoint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final phone = DifyTouch.compactOf(context);
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(

@@ -101,7 +101,7 @@ class _MemberRowState extends State<MemberRow> {
     final w = widget;
     final m = w.member;
     final label = stc(context, 'members.memberDetails.openAria', {'name': m.name});
-    final phone = DifyTouch.compactOf(context);
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
     final name = DifyTextLine.rich(
       TextSpan(
         children: [

@@ -218,7 +218,7 @@ class AccessPointPageState extends State<AccessPointPage> {
     builder: (context, info, _) {
       final caps = appACLCapabilitiesOf(info);
       // A phone scrolls the header with the cards (it would take a fifth of the screen) and pads by 16 px.
-      final phone = DifyTouch.compactOf(context);
+      final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
       final header = Padding(
         padding: phone ? const EdgeInsets.fromLTRB(16, 12, 16, 8) : const EdgeInsets.fromLTRB(24, 12, 24, 8),
         child: Column(

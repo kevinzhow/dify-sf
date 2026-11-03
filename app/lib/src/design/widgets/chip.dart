@@ -60,7 +60,7 @@ class _DifyChipState extends State<DifyChip> {
     final trigger = selected?.name ?? '';
     final hasValue = selected != null && widget.value.isNotEmpty;
     final clearLabel = trigger.isNotEmpty ? '${_c('operation.clear')} $trigger' : _c('operation.clear');
-    if (DifyTouch.compactOf(context)) return _phone(context, trigger);
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) return _phone(context, trigger);
     // Keep the clear action anchored to the intrinsic trigger, even when the
     // call site gives the component a tight, wider box. Align loosens only the
     // inner stack; the component still honours its parent's layout contract.

@@ -55,7 +55,9 @@ class AnnotationEmptyElement extends StatelessWidget {
     child: Container(
       key: const ValueKey('annotation-empty'),
       width: 560,
-      margin: DifyTouch.compactOf(context) ? const EdgeInsets.symmetric(horizontal: 16) : null,
+      margin: DifyWindowClass.of(context) == DifyWindowClass.compact
+          ? const EdgeInsets.symmetric(horizontal: 16)
+          : null,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: DifyColors.backgroundSectionBurn,
@@ -459,7 +461,7 @@ class AnnotationsPageState extends State<AnnotationsPage> {
       learnMoreLabel: _t('common', 'operation.learnMore'),
     );
     // A phone's page has no side padding: the title, the filter and the pagination pad themselves, the rows span it.
-    final phone = DifyTouch.compactOf(context);
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
     final options = s == null
         ? null
         : AnnotationHeaderOptions(

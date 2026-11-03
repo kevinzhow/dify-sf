@@ -83,14 +83,16 @@ class _MenuRowState extends State<_MenuRow> {
     // (every select sheet alike, whether or not its row has the focus).
     final current = sheet && widget.role == SemanticsRole.menuItemRadio && widget.checked == true;
     final highlighted = (_node.hasFocus || current) && !widget.disabled;
-    final height = sheet ? DifyTouch.minTarget : 32.0;
+    // Touch (an anchored action menu on a phone or a tablet): a 48 px touch row as well, at the menu's own insets.
+    final touch = sheet || DifyTouch.compactOf(context);
+    final height = touch ? DifyTouch.minTarget : 32.0;
     Widget row = Container(
-      height: widget.autoHeight || sheet ? null : height,
-      constraints: widget.autoHeight || sheet ? BoxConstraints(minHeight: height) : null,
+      height: widget.autoHeight || touch ? null : height,
+      constraints: widget.autoHeight || touch ? BoxConstraints(minHeight: height) : null,
       margin: widget.margin ? EdgeInsets.symmetric(horizontal: sheet ? 8 : widget.marginX) : null,
       padding: EdgeInsets.symmetric(
         horizontal: sheet ? DifyFloating.sheetRowInset - 8 : widget.paddingX,
-        vertical: widget.autoHeight || sheet ? 4 : 0,
+        vertical: widget.autoHeight || touch ? 4 : 0,
       ),
       decoration: BoxDecoration(
         color: highlighted

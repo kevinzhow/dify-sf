@@ -73,7 +73,8 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _phone = DifyTouch.compactOf(context);
+    // The phone's forms are a question of width (a touch tablet keeps Dify's).
+    _phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
     _sync();
   }
 
@@ -339,7 +340,7 @@ class AnnotationDrawer extends StatelessWidget {
     onClose: onClose,
     builder: (context) => LayoutBuilder(
       builder: (context, c) {
-        final phone = DifyTouch.compactOf(context);
+        final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
         final popup = DifyDrawerPopup(
           key: const ValueKey('annotation-drawer'),
           label: label,

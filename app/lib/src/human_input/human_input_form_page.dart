@@ -188,7 +188,7 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
       constraints: const BoxConstraints(maxWidth: 720),
       child: Padding(
         // A phone keeps 16 px from the screen's edges (Dify's page is a centred 720 px column).
-        padding: EdgeInsets.symmetric(horizontal: DifyTouch.compactOf(context) ? 16 : 0),
+        padding: EdgeInsets.symmetric(horizontal: DifyWindowClass.of(context) == DifyWindowClass.compact ? 16 : 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

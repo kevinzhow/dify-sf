@@ -64,7 +64,7 @@ class _ApikeyInfoPanelState extends State<ApikeyInfoPanel> {
     final title = difyTextStyle(DifyTw.text24SemiboldLeading32, DifyColors.textPrimary);
     // `text-xs font-medium text-primary-600`
     final link = difyTextStyle(DifyType.systemXsMedium, DifyColors.primary600);
-    final phone = DifyTouch.compactOf(context);
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
     return Container(
       key: const ValueKey('apikey-info-panel'),
       // A phone's page has no side padding: the panel keeps 16 px from the edges.

@@ -145,7 +145,7 @@ class _DifyPaginationState extends State<DifyPagination> {
   Widget build(BuildContext context) {
     final total = widget.totalPages < 0 ? 0 : widget.totalPages;
     if (total <= 0) return const SizedBox.shrink();
-    final compact = DifyTouch.compactOf(context);
+    final compact = DifyWindowClass.of(context) == DifyWindowClass.compact;
     final controlHeight = compact ? DifyTouch.controlHeight : 28.0;
     final page = _clampPage(widget.page, total);
     final items = paginationPageItems(

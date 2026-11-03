@@ -150,7 +150,7 @@ class LogPageTitle extends StatelessWidget {
 /// Whether the logs and annotations pages use their phone layout: a compact window (below 600 dp). There the page has
 /// no side padding of its own: the title, the filters and the pagination pad themselves (16 px) and the list rows
 /// span the page.
-bool logsPhone(BuildContext context) => DifyTouch.compactOf(context);
+bool logsPhone(BuildContext context) => DifyWindowClass.of(context) == DifyWindowClass.compact;
 
 /// The filters of a log page on a phone: the search field across the page, then the filter [chips] (Dify's chips,
 /// which are filter chips with an action sheet there) in a [DifyChipBar] that scrolls sideways.

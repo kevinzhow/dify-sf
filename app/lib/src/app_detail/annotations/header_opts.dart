@@ -74,7 +74,7 @@ class _AnnotationFilterState extends State<AnnotationFilter> {
   @override
   Widget build(BuildContext context) {
     if (_count == null) return const SizedBox.shrink();
-    if (DifyTouch.compactOf(context)) {
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) {
       // A phone: the search across the page, the actions under it.
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

@@ -99,7 +99,7 @@ Future<T?> showDifyDrawer<T>(
   ),
   // One tree for both forms (the page form only flips its parameters), so a rotation keeps the content's state.
   pageBuilder: (dialogContext, _, _) {
-    final page = pageOnCompact && DifyTouch.compactOf(dialogContext);
+    final page = pageOnCompact && DifyWindowClass.of(dialogContext) == DifyWindowClass.compact;
     return SafeArea(
       left: !page,
       top: !page,

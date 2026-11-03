@@ -80,7 +80,7 @@ class _AnnotationListState extends State<AnnotationList> {
         setState(() => _showConfirmDelete = false);
       },
     );
-    if (DifyTouch.compactOf(context)) {
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) {
       // A phone: rows across the page (question over answer, the time and hits), a tap opens the annotation, "…" or
       // a long press offers Edit and Remove. No checkboxes: the batch delete is the desktop's.
       return Stack(

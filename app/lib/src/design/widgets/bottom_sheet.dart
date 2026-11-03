@@ -62,8 +62,13 @@ abstract final class DifySheetRecipe {
   static const openDuration = Duration(milliseconds: 250);
 
   /// Whether [context] is inside a bottom sheet's content (a sheet route, a [DifySheetPortal], a
-  /// [DifyPersistentSheet], a picker sheet).
-  static bool contains(BuildContext context) => _SheetDragScope.of(context) != null;
+  /// [DifyPersistentSheet], a picker sheet) or a sheet's side form ([DifySidePanel]): content laid out for touch.
+  static bool contains(BuildContext context) =>
+      _SheetDragScope.of(context) != null || context.getInheritedWidgetOfExactType<_SidePanelScope>() != null;
+
+  /// A modal sheet route in a window wider than this is this wide, centred at the bottom (Material 3's bottom sheet
+  /// on large screens); a phone's sheet spans the window.
+  static const maxWidth = 640.0;
 }
 
 enum _DetentKind { peek, half, full }
@@ -193,7 +198,7 @@ Future<T?> showDifyBottomSheet<T>(
   final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
   late final _DifySheetRoute<T> route;
   // A dialog that opens wide comes in as the dialog does (its duration); one that opens compact as the sheet.
-  final openWide = wide != null && !DifyTouch.compactOf(context);
+  final openWide = wide != null && DifyWindowClass.of(context) != DifyWindowClass.compact;
   route = _DifySheetRoute<T>(
     modal: modal,
     wide: wide,
@@ -262,9 +267,10 @@ class DifySheetWideForm {
 }
 
 /// The framework's modal bottom sheet route with nothing of its own look: the sheet paints itself ([_DifySheet]),
-/// the framework drag is off (the detents drag it), the width is not capped and the route reaches under the status
-/// bar (the sheet stops at the top safe area itself). When not [modal], the barrier lets pointers through to the page.
-/// With [wide], a window that is not compact shows [DifySheetWideForm.builder] instead, read from the live width.
+/// the framework drag is off (the detents drag it), the width is capped only past [DifySheetRecipe.maxWidth] (a
+/// tablet) and the route reaches under the status bar (the sheet stops at the top safe area itself). When not [modal],
+/// the barrier lets pointers through to the page. With [wide], a window that is not compact shows
+/// [DifySheetWideForm.builder] instead, read from the live width.
 class _DifySheetRoute<T> extends ModalBottomSheetRoute<T> {
   _DifySheetRoute({
     required this.modal,
@@ -281,14 +287,16 @@ class _DifySheetRoute<T> extends ModalBottomSheetRoute<T> {
          showDragHandle: false,
          backgroundColor: const Color(0x00000000),
          elevation: 0,
-         constraints: const BoxConstraints(),
+         constraints: const BoxConstraints(maxWidth: DifySheetRecipe.maxWidth),
          modalBarrierColor: DifySheetRecipe.scrim,
        );
 
   final bool modal;
   final DifySheetWideForm? wide;
 
-  bool _wideIn(BuildContext context) => wide != null && !DifyTouch.compactOf(context);
+  // Width, not input (DifyTouch.compactOf is also true on a touch tablet): a tablet or a landscape phone shows the
+  // dialog form, a phone the sheet.
+  bool _wideIn(BuildContext context) => wide != null && DifyWindowClass.of(context) != DifyWindowClass.compact;
 
   @override
   Widget buildModalBarrier() {
@@ -1668,6 +1676,120 @@ class _PortalScrim extends StatelessWidget {
       onDismiss: dismiss,
       sortKey: const OrdinalSortKey(1),
       child: scrim,
+    );
+  }
+}
+
+/// The side form of a sheet (raft-flutter's `RaftSideFrame`; dify-sf's touch desktop: a tablet, a landscape phone):
+/// the same content a bottom sheet shows (usually a [DifySheetHeader] over a scrolling body), docked to the window's
+/// end edge at the full height of the area it is given, beside the page instead of over it. Put it in a
+/// [DifySideDock]'s panels. It paints `bg-components-panel-bg` with a divider-subtle start border to the window's end
+/// and bottom edges and keeps its content clear of the end and bottom system insets (the keyboard's height replacing
+/// the bottom inset, so a focused field stays above it).
+///
+/// Its content is laid out for touch as a sheet's is ([DifySheetRecipe.contains]). [onDismiss] is what the header's
+/// close button does (none without it); Back is the owner's, as for a [DifyPersistentSheet].
+class DifySidePanel extends StatelessWidget {
+  const DifySidePanel({super.key, required this.child, this.onDismiss, this.semanticLabel});
+
+  final Widget child;
+
+  /// Closes the panel (the owner then stops showing it): [DifySheetHeader]'s default close.
+  final VoidCallback? onDismiss;
+
+  /// Names the panel's region for assistive technology.
+  final String? semanticLabel;
+
+  /// The width of a side panel in a window of [size]: a fixed 360 dp in a short window (a landscape phone, where the
+  /// canvas needs the rest), else 40 % of the width between 360 and 420 dp (Dify's 400-420 px panels).
+  static double widthFor(Size size) =>
+      size.height < DifyWindowClass.shortMaxHeight ? 360 : (size.width * 0.4).clamp(360.0, 420.0);
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final end = rtl ? media.padding.left : media.padding.right;
+    // The keyboard replaces the bottom inset, as in a sheet.
+    final bottom = media.viewInsets.bottom > 0 ? media.viewInsets.bottom : media.padding.bottom;
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: semanticLabel,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: DifyColors.componentsPanelBg,
+          border: BorderDirectional(start: BorderSide(color: DifyColors.dividerSubtle)),
+        ),
+        child: Padding(
+          padding: EdgeInsetsDirectional.only(top: 8, end: end, bottom: bottom),
+          child: MediaQuery.removeViewInsets(
+            context: context,
+            removeBottom: true,
+            child: MediaQuery.removePadding(
+              context: context,
+              removeLeft: true,
+              removeRight: true,
+              removeBottom: true,
+              child: _SidePanelScope(
+                child: onDismiss == null ? child : _ModalSheetScope(close: onDismiss, child: child),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Marks a [DifySidePanel]'s content (for [DifySheetRecipe.contains]).
+class _SidePanelScope extends InheritedWidget {
+  const _SidePanelScope({required super.child});
+
+  @override
+  bool updateShouldNotify(_SidePanelScope oldWidget) => false;
+}
+
+/// A page's [body] with an end-docked side panel area beside it (dify-sf's touch desktop: the workflow editor's
+/// canvas and its node settings, run, version list...). While [open], the area is [width] (by default
+/// [DifySidePanel.widthFor] the window) and the body takes the rest without the end inset (the panel keeps it); closed,
+/// the body takes the whole width. [panels] are stacked in the area, the last on top: each is a [DifySidePanel] while
+/// it shows and nothing otherwise, and stays mounted while closed, so a panel that opens or a window that rotates
+/// keeps its state.
+class DifySideDock extends StatelessWidget {
+  const DifySideDock({super.key, required this.body, required this.panels, required this.open, this.width});
+
+  final Widget body;
+  final List<Widget> panels;
+  final bool open;
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = width ?? DifySidePanel.widthFor(MediaQuery.sizeOf(context));
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: open
+              ? MediaQuery.removePadding(context: context, removeRight: !rtl, removeLeft: rtl, child: body)
+              : body,
+        ),
+        // Closed, the area is 0 wide but its panels keep being laid out at the panel's width (and clipped), so a panel
+        // that is closing or opening in the same frame never overflows.
+        ClipRect(
+          child: SizedBox(
+            width: open ? w : 0,
+            child: OverflowBox(
+              minWidth: w,
+              maxWidth: w,
+              alignment: AlignmentDirectional.centerStart,
+              child: Stack(fit: StackFit.expand, children: panels),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
