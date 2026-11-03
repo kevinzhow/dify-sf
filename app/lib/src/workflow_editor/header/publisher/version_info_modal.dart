@@ -129,6 +129,7 @@ class _VersionInfoModalState extends State<VersionInfoModal> {
           label: DifyTextLine(_w('versionHistory.editField.title'), style: label),
           child: DifyTextControl(
             controller: _title,
+            semanticLabel: _w('versionHistory.editField.title'),
             invalid: _titleError,
             placeholder: '${_w('versionHistory.nameThisVersion')}$optional',
           ),
@@ -137,6 +138,7 @@ class _VersionInfoModalState extends State<VersionInfoModal> {
           label: DifyTextLine(_w('versionHistory.editField.releaseNotes'), style: label),
           child: DifyTextControl(
             controller: _notes,
+            semanticLabel: _w('versionHistory.editField.releaseNotes'),
             invalid: _notesError,
             multiline: true,
             placeholder: '${_w('versionHistory.releaseNotesPlaceholder')}$optional',
@@ -240,10 +242,14 @@ class DifyTextControl extends StatefulWidget {
     this.placeholder,
     this.invalid = false,
     this.multiline = false,
+    this.semanticLabel,
   });
 
   final TextEditingController controller;
   final String? placeholder;
+
+  /// The field's label, its accessible name on a phone (the placeholder is then its hint).
+  final String? semanticLabel;
   final bool invalid;
   final bool multiline;
 
@@ -293,6 +299,8 @@ class _DifyTextControlState extends State<DifyTextControl> {
       decoration: DifyFieldDecoration.collapsed(
         hintText: widget.placeholder,
         hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
+        // A phone: named "Title" (its label), not by its placeholder.
+        semanticLabel: DifyTouch.compactOf(context) ? widget.semanticLabel : null,
       ),
     );
     if (phone) field = DifyTouchTarget(accessible: true, minSize: DifyTouch.controlHeight, child: field);

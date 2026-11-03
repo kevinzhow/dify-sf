@@ -25,14 +25,19 @@ class DifyFieldDecoration {
     this.contentPadding,
     this.outlined = false,
     this.counterText,
+    this.semanticLabel,
   });
-  const DifyFieldDecoration.collapsed({this.hintText, this.hintStyle})
+  const DifyFieldDecoration.collapsed({this.hintText, this.hintStyle, this.semanticLabel})
     : labelText = null,
       errorText = null,
       contentPadding = EdgeInsets.zero,
       outlined = false,
       counterText = null;
   final String? labelText, hintText, errorText, counterText;
+
+  /// The field's accessible name (its form label, shown elsewhere): the field's node is named by it and [hintText] is
+  /// the node's hint, not part of its name (left out when it says the same). Null: the placeholder names the field.
+  final String? semanticLabel;
   final TextStyle? hintStyle;
   final EdgeInsetsGeometry? contentPadding;
   final bool outlined;
@@ -45,7 +50,9 @@ class DifyFieldDecoration {
     EdgeInsetsGeometry? contentPadding,
     bool? outlined,
     String? counterText,
+    String? semanticLabel,
   }) => DifyFieldDecoration(
+    semanticLabel: semanticLabel ?? this.semanticLabel,
     labelText: labelText ?? this.labelText,
     hintText: hintText ?? this.hintText,
     hintStyle: hintStyle ?? this.hintStyle,
@@ -182,17 +189,27 @@ class _DifyTextFieldState extends State<DifyTextField> {
             (d.outlined ? const EdgeInsets.symmetric(horizontal: 12, vertical: 7) : EdgeInsets.zero),
         hint: d.hintText == null
             ? null
-            : DifyTextLine(
-                centerCap: w.maxLines == 1,
-                d.hintText!,
-                style: d.hintStyle ?? style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
-                strutStyle: w.strutStyle,
-                maxLines: w.maxLines,
+            : difyPlaceholderSemantics(
+                label: d.semanticLabel,
+                placeholder: d.hintText!,
+                child: DifyTextLine(
+                  centerCap: w.maxLines == 1,
+                  d.hintText!,
+                  style: d.hintStyle ?? style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
+                  strutStyle: w.strutStyle,
+                  maxLines: w.maxLines,
+                ),
               ),
         hintStyle: d.hintStyle ?? style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
         counterText: '',
       ),
     );
+    // Named by its label: one node, the label its name (the placeholder its hint, above).
+    if (d.semanticLabel case final label?) {
+      field = MergeSemantics(
+        child: Semantics(label: label, child: field),
+      );
+    }
     if (d.outlined) {
       field = DifyInputBox(
         focusNode: _focus,
@@ -229,6 +246,15 @@ class _DifyTextFieldState extends State<DifyTextField> {
     }
     return Material(type: MaterialType.transparency, child: field);
   }
+}
+
+/// A text field's placeholder [child] for assistive technology when the field is named by [label]: the placeholder is
+/// the field's hint, not part of its name, and is left out when it says the same as [label] (a search named "Search"
+/// read "Search, Search"). Without a [label] the placeholder stays the text that names the field.
+Widget difyPlaceholderSemantics({required String? label, required String placeholder, required Widget child}) {
+  if (label == null) return child;
+  if (placeholder.trim() == label.trim()) return ExcludeSemantics(child: child);
+  return Semantics(hint: placeholder, excludeSemantics: true, child: child);
 }
 
 /// Read-only content inside the Dify input surface (variables and references).

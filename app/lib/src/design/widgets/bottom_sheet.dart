@@ -931,7 +931,7 @@ class DifySheetGrabHandle extends StatelessWidget {
   );
 }
 
-/// A sheet's header (mockups 4-6): `gap-2.5 pl-4 pr-2 pb-1`, [leading] (a node icon), a one-line [title] in
+/// A sheet's header (mockups 4-6): `gap-2.5 pl-4 pr-2 pb-1`, [leading] (a node icon), a [title] of up to two lines in
 /// [DifyPhoneType.title] and an optional [subtitle] in system-xs-regular text-tertiary, the [actions]
 /// ([DifyTouchIconButton]s) and a close button, in a row at least 48 px tall so the buttons' 48 px targets are whole.
 /// Under it, an optional [tabs] row (`px-4`) over a divider-subtle line. The header drags the sheet with any pointer.
@@ -1008,7 +1008,8 @@ class DifySheetHeader extends StatelessWidget {
                               header: true,
                               // Names the sheet's route scope: announced when the sheet opens.
                               namesRoute: true,
-                              child: DifyText(title, DifyPhoneType.title, color: DifyColors.textPrimary),
+                              // A long title wraps to a second line rather than being cut on a phone's width.
+                              child: DifyText(title, DifyPhoneType.title, color: DifyColors.textPrimary, maxLines: 2),
                             ),
                         if (subtitle case final s?)
                           DifyText(s, DifyType.systemXsRegular, color: DifyColors.textTertiary),

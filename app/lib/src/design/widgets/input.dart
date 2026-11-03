@@ -138,6 +138,7 @@ TextField difyTextField({
   int? maxLines = 1,
   bool expands = false,
   bool centerCap = true,
+  String? semanticLabel,
 }) => TextField(
   controller: controller,
   focusNode: focusNode,
@@ -174,14 +175,19 @@ TextField difyTextField({
     contentPadding: padding,
     // Not the desktop platforms' compact density, which takes 8 px off the box (CSS has no such thing).
     visualDensity: VisualDensity.standard,
+    // Named by [semanticLabel] (a phone's DifyInput): the placeholder is the hint, left out when it is the same word.
     hint: placeholder == null
         ? null
-        : DifyTextLine(
-            centerCap: centerCap,
-            placeholder,
-            style: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        : difyPlaceholderSemantics(
+            label: semanticLabel,
+            placeholder: placeholder,
+            child: DifyTextLine(
+              centerCap: centerCap,
+              placeholder,
+              style: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
     hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
     // `maxlength` shows no counter in a browser.
@@ -347,6 +353,7 @@ class _DifyInputState extends State<DifyInput> with DifyControlledText<DifyInput
       autofillHints: w.autofillHints,
       maxLength: w.maxLength,
       textInputAction: w.textInputAction,
+      semanticLabel: DifyTouch.compactOf(context) ? w.semanticLabel : null,
     );
     final compact = DifyTouch.compactOf(context);
     final height = compact

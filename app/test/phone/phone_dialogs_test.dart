@@ -29,6 +29,7 @@ import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/kr_dataset
 import 'package:dify_sf_app/src/workflow_editor/node_panel/bodies/llm/pe_params.dart';
 import 'package:dify_sf_app/src/workflow_editor/panel_fields/next_step.dart';
 import 'package:dify_sf_app/src/workflow_editor/prompt_editor/prompt_editor.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:dify_sf_app/src/workflow_editor/steps/workflow_steps_view.dart';
 import 'package:flutter/widgets.dart';
@@ -933,6 +934,96 @@ void main() {
       await settle(t, 600);
       expect(saved?['name'], 'city');
       expect(t.takeException(), isNull);
+    });
+  });
+
+  group('emulator recheck 3', () {
+    testWidgets('leftover 1: at 360 dp the webhook name column reads its title and the start of its placeholder', (
+      t,
+    ) async {
+      await _app(
+        t,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+          child: ParameterTable(
+            title: 'Query Parameters',
+            parameters: const [
+              {'name': 'city', 'type': 'string', 'required': true},
+            ],
+            onChange: (_) {},
+          ),
+        ),
+        size: const Size(360, 780),
+      );
+      final header = t.renderObject<RenderParagraph>(
+        find.descendant(of: find.text('VARIABLE NAME'), matching: find.byType(RichText), matchRoot: true).first,
+      );
+      expect(header.didExceedMaxLines, isFalse, reason: 'the title is not cut ("VARIABL…")');
+      final placeholder = find.text('Enter variable name...');
+      final field = t.getSize(find.ancestor(of: placeholder, matching: find.byType(DifyTextField)).first);
+      expect(field.width, greaterThanOrEqualTo(100), reason: 'room for "Enter variable": $field');
+      expect(t.getSize(find.byType(DifyCheckbox).first).width, 16);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('leftover 2: Name this version\'s Title field is named "Title", its placeholder the hint', (t) async {
+      final semantics = t.ensureSemantics();
+      final nav = await _app(t, const SizedBox.expand());
+      unawaited(showVersionInfoModal(nav.currentContext!, onPublish: (_) {}));
+      await settle(t, 600);
+      final fields = [
+        for (final n in platformNodes(t))
+          if (n.data.flagsCollection.isTextField) n,
+      ];
+      expect([for (final n in fields) n.data.label], ['Title', 'Release Notes'], reason: describeStops(fields));
+      expect(fields.first.data.hint, 'Name this version(optional)');
+      semantics.dispose();
+    });
+
+    testWidgets('leftover 3 and 4: the member picker\'s title wraps rather than being cut at 411 dp; its search reads '
+        '"Search" once', (t) async {
+      final semantics = t.ensureSemantics();
+      await _app(
+        t,
+        DataPanelHost(
+          child: HumanInputHost(
+            members: const [HiMember(id: 'm1', email: 'kim@example.com', name: 'Kim')],
+            userEmail: 'owner@example.com',
+            userName: 'Owner',
+            workspaceName: 'Lab',
+            child: Builder(
+              builder: (context) => DifyButton(
+                key: const ValueKey('open'),
+                onPressed: () => showEmailConfigureModal(context, email: const EmailContext(nodeId: 'n')),
+                child: const DifyTextLine('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.byKey(const ValueKey('open')));
+      await settle(t, 800);
+      await t.ensureVisible(find.text('Select').last);
+      await t.tap(find.text('Select').last);
+      await settle(t, 800);
+      final title = DifyI18n.tr('workflow', 'nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.title');
+      final text = t.renderObject<RenderParagraph>(
+        find
+            .descendant(
+              of: find.descendant(of: find.byType(DifySheetHeader), matching: find.text(title)),
+              matching: find.byType(RichText),
+              matchRoot: true,
+            )
+            .first,
+      );
+      expect(text.didExceedMaxLines, isFalse, reason: 'the whole title shows');
+      final search = [
+        for (final n in platformNodes(t))
+          if (n.data.flagsCollection.isTextField) n,
+      ];
+      expect(search, hasLength(1));
+      expect(spokenText(search.single), 'Search', reason: 'not "Search / Search"');
+      semantics.dispose();
     });
   });
 }

@@ -2,8 +2,10 @@
 /// parameter-table.tsx, header-table.tsx, paragraph-input.tsx).
 library;
 
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart' show mapEquals;
+import 'package:flutter/material.dart';
 
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
@@ -122,16 +124,18 @@ class _GenericTableState extends State<GenericTable> {
   void didUpdateWidget(GenericTable old) {
     super.didUpdateWidget(old);
     if (!identical(old.data, widget.data)) {
-      final base = _sent ?? (data: old.data, ids: _ids);
-      _ids = _follow(base.data, base.ids, widget.data);
+      final sent = _sent;
+      _ids = sent == null ? _follow(old.data, _ids, widget.data) : _follow(sent.data, sent.ids, widget.data, own: true);
       if (_ids.contains(_virtual)) _virtual = Object();
     }
     _sent = null;
   }
 
   /// The identities of [next]'s rows: each takes the identity of the first unclaimed row of [data] with the same
-  /// key, else the same content, else at the same place; a row matching none is new.
-  List<Object> _follow(List<Json> data, List<Object> ids, List<Json> next) {
+  /// key, else the same content; after this table's [own] edit (the list it sent, maybe normalised by its owner) also
+  /// the row at the same place. Any other row is new: a row another user put where a removed one was is not that row
+  /// (its open select closes, its pending action writes nothing).
+  List<Object> _follow(List<Json> data, List<Object> ids, List<Json> next, {bool own = false}) {
     final primary = _primaryKey;
     final free = List<bool>.filled(data.length, true);
     final out = List<Object?>.filled(next.length, null);
@@ -150,10 +154,12 @@ class _GenericTableState extends State<GenericTable> {
 
     claim((a, b) => _present(b[primary]) && '${a[primary]}' == '${b[primary]}');
     claim(mapEquals);
-    for (final (i, _) in next.indexed) {
-      if (out[i] == null && i < data.length && free[i]) {
-        free[i] = false;
-        out[i] = ids[i];
+    if (own) {
+      for (final (i, _) in next.indexed) {
+        if (out[i] == null && i < data.length && free[i]) {
+          free[i] = false;
+          out[i] = ids[i];
+        }
       }
     }
     return [for (final id in out) id ?? Object()];
@@ -232,9 +238,18 @@ class _GenericTableState extends State<GenericTable> {
     };
   }
 
-  Widget _sized(TableColumn c, bool last, Widget child) {
+  /// A phone's column widths: the select and the toggle compact (their values and the 48 px checkbox still fit), so
+  /// the name column takes the rest and its title and placeholder read at 360 dp.
+  static double? _phoneWidth(TableColumn c) => switch ((c.type, c.width)) {
+    (ColumnType.select, final w?) => math.min(w, 88),
+    (ColumnType.toggle, final w?) => math.min(w, 76),
+    (_, final w) => w,
+  };
+
+  Widget _sized(TableColumn c, bool last, Widget child, bool phone) {
+    final width = phone ? _phoneWidth(c) : c.width;
     final box = Container(
-      width: c.width,
+      width: width,
       padding: const EdgeInsets.only(left: 12),
       decoration: last
           ? null
@@ -243,7 +258,7 @@ class _GenericTableState extends State<GenericTable> {
             ),
       child: child,
     );
-    return c.width == null ? Expanded(child: box) : box;
+    return width == null ? Expanded(child: box) : box;
   }
 
   /// A phone row's name: its key, then the selects' values and the checked toggles' titles.
@@ -304,6 +319,7 @@ class _GenericTableState extends State<GenericTable> {
                             alignment: Alignment.centerLeft,
                             child: DifyText(c.title, DifyType.systemXsMediumUppercase, color: DifyColors.textTertiary),
                           ),
+                          phone,
                         ),
                       if (moreColumn) const SizedBox(width: _moreWidth),
                     ],
@@ -321,7 +337,7 @@ class _GenericTableState extends State<GenericTable> {
                     onDelete: !w.readonly && r.index != null && _present(r.row[primary]) ? () => _remove(id) : null,
                     children: [
                       for (final (j, c) in w.columns.indexed)
-                        _sized(c, j == w.columns.length - 1, _cell(c, r.row, r.index, id, phone)),
+                        _sized(c, j == w.columns.length - 1, _cell(c, r.row, r.index, id, phone), phone),
                     ],
                   ),
             ],

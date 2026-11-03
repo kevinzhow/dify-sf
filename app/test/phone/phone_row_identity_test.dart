@@ -521,4 +521,137 @@ void main() {
       });
     }
   });
+
+  group('a row another user puts where a removed row was is a new row (Winnie review25 and more)', () {
+    /// Winnie's pr90_replaced_row_review25_test.dart, adapted to this suite's harness.
+    for (final action in ['deletion', 'selection']) {
+      testWidgets('replacement $action never transfers a removed row identity to the new row at its position', (
+        t,
+      ) async {
+        phoneWindow(t);
+        var rows = <_Json>[
+          {'name': 'alpha', 'type': 'string'},
+          {'name': 'beta', 'type': 'string', 'description': 'old'},
+        ];
+        late StateSetter update;
+        try {
+          await t.pumpWidget(
+            DifyApplication(
+              theme: difyTheme(),
+              home: DifyPage(
+                edgeToEdge: true,
+                body: StatefulBuilder(
+                  builder: (context, set) {
+                    update = set;
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+                      child: GenericTable(
+                        title: 'Parameters',
+                        columns: const [
+                          TableColumn(key: 'name', title: 'Name', type: ColumnType.input),
+                          TableColumn(
+                            key: 'type',
+                            title: 'Type',
+                            type: ColumnType.select,
+                            options: [(name: 'String', value: 'string'), (name: 'Number', value: 'number')],
+                          ),
+                        ],
+                        data: rows,
+                        onChange: (next) => update(() => rows = next),
+                        emptyRowData: const {'name': '', 'type': ''},
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+          await settle(t, 400);
+          if (action == 'deletion') {
+            await t.tap(find.byKey(const ValueKey('dify-action-row-more-alpha')));
+          } else {
+            await t.tap(find.bySemanticsLabel('Type, String').first);
+          }
+          await settle(t, 600);
+          // One remote update: alpha removed, a distinct new row inserted at its old position, beta changed.
+          final replacement = <_Json>[
+            {'name': 'new', 'type': 'string', 'description': 'brand new'},
+            {'name': 'beta', 'type': 'string', 'description': 'updated'},
+          ];
+          update(() => rows = replacement);
+          await settle(t, 300);
+          if (action == 'deletion') {
+            if (find.text('Delete').evaluate().isNotEmpty) await t.tap(find.text('Delete'));
+          } else {
+            expect(find.text('Number'), findsNothing, reason: "alpha's picker closed with alpha");
+            if (find.text('Number').evaluate().isNotEmpty) await t.tap(find.text('Number'));
+          }
+          await settle(t, 700);
+          expect(
+            rows,
+            replacement,
+            reason: 'alpha is gone: never delete or edit the distinct new row occupying its position',
+          );
+          expect(t.takeException(), isNull);
+        } finally {
+          await unmount(t);
+        }
+      });
+    }
+
+    testWidgets("alpha's name field focused when another user replaces alpha at its place: typing writes nothing into "
+        'the new row', (t) async {
+      var rows = <_Json>[
+        {'name': 'alpha', 'type': 'string'},
+        {'name': 'beta', 'type': 'string'},
+      ];
+      phoneWindow(t);
+      late StateSetter update;
+      await t.pumpWidget(
+        DifyApplication(
+          theme: difyTheme(),
+          home: DifyPage(
+            edgeToEdge: true,
+            body: StatefulBuilder(
+              builder: (context, set) {
+                update = set;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+                  child: GenericTable(
+                    title: 'Parameters',
+                    columns: const [TableColumn(key: 'name', title: 'Name', type: ColumnType.input)],
+                    data: rows,
+                    onChange: (next) => update(() => rows = next),
+                    emptyRowData: const {'name': ''},
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await settle(t, 400);
+      await t.tap(find.byWidgetPredicate((w) => w is EditableText && w.controller.text == 'alpha'));
+      await settle(t, 300);
+      final replacement = <_Json>[
+        {'name': 'new', 'type': 'string'},
+        {'name': 'beta', 'type': 'string'},
+      ];
+      update(() => rows = replacement);
+      await settle(t, 300);
+      final newField = t.widget<EditableText>(
+        find.byWidgetPredicate((w) => w is EditableText && w.controller.text == 'new'),
+      );
+      expect(newField.focusNode.hasFocus, isFalse, reason: "alpha's field went with alpha; the new row's is not it");
+      if (t.testTextInput.hasAnyClients) {
+        t.testTextInput.updateEditingValue(
+          const TextEditingValue(text: 'alphax', selection: TextSelection.collapsed(offset: 6)),
+        );
+        await settle(t, 300);
+      }
+      expect(rows, replacement, reason: 'nothing written into the new row');
+      expect(t.takeException(), isNull);
+      await unmount(t);
+    });
+  });
 }
