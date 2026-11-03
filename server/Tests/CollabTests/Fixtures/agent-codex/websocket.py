@@ -46,7 +46,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 with lock:
                     if not warm:calls+=1
                     call=calls
-                record({'connection':connection,'warmup':warm,'call':call,'bytes':n,'previous':body.get('previous_response_id'),'model':body['model'],'store':body.get('store'),'effort':body.get('reasoning',{}).get('effort'),'max_output_tokens':body.get('max_output_tokens'),'inputs':len(body['input']),'types':[x.get('type') for x in body['input']], 'toolResults':[x.get('call_id') for x in body['input'] if x.get('type')=='function_call_output'], 'runningToolResult':any(x.get('type')=='function_call_output' and 'Process running with session ID' in str(x.get('output','')) for x in body['input'])})
+                record({'connection':connection,'warmup':warm,'call':call,'bytes':n,'previous':body.get('previous_response_id'),'model':body['model'],'store':body.get('store'),'effort':body.get('reasoning',{}).get('effort'),'max_output_tokens':body.get('max_output_tokens'),'inputs':len(body['input']),'types':[x.get('type') for x in body['input']], 'toolCalls':[x.get('call_id') for x in body['input'] if x.get('type') in ('function_call','custom_tool_call')], 'toolResults':[x.get('call_id') for x in body['input'] if x.get('type')=='function_call_output'], 'runningToolResult':any(x.get('type')=='function_call_output' and 'Process running with session ID' in str(x.get('output','')) for x in body['input'])})
                 response='resp_ws_warm' if warm else 'resp_ws_'+str(call)
                 frame(self.connection,{'type':'response.created','response':{'id':response}})
                 if failure and not warm and (call==2 or failure=='twice' and call==4):
