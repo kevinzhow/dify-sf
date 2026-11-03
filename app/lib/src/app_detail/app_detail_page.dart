@@ -515,7 +515,7 @@ class AppDetailPageState extends State<AppDetailPage> {
             child: MediaQuery.removePadding(
               context: context,
               removeTop: true,
-              child: SafeArea(top: false, child: _content(app, page)),
+              child: SafeArea(top: false, child: DifyTouchSurface(child: _content(app, page))),
             ),
           ),
         ],

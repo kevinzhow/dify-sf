@@ -1,6 +1,8 @@
 /// Dify's Chip (web/app/components/base/chip).
 library;
 
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
 import '../../i18n/dify_i18n.dart';
@@ -17,6 +19,10 @@ typedef ChipItem = ({String value, String name});
 /// base/chip: a select whose trigger shows the selected item's name (with a filter icon, or [leftIcon]); with a value
 /// it turns into a secondary button with a clear button on its right (`aria-label` "Clear `name`"), else it shows a
 /// down arrow. The popup (`w-60`, or [panelWidth]) lists the items with a check on the selected one.
+///
+/// In a compact window (a phone, a dify-sf divergence) it is a [DifyFilterChip] (the icon, the selected item's name and
+/// a down arrow; put it in a [DifyChipBar]) that opens the items as an action sheet with a check on the selected one.
+/// There is no clear button there: the sheet lists every item, the cleared one included.
 class DifyChip extends StatefulWidget {
   const DifyChip({
     super.key,
@@ -54,6 +60,7 @@ class _DifyChipState extends State<DifyChip> {
     final trigger = selected?.name ?? '';
     final hasValue = selected != null && widget.value.isNotEmpty;
     final clearLabel = trigger.isNotEmpty ? '${_c('operation.clear')} $trigger' : _c('operation.clear');
+    if (DifyTouch.compactOf(context)) return _phone(context, trigger);
     // Keep the clear action anchored to the intrinsic trigger, even when the
     // call site gives the component a tight, wider box. Align loosens only the
     // inner stack; the component still honours its parent's layout contract.
@@ -178,4 +185,26 @@ class _DifyChipState extends State<DifyChip> {
       ),
     );
   }
+
+  /// The phone chip and its action sheet.
+  Widget _phone(BuildContext context, String trigger) => DifyFilterChip(
+    label: trigger.isNotEmpty ? trigger : _c('placeholder.select'),
+    leading: widget.showLeftIcon ? (widget.leftIcon ?? const RemixIcon('filter-3-line', size: 16)) : null,
+    trailing: const RemixIcon('arrow-down-s-line', size: 16),
+    onPressed: () => unawaited(
+      showDifyActionSheet(
+        context,
+        actions: [
+          for (final item in widget.items)
+            DifyActionSheetAction(
+              label: item.name,
+              icon: item.value == widget.value
+                  ? const RemixIcon('check-line', size: 20)
+                  : const SizedBox.square(dimension: 20),
+              onTap: () => widget.onSelect(item),
+            ),
+        ],
+      ),
+    ),
+  );
 }

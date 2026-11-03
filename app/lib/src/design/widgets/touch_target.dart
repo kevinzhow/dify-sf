@@ -143,8 +143,9 @@ class DifyTouchArea extends StatelessWidget {
       ? DifyTouchArea(minSize: DifyTouch.controlHeight, accessibleBox: true, child: control)
       : control;
 
-  /// Whether [inPhoneSheet] boxes a control in [context]: a sheet in a compact window.
-  static bool appliesIn(BuildContext context) => DifyTouch.compactOf(context) && DifySheetRecipe.contains(context);
+  /// Whether [inPhoneSheet] boxes a control in [context]: a sheet or a [DifyTouchSurface] in a compact window.
+  static bool appliesIn(BuildContext context) =>
+      DifyTouch.compactOf(context) && (DifySheetRecipe.contains(context) || DifyTouchSurface.of(context));
 
   @override
   Widget build(BuildContext context) {
@@ -225,4 +226,22 @@ class DifyTouchIconButton extends StatelessWidget {
     }
     return DifyTouchTarget(child: button);
   }
+}
+
+/// A surface of the phone layout whose controls are touch-sized as in a sheet ([DifyTouchArea.inPhoneSheet], a
+/// [DifyButton] 44 px high): a pushed phone page and a drawer shown as a page. It has no effect in a window of 600 dp
+/// and wider.
+///
+/// [enabled] false marks nothing (a surface that switches its form in place keeps this widget in its tree).
+class DifyTouchSurface extends InheritedWidget {
+  const DifyTouchSurface({super.key, this.enabled = true, required super.child});
+
+  final bool enabled;
+
+  /// Whether [context] is inside an enabled [DifyTouchSurface].
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DifyTouchSurface>()?.enabled ?? false;
+
+  @override
+  bool updateShouldNotify(DifyTouchSurface oldWidget) => oldWidget.enabled != enabled;
 }
