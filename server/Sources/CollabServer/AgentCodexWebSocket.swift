@@ -102,6 +102,16 @@ enum AgentCodexUpstream {
     }
 }
 
+/// Metadata only. A complete tool result must be present in Codex's recovered input;
+/// otherwise an unfinished side-effecting command must never be silently replayed.
+struct AgentCodexSocketCheckpoint: Sendable {
+    var parameters: String?
+    var pendingTools: Set<String> = []
+    var unsafe = false
+}
+
+enum AgentCodexTransportLoss: Error { case eof, closeFrame, reset }
+
 /// One active response per connection. Only a previous response id and a small
 /// parameter digest survive between requests; opaque output items stay on wire.
 actor AgentCodexSocketSession {
@@ -119,9 +129,13 @@ actor AgentCodexSocketSession {
     private var received = 0
     private var sent = 0
     private var usage: LLMUsage?
+    private var pendingTools: Set<String> = []
+    private var unsafeRecovery = false
+    private var recovery: AgentCodexSocketCheckpoint?
 
-    init(routes: Routes, token: String, lane: String, connection: AgentResponsesConnection) {
+    init(routes: Routes, token: String, lane: String, connection: AgentResponsesConnection, recovery: AgentCodexSocketCheckpoint? = nil) {
         self.routes = routes; self.token = token; self.lane = lane; self.connection = connection
+        self.recovery = recovery
     }
 
     func prepare(_ bytes: Data) async throws -> ByteBuffer {
@@ -140,6 +154,24 @@ actor AgentCodexSocketSession {
         for name in ["input", "previous_response_id", "generate", "client_metadata", "stream_options"] { signature[name] = nil }
         let canonical = try JSONSerialization.data(withJSONObject: JSONSerialization.jsonObject(with: JSONValue.object(signature).compactData()), options: [.sortedKeys])
         let digest = Tokens.sha256(String(decoding: canonical, as: UTF8.self))
+        let recoveringGeneration = recovery != nil && request.body["generate"] != false
+        // Results in the live Codex input acknowledge old tool calls. Nothing here executes them.
+        for item in request.body["input"]?.array ?? [] {
+            if ["function_call_output", "custom_tool_call_output"].contains(item["type"]?.string ?? ""),
+               let id = item["call_id"]?.string {
+                pendingTools.remove(id)
+                recovery?.pendingTools.remove(id)
+            }
+        }
+        if let checkpoint = recovery, request.body["generate"] != false {
+            guard checkpoint.parameters == nil || checkpoint.parameters == digest else {
+                throw AgentCodexSocketError(status: 400, code: "agent_recovery_parameters_changed")
+            }
+            guard checkpoint.pendingTools.isEmpty, !checkpoint.unsafe else {
+                throw AgentCodexSocketError(status: 400, code: "agent_recovery_tool_result_unknown")
+            }
+            recovery = nil
+        }
         if let previous {
             guard previous == completedID, digest == parameters else {
                 throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
@@ -155,6 +187,7 @@ actor AgentCodexSocketSession {
         // Keep audit metadata only. The initial image/history payload must be
         // released after its write, not cached for this socket's lifetime.
         body = JSONObject(request.body.filter { ["reasoning", "include", "max_output_tokens", "previous_response_id", "generate"].contains($0.key) })
+        if recoveringGeneration { body["recovery_attempt"] = 1 }
         var upstream = request.body; upstream["type"] = "response.create"
         let encoded = JSONValue.object(upstream).compactJSON()
         received = bytes.count; sent = encoded.utf8.count; usage = nil
@@ -201,6 +234,15 @@ actor AgentCodexSocketSession {
             routes.logger.info("codex websocket event type=\(type) bytes=\(bytes.count) status=\(status) code=\(code) warmup=\(body["generate"] == false)")
         }
         if let raw = value["response"]?["usage"], raw.object != nil { usage = LLMUsage(json: raw) }
+        func tool(_ item: JSONValue) {
+            guard let itemType = item["type"]?.string, itemType.hasSuffix("_call") else { return }
+            guard let id = item["call_id"]?.string, !id.isEmpty, id.utf8.count <= 256, pendingTools.count < 256 else {
+                unsafeRecovery = true; return
+            }
+            pendingTools.insert(id)
+        }
+        if ["response.output_item.added", "response.output_item.done"].contains(type), let item = value["item"] { tool(item) }
+        for item in value["response"]?["output"]?.array ?? [] { tool(item) }
         if ["response.completed", "response.incomplete", "response.failed", "error"].contains(type) {
             guard busy else { throw AgentCodexSocketError(status: 502, code: "agent_model_protocol") }
             if type == "response.completed" {
@@ -232,6 +274,10 @@ actor AgentCodexSocketSession {
             }
         }
         return bytes // Opaque output_item.done and encrypted reasoning remain byte-for-byte.
+    }
+
+    func checkpoint() -> AgentCodexSocketCheckpoint {
+        .init(parameters: parameters, pendingTools: pendingTools, unsafe: unsafeRecovery)
     }
 
     func finish(succeeded: Bool = false, status: Int = 502) async {
@@ -328,13 +374,15 @@ struct AgentCodexWebSocketService: Service {
             case .socket(let channel, let request, let lane):
                 let token = try routes.authenticateAgentCodex(request), id = UUID().uuidString
                 let (ready, signal) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+                let recoverySlot = Mutex<AgentCodexSocketCheckpoint?>(nil)
                 let task = Task<Void, Never> {
                     for await _ in ready { break }
-                    do { try Task.checkCancellation(); try await socket(channel, token: token, lane: lane) }
+                    do { try Task.checkCancellation(); try await socket(channel, token: token, lane: lane, recovery: recoverySlot.withLock { $0 }) }
                     catch { /* Wire errors are sanitized inside socket. */ }
                 }
                 do {
-                    try await routes.agentModelScopes.openCodexSocket(token: token, lane: lane, id: id, task: task)
+                    let checkpoint = try await routes.agentModelScopes.openCodexSocket(token: token, lane: lane, id: id, task: task)
+                    recoverySlot.withLock { $0 = checkpoint }
                     signal.yield(()); signal.finish()
                     channel.channel.closeFuture.whenComplete { _ in task.cancel() }
                     await withTaskCancellationHandler { await task.value } onCancel: { task.cancel(); channel.channel.close(promise: nil) }
@@ -354,14 +402,14 @@ struct AgentCodexWebSocketService: Service {
             }
         } catch { /* No transport descriptions: these may contain credentials/URLs. */ }
     }
-    private func socket(_ downstream: NIOAsyncChannel<WebSocketFrame, WebSocketFrame>, token: String, lane: String) async throws {
+    private func socket(_ downstream: NIOAsyncChannel<WebSocketFrame, WebSocketFrame>, token: String, lane: String, recovery: AgentCodexSocketCheckpoint?) async throws {
         try await downstream.executeThenClose { input, output in
             do {
                 let scope = try await routes.agentModelScopes.activeScope(token: token)
                 try await routes.requireActiveAgentCodexScope(scope)
                 let credentials = try await routes.agentCredentials(provider: scope.provider, model: scope.model, reference: scope.credentialReference)
                 let connection = try AgentResponsesConnection(provider: scope.provider, model: scope.model, credentials: credentials)
-                let session = AgentCodexSocketSession(routes: routes, token: token, lane: lane, connection: connection)
+                let session = AgentCodexSocketSession(routes: routes, token: token, lane: lane, connection: connection, recovery: recovery)
                 do {
                     let upstream = try await AgentCodexUpstream.connect(connection)
                     routes.logger.info("codex websocket upstream connected")
@@ -384,7 +432,15 @@ struct AgentCodexWebSocketService: Service {
                                     }
                                 }
                                 group.addTask {
-                                    for try await frame in events {
+                                    var iterator = events.makeAsyncIterator()
+                                    while true {
+                                        let frame: WebSocketFrame
+                                        do {
+                                            guard let next = try await iterator.next() else { throw AgentCodexTransportLoss.eof }
+                                            frame = next
+                                        } catch let error as IOError where error.errnoCode == POSIXErrorCode.ECONNRESET.rawValue || error.errnoCode == POSIXErrorCode.ECONNABORTED.rawValue {
+                                            throw AgentCodexTransportLoss.reset
+                                        }
                                         switch frame.opcode {
                                         case .ping: try await requests.write(.init(fin: true, opcode: .pong, maskKey: .random(), data: frame.unmaskedData))
                                         case .pong: continue
@@ -394,13 +450,12 @@ struct AgentCodexWebSocketService: Service {
                                         case .connectionClose:
                                             let closeCode = frame.unmaskedData.getInteger(at: frame.unmaskedData.readerIndex, as: UInt16.self) ?? 0
                                             routes.logger.warning("codex websocket upstream closed code=\(closeCode) bytes=\(frame.unmaskedData.readableBytes)")
-                                            throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
+                                            throw AgentCodexTransportLoss.closeFrame
                                         default:
                                             routes.logger.warning("codex websocket unexpected upstream opcode=\(frame.opcode) bytes=\(frame.unmaskedData.readableBytes)")
                                             throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
                                         }
                                     }
-                                    throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
                                 }
                                 group.addTask {
                                     while true {
@@ -422,6 +477,18 @@ struct AgentCodexWebSocketService: Service {
                     let safe = AgentCodexSocketError.safe(error)
                     routes.logger.warning("codex websocket operation failed status=\(safe.status) code=\(safe.code) error_type=\(String(reflecting: type(of: error)))")
                     await session.finish()
+                    if error is AgentCodexTransportLoss {
+                        let current = try await routes.agentModelScopes.activeScope(token: token)
+                        try await routes.requireActiveAgentCodexScope(current)
+                        let checkpoint = await session.checkpoint()
+                        if try await routes.agentModelScopes.offerCodexRecovery(token: token, lane: lane, checkpoint: checkpoint) {
+                            routes.logger.warning("codex websocket recovery reserved execution=\(current.executionID) generation=\(current.generation) attempt=1 reason=\(error)")
+                            // No terminal400: let the unchanged live Codex recover its own context/results.
+                            downstream.channel.close(promise: nil)
+                            return
+                        }
+                        throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
+                    }
                     throw error
                 }
             } catch {

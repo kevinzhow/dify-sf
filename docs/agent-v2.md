@@ -1531,6 +1531,22 @@ ownership change, cancellation or the workflow deadline closes idle sockets as w
 JSON keepalives every 15 seconds prevent Codex's message timer from confusing long reasoning with a dead socket;
 WebSocket pings alone do not reset that timer in the pinned client.
 
+A deployment can explicitly enable `COLLAB_AGENT_CODEX_WEBSOCKET_RECOVERY_ENABLED=true` (default `false`). For
+WebSocket operations only, an upstream EOF, reset or close can then reserve **one recovery for the whole node
+execution**, shared by root and child lanes and retained across capability replacement. The API closes the lost
+socket without a terminal error, allowing the unchanged live Codex process to reconnect with its own full input.
+It preserves the current workspace and completed tool results; the API never reruns tools or caches history.
+The replacement's first generation must keep the same request parameters and include results for every observed
+unfinished tool call. Missing/ambiguous results fail with `agent_recovery_tool_result_unknown` before another
+model-call slot is spent. This is a conservative guard, not an exactly-once guarantee for arbitrary external tools.
+The next accepted generation is audited with `recovery_attempt: 1`; subsequent requests resume incremental mode.
+
+The failed call and the recovery both consume the existing call budget. File, request, output and time limits do
+not increase. Revocation, expiry, ownership changes, invalid requests and authentication errors never authorize
+recovery. A second loss ends the operation under the strict policy. The quota is reserved even if the replacement
+fails, so reconnect loops cannot keep restarting a node. Additional generation cost and incomplete upstream usage
+remain subject to the provider's normal billing; recovery cannot guarantee a particular token cost.
+
 Ordinary HTTP requests carrying `X-DifySF-Require-Incremental` fail with 400 `incremental_required` before spending
 any call slot or contacting the provider. There is no automatic HTTP fallback or full-history reconstruction.
 A disconnected `store:false` connection loses its local continuation cache. Incremental transport saves repeated

@@ -14,7 +14,7 @@ private struct CodexWSProvider: Sendable {
     let process: Process
     let records: URL
     let endpoint: String
-    static func start() async throws -> Self {
+    static func start(failure: String? = nil) async throws -> Self {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("codex-ws-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let record = directory.appendingPathComponent("wire.jsonl")
@@ -22,6 +22,7 @@ private struct CodexWSProvider: Sendable {
         let p = Process(), output = Pipe()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/python3"); p.arguments = [script.path]
         p.environment = ["PATH": "/usr/bin:/bin", "CODEX_WS_RECORDS": record.path]
+        if let failure { p.environment?["CODEX_WS_FAILURE"] = failure }
         p.standardOutput = output
         try p.run()
         let port = try await Task.detached {
@@ -308,6 +309,55 @@ struct AgentCodexWebSocketTests {
                 #expect(calls[2]["inputs"] == 1)
                 let usage = await routes.agentModelScopes.revoke(token: token)
                 #expect(usage.totalTokens == 69 && usage.cachedTokens == 36)
+            }
+        }
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["AGENT_CODEX_BINARY"] != nil), arguments: ["eof", "reset", "twice"])
+    func actualCodexRecoversOnceWithoutRepeatingAnExecutedTool(failure: String) async throws {
+        let provider = try await CodexWSProvider.start(failure: failure)
+        defer { provider.process.terminate(); provider.process.waitUntilExit() }
+        try await withFakeDaemon { daemon, _ in
+            try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                var (scope, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: provider.endpoint)
+                _ = await routes.agentModelScopes.revoke(token: token)
+                scope.codexWebsocketRecoveryEnabled = true
+                token = try await routes.agentModelScopes.activate(scope)
+                let (ports, signal) = AsyncStream<Int>.makeStream(bufferingPolicy: .bufferingNewest(1))
+                let service = AgentCodexWebSocketService(routes: routes, host: "127.0.0.1", port: 0, onListening: { signal.yield($0); signal.finish() })
+                let listener = Task { try await service.run() }; defer { listener.cancel() }
+                var iterator = ports.makeAsyncIterator(); let port = try #require(await iterator.next())
+                let script = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/agent-codex/websocket_process.py").path
+                let binary = try #require(ProcessInfo.processInfo.environment["AGENT_CODEX_BINARY"])
+                let finalToken = token, model = scope.model
+                let result = try await Task.detached {
+                    let p = Process(), output = Pipe(), errors = Pipe()
+                    p.executableURL = URL(fileURLWithPath: "/usr/bin/python3"); p.arguments = [script]
+                    p.environment = ["PATH": "/usr/bin:/bin", "TMPDIR": FileManager.default.temporaryDirectory.path,
+                        "AGENT_CODEX_BINARY": binary, "CODEX_FIXTURE_URL": "http://127.0.0.1:\(port)/inner/agent/codex/v1",
+                        "CODEX_FIXTURE_MODEL": model, "CODEX_FIXTURE_RUN_TOKEN": finalToken,
+                        "CODEX_FIXTURE_RECOVERY": failure]
+                    p.standardOutput = output; p.standardError = errors; try p.run()
+                    let stdout = output.fileHandleForReading.readDataToEndOfFile(), stderr = errors.fileHandleForReading.readDataToEndOfFile()
+                    p.waitUntilExit()
+                    return (p.terminationStatus, String(decoding: stdout, as: UTF8.self), String(decoding: stderr, as: UTF8.self))
+                }.value
+                #expect(result.0 == 0, "Synthetic recovery failed: \(result.2)")
+                #expect(result.1.contains("\"toolExecutions\": 1"))
+                let records = try provider.values(), calls = records.filter { $0["call"] != nil && $0["warmup"] == false }
+                #expect(records.filter { $0["authorized"] == true }.count == 2)
+                #expect(calls.count == 4)
+                guard calls.count == 4 else { return }
+                #expect(calls[1]["previous"] == "resp_ws_1")
+                #expect(calls[2]["connection"] == 2 && calls[2]["previous"] == .null)
+                #expect(calls[2]["toolResults"] == ["call_ws_1"])
+                #expect(calls[3]["previous"] == "resp_ws_3")
+                // Failed calls consume slots too; neither reconnect nor a second failure resets the ceiling.
+                let next = try await routes.agentModelScopes.claimCodex(token: token); #expect(next.index == 5)
+                let response = try await api.send(.post, AgentCodexWebSocketService.path, "{}", token: token,
+                    headers: [("X-DifySF-Require-Incremental", "v1")])
+                #expect(response.status == 400 && response.text.contains("incremental_required"))
+                _ = await routes.agentModelScopes.revoke(token: token)
             }
         }
     }
