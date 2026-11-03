@@ -16,6 +16,7 @@ import 'package:dify_sf_app/src/workflow_editor/phone/phone_editor_frame.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/before_run_form.dart';
 import 'package:dify_sf_app/src/workflow_editor/run/ui/workflow_preview.dart';
 import 'package:dify_sf_app/src/workflow_editor/store/store.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -210,6 +211,30 @@ void main() {
       expect(e.phone.settingsNodeId, 'llm', reason: 'the settings stay open');
       expect(form, findsOneWidget);
       expect(t.widget<EditableText>(field()).controller.text, 'typed in Settings');
+      expect(t.takeException(), isNull);
+    });
+  }
+
+  // Device recheck: a key while the step form's field had the focus across a re-presentation (the shortcuts' "typing"
+  // guard read a focus whose element was gone). Both directions, a key down and a Shift press.
+  for (final (from, to) in const [(Size(411, 914), Size(914, 411)), (Size(914, 411), Size(411, 914))]) {
+    String at(Size s) => '${s.width.toInt()}x${s.height.toInt()}';
+    testWidgets('keys after a rotation with the step form focused: no exception (${at(from)} -> ${at(to)})', (t) async {
+      final e = await _pump(t, size: from);
+      addTearDown(e.dispose);
+      e.store.setPendingSingleRun((nodeId: 'llm', action: SingleRunAction.run));
+      await settle(t, 800);
+      final field = find.descendant(of: find.byType(BeforeRunForm), matching: find.byType(EditableText)).first;
+      await t.tap(field);
+      await t.pump();
+      t.view.physicalSize = to;
+      await t.sendKeyEvent(LogicalKeyboardKey.shiftLeft);
+      await t.pump();
+      await t.sendKeyEvent(LogicalKeyboardKey.keyA);
+      await settle(t, 600);
+      await t.sendKeyEvent(LogicalKeyboardKey.shiftLeft);
+      await t.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await settle(t, 300);
       expect(t.takeException(), isNull);
     });
   }
