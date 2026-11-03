@@ -313,8 +313,22 @@ class SingleRunFormDraft extends ChangeNotifier {
   /// A request is in flight: the form being rendered or the answers being sent.
   bool busy = false;
 
-  /// Tells the form showing this draft that it changed.
-  void changed() => notifyListeners();
+  bool _disposed = false;
+
+  /// Whether the draft's owner is gone (a form's own draft, disposed with it): a late answer is ignored.
+  bool get disposed => _disposed;
+
+  /// Tells the form showing this draft that it changed; nothing once the draft is disposed (a request that answers
+  /// after a desktop panel closed or the editor was left).
+  void changed() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 }
 
 /// The single-run form drafts of an editor, one per node: the one owner of what the forms hold, whichever entry shows a
@@ -422,6 +436,8 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
       ..changed();
     try {
       final data = await fetch(widget.node.id, inputs);
+      // The owner is gone (a desktop panel closed meanwhile): nothing shows the answer.
+      if (draft.disposed) return;
       draft
         ..generatedForm = data
         ..generatedWith = inputs
@@ -456,6 +472,7 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
         ),
         'action': action,
       });
+      if (draft.disposed) return;
       draft
         ..generatedForm = null
         ..answers = null;
