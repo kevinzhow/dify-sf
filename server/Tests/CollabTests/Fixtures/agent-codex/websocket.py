@@ -1,5 +1,5 @@
 """Standard-library synthetic Responses WS. Never contacts an external model."""
-import base64, hashlib, http.server, json, os, pathlib, socket, struct, threading, signal
+import base64, hashlib, http.server, json, os, pathlib, socket, struct, threading, signal, time
 # ServiceLifecycle blocks termination signals; fixtures must not inherit that mask.
 signal.pthread_sigmask(signal.SIG_SETMASK, [])
 records=pathlib.Path(os.environ['CODEX_WS_RECORDS'])
@@ -46,15 +46,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 with lock:
                     if not warm:calls+=1
                     call=calls
-                record({'connection':connection,'warmup':warm,'call':call,'bytes':n,'previous':body.get('previous_response_id'),'model':body['model'],'store':body.get('store'),'effort':body.get('reasoning',{}).get('effort'),'max_output_tokens':body.get('max_output_tokens'),'inputs':len(body['input']),'types':[x.get('type') for x in body['input']], 'toolResults':[x.get('call_id') for x in body['input'] if x.get('type')=='function_call_output']})
+                record({'connection':connection,'warmup':warm,'call':call,'bytes':n,'previous':body.get('previous_response_id'),'model':body['model'],'store':body.get('store'),'effort':body.get('reasoning',{}).get('effort'),'max_output_tokens':body.get('max_output_tokens'),'inputs':len(body['input']),'types':[x.get('type') for x in body['input']], 'toolCalls':[x.get('call_id') for x in body['input'] if x.get('type') in ('function_call','custom_tool_call')], 'toolResults':[x.get('call_id') for x in body['input'] if x.get('type')=='function_call_output'], 'runningToolResult':any(x.get('type')=='function_call_output' and 'Process running with session ID' in str(x.get('output','')) for x in body['input'])})
                 response='resp_ws_warm' if warm else 'resp_ws_'+str(call)
                 frame(self.connection,{'type':'response.created','response':{'id':response}})
                 if failure and not warm and (call==2 or failure=='twice' and call==4):
                     frame(self.connection,{'type':'response.in_progress','response':{'id':response}})
+                    if failure in ('partial', 'arguments_done', 'custom_partial'):
+                        partial={'type':'function_call','id':'fc_partial','call_id':'call_partial','name':'exec_command','arguments':''}
+                        if failure=='custom_partial':partial={'type':'custom_tool_call','id':'fc_partial','call_id':'call_partial','name':'apply_patch','input':''}
+                        frame(self.connection,{'type':'response.output_item.added','output_index':0,'item':partial})
+                        if failure=='custom_partial':
+                            frame(self.connection,{'type':'response.custom_tool_call_input.delta','item_id':'fc_partial','call_id':'call_partial','output_index':0,'delta':'*** Begin Patch\n*** Add File: partial-was-executed\n+unexpected\n'})
+                        else:
+                            frame(self.connection,{'type':'response.function_call_arguments.delta','item_id':'fc_partial','output_index':0,'delta':'{"cmd":"printf unexpected >> partial-was-executed'})
+                        if failure=='arguments_done':
+                            frame(self.connection,{'type':'response.function_call_arguments.done','item_id':'fc_partial','output_index':0,'arguments':'{"cmd":"printf unexpected >> partial-was-executed"}'})
+                        record({'partialToolAnnounced':True,'argumentsDone':failure=='arguments_done'})
                     if failure=='reset':self.connection.setsockopt(socket.SOL_SOCKET,socket.SO_LINGER,struct.pack('ii',1,0))
                     else:self.connection.shutdown(socket.SHUT_RDWR)
                     self.close_connection=True
                     return
+                if failure=='background' and not warm and call==3:time.sleep(7)
                 output=[]
                 if not warm:
                     if call==1:
@@ -62,6 +74,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     else:
                         item={'type':'message','id':'msg_ws_'+str(call),'role':'assistant','status':'completed','phase':'final_answer','content':[{'type':'output_text','text':'Synthetic WebSocket complete.','annotations':[]}]}
                     if failure and call==1:item['arguments']=json.dumps({'cmd':'printf fixture-delta >> recovery-counter; cat recovery-counter'})
+                    if failure=='background' and call==1:item['arguments']=json.dumps({'cmd':'printf fixture-delta >> recovery-counter; sleep 6; printf completed > recovery-finished', 'yield_time_ms':1000})
                     output=[item]
                     frame(self.connection,{'type':'response.output_item.added','output_index':0,'item':item})
                     frame(self.connection,{'type':'response.output_item.done','output_index':0,'item':item})

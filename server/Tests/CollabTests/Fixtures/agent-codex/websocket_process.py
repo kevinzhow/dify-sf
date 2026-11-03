@@ -54,6 +54,8 @@ try:
     assert done['params']['turn']['status']==expected,done
     count=(root/'recovery-counter').read_text().count('fixture-delta') if os.environ.get('CODEX_FIXTURE_RECOVERY') else None
     if os.environ.get('CODEX_FIXTURE_RECOVERY'):assert count==1,count
+    assert not (root/'partial-was-executed').exists(), 'an incomplete tool was executed'
+    if os.environ.get('CODEX_FIXTURE_RECOVERY')=='background':assert (root/'recovery-finished').read_text()=='completed'
     print(json.dumps({'turns':2,'status':expected,'officialCodex':True,'accountLogin':False,'toolExecutions':count}))
 finally:
     process.terminate()
