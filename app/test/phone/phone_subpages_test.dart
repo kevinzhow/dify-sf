@@ -113,6 +113,8 @@ void main() {
         matching: find.byType(DifyFilterChip),
       );
       expect(t.getSize(status).height, greaterThanOrEqualTo(DifyFilterChip.height));
+      // On the phone page the chip is a 44 dp touch box (also its accessible bounds).
+      _touchSized(t, find.descendant(of: status, matching: find.byType(DifyTouchArea)).first, 'status chip');
       await t.tap(status);
       await settle(t, 800);
       await t.tap(find.text('Fail').last);

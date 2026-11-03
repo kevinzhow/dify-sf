@@ -71,16 +71,20 @@ class DifyFilterChip extends StatelessWidget {
         ),
       ),
     );
-    return DifyTouchTarget(
-      child: DifyPressable(
-        onPressed: onPressed,
-        builder: (context, hovered, focused) => Semantics(
-          selected: selected,
-          label: semanticLabel,
-          child: ExcludeSemantics(excluding: semanticLabel != null, child: chip(hovered, focused)),
-        ),
+    // On a touch surface (a phone page) the chip's box is touch-high for assistive technology too (44 px, the chip drawn
+    // inside); elsewhere only its hit area grows.
+    final touch = DifyTouchArea.appliesIn(context);
+    final pressable = DifyPressable(
+      onPressed: onPressed,
+      builder: (context, hovered, focused) => Semantics(
+        selected: selected,
+        label: semanticLabel,
+        child: ExcludeSemantics(excluding: semanticLabel != null, child: chip(hovered, focused)),
       ),
     );
+    return touch
+        ? DifyTouchArea(minSize: DifyTouch.controlHeight, accessibleBox: true, child: pressable)
+        : DifyTouchTarget(child: pressable);
   }
 }
 
