@@ -31,14 +31,20 @@ class KeyValueVars {
 typedef KeyValueChange = void Function(List<KeyValueItem> list, int? base);
 
 /// KeyValueEdit: `overflow-hidden rounded-lg border border-divider-regular`, a 28 px header row ("Key" / ["Type"] /
-/// "Value") and a row per item. Typing into the last row's empty value (or choosing its file) calls [onAdd]; with
-/// more than one row each row can be removed. [isSupportFile] adds form-data's Type column (text / file).
-class KeyValueTable extends StatelessWidget {
+/// "Value") and a row per item. Typing into the last row's empty value (or choosing its file) adds an empty row
+/// ([newItem]) after it; with more than one row each row can be removed. [isSupportFile] adds form-data's Type column
+/// (text / file).
+///
+/// Every edit applies to its row by the row's id in the latest list: what this table last sent, until [list] comes
+/// back. So the next empty row is added once, after the row that is last then, however many keystrokes reach the
+/// table before it rebuilds (a value is a draft, so its row's committed value stays empty while it is typed), and an
+/// edit committed in the same frame keeps that row.
+class KeyValueTable extends StatefulWidget {
   const KeyValueTable({
     super.key,
     required this.list,
     required this.onChange,
-    required this.onAdd,
+    this.newItem = KeyValueItem.new,
     this.readonly = false,
     this.isSupportFile = false,
     this.vars = const KeyValueVars(),
@@ -47,13 +53,58 @@ class KeyValueTable extends StatelessWidget {
 
   final List<KeyValueItem> list;
   final KeyValueChange onChange;
-  final VoidCallback onAdd;
+
+  /// The empty row typing into the last row's value adds.
+  final KeyValueItem Function() newItem;
   final bool readonly, isSupportFile;
   final KeyValueVars vars;
   final int Function()? version;
 
   @override
+  State<KeyValueTable> createState() => _KeyValueTableState();
+}
+
+class _KeyValueTableState extends State<KeyValueTable> {
+  /// The rows as this table last sent them, or [KeyValueTable.list] once it is rebuilt.
+  late List<KeyValueItem> _latest = widget.list;
+
+  @override
+  void didUpdateWidget(KeyValueTable old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.list, widget.list)) _latest = widget.list;
+  }
+
+  void _send(List<KeyValueItem> next, int? base) {
+    _latest = next;
+    widget.onChange(next, base);
+  }
+
+  /// Applies [update] to the row [id] as it is now; nothing once the row is gone.
+  void _change(String id, KeyValueItem Function(KeyValueItem item) update, int? base) {
+    final i = _latest.indexWhere((r) => r.id == id);
+    if (i < 0) return;
+    _send([..._latest]..[i] = update(_latest[i]), base);
+  }
+
+  void _remove(String id) {
+    if (!_latest.any((r) => r.id == id)) return;
+    _send([
+      for (final r in _latest)
+        if (r.id != id) r,
+    ], null);
+  }
+
+  /// `onAdd` after the row [id]: only while that row is the last one (a second request before the table rebuilds
+  /// finds the row added by the first).
+  void _addAfter(String id) {
+    if (_latest.lastOrNull?.id != id) return;
+    _send([..._latest, widget.newItem()], null);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final w = widget;
+    final list = w.list;
     final header = difyStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary);
     Widget cell(
       String text, {
@@ -78,7 +129,7 @@ class KeyValueTable extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, c) {
-        final keyWidth = isSupportFile ? 140.0 : (c.maxWidth - 2) / 2;
+        final keyWidth = w.isSupportFile ? 140.0 : (c.maxWidth - 2) / 2;
         return Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
@@ -91,7 +142,7 @@ class KeyValueTable extends StatelessWidget {
               Row(
                 children: [
                   cell(wf('nodes.http.key'), width: keyWidth),
-                  if (isSupportFile) cell(wf('nodes.http.type'), width: 70),
+                  if (w.isSupportFile) cell(wf('nodes.http.type'), width: 70),
                   cell(wf('nodes.http.value'), border: false, padding: const EdgeInsets.only(left: 12, right: 4)),
                 ],
               ),
@@ -102,13 +153,13 @@ class KeyValueTable extends StatelessWidget {
                   keyWidth: keyWidth,
                   isLastItem: i == list.length - 1,
                   canRemove: list.length > 1,
-                  readonly: readonly,
-                  isSupportFile: isSupportFile,
-                  vars: vars,
-                  version: version,
-                  onAdd: onAdd,
-                  onChange: (next, base) => onChange([...list]..[i] = next, base),
-                  onRemove: () => onChange([...list]..removeAt(i), null),
+                  readonly: w.readonly,
+                  isSupportFile: w.isSupportFile,
+                  vars: w.vars,
+                  version: w.version,
+                  onAdd: () => _addAfter(item.id),
+                  onChange: (update, base) => _change(item.id, update, base),
+                  onRemove: () => _remove(item.id),
                 ),
             ],
           ),
@@ -141,7 +192,9 @@ class KeyValueRow extends StatelessWidget {
   final bool isLastItem, canRemove, readonly, isSupportFile;
   final KeyValueVars vars;
   final VoidCallback onAdd;
-  final void Function(KeyValueItem next, int? base) onChange;
+
+  /// A cell's edit: [update] makes the row's next state from the row as it is when the edit applies.
+  final void Function(KeyValueItem Function(KeyValueItem item) update, int? base) onChange;
   final VoidCallback onRemove;
   final int Function()? version;
 
@@ -158,7 +211,7 @@ class KeyValueRow extends StatelessWidget {
             onRemove: onRemove,
             onChange: (sel, _) {
               final addNext = isLastItem && (item.file?.isEmpty ?? true) && sel.isNotEmpty;
-              onChange(item.copyWith(file: sel), null);
+              onChange((r) => r.copyWith(file: sel), null);
               if (addNext) onAdd();
             },
           )
@@ -172,10 +225,12 @@ class KeyValueRow extends StatelessWidget {
             nodes: vars.nodes,
             isSupportFileVar: isSupportFile,
             version: version,
-            onEdit: (v) {
-              if (isLastItem && item.value.isEmpty && v.isNotEmpty) onAdd();
+            // Dify adds the next row when the last row's value goes from empty to typed. The value here is a draft
+            // (the row's own value stays empty until it commits), so the draft's own change decides.
+            onEdit: (before, after) {
+              if (isLastItem && item.value.isEmpty && before.isEmpty && after.isNotEmpty) onAdd();
             },
-            onChange: (v, base) => onChange(item.copyWith(value: v), base),
+            onChange: (v, base) => onChange((r) => r.copyWith(value: v), base),
           );
     final line = BoxDecoration(color: DifyColors.dividerRegular);
     return Container(
@@ -198,7 +253,7 @@ class KeyValueRow extends StatelessWidget {
                   vars: vars.text,
                   nodes: vars.nodes,
                   version: version,
-                  onChange: (v, base) => onChange(item.copyWith(key: v), base),
+                  onChange: (v, base) => onChange((r) => r.copyWith(key: v), base),
                 ),
               ),
               const SizedBox(width: 1),
@@ -208,7 +263,7 @@ class KeyValueRow extends StatelessWidget {
                   child: _TypeSelect(
                     value: item.type ?? 'text',
                     readonly: readonly,
-                    onChanged: (t) => onChange(item.copyWith(type: t), null),
+                    onChanged: (t) => onChange((r) => r.copyWith(type: t), null),
                   ),
                 ),
                 const SizedBox(width: 1),
@@ -318,7 +373,9 @@ class KeyValueInput extends StatefulWidget {
   final List<VarGroup> vars;
   final Map<String, WorkflowNodeInfo> nodes;
   final int Function()? version;
-  final ValueChanged<String>? onEdit;
+
+  /// A keystroke: the draft before it and after it.
+  final void Function(String before, String after)? onEdit;
 
   @override
   State<KeyValueInput> createState() => _KeyValueInputState();
@@ -380,8 +437,9 @@ class _KeyValueInputState extends State<KeyValueInput> {
       onChange: (v) {
         if (v == _text) return;
         _draft.touch();
+        final before = _text;
         _text = v;
-        w.onEdit?.call(v);
+        w.onEdit?.call(before, v);
       },
       workflowVariableBlock: WorkflowVariableBlockConfig(show: true, variables: w.vars, workflowNodesMap: w.nodes),
     );
@@ -462,9 +520,5 @@ class _KeyValueLinesState extends State<KeyValueLines> {
     vars: widget.vars,
     version: widget.version,
     onChange: _set,
-    onAdd: () => _set([
-      ...(_list.isEmpty ? [_blank] : _list),
-      KeyValueItem(),
-    ], null),
   );
 }

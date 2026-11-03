@@ -54,13 +54,7 @@ class EditBody extends StatelessWidget {
           ...payload,
           'data': [for (final i in list) i.toJson()],
         }, base),
-        onAdd: () => onChange({
-          ...payload,
-          'data': [
-            ...rows,
-            {'id': keyValueId(), 'type': 'text', 'key': '', 'value': ''},
-          ],
-        }, null),
+        newItem: () => KeyValueItem(type: 'text'),
       ),
       'raw-text' || 'json' => _BodyText(
         key: ValueKey(type),
