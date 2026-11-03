@@ -22,14 +22,21 @@ String _c(String key) => DifyI18n.tr('common', key);
 /// annotation dialogs and drawers) the content is the dialog's sheet form in a [DifySheetPortal] (the portal keeps the
 /// page's scopes, which the owners' content reads): [DifyDialogFrame] tells its parts, and Back and Escape call
 /// [onClose] (the scrim and a drag down only with [dismissible]). Without it (a confirmation) the overlay stays centred,
-/// and Back calls [onClose] and only the overlay is read by assistive technology, as a confirmation route's. The form
-/// follows the live width.
+/// and Back calls [onClose]. The form follows the live width.
+///
+/// At every width only the topmost overlay is read by assistive technology, as a modal route's ([DifyPortalSemantics]):
+/// the page under it is hidden, and so is an overlay under a confirmation opened from it. (An overlay child's semantics
+/// hang from its portal's place; a non-modal portal's empty place would drop the overlay from the platform's tree.)
+///
+/// [onBack]: what Back calls instead of [onClose] (a dialog Dify does not close on Escape or a click outside, whose
+/// phone sheet Back still closes); Back never reaches the page while the overlay is open.
 class ControlledOverlay extends StatefulWidget {
   const ControlledOverlay({
     super.key,
     required this.open,
     required this.builder,
     this.onClose,
+    this.onBack,
     this.dismissible = true,
     this.backdrop = true,
     this.sheetOnCompact = false,
@@ -37,7 +44,7 @@ class ControlledOverlay extends StatefulWidget {
 
   final bool open;
   final WidgetBuilder builder;
-  final VoidCallback? onClose;
+  final VoidCallback? onClose, onBack;
   final bool dismissible, backdrop, sheetOnCompact;
 
   @override
@@ -53,7 +60,7 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
   final _body = GlobalKey(debugLabel: 'controlled overlay body');
 
   /// A phone's Back: closes the overlay before anything under it.
-  late final _back = DifyBackStep(onDismiss: () => widget.onClose?.call());
+  late final _back = DifyBackStep(onDismiss: () => (widget.onBack ?? widget.onClose)?.call());
 
   /// The phone sheet's slide.
   late final _slide = AnimationController(vsync: this, duration: DifySheetRecipe.openDuration);
@@ -106,7 +113,9 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    final modal = _phone && widget.open && _portal.isShowing;
+    // Modal at every width: a wider window's drawer or dialog is as modal as Dify's (`aria-modal`), and the place a
+    // non-modal portal gives its overlay is empty, which drops the overlay from the platform's tree.
+    final modal = widget.open && _portal.isShowing;
     return DifyPortalSemantics(
       modal: modal,
       child: OverlayPortal(
@@ -147,7 +156,8 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
     );
   }
 
-  // Inside the window's safe area, as when the app kept the whole navigator inside it.
+  // Inside the window's safe area, as when the app kept the whole navigator inside it. A layer opened over the content
+  // (a confirmation) hides it from assistive technology.
   Widget _centred(BuildContext context) => DifyOverlaySafeArea(
     child: Stack(
       fit: StackFit.expand,
@@ -164,7 +174,7 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
           bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => widget.onClose?.call()},
           child: FocusScope(
             autofocus: true,
-            child: DifySurface(child: _builder),
+            child: DifySurface(child: DifyModalLayer(child: _builder)),
           ),
         ),
       ],
@@ -238,6 +248,7 @@ class AnnotationDialog extends StatelessWidget {
     required this.open,
     required this.child,
     this.onClose,
+    this.onBack,
     this.width = 480,
     this.padding = const EdgeInsets.all(24),
     this.radius = DifyRadius.xxl,
@@ -248,6 +259,9 @@ class AnnotationDialog extends StatelessWidget {
   final bool open;
   final Widget child;
   final VoidCallback? onClose;
+
+  /// [ControlledOverlay.onBack].
+  final VoidCallback? onBack;
   final double width;
   final EdgeInsets padding;
   final double radius;
@@ -258,6 +272,7 @@ class AnnotationDialog extends StatelessWidget {
   Widget build(BuildContext context) => ControlledOverlay(
     open: open,
     onClose: onClose,
+    onBack: onBack,
     sheetOnCompact: true,
     builder: (context) => DifyDialogSurface(
       label: label,

@@ -110,6 +110,13 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
   final _confirmingNow = ValueNotifier(false);
   BuildContext? _confirmContext;
 
+  /// The phone's confirmation route is open (from its push until it has popped).
+  bool _asking = false;
+
+  /// The phone's confirmation is closing because the dialog became centred (a rotation): the import stays pending and
+  /// the centred dialog's confirmation takes over.
+  bool _handingOver = false;
+
   /// Base UI's tabs: only the active tab is in the Tab order (roving tabindex).
   final _tabNodes = {
     CreateFromDSLModalTab.fromFile: FocusNode(debugLabel: 'dsl file tab'),
@@ -124,6 +131,29 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
       if (mounted && _file == null && _tab == CreateFromDSLModalTab.fromFile) _browse.requestFocus();
     });
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _followForm();
+  }
+
+  /// The pending import's confirmation follows the dialog's form, which follows the live width: a rotation into the
+  /// sheet asks over the window ([_askOnPhone]), a rotation out of it closes that route for the centred dialog's own
+  /// layer. The pending import and its confirm / cancel are kept either way (not while a confirm is running: its
+  /// result decides).
+  void _followForm() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    final pending = _pending;
+    if (!mounted || pending == null || _confirming) return;
+    final sheet = DifyDialogFrame.sheetOf(context);
+    final route = _confirmContext;
+    if (sheet && !_asking) {
+      unawaited(_askOnPhone(pending));
+    } else if (!sheet && route != null && route.mounted && !_handingOver) {
+      _handingOver = true;
+      Navigator.of(route).pop();
+    }
+  });
 
   @override
   void dispose() {
@@ -218,6 +248,7 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
   }
 
   Future<void> _askOnPhone(({String id, String importedVersion, String systemVersion}) pending) async {
+    _asking = true;
     await showDifyAlertDialog<void>(
       context,
       builder: (dialog) {
@@ -240,7 +271,19 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
       },
     );
     _confirmContext = null;
-    if (mounted && !_confirming && identical(_pending, pending)) setState(() => _pending = null);
+    _asking = false;
+    final handedOver = _handingOver;
+    _handingOver = false;
+    if (!mounted) return;
+    if (handedOver) {
+      // The centred dialog asks now.
+      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _pending != null) _confirmScope.requestFocus();
+      });
+      return;
+    }
+    if (!_confirming && identical(_pending, pending)) setState(() => _pending = null);
   }
 
   void _setConfirming(bool v) {
@@ -268,6 +311,8 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
       toast.error(_a('newApp.appCreateFailed'));
     } finally {
       if (mounted && _confirming) _setConfirming(false);
+      // A rotation while it confirmed: the confirmation in the form the dialog has now.
+      if (mounted) _followForm();
     }
   }
 
@@ -405,8 +450,8 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
     final pending = _pending;
     // A click outside (or the route's Escape) does not close the dialog while it imports or asks to confirm.
     if (pending == null) return PopScope(canPop: !_importing, child: dialog);
-    // A phone asks over the window (_askOnPhone).
-    if (DifyDialogFrame.sheetOf(context)) return PopScope(canPop: false, child: dialog);
+    // A phone asks over the window (_askOnPhone), also while that route closes for this layer after a rotation.
+    if (DifyDialogFrame.sheetOf(context) || _asking) return PopScope(canPop: false, child: dialog);
     return PopScope(
       canPop: false,
       child: CallbackShortcuts(
