@@ -3,6 +3,7 @@ import base64, hashlib, http.server, json, os, pathlib, socket, struct, threadin
 # ServiceLifecycle blocks termination signals; fixtures must not inherit that mask.
 signal.pthread_sigmask(signal.SIG_SETMASK, [])
 records=pathlib.Path(os.environ['CODEX_WS_RECORDS'])
+failure_mode=os.environ.get('CODEX_WS_FAILURE_MODE')
 lock=threading.Lock(); connections=0; calls=0
 
 def record(value):
@@ -48,6 +49,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 record({'connection':connection,'warmup':warm,'call':call,'bytes':n,'previous':body.get('previous_response_id'),'model':body['model'],'store':body.get('store'),'effort':body.get('reasoning',{}).get('effort'),'max_output_tokens':body.get('max_output_tokens'),'inputs':len(body['input']),'types':[x.get('type') for x in body['input']]})
                 response='resp_ws_warm' if warm else 'resp_ws_'+str(call)
                 frame(self.connection,{'type':'response.created','response':{'id':response}})
+                if failure_mode == 'eof':
+                    self.connection.shutdown(socket.SHUT_RDWR)
+                    self.close_connection=True
+                    return
+                if failure_mode == 'close':
+                    # Reason text deliberately contains a secret-shaped value: diagnostics retain only the close code.
+                    reason=struct.pack('!H',1001)+b'fixture-private-close-reason'
+                    self.connection.sendall(b'\x88'+bytes([len(reason)])+reason)
+                    self.close_connection=True
+                    return
                 output=[]
                 if not warm:
                     if call==1:

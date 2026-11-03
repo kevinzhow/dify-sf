@@ -14,7 +14,7 @@ private struct CodexWSProvider: Sendable {
     let process: Process
     let records: URL
     let endpoint: String
-    static func start() async throws -> Self {
+    static func start(failureMode: String? = nil) async throws -> Self {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("codex-ws-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let record = directory.appendingPathComponent("wire.jsonl")
@@ -22,6 +22,7 @@ private struct CodexWSProvider: Sendable {
         let p = Process(), output = Pipe()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/python3"); p.arguments = [script.path]
         p.environment = ["PATH": "/usr/bin:/bin", "CODEX_WS_RECORDS": record.path]
+        if let failureMode { p.environment?["CODEX_WS_FAILURE_MODE"] = failureMode }
         p.standardOutput = output
         try p.run()
         let port = try await Task.detached {
@@ -183,6 +184,84 @@ struct AgentCodexWebSocketTests {
                 catch let error as AgentCodexSocketError { #expect(error.code == "incremental_required") }
                 let usage = await routes.agentModelScopes.revoke(token: token)
                 #expect(usage.totalTokens == 0)
+            }
+        }
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: ["eof", "close"])
+    func upstreamTerminationLogsItsDirectionAndPreservesTheWireError(mode: String) async throws {
+        let provider = try await CodexWSProvider.start(failureMode: mode)
+        defer { provider.process.terminate(); provider.process.waitUntilExit() }
+        let log = CodexSocketLog(), requestID = "0123456789abcdef0123456789abcdef"
+        try await withFakeDaemon { daemon, _ in
+            try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                let (scope, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: provider.endpoint)
+                let (ports, signal) = AsyncStream<Int>.makeStream(bufferingPolicy: .bufferingNewest(1))
+                let service = AgentCodexWebSocketService(routes: routes, host: "127.0.0.1", port: 0,
+                    onListening: { signal.yield($0); signal.finish() }, diagnosticsLogger: log.logger)
+                let listener = Task { try await service.run() }; defer { listener.cancel() }
+                var portIterator = ports.makeAsyncIterator()
+                let port = try #require(await portIterator.next())
+                let connection = try AgentResponsesConnection(provider: AgentModelWire.compatible, model: scope.model, credentials: [
+                    "api_type": "responses", "endpoint_url": .string("http://127.0.0.1:\(port)/inner/agent/codex/v1"),
+                    "api_key": .string(token), "extra_headers": ["session-id": "diagnostic-fixture", "X-Request-ID": .string(requestID)]])
+                let socket = try await AgentCodexUpstream.connect(connection)
+                try await socket.executeThenClose { inbound, outbound in
+                    var body = AgentResponsesTests.body(scope).object!; body["type"] = "response.create"
+                    try await outbound.write(AgentCodexUpstream.text(ByteBuffer(string: JSONValue.object(body).compactJSON())))
+                    var error: JSONValue?
+                    for try await frame in inbound where frame.opcode == .text {
+                        let event = try JSONValue.parse(Data(frame.unmaskedData.readableBytesView))
+                        if event["type"] == "error" { error = event; break }
+                    }
+                    #expect(error?["status"] == 400)
+                    #expect(error?["error"]?["code"] == "agent_incremental_context_lost")
+                }
+                let entries = log.snapshot
+                let observation = try #require(entries.first { $0.fields["stage"] == "upstream_read" && $0.fields["end"] == (mode == "close" ? "close_frame" : "eof") })
+                #expect(observation.fields["request_id"] == requestID)
+                #expect(observation.fields["socket_id"]?.isEmpty == false)
+                if mode == "close" { #expect(observation.fields["close_code"] == "1001") }
+                #expect(entries.filter { $0.fields["first_observed"] == "true" }.count == 1)
+                let rendered = String(describing: entries)
+                for secret in [token, "sk-native-fixture-only", "fixture-private-close-reason"] { #expect(!rendered.contains(secret)) }
+            }
+        }
+    }
+
+    @Test(.timeLimit(.minutes(1))) func downstreamCloseIsDistinguishedFromUpstreamCleanup() async throws {
+        let provider = try await CodexWSProvider.start()
+        defer { provider.process.terminate(); provider.process.waitUntilExit() }
+        let log = CodexSocketLog()
+        try await withFakeDaemon { daemon, _ in
+            try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                let (scope, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: provider.endpoint)
+                let (ports, signal) = AsyncStream<Int>.makeStream(bufferingPolicy: .bufferingNewest(1))
+                let service = AgentCodexWebSocketService(routes: routes, host: "127.0.0.1", port: 0,
+                    onListening: { signal.yield($0); signal.finish() }, diagnosticsLogger: log.logger)
+                let listener = Task { try await service.run() }; defer { listener.cancel() }
+                var portIterator = ports.makeAsyncIterator()
+                let port = try #require(await portIterator.next())
+                let connection = try AgentResponsesConnection(provider: AgentModelWire.compatible, model: scope.model, credentials: [
+                    "api_type": "responses", "endpoint_url": .string("http://127.0.0.1:\(port)/inner/agent/codex/v1"),
+                    "api_key": .string(token), "extra_headers": ["session-id": "downstream-close-fixture"]])
+                let socket = try await AgentCodexUpstream.connect(connection)
+                try await socket.executeThenClose { inbound, outbound in
+                    var body = AgentResponsesTests.body(scope).object!; body["type"] = "response.create"; body["generate"] = false
+                    try await outbound.write(AgentCodexUpstream.text(ByteBuffer(string: JSONValue.object(body).compactJSON())))
+                    var events = inbound.makeAsyncIterator()
+                    while let frame = try await events.next() {
+                        let event = try JSONValue.parse(Data(frame.unmaskedData.readableBytesView))
+                        if event["type"] == "response.completed" { break }
+                    }
+                    var close = ByteBuffer(); close.writeInteger(UInt16(1000))
+                    try await outbound.write(.init(fin: true, opcode: .connectionClose, maskKey: .random(), data: close))
+                    while let _ = try await events.next() { }
+                }
+                let entries = log.snapshot
+                let close = try #require(entries.first { $0.fields["stage"] == "downstream_read" && $0.fields["end"] == "close_frame" })
+                #expect(close.fields["close_code"] == "1000")
+                #expect(entries.filter { $0.fields["first_observed"] == "true" }.count == 1)
             }
         }
     }

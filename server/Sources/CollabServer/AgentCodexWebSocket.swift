@@ -3,6 +3,7 @@
 import CollabRuntime
 import Foundation
 import HTTPTypes
+import Logging
 import NIOCore
 import NIOHTTP1
 import NIOPosix
@@ -109,6 +110,7 @@ actor AgentCodexSocketSession {
     let token: String
     let lane: String
     let connection: AgentResponsesConnection
+    let diagnostics: AgentCodexSocketDiagnostics?
     private var busy = false
     private var warmed = false
     private var generationStarted = false
@@ -120,8 +122,10 @@ actor AgentCodexSocketSession {
     private var sent = 0
     private var usage: LLMUsage?
 
-    init(routes: Routes, token: String, lane: String, connection: AgentResponsesConnection) {
+    init(routes: Routes, token: String, lane: String, connection: AgentResponsesConnection,
+         diagnostics: AgentCodexSocketDiagnostics? = nil) {
         self.routes = routes; self.token = token; self.lane = lane; self.connection = connection
+        self.diagnostics = diagnostics
     }
 
     func prepare(_ bytes: Data) async throws -> ByteBuffer {
@@ -172,7 +176,7 @@ actor AgentCodexSocketSession {
                 model: connection.model, usage: nil, status: nil, transport: "websocket", receivedBytes: received, forwardedBytes: sent)
         }
         // Metadata only; no ids, URLs, credentials, input or response contents.
-        routes.logger.info("codex websocket request bytes=\(received) forwarded=\(sent) previous=\(previous != nil) warmup=\(body["generate"] == false)")
+        routes.logger.info("codex websocket request bytes=\(received) forwarded=\(sent) previous=\(previous != nil) warmup=\(body["generate"] == false)", metadata: diagnostics?.metadata)
         return ByteBuffer(string: encoded)
     }
 
@@ -198,7 +202,7 @@ actor AgentCodexSocketSession {
             let raw = value["error"]?["code"]?.string ?? value["response"]?["error"]?["code"]?.string ?? "none"
             let code = raw.utf8.count <= 128 && raw.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_") }) ? raw : "unknown"
             let status = value["status"]?.int ?? value["status_code"]?.int ?? 0
-            routes.logger.info("codex websocket event type=\(type) bytes=\(bytes.count) status=\(status) code=\(code) warmup=\(body["generate"] == false)")
+            routes.logger.info("codex websocket event type=\(type) bytes=\(bytes.count) status=\(status) code=\(code) warmup=\(body["generate"] == false)", metadata: diagnostics?.metadata)
         }
         if let raw = value["response"]?["usage"], raw.object != nil { usage = LLMUsage(json: raw) }
         if ["response.completed", "response.incomplete", "response.failed", "error"].contains(type) {
@@ -254,6 +258,7 @@ struct AgentCodexWebSocketService: Service {
     let host: String
     let port: Int
     var onListening: (@Sendable (Int) -> Void)? = nil
+    var diagnosticsLogger: Logger? = nil
     static let path = "/inner/agent/codex/v1/responses"
 
     private enum Upgraded: Sendable {
@@ -263,6 +268,9 @@ struct AgentCodexWebSocketService: Service {
     private func request(_ head: HTTPRequestHead) -> Request {
         var fields = HTTPFields()
         if let value = head.headers.first(name: "Authorization") { fields[.authorization] = value }
+        if let id = HTTPFailureDiagnostics.validatedRequestID(head.headers.first(name: "X-Request-ID")) {
+            fields[HTTPField.Name("X-Request-ID")!] = id
+        }
         return Request(method: .get, url: URI(string: head.uri), headers: fields)
     }
     private func authenticate(_ head: HTTPRequestHead) async throws -> Request {
@@ -327,19 +335,27 @@ struct AgentCodexWebSocketService: Service {
             switch try await future.get() {
             case .socket(let channel, let request, let lane):
                 let token = try routes.authenticateAgentCodex(request), id = UUID().uuidString
+                let diagnostics = AgentCodexSocketDiagnostics(logger: diagnosticsLogger ?? routes.logger, socketID: id,
+                    requestID: request.headers[HTTPField.Name("X-Request-ID")!])
                 let (ready, signal) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
                 let task = Task<Void, Never> {
                     for await _ in ready { break }
-                    do { try Task.checkCancellation(); try await socket(channel, token: token, lane: lane) }
+                    do { try Task.checkCancellation(); try await socket(channel, token: token, lane: lane, diagnostics: diagnostics) }
                     catch { /* Wire errors are sanitized inside socket. */ }
                 }
                 do {
                     try await routes.agentModelScopes.openCodexSocket(token: token, lane: lane, id: id, task: task)
                     signal.yield(()); signal.finish()
-                    channel.channel.closeFuture.whenComplete { _ in task.cancel() }
+                    channel.channel.closeFuture.whenComplete { result in
+                        if case .failure(let error) = result {
+                            diagnostics.ended(.downstreamChannel, .error, error: error)
+                        } else { diagnostics.ended(.downstreamChannel, .channelClosed) }
+                        task.cancel()
+                    }
                     await withTaskCancellationHandler { await task.value } onCancel: { task.cancel(); channel.channel.close(promise: nil) }
                     await routes.agentModelScopes.closeCodexSocket(token: token, lane: lane, id: id)
                 } catch {
+                    diagnostics.ended(.admission, .error, error: error)
                     task.cancel(); signal.finish()
                     try await channel.executeThenClose { _, output in
                         try await output.write(.init(fin: true, opcode: .text, data: ByteBuffer(string: AgentCodexSocketError.safe(error).json.compactJSON())))
@@ -354,78 +370,133 @@ struct AgentCodexWebSocketService: Service {
             }
         } catch { /* No transport descriptions: these may contain credentials/URLs. */ }
     }
-    private func socket(_ downstream: NIOAsyncChannel<WebSocketFrame, WebSocketFrame>, token: String, lane: String) async throws {
+    private func socket(_ downstream: NIOAsyncChannel<WebSocketFrame, WebSocketFrame>, token: String, lane: String,
+                        diagnostics: AgentCodexSocketDiagnostics) async throws {
         try await downstream.executeThenClose { input, output in
             do {
                 let scope = try await routes.agentModelScopes.activeScope(token: token)
                 try await routes.requireActiveAgentCodexScope(scope)
                 let credentials = try await routes.agentCredentials(provider: scope.provider, model: scope.model, reference: scope.credentialReference)
                 let connection = try AgentResponsesConnection(provider: scope.provider, model: scope.model, credentials: credentials)
-                let session = AgentCodexSocketSession(routes: routes, token: token, lane: lane, connection: connection)
+                let session = AgentCodexSocketSession(routes: routes, token: token, lane: lane, connection: connection,
+                    diagnostics: diagnostics)
                 do {
-                    let upstream = try await AgentCodexUpstream.connect(connection)
-                    routes.logger.info("codex websocket upstream connected")
+                    let upstream: NIOAsyncChannel<WebSocketFrame, WebSocketFrame>
+                    do { upstream = try await AgentCodexUpstream.connect(connection) }
+                    catch { diagnostics.ended(.upstreamConnect, .error, error: error); throw error }
+                    upstream.channel.closeFuture.whenComplete { result in
+                        if case .failure(let error) = result {
+                            diagnostics.ended(.upstreamChannel, .error, error: error)
+                        } else { diagnostics.ended(.upstreamChannel, .channelClosed) }
+                    }
+                    routes.logger.info("codex websocket upstream connected", metadata: diagnostics.metadata)
                     try await withTaskCancellationHandler {
                         try await upstream.executeThenClose { events, requests in
                             try await withThrowingTaskGroup(of: Void.self) { group in
                                 group.addTask {
-                                    for try await frame in input {
-                                        switch frame.opcode {
-                                        case .ping: try await output.write(.init(fin: true, opcode: .pong, data: frame.unmaskedData))
-                                        case .pong: continue
-                                        case .text:
-                                            let body = try await session.prepare(Data(frame.unmaskedData.readableBytesView))
-                                            try await requests.write(AgentCodexUpstream.text(body))
-                                        case .connectionClose:
-                                            routes.logger.info("codex websocket downstream closed")
-                                            return
-                                        default: throw AgentCodexSocketError(status: 400, code: "invalid_websocket_frame")
+                                    var stage = AgentCodexSocketDiagnostics.Stage.downstreamRead
+                                    do {
+                                        for try await frame in input {
+                                            switch frame.opcode {
+                                            case .ping:
+                                                stage = .downstreamWrite
+                                                try await output.write(.init(fin: true, opcode: .pong, data: frame.unmaskedData))
+                                            case .pong: continue
+                                            case .text:
+                                                stage = .requestPrepare
+                                                let body = try await session.prepare(Data(frame.unmaskedData.readableBytesView))
+                                                stage = .upstreamWrite
+                                                try await requests.write(AgentCodexUpstream.text(body))
+                                            case .connectionClose:
+                                                diagnostics.ended(.downstreamRead, .closeFrame,
+                                                    closeCode: frame.unmaskedData.getInteger(at: frame.unmaskedData.readerIndex, as: UInt16.self))
+                                                routes.logger.info("codex websocket downstream closed", metadata: diagnostics.metadata)
+                                                return
+                                            default:
+                                                diagnostics.ended(.downstreamRead, .unexpectedFrame)
+                                                throw AgentCodexSocketError(status: 400, code: "invalid_websocket_frame")
+                                            }
+                                            stage = .downstreamRead
                                         }
+                                        diagnostics.ended(.downstreamRead, .eof)
+                                    } catch {
+                                        diagnostics.ended(stage, error is CancellationError ? .cancelled : .error, error: error)
+                                        throw error
                                     }
                                 }
                                 group.addTask {
-                                    for try await frame in events {
-                                        switch frame.opcode {
-                                        case .ping: try await requests.write(.init(fin: true, opcode: .pong, maskKey: .random(), data: frame.unmaskedData))
-                                        case .pong: continue
-                                        case .text:
-                                            let bytes = try await session.observe(Data(frame.unmaskedData.readableBytesView))
-                                            try await output.write(.init(fin: true, opcode: .text, data: ByteBuffer(bytes: bytes)))
-                                        case .connectionClose:
-                                            let closeCode = frame.unmaskedData.getInteger(at: frame.unmaskedData.readerIndex, as: UInt16.self) ?? 0
-                                            routes.logger.warning("codex websocket upstream closed code=\(closeCode) bytes=\(frame.unmaskedData.readableBytes)")
-                                            throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
-                                        default:
-                                            routes.logger.warning("codex websocket unexpected upstream opcode=\(frame.opcode) bytes=\(frame.unmaskedData.readableBytes)")
-                                            throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
+                                    var stage = AgentCodexSocketDiagnostics.Stage.upstreamRead
+                                    do {
+                                        for try await frame in events {
+                                            switch frame.opcode {
+                                            case .ping:
+                                                stage = .upstreamWrite
+                                                try await requests.write(.init(fin: true, opcode: .pong, maskKey: .random(), data: frame.unmaskedData))
+                                            case .pong: continue
+                                            case .text:
+                                                stage = .responseObserve
+                                                let bytes = try await session.observe(Data(frame.unmaskedData.readableBytesView))
+                                                stage = .downstreamWrite
+                                                try await output.write(.init(fin: true, opcode: .text, data: ByteBuffer(bytes: bytes)))
+                                            case .connectionClose:
+                                                let closeCode = frame.unmaskedData.getInteger(at: frame.unmaskedData.readerIndex, as: UInt16.self) ?? 0
+                                                diagnostics.ended(.upstreamRead, .closeFrame, closeCode: closeCode)
+                                                routes.logger.warning("codex websocket upstream closed code=\(closeCode) bytes=\(frame.unmaskedData.readableBytes)", metadata: diagnostics.metadata)
+                                                throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
+                                            default:
+                                                diagnostics.ended(.upstreamRead, .unexpectedFrame)
+                                                routes.logger.warning("codex websocket unexpected upstream opcode=\(frame.opcode) bytes=\(frame.unmaskedData.readableBytes)", metadata: diagnostics.metadata)
+                                                throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
+                                            }
+                                            stage = .upstreamRead
                                         }
+                                        diagnostics.ended(.upstreamRead, .eof)
+                                        throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
+                                    } catch {
+                                        diagnostics.ended(stage, error is CancellationError ? .cancelled : .error, error: error)
+                                        throw error
                                     }
-                                    throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
                                 }
                                 group.addTask {
-                                    while true {
-                                        let active = try await routes.agentModelScopes.activeScope(token: token)
-                                        try await Task.sleep(for: .seconds(min(15, max(0, active.expiresAt.timeIntervalSinceNow))))
-                                        let current = try await routes.agentModelScopes.activeScope(token: token)
-                                        try await routes.requireActiveAgentCodexScope(current)
-                                        // Unknown JSON events are ignored by pinned Codex and reset
-                                        // its 300s message timer; WS ping alone does not reset it.
-                                        try await output.write(.init(fin: true, opcode: .text, data: ByteBuffer(string: "{\"type\":\"dify.gateway.keepalive\"}")))
+                                    var stage = AgentCodexSocketDiagnostics.Stage.scopeCheck
+                                    do {
+                                        while true {
+                                            let active = try await routes.agentModelScopes.activeScope(token: token)
+                                            try await Task.sleep(for: .seconds(min(15, max(0, active.expiresAt.timeIntervalSinceNow))))
+                                            let current = try await routes.agentModelScopes.activeScope(token: token)
+                                            try await routes.requireActiveAgentCodexScope(current)
+                                            // Unknown JSON events are ignored by pinned Codex and reset
+                                            // its 300s message timer; WS ping alone does not reset it.
+                                            stage = .downstreamWrite
+                                            try await output.write(.init(fin: true, opcode: .text, data: ByteBuffer(string: "{\"type\":\"dify.gateway.keepalive\"}")))
+                                            stage = .scopeCheck
+                                        }
+                                    } catch {
+                                        diagnostics.ended(stage, error is CancellationError ? .cancelled : .error, error: error)
+                                        throw error
                                     }
                                 }
                                 defer { group.cancelAll(); upstream.channel.close(promise: nil) }
                                 _ = try await group.next()
                             }
                         }
-                    } onCancel: { upstream.channel.close(promise: nil); downstream.channel.close(promise: nil) }
+                    } onCancel: {
+                        diagnostics.ended(.lifecycle, .cancelled)
+                        upstream.channel.close(promise: nil); downstream.channel.close(promise: nil)
+                    }
                 } catch {
                     let safe = AgentCodexSocketError.safe(error)
-                    routes.logger.warning("codex websocket operation failed status=\(safe.status) code=\(safe.code) error_type=\(String(reflecting: type(of: error)))")
+                    routes.logger.warning("codex websocket operation failed status=\(safe.status) code=\(safe.code) error_type=\(String(reflecting: type(of: error)))", metadata: diagnostics.metadata)
                     await session.finish()
                     throw error
                 }
             } catch {
-                try? await output.write(.init(fin: true, opcode: .text, data: ByteBuffer(string: AgentCodexSocketError.safe(error).json.compactJSON())))
+                diagnostics.ended(.lifecycle, error is CancellationError ? .cancelled : .error, error: error)
+                do {
+                    try await output.write(.init(fin: true, opcode: .text, data: ByteBuffer(string: AgentCodexSocketError.safe(error).json.compactJSON())))
+                } catch {
+                    diagnostics.ended(.downstreamWrite, error is CancellationError ? .cancelled : .error, error: error)
+                }
             }
         }
     }
