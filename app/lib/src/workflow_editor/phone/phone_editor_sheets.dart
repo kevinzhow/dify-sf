@@ -120,11 +120,6 @@ class PhoneEditorSheets {
   /// Whether the panels are side panels (a wider window) instead of sheets; the frame sets it as it lays out.
   bool side = false;
 
-  /// What each step's single-run form holds, kept here so the form keeps it when a rotation moves it between the
-  /// sheet and the side panel (they are different trees).
-  final _stepDrafts = <String, SingleRunFormDraft>{};
-  SingleRunFormDraft _stepDraft(String nodeId) => _stepDrafts[nodeId] ??= SingleRunFormDraft();
-
   BuildContext? _context;
   WorkflowStore? _store;
   PhoneEditorController? _phone;
@@ -662,12 +657,8 @@ class _SheetLayerState extends State<_SheetLayer> {
         _side(
           'phone-step-input',
           () => sheets._hideStepInput(step.id),
-          NodeSingleRunOverlay(
-            node: step,
-            doc: sheets.controller.doc,
-            fill: false,
-            draft: sheets._stepDraft(step.id),
-          ),
+          // What was typed is the editor's (SingleRunFormDraftScope): it follows the form across presentations.
+          NodeSingleRunOverlay(node: step, doc: sheets.controller.doc, fill: false),
         ),
     ];
   }
@@ -746,12 +737,7 @@ class _SheetLayerState extends State<_SheetLayer> {
         // The node's single-run form (what covers its panel on the desktop), as tall as its fields: Start Run runs
         // it, its result goes to the run sheet.
         builder: (context) => switch (step == null ? null : sheets.controller.doc.nodes[step]) {
-          final node? => NodeSingleRunOverlay(
-            node: node,
-            doc: sheets.controller.doc,
-            fill: false,
-            draft: sheets._stepDraft(node.id),
-          ),
+          final node? => NodeSingleRunOverlay(node: node, doc: sheets.controller.doc, fill: false),
           _ => const SizedBox.shrink(),
         },
       ),

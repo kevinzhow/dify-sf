@@ -294,8 +294,7 @@ bool handleNodeSingleRun(BuildContext context, Node node, Document doc) {
 /// The single-run form over the node panel (BasePanel's `shouldRenderSingleRunPanel`): shown while the node's
 /// `_isSingleRun` is on; Start Run runs with the values (handleRunWithParams) and switches to Last Run.
 /// What a node's single-run form holds: the typed values, and a human input node's generated form with the values it
-/// was generated with. An owner that keeps it outside the form ([NodeSingleRunOverlay.draft]) keeps it across the
-/// form's remounts.
+/// was generated with. Kept outside the form ([SingleRunFormDrafts]), it survives the form's remounts.
 class SingleRunFormDraft {
   Map<String, Object?> values = {};
 
@@ -306,6 +305,29 @@ class SingleRunFormDraft {
   Map<String, Object?> generatedWith = const {};
 }
 
+/// The single-run form drafts of an editor, one per node: the one owner of what the forms hold, whichever entry shows a
+/// node's form (dify-sf's phone editor: the node settings' Run this step, the step's own sheet or side panel), so a
+/// rotation that moves the form between a sheet and a side panel, or between those entries, keeps what was typed.
+class SingleRunFormDrafts {
+  final _drafts = <String, SingleRunFormDraft>{};
+
+  /// Node [nodeId]'s draft.
+  SingleRunFormDraft of(String nodeId) => _drafts[nodeId] ??= SingleRunFormDraft();
+}
+
+/// Gives the [NodeSingleRunOverlay]s below it [drafts] (without one, each form keeps its own).
+class SingleRunFormDraftScope extends InheritedWidget {
+  const SingleRunFormDraftScope({super.key, required this.drafts, required super.child});
+
+  final SingleRunFormDrafts drafts;
+
+  static SingleRunFormDrafts? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<SingleRunFormDraftScope>()?.drafts;
+
+  @override
+  bool updateShouldNotify(SingleRunFormDraftScope oldWidget) => drafts != oldWidget.drafts;
+}
+
 class NodeSingleRunOverlay extends StatefulWidget {
   const NodeSingleRunOverlay({
     super.key,
@@ -313,15 +335,10 @@ class NodeSingleRunOverlay extends StatefulWidget {
     required this.doc,
     this.dataSourceForm,
     this.fill = true,
-    this.draft,
   });
   final Node node;
   final Document doc;
   final Widget Function()? dataSourceForm;
-
-  /// Where the form keeps what was typed (dify-sf: the phone editor's, so the form keeps it when a rotation moves it
-  /// between a sheet and a side panel); null: the form's own.
-  final SingleRunFormDraft? draft;
 
   /// Over the node panel it fills the panel's Stack ([Positioned.fill]); false (dify-sf: a phone sheet) it is the
   /// form alone, as tall as its fields.
@@ -333,7 +350,16 @@ class NodeSingleRunOverlay extends StatefulWidget {
 
 class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
   final _own = SingleRunFormDraft();
-  SingleRunFormDraft get _draft => widget.draft ?? _own;
+  SingleRunFormDrafts? _drafts;
+
+  /// The editor's draft of this node ([SingleRunFormDraftScope]), else the form's own.
+  SingleRunFormDraft get _draft => _drafts?.of(widget.node.id) ?? _own;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _drafts = SingleRunFormDraftScope.maybeOf(context);
+  }
 
   Map<String, Object?> get _values => _draft.values;
   set _values(Map<String, Object?> v) => _draft.values = v;

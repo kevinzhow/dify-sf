@@ -34,6 +34,7 @@ import '../header/workflow_header.dart' show HeaderInRestoring;
 import '../node_insertion/insert_block.dart' show InsertOnEdge;
 import '../operator/actions.dart' show OperatorReadOnly;
 import '../store/store.dart';
+import '../run/ui/node_run_ui.dart' show SingleRunFormDraftScope, SingleRunFormDrafts;
 import 'phone_editor_actions.dart';
 import 'phone_editor_controller.dart';
 import 'phone_editor_sheets.dart';
@@ -64,6 +65,10 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
 
   /// The run, its input forms and the other panels as sheets.
   late final _sheets = PhoneEditorSheets(widget.config.controller);
+
+  /// What the single-run forms hold, per node: kept here, above the node settings and the step's own form, so a form
+  /// keeps what was typed when a rotation moves it between a sheet and a side panel.
+  final _singleRunDrafts = SingleRunFormDrafts();
 
   EditorController get _controller => widget.config.controller;
   CanvasController get _canvas => widget.config.canvas;
@@ -202,75 +207,78 @@ class _PhoneEditorFrameState extends State<PhoneEditorFrame> {
       store.nodeRunData,
       store.readOnlyChanges,
     ]);
-    return ListenableBuilder(
-      listenable: layers,
-      builder: (context, _) {
-        final a = _actions;
-        // A wider window (the touch desktop) docks the panels at the end instead of showing them as sheets.
-        final wide = DifyWindowClass.of(context) != DifyWindowClass.compact;
-        _sheets.side = wide;
-        final close = _topLayer(a);
-        // The view and the panels keep their state when the window turns between the layouts.
-        final body = KeyedSubtree(key: _bodyKey, child: _body(context, a, phone));
-        final panels = config.body.panels == null ? null : KeyedSubtree(key: _panelsKey, child: config.body.panels!);
-        return DifyBackDismiss(
-          enabled: close != null,
-          onDismiss: () {
-            _topLayer(_actions)?.call();
-            // A layer that only collapses (a sheet back to its peek) changes nothing this frame listens to: rebuild so
-            // the next layer's back step is held again.
-            if (mounted) setState(() {});
-          },
-          child: ColoredBox(
-            color: DifyColors.backgroundBody,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (!wide)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _PhoneTopBar(config: config, actions: a),
-                      Expanded(
-                        child: MediaQuery.removePadding(
-                          context: context,
-                          removeTop: true,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _ViewRow(actions: a, sheets: _sheets),
-                                  Expanded(
-                                    child: MediaQuery.removePadding(
-                                      context: context,
-                                      removeTop: true,
-                                      removeBottom: true,
-                                      child: body,
+    return SingleRunFormDraftScope(
+      drafts: _singleRunDrafts,
+      child: ListenableBuilder(
+        listenable: layers,
+        builder: (context, _) {
+          final a = _actions;
+          // A wider window (the touch desktop) docks the panels at the end instead of showing them as sheets.
+          final wide = DifyWindowClass.of(context) != DifyWindowClass.compact;
+          _sheets.side = wide;
+          final close = _topLayer(a);
+          // The view and the panels keep their state when the window turns between the layouts.
+          final body = KeyedSubtree(key: _bodyKey, child: _body(context, a, phone));
+          final panels = config.body.panels == null ? null : KeyedSubtree(key: _panelsKey, child: config.body.panels!);
+          return DifyBackDismiss(
+            enabled: close != null,
+            onDismiss: () {
+              _topLayer(_actions)?.call();
+              // A layer that only collapses (a sheet back to its peek) changes nothing this frame listens to: rebuild so
+              // the next layer's back step is held again.
+              if (mounted) setState(() {});
+            },
+            child: ColoredBox(
+              color: DifyColors.backgroundBody,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (!wide)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _PhoneTopBar(config: config, actions: a),
+                        Expanded(
+                          child: MediaQuery.removePadding(
+                            context: context,
+                            removeTop: true,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    _ViewRow(actions: a, sheets: _sheets),
+                                    Expanded(
+                                      child: MediaQuery.removePadding(
+                                        context: context,
+                                        removeTop: true,
+                                        removeBottom: true,
+                                        child: body,
+                                      ),
                                     ),
-                                  ),
-                                  _bottomBar(a, phone),
-                                ],
-                              ),
-                              // The node's settings sheet (the other panels are this frame's sheets).
-                              ?panels,
-                            ],
+                                    _bottomBar(a, phone),
+                                  ],
+                                ),
+                                // The node's settings sheet (the other panels are this frame's sheets).
+                                ?panels,
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  )
-                else
-                  _wideLayout(context, a, phone, body, panels),
-                if (!wide) _sheets.modalLayer(),
-                ?config.body.modal,
-                config.body.confirm,
-              ],
+                      ],
+                    )
+                  else
+                    _wideLayout(context, a, phone, body, panels),
+                  if (!wide) _sheets.modalLayer(),
+                  ?config.body.modal,
+                  config.body.confirm,
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 

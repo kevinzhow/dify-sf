@@ -177,6 +177,43 @@ void main() {
     });
   }
 
+  // The reviewer's follow-up: the same form opened from the node's Settings (Run this step), whose form is the node
+  // panel's own; portrait <-> landscape and phone <-> touch tablet.
+  for (final (from, to) in const [
+    (Size(411, 914), Size(914, 411)),
+    (Size(914, 411), Size(411, 914)),
+    (Size(411, 914), Size(800, 1280)),
+    (Size(800, 1280), Size(411, 914)),
+  ]) {
+    String at(Size s) => '${s.width.toInt()}x${s.height.toInt()}';
+    testWidgets('single-step draft from Settings survives ${at(from)} -> ${at(to)}', (t) async {
+      final e = await _pump(t, size: from);
+      addTearDown(e.dispose);
+      e.c.selectNode('llm');
+      e.phone.openSettings('llm');
+      await settle(t, 800);
+      final run = find.byKey(const Key('node-settings-run'));
+      await t.ensureVisible(run);
+      await t.pump();
+      await t.tap(run);
+      await settle(t, 800);
+      final form = find.descendant(
+        of: find.byKey(const Key('node-settings-sheet')),
+        matching: find.byType(BeforeRunForm),
+      );
+      expect(form, findsOneWidget, reason: "the node panel's own single-run form");
+      Finder field() => find.descendant(of: form, matching: find.byType(EditableText)).first;
+      await t.enterText(field(), 'typed in Settings');
+      await t.pump();
+      t.view.physicalSize = to;
+      await settle(t, 1000);
+      expect(e.phone.settingsNodeId, 'llm', reason: 'the settings stay open');
+      expect(form, findsOneWidget);
+      expect(t.widget<EditableText>(field()).controller.text, 'typed in Settings');
+      expect(t.takeException(), isNull);
+    });
+  }
+
   testWidgets('covered node settings leave the platform semantics tree when Run inputs cover them on tablet', (
     t,
   ) async {
