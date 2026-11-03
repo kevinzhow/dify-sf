@@ -5,6 +5,8 @@
 // BaseNode is dify-sf's DifyNodeCard as the canvas draws it; its title button is the canvas's own semantics node
 // for the card (CanvasA11y: title first, tap selects). node.tsx's resize observers on the selected children of
 // iterations and loops are ContainerChildSizeObserver; the container's resizer is NodeResizers.
+import 'dart:ui' show Tristate;
+
 import 'package:collab_client/collab_client.dart';
 import 'package:dify_sf_app/src/canvas/canvas_controller.dart';
 import 'package:dify_sf_app/src/canvas/canvas_graph.dart';
@@ -175,6 +177,21 @@ void main() {
       t.getSemantics(button).owner!.performAction(t.getSemantics(button).id, SemanticsAction.tap);
       await t.pump(const Duration(milliseconds: 300));
       expect(e.controller.selectedNodeId, llm.id);
+      await e.close();
+      semantics.dispose();
+    });
+
+    testWidgets('a selected node says "selected" once: the state, not in its name (device check)', (t) async {
+      final semantics = t.ensureSemantics();
+      final e = await _canvas(t);
+      final llm = e.controller.doc.nodes.values.firstWhere((n) => n.type == 'llm');
+      final button = find.bySemanticsLabel(RegExp('^${RegExp.escape(llm.title)}, llm node'));
+      t.getSemantics(button).owner!.performAction(t.getSemantics(button).id, SemanticsAction.tap);
+      await t.pump(const Duration(milliseconds: 300));
+      expect(e.controller.selectedNodeId, llm.id);
+      final node = t.getSemantics(button);
+      expect(node.flagsCollection.isSelected, Tristate.isTrue, reason: 'the state');
+      expect(node.label, isNot(contains('selected')), reason: 'not also in the name: ${node.label}');
       await e.close();
       semantics.dispose();
     });
