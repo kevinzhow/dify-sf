@@ -186,53 +186,57 @@ class _HumanInputFormPageState extends State<HumanInputFormPage> {
   Widget _loadedForm() => Center(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 720),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 28, bottom: 12),
-            child: Row(
-              spacing: 12,
-              children: [
-                DifyAppIcon(
-                  size: DifyAppIconSize.large,
-                  iconType: jsStr(_site['icon_type']),
-                  icon: jsStr(_site['icon']),
-                  background: jsStr(_site['icon_background']),
-                  imageUrl: jsStr(_site['icon_url']),
-                ),
-                Expanded(child: DifyText(jsStr(_site['title']) ?? _title, DifyType.systemXlSemibold)),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Padding(
+        // A phone keeps 16 px from the screen's edges (Dify's page is a centred 720 px column).
+        padding: EdgeInsets.symmetric(horizontal: DifyTouch.compactOf(context) ? 16 : 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 28, bottom: 12),
+              child: Row(
+                spacing: 12,
                 children: [
-                  DifyChatBubbleSurface(
-                    key: const Key('human-form-content-card'),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        HumanInputForm(
-                          requireParagraph: true,
-                          formData: {...HumanInputRunForm.definitionOf(_form!), 'form_token': widget.token},
-                          onSubmit: (_, data) => _submit(_object(data['inputs']), jsStr(data['action']) ?? ''),
-                        ),
-                        if (_form?['expiration_time'] case final num expiration when expiration > 0)
-                          HumanInputExpirationTime(expirationTime: (expiration * 1000).toInt()),
-                      ],
-                    ),
+                  DifyAppIcon(
+                    size: DifyAppIconSize.large,
+                    iconType: jsStr(_site['icon_type']),
+                    icon: jsStr(_site['icon']),
+                    background: jsStr(_site['icon_background']),
+                    imageUrl: jsStr(_site['icon_url']),
                   ),
-                  _footer(customBrand: true),
+                  Expanded(child: DifyText(jsStr(_site['title']) ?? _title, DifyType.systemXlSemibold)),
                 ],
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    DifyChatBubbleSurface(
+                      key: const Key('human-form-content-card'),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          HumanInputForm(
+                            requireParagraph: true,
+                            formData: {...HumanInputRunForm.definitionOf(_form!), 'form_token': widget.token},
+                            onSubmit: (_, data) => _submit(_object(data['inputs']), jsStr(data['action']) ?? ''),
+                          ),
+                          if (_form?['expiration_time'] case final num expiration when expiration > 0)
+                            HumanInputExpirationTime(expirationTime: (expiration * 1000).toInt()),
+                        ],
+                      ),
+                    ),
+                    _footer(customBrand: true),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );

@@ -180,6 +180,29 @@ class _MembersPageState extends State<MembersPage> {
     );
     final headStyle = difyTextStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary);
     String up(String s) => difyTransform(DifyType.systemXsMediumUppercase, s);
+    final rows = [
+      for (final a in accounts)
+        MemberRow(
+          key: ValueKey(a.id),
+          member: a,
+          roleNames: [legacyRoleOf(a.role).name],
+          isCurrentUser: _isCurrentUser(a),
+          lastActive: _lastActive(a),
+          canManage: canManage,
+          onOpenDetails: () => unawaited(_openDetails(a)),
+          menu: canManage
+              ? MemberMenu(
+                  member: a,
+                  isCurrentUser: _isCurrentUser(a),
+                  roles: widget.roles,
+                  onUpdateRole: (role) => _m.updateRole(a.id, role),
+                  onRemove: () => _m.remove(a.id),
+                  onResetPasswordLink: () => _m.auth.session.resetPasswordLink(a.id),
+                  invitationOrigin: widget.invitationOrigin,
+                )
+              : null,
+        ),
+    ];
     final table = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -210,29 +233,16 @@ class _MembersPageState extends State<MembersPage> {
             ],
           ),
         ),
-        for (final a in accounts)
-          MemberRow(
-            key: ValueKey(a.id),
-            member: a,
-            roleNames: [legacyRoleOf(a.role).name],
-            isCurrentUser: _isCurrentUser(a),
-            lastActive: _lastActive(a),
-            canManage: canManage,
-            onOpenDetails: () => unawaited(_openDetails(a)),
-            menu: canManage
-                ? MemberMenu(
-                    member: a,
-                    isCurrentUser: _isCurrentUser(a),
-                    roles: widget.roles,
-                    onUpdateRole: (role) => _m.updateRole(a.id, role),
-                    onRemove: () => _m.remove(a.id),
-                    onResetPasswordLink: () => _m.auth.session.resetPasswordLink(a.id),
-                    invitationOrigin: widget.invitationOrigin,
-                  )
-                : null,
-          ),
+        ...rows,
       ],
     );
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) {
+      // A phone: the members as rows (MemberRow's phone form), without the table's header.
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [header, ...rows],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

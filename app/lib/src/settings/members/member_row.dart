@@ -101,79 +101,148 @@ class _MemberRowState extends State<MemberRow> {
     final w = widget;
     final m = w.member;
     final label = stc(context, 'members.memberDetails.openAria', {'name': m.name});
-    final row = Row(
-      children: [
-        SizedBox(
-          width: memberNameColumnWidth,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: DifyAvatar(name: m.name, url: m.avatarUrl, size: DifyAvatarSize.sm),
+    final phone = DifyTouch.compactOf(context);
+    final name = DifyTextLine.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: m.name),
+          if (m.isPending)
+            WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: DifyTextLine(
+                  stc(context, 'members.pending'),
+                  style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textWarning),
                 ),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+            ),
+          if (w.isCurrentUser)
+            TextSpan(
+              text: stc(context, 'members.you'),
+              style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+            ),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
+    );
+    // A phone (a dify-sf divergence): one row per member without the table's columns, the avatar, the name over the
+    // email and the last activity, the role badges at the end (and the managers' menu after them).
+    final phoneRow = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: DifyListRow.minHeightWithSubtitle),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Row(
+          spacing: 12,
+          children: [
+            DifyAvatar(name: m.name, url: m.avatarUrl, size: DifyAvatarSize.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 2,
+                children: [
+                  name,
+                  DifyTextLine(
+                    m.email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                  ),
+                  DifyTextLine(
+                    w.lastActive,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(flex: 0, child: RoleBadges(roleNames: w.roleNames, max: 1)),
+          ],
+        ),
+      ),
+    );
+    final row = phone
+        ? phoneRow
+        : Row(
+            children: [
+              SizedBox(
+                width: memberNameColumnWidth,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
                     children: [
-                      DifyTextLine.rich(
-                        TextSpan(
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: DifyAvatar(name: m.name, url: m.avatarUrl, size: DifyAvatarSize.sm),
+                      ),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            TextSpan(text: m.name),
-                            if (m.isPending)
-                              WidgetSpan(
-                                alignment: PlaceholderAlignment.baseline,
-                                baseline: TextBaseline.alphabetic,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 4),
-                                  child: DifyTextLine(
-                                    stc(context, 'members.pending'),
-                                    style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textWarning),
-                                  ),
-                                ),
-                              ),
-                            if (w.isCurrentUser)
+                            DifyTextLine.rich(
                               TextSpan(
-                                text: stc(context, 'members.you'),
-                                style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                                children: [
+                                  TextSpan(text: m.name),
+                                  if (m.isPending)
+                                    WidgetSpan(
+                                      alignment: PlaceholderAlignment.baseline,
+                                      baseline: TextBaseline.alphabetic,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(left: 4),
+                                        child: DifyTextLine(
+                                          stc(context, 'members.pending'),
+                                          style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textWarning),
+                                        ),
+                                      ),
+                                    ),
+                                  if (w.isCurrentUser)
+                                    TextSpan(
+                                      text: stc(context, 'members.you'),
+                                      style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                                    ),
+                                ],
                               ),
+                              style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
+                            ),
+                            DifyTextLine(
+                              m.email,
+                              style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                            ),
                           ],
                         ),
-                        style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
                       ),
-                      DifyTextLine(m.email, style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary)),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(
-          width: memberLastActiveColumnWidth,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: DifyTextLine(
-              w.lastActive,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Align(
-              heightFactor: 1,
-              alignment: AlignmentDirectional.centerStart,
-              child: RoleBadges(roleNames: w.roleNames),
-            ),
-          ),
-        ),
-      ],
-    );
+              ),
+              SizedBox(
+                width: memberLastActiveColumnWidth,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: DifyTextLine(
+                    w.lastActive,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: difyTextStyle(DifyType.systemSmRegular, DifyColors.textSecondary),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Align(
+                    heightFactor: 1,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: RoleBadges(roleNames: w.roleNames),
+                  ),
+                ),
+              ),
+            ],
+          );
     return Container(
       key: ValueKey('member-row-${m.id}'),
       decoration: BoxDecoration(
@@ -199,7 +268,7 @@ class _MemberRowState extends State<MemberRow> {
                 onTap: w.onOpenDetails,
                 child: Container(
                   color: _hovered || _focused ? DifyColors.stateBaseHover : null,
-                  padding: EdgeInsets.only(right: w.canManage ? 48 : 0),
+                  padding: EdgeInsets.only(right: w.canManage ? (phone ? 44 : 48) : 0),
                   child: row,
                 ),
               ),
@@ -211,7 +280,7 @@ class _MemberRowState extends State<MemberRow> {
               bottom: 0,
               right: 0,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: EdgeInsets.symmetric(horizontal: phone ? 0 : 12),
                 child: Center(child: w.menu),
               ),
             ),
