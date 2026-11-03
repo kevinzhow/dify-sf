@@ -293,9 +293,12 @@ bool handleNodeSingleRun(BuildContext context, Node node, Document doc) {
 
 /// The single-run form over the node panel (BasePanel's `shouldRenderSingleRunPanel`): shown while the node's
 /// `_isSingleRun` is on; Start Run runs with the values (handleRunWithParams) and switches to Last Run.
-/// What a node's single-run form holds: the typed values, and a human input node's generated form with the values it
-/// was generated with. Kept outside the form ([SingleRunFormDrafts]), it survives the form's remounts.
-class SingleRunFormDraft {
+/// What a node's single-run form holds: the typed values; for a human input node its generated form, the values it was
+/// generated with, the answers typed into it, and whether a request (rendering the form, sending the answers) is in
+/// flight. Kept outside the form ([SingleRunFormDrafts]), it survives the form's remounts: a request that answers after
+/// a rotation lands here and the form shown now picks it up ([changed]); a new form does not ask or send again while
+/// one is in flight.
+class SingleRunFormDraft extends ChangeNotifier {
   Map<String, Object?> values = {};
 
   /// A human input node's generated form (`use-single-run-form-params`): null until "Run this step" asks for it.
@@ -303,6 +306,15 @@ class SingleRunFormDraft {
 
   /// The values the form was generated with (its `inputs`, sent back with the answers).
   Map<String, Object?> generatedWith = const {};
+
+  /// The answers typed into [generatedForm] (its inputs by name); null until the form shows them.
+  Map<String, Object?>? answers;
+
+  /// A request is in flight: the form being rendered or the answers being sent.
+  bool busy = false;
+
+  /// Tells the form showing this draft that it changed.
+  void changed() => notifyListeners();
 }
 
 /// The single-run form drafts of an editor, one per node: the one owner of what the forms hold, whichever entry shows a
@@ -351,6 +363,7 @@ class NodeSingleRunOverlay extends StatefulWidget {
 class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
   final _own = SingleRunFormDraft();
   SingleRunFormDrafts? _drafts;
+  SingleRunFormDraft? _listened;
 
   /// The editor's draft of this node ([SingleRunFormDraftScope]), else the form's own.
   SingleRunFormDraft get _draft => _drafts?.of(widget.node.id) ?? _own;
@@ -359,6 +372,32 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _drafts = SingleRunFormDraftScope.maybeOf(context);
+    _listen();
+  }
+
+  @override
+  void didUpdateWidget(NodeSingleRunOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _listen();
+  }
+
+  /// Rebuilds when the draft changes (a request that started under another form answered).
+  void _listen() {
+    final d = _draft;
+    if (identical(d, _listened)) return;
+    _listened?.removeListener(_draftChanged);
+    _listened = d..addListener(_draftChanged);
+  }
+
+  void _draftChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _listened?.removeListener(_draftChanged);
+    _own.dispose();
+    super.dispose();
   }
 
   Map<String, Object?> get _values => _draft.values;
@@ -367,29 +406,32 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
   Map<String, Object?>? get _generatedForm => _draft.generatedForm;
   set _generatedForm(Map<String, Object?>? v) => _draft.generatedForm = v;
 
-  Map<String, Object?> get _generatedWith => _draft.generatedWith;
-  set _generatedWith(Map<String, Object?> v) => _draft.generatedWith = v;
-
-  /// A request of the owner is in flight (the form is being rendered, or the answer is being sent).
-  bool _busy = false;
+  /// A request of the owner is in flight (the form is being rendered, or the answer is being sent): the draft's, so
+  /// it outlives a remount.
+  bool get _busy => _draft.busy;
 
   /// `handleShowGeneratedForm`: the server renders the node's form with the values its variables need. A refusal or a
-  /// lost connection shows Dify's toast and leaves the before-run form as it was, so the step can be tried again.
+  /// lost connection shows Dify's toast and leaves the before-run form as it was, so the step can be tried again. The
+  /// answer goes to the draft, so it lands in whichever form shows the draft when it arrives (after a rotation too).
   Future<void> _showGeneratedForm(SingleRunController c, Map<String, Object?> inputs) async {
     final fetch = HumanInputHost.of(context).fetchGeneratedForm;
-    if (fetch == null || _busy) return;
-    setState(() => _busy = true);
+    final draft = _draft;
+    if (fetch == null || draft.busy) return;
+    draft
+      ..busy = true
+      ..changed();
     try {
       final data = await fetch(widget.node.id, inputs);
-      if (!mounted) return;
-      setState(() {
-        _generatedForm = data;
-        _generatedWith = inputs;
-      });
+      draft
+        ..generatedForm = data
+        ..generatedWith = inputs
+        ..answers = null;
     } on Object catch (e) {
       if (mounted) showDataToast(context, DataToastType.error, e is TransportException ? e.message : '$e');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      draft
+        ..busy = false
+        ..changed();
     }
   }
 
@@ -397,24 +439,31 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
   /// (no run happens), the form closes and the Last Run tab shows them.
   Future<void> _submitGeneratedForm(SingleRunController c, Map<String, Object?> inputs, String action) async {
     final submit = HumanInputHost.of(context).submitGeneratedForm;
-    final form = _generatedForm;
-    if (submit == null || form == null || _busy) return;
+    final draft = _draft;
+    final form = draft.generatedForm;
+    if (submit == null || form == null || draft.busy) return;
     final fromServer = jsList(form['inputs']);
-    setState(() => _busy = true);
+    // In flight in the draft: a form shown after a rotation keeps its actions waiting and does not send again.
+    draft
+      ..busy = true
+      ..changed();
     try {
       await submit(widget.node.id, {
-        'inputs': _generatedWith,
+        'inputs': draft.generatedWith,
         'form_inputs': processedHumanInputFormInputs(
           fromServer.isNotEmpty ? fromServer : jsList(difyDataOf(widget.node)['inputs']),
           inputs,
         ),
         'action': action,
       });
-      if (!mounted) return;
-      setState(() => _generatedForm = null);
+      draft
+        ..generatedForm = null
+        ..answers = null;
       unawaited(c.fetchLastRun());
     } finally {
-      if (mounted) setState(() => _busy = false);
+      draft
+        ..busy = false
+        ..changed();
     }
   }
 
@@ -450,7 +499,12 @@ class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
                   showBackButton: true,
                   data: form,
                   busy: _busy,
-                  onBack: () => setState(() => _generatedForm = null),
+                  // The answers are the draft's: a rotation keeps them.
+                  answers: _draft.answers ??= {},
+                  onBack: () => setState(() {
+                    _generatedForm = null;
+                    _draft.answers = null;
+                  }),
                   onSubmit: (inputs, action) => _submitGeneratedForm(c, inputs, action),
                   onError: _showFormError,
                 ),
