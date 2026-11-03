@@ -324,6 +324,7 @@ actor AgentModelScopes {
     /// The old call has already been settled. Reserve the one attempt atomically before
     /// closing downstream; releasing the old lane here avoids a reconnect/cleanup race.
     func offerCodexRecovery(token: String, lane: String, checkpoint: AgentCodexSocketCheckpoint) throws -> Bool {
+        try Task.checkCancellation()
         let digest = Tokens.sha256(token)
         guard var entry = entries[digest], entry.scope.expiresAt > Date(),
               generations[entry.scope.executionKey] == entry.scope.generation else { throw Self.denied() }
