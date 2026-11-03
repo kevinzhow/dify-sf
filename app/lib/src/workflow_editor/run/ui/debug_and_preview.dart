@@ -3,6 +3,8 @@
 /// conversation variables modal.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -252,30 +254,53 @@ class _ChatWrapperState extends State<ChatWrapper> {
     );
   }
 
-  final _modal = OverlayPortalController();
+  /// The conversation variables dialog while [DebugAndPreview.showConversationVariableModal] (the shared dialog: a
+  /// sheet on a phone, Dify's centred modal when wide); it is shown and closed after the frame that asks for it.
+  BuildContext? _modalContext;
+  bool _modalOpen = false;
+
+  void _syncModal() {
+    if (widget.showConversationVariableModal == _modalOpen) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyModal());
+  }
+
+  void _applyModal() {
+    if (!mounted) return;
+    final want = widget.showConversationVariableModal;
+    if (want && !_modalOpen) {
+      _modalOpen = true;
+      // The route does not see this page's scopes: what the modal reads from them is taken here.
+      final fetch = WorkflowRunScope.maybeOf(context)?.service.fetchConversationVariables;
+      unawaited(
+        showDifyDialog<void>(
+          context,
+          // Dify's `<Dialog open>` has no onOpenChange: only its close button closes it (and Back on a phone).
+          dismissible: false,
+          closeOnEscape: false,
+          builder: (dialog) {
+            _modalContext = dialog;
+            return ConversationVariableModal(
+              conversationId: chat.conversationId,
+              varList: store.conversationVariables.value,
+              fetchValues: fetch,
+              onHide: () => Navigator.of(dialog).pop(),
+            );
+          },
+        ).then((_) {
+          _modalOpen = false;
+          _modalContext = null;
+          if (mounted && widget.showConversationVariableModal) widget.onConversationModalHide?.call();
+        }),
+      );
+    } else if (!want && _modalOpen) {
+      if (_modalContext case final c? when c.mounted) Navigator.of(c).pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final chatView = _chat(context);
-    if (!widget.showConversationVariableModal) return chatView;
-    _modal.show();
-    return OverlayPortal(
-      controller: _modal,
-      // Inside the window's safe area, as when the app kept the whole navigator inside it.
-      overlayChildBuilder: (context) => DifyOverlaySafeArea(
-        child: ColoredBox(
-          color: DifyColors.backgroundOverlay,
-          child: Center(
-            child: ConversationVariableModal(
-              conversationId: chat.conversationId,
-              varList: store.conversationVariables.value,
-              onHide: () => widget.onConversationModalHide?.call(),
-            ),
-          ),
-        ),
-      ),
-      child: chatView,
-    );
+    _syncModal();
+    return _chat(context);
   }
 
   Widget _chat(BuildContext context) => ListenableBuilder(
@@ -617,6 +642,180 @@ class _ConversationVariableModalState extends State<ConversationVariableModal> {
     }
   }
 
+  /// A variable in the list (selected: highlighted); on a phone a 48 px row.
+  Widget _varItem(DifyJson v, DifyJson cur) => ConstrainedBox(
+    constraints: BoxConstraints(minHeight: DifyDialogFrame.sheetOf(context) ? DifyTouch.minTarget : 0),
+    child: DifyPressable(
+      semanticLabel: '${v['name']}',
+      onPressed: () => setState(() => _current = v),
+      builder: (context, hovered, focused) {
+        final active = v['id'] == cur['id'] || hovered;
+        final color = active ? DifyColors.utilColorsTealTeal700 : DifyColors.textTertiary;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 2),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: v['id'] == cur['id'] || hovered ? DifyColors.stateBaseHover : null,
+            borderRadius: BorderRadius.circular(DifyRadius.lg),
+          ),
+          child: Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: DifyIcon('vender/line/others/bubble-x', size: 16, color: color),
+              ),
+              Expanded(child: DifyText('${v['name']}', DifyType.systemSmMedium, color: color)),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+
+  /// The selected variable: its name and type, then its stored value.
+  Widget _valuePanel(DifyJson cur, String type, Object? value, int? ts, bool isText) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+        child: Row(
+          spacing: 4,
+          children: [
+            DifyText('${cur['name']}', DifyType.systemXlSemibold),
+            DifyText(
+              type.isEmpty ? '' : type[0].toUpperCase() + type.substring(1),
+              DifyType.systemXsMedium,
+              color: DifyColors.textTertiary,
+            ),
+          ],
+        ),
+      ),
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  spacing: 8,
+                  children: [
+                    DifyText(
+                      _tw('chatVariable.storedContent').toUpperCase(),
+                      DifyType.systemXsMediumUppercase,
+                      color: DifyColors.textTertiary,
+                    ),
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [DifyRunDividerColors.start, DifyTailwind.white],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (ts != null && ts != 0)
+                      Flexible(
+                        child: DifyText(
+                          _tw('chatVariable.updatedAt') +
+                              (widget.formatTime ?? fmt.formatTime)(
+                                ts,
+                                DifyI18n.tr('app-log', 'dateTimeFormat'),
+                              ),
+                          DifyType.systemXsRegular,
+                          color: DifyColors.textTertiary,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: isText
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: DifyColors.componentsInputBgNormal,
+                          borderRadius: BorderRadius.circular(DifyRadius.lg),
+                        ),
+                        child: SingleChildScrollView(
+                          child: DifyText(
+                            '${value ?? ''}',
+                            DifyType.systemMdRegular,
+                            color: DifyColors.componentsInputTextFilled,
+                            maxLines: null,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                        decoration: BoxDecoration(
+                          color: DifyColors.componentsInputBgNormal,
+                          borderRadius: BorderRadius.circular(DifyRadius.lg),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              height: 28,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(12, 4, 8, 0),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: DifyText(
+                                        'JSON',
+                                        DifyType.systemXsSemibold,
+                                        color: DifyColors.textSecondary,
+                                      ),
+                                    ),
+                                    DifyPressable(
+                                      semanticLabel: _tc('operation.copy'),
+                                      onPressed: () {
+                                        Clipboard.setData(ClipboardData(text: '${cur['value'] ?? ''}'));
+                                        setState(() => _copied = true);
+                                        Future.delayed(const Duration(seconds: 2), () {
+                                          if (mounted) setState(() => _copied = false);
+                                        });
+                                      },
+                                      builder: (context, h, f) => Padding(
+                                        padding: const EdgeInsets.all(4),
+                                        child: DifyIcon(
+                                          _copied ? 'vender/line/files/copy-check' : 'vender/line/files/copy',
+                                          size: 16,
+                                          color: DifyColors.textTertiary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 16),
+                                child: DifyCodeEditor(
+                                  readOnly: true,
+                                  noWrapper: true,
+                                  isExpand: true,
+                                  language: CodeLanguage.json,
+                                  value: value ?? '',
+                                  isJSONStringifyBeauty: true,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     final cur = _current;
@@ -625,7 +824,36 @@ class _ConversationVariableModalState extends State<ConversationVariableModal> {
     final value = _values[id];
     final ts = _timestamps[id];
     final isText = type == 'number' || type == 'string';
-    return Container(
+    // A phone (the dialog's sheet form): the sheet's header with its close, the variables as rows, the selected one's
+    // value under them.
+    if (DifyDialogFrame.sheetOf(context)) {
+      final title = _tw('chatVariable.panelTitle');
+      return DifyDialogSurface(
+        label: title,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DifyDialogTitle(title: title, onClose: widget.onHide, child: const SizedBox.shrink()),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final v in widget.varList) _varItem(v, cur),
+                    const SizedBox(height: 8),
+                    SizedBox(height: 360, child: _valuePanel(cur, type, value, ts, isText)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    // Centred on the dialog route's page (Dify's DialogContent).
+    final dialog = Container(
       width: 920,
       height: 640,
       clipBehavior: Clip.antiAlias,
@@ -656,184 +884,14 @@ class _ConversationVariableModalState extends State<ConversationVariableModal> {
                       child: ListView(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         children: [
-                          for (final v in widget.varList)
-                            DifyPressable(
-                              semanticLabel: '${v['name']}',
-                              onPressed: () => setState(() => _current = v),
-                              builder: (context, hovered, focused) {
-                                final active = v['id'] == cur['id'] || hovered;
-                                final color = active ? DifyColors.utilColorsTealTeal700 : DifyColors.textTertiary;
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 2),
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: v['id'] == cur['id'] || hovered ? DifyColors.stateBaseHover : null,
-                                    borderRadius: BorderRadius.circular(DifyRadius.lg),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.only(right: 4),
-                                        child: DifyIcon('vender/line/others/bubble-x', size: 16, color: color),
-                                      ),
-                                      Expanded(child: DifyText('${v['name']}', DifyType.systemSmMedium, color: color)),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
+                          for (final v in widget.varList) _varItem(v, cur),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
-                      child: Row(
-                        spacing: 4,
-                        children: [
-                          DifyText('${cur['name']}', DifyType.systemXlSemibold),
-                          DifyText(
-                            type.isEmpty ? '' : type[0].toUpperCase() + type.substring(1),
-                            DifyType.systemXsMedium,
-                            color: DifyColors.textTertiary,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                spacing: 8,
-                                children: [
-                                  DifyText(
-                                    _tw('chatVariable.storedContent').toUpperCase(),
-                                    DifyType.systemXsMediumUppercase,
-                                    color: DifyColors.textTertiary,
-                                  ),
-                                  Expanded(
-                                    child: Container(
-                                      height: 1,
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [DifyRunDividerColors.start, DifyTailwind.white],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  if (ts != null && ts != 0)
-                                    Flexible(
-                                      child: DifyText(
-                                        _tw('chatVariable.updatedAt') +
-                                            (widget.formatTime ?? fmt.formatTime)(
-                                              ts,
-                                              DifyI18n.tr('app-log', 'dateTimeFormat'),
-                                            ),
-                                        DifyType.systemXsRegular,
-                                        color: DifyColors.textTertiary,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              child: isText
-                                  ? Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                      decoration: BoxDecoration(
-                                        color: DifyColors.componentsInputBgNormal,
-                                        borderRadius: BorderRadius.circular(DifyRadius.lg),
-                                      ),
-                                      child: SingleChildScrollView(
-                                        child: DifyText(
-                                          '${value ?? ''}',
-                                          DifyType.systemMdRegular,
-                                          color: DifyColors.componentsInputTextFilled,
-                                          maxLines: null,
-                                        ),
-                                      ),
-                                    )
-                                  : Container(
-                                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                                      decoration: BoxDecoration(
-                                        color: DifyColors.componentsInputBgNormal,
-                                        borderRadius: BorderRadius.circular(DifyRadius.lg),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                                        children: [
-                                          SizedBox(
-                                            height: 28,
-                                            child: Padding(
-                                              padding: const EdgeInsets.fromLTRB(12, 4, 8, 0),
-                                              child: Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: DifyText(
-                                                      'JSON',
-                                                      DifyType.systemXsSemibold,
-                                                      color: DifyColors.textSecondary,
-                                                    ),
-                                                  ),
-                                                  DifyPressable(
-                                                    semanticLabel: _tc('operation.copy'),
-                                                    onPressed: () {
-                                                      Clipboard.setData(ClipboardData(text: '${cur['value'] ?? ''}'));
-                                                      setState(() => _copied = true);
-                                                      Future.delayed(const Duration(seconds: 2), () {
-                                                        if (mounted) setState(() => _copied = false);
-                                                      });
-                                                    },
-                                                    builder: (context, h, f) => Padding(
-                                                      padding: const EdgeInsets.all(4),
-                                                      child: DifyIcon(
-                                                        _copied
-                                                            ? 'vender/line/files/copy-check'
-                                                            : 'vender/line/files/copy',
-                                                        size: 16,
-                                                        color: DifyColors.textTertiary,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(left: 16),
-                                              child: DifyCodeEditor(
-                                                readOnly: true,
-                                                noWrapper: true,
-                                                isExpand: true,
-                                                language: CodeLanguage.json,
-                                                value: value ?? '',
-                                                isJSONStringifyBeauty: true,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              Expanded(child: _valuePanel(cur, type, value, ts, isText)),
             ],
           ),
           Positioned(
@@ -851,5 +909,6 @@ class _ConversationVariableModalState extends State<ConversationVariableModal> {
         ],
       ),
     );
+    return Center(child: dialog);
   }
 }

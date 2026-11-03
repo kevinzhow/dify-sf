@@ -17,6 +17,13 @@ String _c(String key) => DifyI18n.tr('common', key);
 
 /// [builder]'s overlay on the root overlay while [open] (nothing otherwise): the backdrop, then the content. [onClose]
 /// runs on Escape and, with [dismissible], on a backdrop click.
+///
+/// A phone (a compact window; the shared dialog's policy, see [showDifyDialog]): with [sheetOnCompact] (a form: the
+/// annotation dialogs and drawers) the content is the dialog's sheet form in a [DifySheetPortal] (the portal keeps the
+/// page's scopes, which the owners' content reads): [DifyDialogFrame] tells its parts, and Back and Escape call
+/// [onClose] (the scrim and a drag down only with [dismissible]). Without it (a confirmation) the overlay stays centred,
+/// and Back calls [onClose] and only the overlay is read by assistive technology, as a confirmation route's. The form
+/// follows the live width.
 class ControlledOverlay extends StatefulWidget {
   const ControlledOverlay({
     super.key,
@@ -25,12 +32,13 @@ class ControlledOverlay extends StatefulWidget {
     this.onClose,
     this.dismissible = true,
     this.backdrop = true,
+    this.sheetOnCompact = false,
   });
 
   final bool open;
   final WidgetBuilder builder;
   final VoidCallback? onClose;
-  final bool dismissible, backdrop;
+  final bool dismissible, backdrop, sheetOnCompact;
 
   @override
   State<ControlledOverlay> createState() => _ControlledOverlayState();
@@ -38,6 +46,9 @@ class ControlledOverlay extends StatefulWidget {
 
 class _ControlledOverlayState extends State<ControlledOverlay> {
   final _portal = OverlayPortalController();
+
+  /// A phone's Back for a centred overlay.
+  late final _back = DifyBackStep(onDismiss: () => widget.onClose?.call());
 
   @override
   void initState() {
@@ -51,42 +62,87 @@ class _ControlledOverlayState extends State<ControlledOverlay> {
     _sync();
   }
 
+  @override
+  void dispose() {
+    _back.detach();
+    super.dispose();
+  }
+
   /// Shows or hides the portal after this frame (the controller may not change while building).
   void _sync() => WidgetsBinding.instance.addPostFrameCallback((_) {
     if (!mounted) return;
-    if (widget.open && !_portal.isShowing) _portal.show();
-    if (!widget.open && _portal.isShowing) _portal.hide();
+    final centred = !(widget.sheetOnCompact && DifyTouch.compactOf(context));
+    final show = widget.open && centred;
+    if (show && !_portal.isShowing) _portal.show();
+    if (!show && _portal.isShowing) _portal.hide();
+    if (show && DifyTouch.compactOf(context)) {
+      _back.attach(context);
+    } else {
+      _back.detach();
+    }
   });
 
   @override
-  Widget build(BuildContext context) => OverlayPortal(
+  Widget build(BuildContext context) {
+    final phone = DifyTouch.compactOf(context);
+    // The portal's state follows the width (a rotation).
+    _sync();
+    if (widget.sheetOnCompact && phone) {
+      return DifySheetPortal(
+        open: widget.open,
+        onDismiss: () => widget.onClose?.call(),
+        dismissible: widget.dismissible,
+        backDismissible: true,
+        detents: const [DifySheetDetent.full],
+        builder: (context) => DifyDialogFrame(
+          form: DifyDialogForm.sheet,
+          child: DifyModalLayer(child: Builder(builder: widget.builder)),
+        ),
+      );
+    }
+    final overlay = _overlay();
+    if (!phone) return overlay;
+    final modal = widget.open && _portal.isShowing;
+    return DifyPortalSemantics(
+      modal: modal,
+      child: OverlayPortal(
+        controller: _portal,
+        overlayChildBuilder: _overlayChild,
+        child: DifyPortalSemantics.place(modal: modal, child: const SizedBox.shrink()),
+      ),
+    );
+  }
+
+  Widget _overlay() => OverlayPortal(
     controller: _portal,
     // Inside the window's safe area, as when the app kept the whole navigator inside it.
-    overlayChildBuilder: (context) => DifyOverlaySafeArea(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (widget.backdrop)
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: widget.dismissible ? widget.onClose : null,
-                child: ColoredBox(color: DifyColors.backgroundOverlay),
-              ),
-            ),
-          CallbackShortcuts(
-            bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => widget.onClose?.call()},
-            child: FocusScope(
-              autofocus: true,
-              child: DifySurface(
-                child: Builder(builder: widget.builder),
-              ),
+    overlayChildBuilder: _overlayChild,
+    child: const SizedBox.shrink(),
+  );
+
+  Widget _overlayChild(BuildContext context) => DifyOverlaySafeArea(
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        if (widget.backdrop)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: widget.dismissible ? widget.onClose : null,
+              child: ColoredBox(color: DifyColors.backgroundOverlay),
             ),
           ),
-        ],
-      ),
+        CallbackShortcuts(
+          bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => widget.onClose?.call()},
+          child: FocusScope(
+            autofocus: true,
+            child: DifySurface(
+              child: Builder(builder: widget.builder),
+            ),
+          ),
+        ),
+      ],
     ),
-    child: const SizedBox.shrink(),
   );
 }
 
@@ -159,6 +215,7 @@ class AnnotationDialog extends StatelessWidget {
   Widget build(BuildContext context) => ControlledOverlay(
     open: open,
     onClose: onClose,
+    sheetOnCompact: true,
     builder: (context) => DifyDialogSurface(
       label: label,
       width: width,
@@ -201,54 +258,79 @@ class AnnotationDrawer extends StatelessWidget {
     open: true,
     dismissible: false,
     onClose: onClose,
-    builder: (context) => LayoutBuilder(
-      builder: (context, c) => Stack(
-        children: [
-          Positioned(
-            top: 64,
-            right: 8,
-            bottom: 12,
-            width: width.clamp(0, c.maxWidth - 16).toDouble(),
-            child: DifyDrawerPopup(
-              key: const ValueKey('annotation-drawer'),
-              label: label,
-              scopesRoute: true,
-              border: Border.all(color: DifyColors.dividerSubtle, width: Css.hairline),
-              borderRadius: BorderRadius.circular(DifyRadius.xl),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 24, right: 20),
-                      child: SizedBox(
-                        height: 24,
-                        child: Row(
-                          children: [
-                            Expanded(child: title),
-                            DifyIconButton(
-                              label: _c('operation.close'),
-                              size: DifyIconButtonSize.md,
-                              icon: const RemixIcon('close-line', size: 16),
-                              onPressed: onClose,
+    sheetOnCompact: true,
+    builder: (context) => DifyDialogFrame.sheetOf(context)
+        ? _sheet()
+        : LayoutBuilder(
+            builder: (context, c) => Stack(
+              children: [
+                Positioned(
+                  top: 64,
+                  right: 8,
+                  bottom: 12,
+                  width: width.clamp(0, c.maxWidth - 16).toDouble(),
+                  child: DifyDrawerPopup(
+                    key: const ValueKey('annotation-drawer'),
+                    label: label,
+                    scopesRoute: true,
+                    border: Border.all(color: DifyColors.dividerSubtle, width: Css.hairline),
+                    borderRadius: BorderRadius.circular(DifyRadius.xl),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 24, right: 20),
+                            child: SizedBox(
+                              height: 24,
+                              child: Row(
+                                children: [
+                                  Expanded(child: title),
+                                  DifyIconButton(
+                                    label: _c('operation.close'),
+                                    size: DifyIconButtonSize.md,
+                                    icon: const RemixIcon('close-line', size: 16),
+                                    onPressed: onClose,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                        Expanded(child: SingleChildScrollView(child: body)),
+                        ?footer,
+                      ],
                     ),
                   ),
-                  Expanded(child: SingleChildScrollView(child: body)),
-                  ?footer,
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+  );
+}
+
+/// A phone's form of an [AnnotationDrawer] (the dialog's sheet form): the sheet's header (named [AnnotationDrawer.label],
+/// its 44 px close), a title that is more than text (the view's tabs) under it, the body scrolling, the footer pinned.
+extension on AnnotationDrawer {
+  Widget _sheet() => DifyDialogSurface(
+    label: label,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DifyDialogTitle(title: label ?? '', onClose: onClose, child: const SizedBox.shrink()),
+        if (title is! DifyTextLine)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(height: 40, child: title),
+          ),
+        Flexible(child: SingleChildScrollView(child: body)),
+        ?footer,
+      ],
     ),
   );
 }

@@ -1132,6 +1132,7 @@ class DifySheetPortal extends StatefulWidget {
     this.initialDetent,
     this.controller,
     this.dismissible = true,
+    this.backDismissible,
     this.barrierLabel,
   });
 
@@ -1145,6 +1146,10 @@ class DifySheetPortal extends StatefulWidget {
   final DifySheetDetent? initialDetent;
   final DifySheetController? controller;
   final bool dismissible;
+
+  /// Whether Android back and Escape call [onDismiss] (default: [dismissible]); true with [dismissible] false is a
+  /// dialog whose outside clicks do not close it (Dify's `disablePointerDismissal`), as [showDifyBottomSheet]'s.
+  final bool? backDismissible;
   final String? barrierLabel;
 
   @override
@@ -1163,7 +1168,7 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
       }
     });
   late final _curved = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
-  late final _back = DifyBackStep(onDismiss: () => widget.onDismiss());
+  late final _back = DifyBackStep(onDismiss: _backDismiss);
 
   /// The content the sheet shows: rebuilt while open, kept while it closes.
   Widget? _content;
@@ -1174,10 +1179,16 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
     if (widget.open) _sync();
   }
 
+  bool get _backCloses => widget.backDismissible ?? widget.dismissible;
+
   @override
   void didUpdateWidget(DifySheetPortal old) {
     super.didUpdateWidget(old);
-    if (old.open != widget.open || old.dismissible != widget.dismissible) _sync();
+    if (old.open != widget.open ||
+        old.dismissible != widget.dismissible ||
+        old.backDismissible != widget.backDismissible) {
+      _sync();
+    }
   }
 
   @override
@@ -1198,7 +1209,7 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
       if (widget.open) {
         final opening = !_portal.isShowing || _anim.status == AnimationStatus.reverse;
         if (!_portal.isShowing) _portal.show();
-        if (widget.dismissible) {
+        if (_backCloses) {
           _back.attach(context);
         } else {
           _back.detach();
@@ -1220,6 +1231,11 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
 
   void _dismiss() {
     if (widget.open && widget.dismissible) widget.onDismiss();
+  }
+
+  /// Back and Escape.
+  void _backDismiss() {
+    if (widget.open && _backCloses) widget.onDismiss();
   }
 
   @override
@@ -1244,7 +1260,7 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
         actions: {
           DismissIntent: CallbackAction<DismissIntent>(
             onInvoke: (_) {
-              _dismiss();
+              _backDismiss();
               return null;
             },
           ),

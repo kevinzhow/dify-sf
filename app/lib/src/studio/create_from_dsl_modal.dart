@@ -104,6 +104,12 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
   /// The version confirmation takes the focus while it is open (an AlertDialog's focus trap).
   final _confirmScope = FocusScopeNode(debugLabel: 'dsl confirm');
 
+  /// A phone (the dialog is a sheet): the version confirmation is the dialog primitive's centred confirmation over the
+  /// window ([showDifyAlertDialog]: Back and Escape cancel it unless it is confirming), not a layer inside the sheet.
+  /// [_confirmingNow] tells it the progress; [_confirmContext] is its route while it is open.
+  final _confirmingNow = ValueNotifier(false);
+  BuildContext? _confirmContext;
+
   /// Base UI's tabs: only the active tab is in the Tab order (roving tabindex).
   final _tabNodes = {
     CreateFromDSLModalTab.fromFile: FocusNode(debugLabel: 'dsl file tab'),
@@ -123,6 +129,7 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
   void dispose() {
     _browse.dispose();
     _confirmScope.dispose();
+    _confirmingNow.dispose();
     for (final n in _tabNodes.values) {
       n.dispose();
     }
@@ -160,13 +167,16 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
   Future<void> _handleResponse(AppImport response) async {
     if (response.completed) return _completed(response);
     if (response.pending) {
-      setState(
-        () => _pending = (
-          id: response.id,
-          importedVersion: response.importedDslVersion,
-          systemVersion: response.currentDslVersion,
-        ),
+      final pending = (
+        id: response.id,
+        importedVersion: response.importedDslVersion,
+        systemVersion: response.currentDslVersion,
       );
+      setState(() => _pending = pending);
+      if (DifyDialogFrame.sheetOf(context)) {
+        unawaited(_askOnPhone(pending));
+        return;
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _pending != null) _confirmScope.requestFocus();
       });
@@ -207,16 +217,49 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
     }
   }
 
+  Future<void> _askOnPhone(({String id, String importedVersion, String systemVersion}) pending) async {
+    await showDifyAlertDialog<void>(
+      context,
+      builder: (dialog) {
+        _confirmContext = dialog;
+        return ValueListenableBuilder<bool>(
+          valueListenable: _confirmingNow,
+          builder: (context, confirming, _) => PopScope(
+            canPop: !confirming,
+            child: DSLConfirmModal(
+              importedVersion: pending.importedVersion,
+              systemVersion: pending.systemVersion,
+              confirmLoading: confirming,
+              onCancel: () {
+                if (!confirming) Navigator.of(dialog).pop();
+              },
+              onConfirm: () => unawaited(_confirm()),
+            ),
+          ),
+        );
+      },
+    );
+    _confirmContext = null;
+    if (mounted && !_confirming && identical(_pending, pending)) setState(() => _pending = null);
+  }
+
+  void _setConfirming(bool v) {
+    setState(() => _confirming = v);
+    _confirmingNow.value = v;
+  }
+
   Future<void> _confirm() async {
     final pending = _pending;
     if (pending == null || _confirming) return;
-    setState(() => _confirming = true);
+    _setConfirming(true);
     try {
       final response = await widget.confirmImport(pending.id);
       if (!mounted) return;
-      setState(() => _confirming = false);
+      _setConfirming(false);
       if (response.completed) {
         setState(() => _pending = null);
+        // A phone's confirmation is a route over the dialog: it goes first, then the dialog.
+        if (_confirmContext case final c? when c.mounted) Navigator.of(c).pop();
         await _completed(response);
         return;
       }
@@ -224,7 +267,7 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
     } on Object {
       toast.error(_a('newApp.appCreateFailed'));
     } finally {
-      if (mounted && _confirming) setState(() => _confirming = false);
+      if (mounted && _confirming) _setConfirming(false);
     }
   }
 
@@ -362,6 +405,8 @@ class _CreateFromDSLModalState extends State<CreateFromDSLModal> {
     final pending = _pending;
     // A click outside (or the route's Escape) does not close the dialog while it imports or asks to confirm.
     if (pending == null) return PopScope(canPop: !_importing, child: dialog);
+    // A phone asks over the window (_askOnPhone).
+    if (DifyDialogFrame.sheetOf(context)) return PopScope(canPop: false, child: dialog);
     return PopScope(
       canPop: false,
       child: CallbackShortcuts(
