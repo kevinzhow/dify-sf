@@ -313,7 +313,7 @@ struct AgentCodexWebSocketTests {
         }
     }
 
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["AGENT_CODEX_BINARY"] != nil), arguments: ["eof", "reset", "twice"])
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["AGENT_CODEX_BINARY"] != nil), arguments: ["eof", "reset", "twice", "partial", "arguments_done", "custom_partial", "background"])
     func actualCodexRecoversOnceWithoutRepeatingAnExecutedTool(failure: String) async throws {
         let provider = try await CodexWSProvider.start(failure: failure)
         defer { provider.process.terminate(); provider.process.waitUntilExit() }
@@ -351,6 +351,7 @@ struct AgentCodexWebSocketTests {
                 #expect(calls[1]["previous"] == "resp_ws_1")
                 #expect(calls[2]["connection"] == 2 && calls[2]["previous"] == .null)
                 #expect(calls[2]["toolResults"] == ["call_ws_1"])
+                if failure == "background" { #expect(calls[2]["runningToolResult"] == true) }
                 #expect(calls[3]["previous"] == "resp_ws_3")
                 // Failed calls consume slots too; neither reconnect nor a second failure resets the ceiling.
                 let next = try await routes.agentModelScopes.claimCodex(token: token); #expect(next.index == 5)

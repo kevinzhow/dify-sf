@@ -108,6 +108,7 @@ struct AgentCodexSocketCheckpoint: Sendable {
     var parameters: String?
     var pendingTools: Set<String> = []
     var unsafe = false
+    var announcedTools = 0
 }
 
 enum AgentCodexTransportLoss: Error { case eof, closeFrame, reset }
@@ -129,8 +130,8 @@ actor AgentCodexSocketSession {
     private var received = 0
     private var sent = 0
     private var usage: LLMUsage?
-    private var pendingTools: Set<String> = []
-    private var unsafeRecovery = false
+    private var tools = AgentCodexToolCheckpoint()
+    private var executionID = ""
     private var recovery: AgentCodexSocketCheckpoint?
 
     init(routes: Routes, token: String, lane: String, connection: AgentResponsesConnection, recovery: AgentCodexSocketCheckpoint? = nil) {
@@ -147,6 +148,7 @@ actor AgentCodexSocketSession {
         fields["type"] = nil
         let scope = try await routes.agentModelScopes.activeScope(token: token)
         try await routes.requireActiveAgentCodexScope(scope)
+        executionID = scope.executionID
         var request = try AgentResponsesRequest(codexBody: .object(fields), scope: scope, incremental: true)
         request.body["input"] = try await routes.normalizeAgentResponsesFiles(request.body["input"]!, scope: scope, allowInline: true)
         let previous = request.body["previous_response_id"]?.string
@@ -159,8 +161,9 @@ actor AgentCodexSocketSession {
         for item in request.body["input"]?.array ?? [] {
             if ["function_call_output", "custom_tool_call_output"].contains(item["type"]?.string ?? ""),
                let id = item["call_id"]?.string {
-                pendingTools.remove(id)
-                recovery?.pendingTools.remove(id)
+                let live = tools.acknowledge(id)
+                let restored = recovery?.pendingTools.remove(id) != nil
+                if live || restored { logTools(phase: "acknowledged", id: id) }
             }
         }
         if let checkpoint = recovery, request.body["generate"] != false {
@@ -168,8 +171,10 @@ actor AgentCodexSocketSession {
                 throw AgentCodexSocketError(status: 400, code: "agent_recovery_parameters_changed")
             }
             guard checkpoint.pendingTools.isEmpty, !checkpoint.unsafe else {
+                logTools(phase: "recovery_refused", checkpoint: checkpoint)
                 throw AgentCodexSocketError(status: 400, code: "agent_recovery_tool_result_unknown")
             }
+            logTools(phase: "recovery_ready", checkpoint: checkpoint)
             recovery = nil
         }
         if let previous {
@@ -234,15 +239,19 @@ actor AgentCodexSocketSession {
             routes.logger.info("codex websocket event type=\(type) bytes=\(bytes.count) status=\(status) code=\(code) warmup=\(body["generate"] == false)")
         }
         if let raw = value["response"]?["usage"], raw.object != nil { usage = LLMUsage(json: raw) }
-        func tool(_ item: JSONValue) {
-            guard let itemType = item["type"]?.string, itemType.hasSuffix("_call") else { return }
-            guard let id = item["call_id"]?.string, !id.isEmpty, id.utf8.count <= 256, pendingTools.count < 256 else {
-                unsafeRecovery = true; return
+        func tool(_ item: JSONValue, complete: Bool) {
+            if let observed = tools.observe(item, complete: complete) {
+                logTools(phase: observed.phase.rawValue, id: observed.id)
             }
-            pendingTools.insert(id)
         }
-        if ["response.output_item.added", "response.output_item.done"].contains(type), let item = value["item"] { tool(item) }
-        for item in value["response"]?["output"]?.array ?? [] { tool(item) }
+        if ["response.output_item.added", "response.output_item.done"].contains(type), let item = value["item"] {
+            tool(item, complete: type == "response.output_item.done")
+        }
+        // Retain the conservative terminal-output fallback, but an in-progress
+        // response's output is not proof that a tool was dispatched.
+        if ["response.completed", "response.incomplete", "response.failed"].contains(type) {
+            for item in value["response"]?["output"]?.array ?? [] { tool(item, complete: true) }
+        }
         if ["response.completed", "response.incomplete", "response.failed", "error"].contains(type) {
             guard busy else { throw AgentCodexSocketError(status: 502, code: "agent_model_protocol") }
             if type == "response.completed" {
@@ -277,7 +286,18 @@ actor AgentCodexSocketSession {
     }
 
     func checkpoint() -> AgentCodexSocketCheckpoint {
-        .init(parameters: parameters, pendingTools: pendingTools, unsafe: unsafeRecovery)
+        .init(parameters: parameters, pendingTools: tools.pending, unsafe: tools.unsafe, announcedTools: tools.announced.count)
+    }
+
+    private func logTools(phase: String, id: String? = nil, checkpoint: AgentCodexSocketCheckpoint? = nil) {
+        let state = checkpoint ?? recovery
+        var fields = AgentCodexToolCheckpoint.metadata(phase: phase,
+            pending: state?.pendingTools ?? tools.pending,
+            announced: state?.announcedTools ?? tools.announced.count,
+            unsafe: state?.unsafe ?? tools.unsafe, id: id)
+        fields["execution_id"] = .string(executionID)
+        fields["lane_ref"] = .string(Tokens.sha256(lane))
+        routes.logger.info("codex websocket tool checkpoint", metadata: fields)
     }
 
     func finish(succeeded: Bool = false, status: Int = 502) async {

@@ -1536,9 +1536,22 @@ WebSocket operations only, an upstream EOF, reset or close can then reserve **on
 execution**, shared by root and child lanes and retained across capability replacement. The API closes the lost
 socket without a terminal error, allowing the unchanged live Codex process to reconnect with its own full input.
 It preserves the current workspace and completed tool results; the API never reruns tools or caches history.
-The replacement's first generation must keep the same request parameters and include results for every observed
-unfinished tool call. Missing/ambiguous results fail with `agent_recovery_tool_result_unknown` before another
-model-call slot is spent. This is a conservative guard, not an exactly-once guarantee for arbitrary external tools.
+The replacement's first generation must keep the same request parameters and include results for every tool
+that could have been dispatched. In the pinned native client, `response.output_item.done` queues execution;
+`response.output_item.added`, argument/input deltas and argument/input-done events alone do not. A function or
+custom tool that is only announced therefore does not require a result after a lost stream. Terminal response
+outputs remain a conservative fallback, and unknown tool protocols or invalid dispatch identities still prevent
+recovery. Missing/ambiguous results for dispatchable tools fail with `agent_recovery_tool_result_unknown` before
+another model-call slot is spent. A returned background process/session handle is a real tool result even while
+its command is running; the current process is retained, never automatically rerun. This is a conservative guard,
+not an exactly-once guarantee for arbitrary external tools. The dispatch boundary is covered with the unchanged
+native client and a fake upstream; see pinned Codex's
+[stream event parser](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/codex-api/src/sse/responses.rs) and
+[tool dispatch](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/core/src/stream_events_utils.rs).
+
+Tool checkpoint logs distinguish announced, dispatchable, acknowledged and recovery-ready/refused stages.
+They include execution identity, hashed lane/tool identities, counts and at most eight pending identity hashes;
+no names, arguments, outputs or conversation bodies are recorded. Identity sets are bounded to 256 entries.
 The next accepted generation is audited with `recovery_attempt: 1`; subsequent requests resume incremental mode.
 
 The failed call and the recovery both consume the existing call budget. File, request, output and time limits do

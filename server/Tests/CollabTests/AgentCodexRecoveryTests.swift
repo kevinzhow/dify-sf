@@ -108,7 +108,7 @@ struct AgentCodexRecoveryTests {
         do { _ = try await expiring.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint); Issue.record("Expired scope recovered") } catch {}
     }
 
-    @Test(arguments: [false, true]) func partialToolCallRequiresItsActualResultBeforeAnotherGeneration(resultKnown: Bool) async throws {
+    @Test(arguments: [false, true], ["function_call", "custom_tool_call"]) func dispatchedToolRequiresItsActualResultBeforeAnotherGeneration(resultKnown: Bool, kind: String) async throws {
         try await withFakeDaemon { daemon, _ in
             try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
                 let (scope, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: "http://127.0.0.1:1")
@@ -119,12 +119,12 @@ struct AgentCodexRecoveryTests {
                 let old = AgentCodexSocketSession(routes: routes, token: token, lane: "root", connection: connection)
                 var body = AgentResponsesTests.body(scope).object!; body["type"] = "response.create"
                 _ = try await old.prepare(JSONValue.object(body).compactData())
-                _ = try await old.observe(JSONValue.object(["type": "response.output_item.done", "item": ["type": "function_call", "call_id": "side-effect", "name": "exec_command", "arguments": "{}"]]).compactData())
+                _ = try await old.observe(JSONValue.object(["type": "response.output_item.done", "item": ["type": .string(kind), "call_id": "side-effect", "name": "exec_command", "arguments": "{}"]]).compactData())
                 await old.finish()
                 let checkpoint = await old.checkpoint(); #expect(checkpoint.pendingTools == ["side-effect"])
                 let recovered = AgentCodexSocketSession(routes: routes, token: token, lane: "root", connection: connection, recovery: checkpoint)
                 if resultKnown {
-                    body["input"] = .array((body["input"]?.array ?? []) + [["type": "function_call_output", "call_id": "side-effect", "output": "completed"]])
+                    body["input"] = .array((body["input"]?.array ?? []) + [["type": .string(kind == "function_call" ? "function_call_output" : "custom_tool_call_output"), "call_id": "side-effect", "output": "Process running with session ID 123"]])
                     _ = try await recovered.prepare(JSONValue.object(body).compactData())
                     await recovered.finish()
                     let next = try await routes.agentModelScopes.claimCodex(token: token); #expect(next.index == 3)
@@ -136,4 +136,33 @@ struct AgentCodexRecoveryTests {
             }
         }
     }
+    @Test(arguments: ["function_call", "custom_tool_call"])
+    func announcedToolWithOnlyArgumentsDoneCanRecoverWithoutAnExecutionResult(kind: String) async throws {
+        try await withFakeDaemon { daemon, _ in
+            try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                let (scope, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: "http://127.0.0.1:1")
+                let connection = try AgentResponsesConnection(provider: AgentModelWire.compatible, model: scope.model,
+                    credentials: ["api_type": "responses", "endpoint_url": "http://127.0.0.1:1", "api_key": "fixture-key"])
+                let task = Self.idle(); defer { task.cancel() }
+                try await routes.agentModelScopes.openCodexSocket(token: token, lane: "root", id: "one", task: task)
+                let old = AgentCodexSocketSession(routes: routes, token: token, lane: "root", connection: connection)
+                var body = AgentResponsesTests.body(scope).object!; body["type"] = "response.create"
+                _ = try await old.prepare(JSONValue.object(body).compactData())
+                let item: JSONValue = ["type": .string(kind), "id": "item-partial", "call_id": "not-dispatched",
+                    "name": "exec_command", "arguments": "", "input": ""]
+                _ = try await old.observe(JSONValue.object(["type": "response.output_item.added", "item": item]).compactData())
+                _ = try await old.observe(JSONValue.object(["type": .string(kind == "function_call" ? "response.function_call_arguments.done" : "response.custom_tool_call_input.done"),
+                    "item_id": "item-partial", "arguments": "{}", "input": "partial command"]).compactData())
+                await old.finish()
+                let checkpoint = await old.checkpoint()
+                #expect(checkpoint.pendingTools.isEmpty)
+                #expect(!checkpoint.unsafe)
+                let recovered = AgentCodexSocketSession(routes: routes, token: token, lane: "root", connection: connection, recovery: checkpoint)
+                _ = try await recovered.prepare(JSONValue.object(body).compactData())
+                await recovered.finish()
+                let next = try await routes.agentModelScopes.claimCodex(token: token); #expect(next.index == 3)
+            }
+        }
+    }
+
 }
