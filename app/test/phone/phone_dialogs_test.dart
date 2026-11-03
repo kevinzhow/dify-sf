@@ -3,6 +3,7 @@
 // reference Knowledge, Email Configuration with a picker over it, Create from Blank; Start's input rows (tap edits,
 // "…" and a long press: Edit, Delete with Dify's confirmation, Move up / down), and the other touch rows.
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' show CheckedState, SemanticsAction;
 
 import 'package:collab_client/collab_client.dart' show Document, Edge, Node;
@@ -938,33 +939,46 @@ void main() {
   });
 
   group('emulator recheck 3', () {
-    testWidgets('leftover 1: at 360 dp the webhook name column reads its title and the start of its placeholder', (
-      t,
-    ) async {
-      await _app(
-        t,
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
-          child: ParameterTable(
-            title: 'Query Parameters',
-            parameters: const [
-              {'name': 'city', 'type': 'string', 'required': true},
-            ],
-            onChange: (_) {},
+    for (final size in phoneSizes) {
+      testWidgets('leftover 1: at ${size.width.toInt()} dp the webhook columns read whole: "VARIABLE NAME", the type '
+          'values (String, Number, Boolean) and the start of the name placeholder', (t) async {
+        // The select's values are in the platform's font (Android's Roboto), not the test's square fallback.
+        await t.runAsync(() async {
+          final roboto = File(
+            '${Platform.environment['FLUTTER_ROOT']}/bin/cache/artifacts/material_fonts/Roboto-Regular.ttf',
+          ).readAsBytes();
+          await (FontLoader('Roboto')..addFont(roboto.then(ByteData.sublistView))).load();
+        });
+        await _app(
+          t,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+            child: ParameterTable(
+              title: 'Query Parameters',
+              parameters: const [
+                {'name': 'city', 'type': 'string', 'required': true},
+                {'name': 'days', 'type': 'number', 'required': false},
+                {'name': 'flag', 'type': 'boolean', 'required': false},
+              ],
+              onChange: (_) {},
+            ),
           ),
-        ),
-        size: const Size(360, 780),
-      );
-      final header = t.renderObject<RenderParagraph>(
-        find.descendant(of: find.text('VARIABLE NAME'), matching: find.byType(RichText), matchRoot: true).first,
-      );
-      expect(header.didExceedMaxLines, isFalse, reason: 'the title is not cut ("VARIABL…")');
-      final placeholder = find.text('Enter variable name...');
-      final field = t.getSize(find.ancestor(of: placeholder, matching: find.byType(DifyTextField)).first);
-      expect(field.width, greaterThanOrEqualTo(100), reason: 'room for "Enter variable": $field');
-      expect(t.getSize(find.byType(DifyCheckbox).first).width, 16);
-      expect(t.takeException(), isNull);
-    });
+          size: size,
+        );
+        RenderParagraph paragraph(Finder text) => t.renderObject<RenderParagraph>(
+          find.descendant(of: text, matching: find.byType(RichText), matchRoot: true).first,
+        );
+        expect(paragraph(find.text('VARIABLE NAME')).didExceedMaxLines, isFalse, reason: 'not "VARIABL…"');
+        for (final type in ['String', 'Number', 'Boolean']) {
+          final label = find.descendant(of: find.byType(ParameterTable), matching: find.text(type));
+          expect(paragraph(label).didExceedMaxLines, isFalse, reason: '$type is not cut ("Num…")');
+        }
+        final placeholder = find.text('Enter variable name...');
+        final field = t.getSize(find.ancestor(of: placeholder, matching: find.byType(DifyTextField)).first);
+        expect(field.width, greaterThanOrEqualTo(100), reason: 'room for "Enter variable": $field');
+        expect(t.takeException(), isNull);
+      });
+    }
 
     testWidgets('leftover 2: Name this version\'s Title field is named "Title", its placeholder the hint', (t) async {
       final semantics = t.ensureSemantics();

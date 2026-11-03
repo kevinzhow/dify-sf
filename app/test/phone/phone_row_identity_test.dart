@@ -4,7 +4,7 @@
 // its own change on the latest list (rows added or changed meanwhile survive). At 411x914.
 //
 // The first seven cases are Winnie's review tests (pr90_row_identity_review2_test.dart: 4, review7: 1, review8: 2),
-// adapted to this suite's harness; her review17 (a webhook cell's type picker) is in the last group.
+// adapted to this suite's harness; her review17, review25 and review32 are in the groups below.
 
 import 'package:dify_sf_app/src/design/dify_theme.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
@@ -653,5 +653,209 @@ void main() {
       expect(t.takeException(), isNull);
       await unmount(t);
     });
+  });
+
+  group('a keystroke and another user\'s change in the same frame', () {
+    /// A name-only table; [update] is the other client's change, [rows] the owner's list.
+    Future<StateSetter> pumpNames(WidgetTester t, List<_Json> Function() rows, void Function(List<_Json>) set) async {
+      phoneWindow(t);
+      late StateSetter update;
+      await t.pumpWidget(
+        DifyApplication(
+          theme: difyTheme(),
+          home: DifyPage(
+            edgeToEdge: true,
+            body: StatefulBuilder(
+              builder: (context, s) {
+                update = s;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+                  child: GenericTable(
+                    title: 'Parameters',
+                    columns: const [TableColumn(key: 'name', title: 'Name', type: ColumnType.input)],
+                    data: rows(),
+                    onChange: (next) => update(() => set(next)),
+                    emptyRowData: const {'name': ''},
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await settle(t, 400);
+      return update;
+    }
+
+    /// Types [text] into the focused field through the platform's text input (no frame yet).
+    Future<void> keystroke(WidgetTester t, String text) async {
+      t.testTextInput.updateEditingValue(
+        TextEditingValue(
+          text: text,
+          selection: TextSelection.collapsed(offset: text.length),
+        ),
+      );
+      await Future<void>.value();
+    }
+
+    Finder field(String text) => find.byWidgetPredicate((w) => w is EditableText && w.controller.text == text);
+
+    testWidgets('a keystroke in alpha, then (before the table rebuilds) another user deletes alpha and puts a new row '
+        'at its index: the new row is not alpha (no focus, no keystroke into it)', (t) async {
+      var rows = <_Json>[
+        {'name': 'alpha'},
+        {'name': 'beta'},
+      ];
+      final update = await pumpNames(t, () => rows, (next) => rows = next);
+      await t.tap(field('alpha'));
+      await settle(t, 300);
+      await keystroke(t, 'alphax');
+      expect(rows.first, {'name': 'alphax'}, reason: 'the keystroke reached the owner; the table has not rebuilt');
+      final replacement = <_Json>[
+        {'name': 'new'},
+        {'name': 'beta'},
+      ];
+      update(() => rows = replacement);
+      await t.pump();
+      await settle(t, 300);
+      final newField = t.widget<EditableText>(field('new'));
+      expect(newField.focusNode.hasFocus, isFalse, reason: "alpha's field is not handed to the new row");
+      if (t.testTextInput.hasAnyClients) await keystroke(t, 'alphaxy');
+      await settle(t, 300);
+      expect(rows, replacement, reason: 'nothing typed into the new row');
+      expect(t.takeException(), isNull);
+      await unmount(t);
+    });
+
+    testWidgets('a keystroke in beta, then (before the table rebuilds) another user inserts a row above beta: beta '
+        'keeps its field, the focus and the caret; the next keystrokes land in beta', (t) async {
+      var rows = <_Json>[
+        {'name': 'alpha'},
+        {'name': 'beta'},
+      ];
+      final update = await pumpNames(t, () => rows, (next) => rows = next);
+      await t.tap(field('beta'));
+      await settle(t, 300);
+      final node = t.widget<EditableText>(field('beta')).focusNode;
+      await keystroke(t, 'betax');
+      // The other client's list holds this client's keystroke (the document merged it) and a row above beta.
+      update(
+        () => rows = [
+          {'name': 'new'},
+          ...rows,
+        ],
+      );
+      await t.pump();
+      await settle(t, 300);
+      expect(node.hasFocus, isTrue, reason: 'beta keeps the focus');
+      final beta = t.widget<EditableText>(field('betax'));
+      expect(beta.focusNode, same(node));
+      expect(beta.controller.selection, const TextSelection.collapsed(offset: 5), reason: 'the caret');
+      await keystroke(t, 'betaxy');
+      await settle(t, 300);
+      expect([for (final r in rows) r['name']], ['new', 'alpha', 'betaxy']);
+
+      // The same when the other client's list does not hold the keystroke yet (beta by its old name).
+      await keystroke(t, 'betaxyz');
+      update(
+        () => rows = [
+          {'name': 'top'},
+          {'name': 'new'},
+          {'name': 'alpha'},
+          {'name': 'betaxy'},
+        ],
+      );
+      await t.pump();
+      await settle(t, 300);
+      expect(node.hasFocus, isTrue, reason: 'beta (by its name before the keystroke) keeps the focus');
+      await keystroke(t, 'betaxy!');
+      await settle(t, 300);
+      expect([for (final r in rows) r['name']], ['top', 'new', 'alpha', 'betaxy!']);
+      expect(t.takeException(), isNull);
+      await unmount(t);
+    });
+
+    // Winnie's pr90_coalesced_edit_review32_test.dart, adapted to this suite's harness.
+    for (final replaced in [false, true]) {
+      testWidgets('coalesced local name input and external update preserve the original target; replaced=$replaced', (
+        t,
+      ) async {
+        phoneWindow(t);
+        var rows = <_Json>[
+          {'name': 'alpha', 'type': 'string'},
+          {'name': 'beta', 'type': 'string', 'description': 'old'},
+        ];
+        late StateSetter update;
+        var writes = 0;
+        try {
+          await t.pumpWidget(
+            DifyApplication(
+              theme: difyTheme(),
+              home: DifyPage(
+                edgeToEdge: true,
+                body: StatefulBuilder(
+                  builder: (context, set) {
+                    update = set;
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+                      child: GenericTable(
+                        title: 'Parameters',
+                        columns: const [TableColumn(key: 'name', title: 'Name', type: ColumnType.input)],
+                        data: rows,
+                        onChange: (next) => update(() {
+                          rows = next;
+                          writes++;
+                        }),
+                        emptyRowData: const {'name': ''},
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+          await settle(t, 400);
+          final first = find.byType(EditableText).first;
+          await t.tap(first);
+          await settle(t, 200);
+          // Both setState calls happen before a frame: the second document is not an echo of our local write.
+          t.testTextInput.updateEditingValue(
+            const TextEditingValue(text: 'alpha1', selection: TextSelection.collapsed(offset: 6)),
+          );
+          expect(writes, 1);
+          final next = <_Json>[
+            {'name': replaced ? 'new' : 'alpha1', 'type': 'string'},
+            {'name': 'beta', 'type': 'string', 'description': 'updated'},
+          ];
+          update(() => rows = next);
+          await settle(t, 300);
+          if (t.testTextInput.hasAnyClients) {
+            t.testTextInput.updateEditingValue(
+              const TextEditingValue(text: 'alpha12', selection: TextSelection.collapsed(offset: 7)),
+            );
+            await settle(t, 300);
+          }
+          if (replaced) {
+            expect(
+              rows,
+              next,
+              reason:
+                  'an external replacement is not our pending local rename acknowledgment; stale typing must not '
+                  'write new',
+            );
+            expect(writes, 1, reason: 'only the local input before the replacement may write');
+          } else {
+            expect(rows, [
+              {'name': 'alpha12', 'type': 'string'},
+              {'name': 'beta', 'type': 'string', 'description': 'updated'},
+            ], reason: 'the surviving original keeps focus and beta keeps the new value');
+            expect(writes, 2);
+          }
+          expect(t.takeException(), isNull);
+        } finally {
+          await unmount(t);
+        }
+      });
+    }
   });
 }

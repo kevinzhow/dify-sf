@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 
+import '../../../../../design/dify_fonts.dart';
 import '../../../../../design/dify_icon.dart';
 import '../../../../../design/dify_tokens.g.dart';
 import '../../../../../design/widgets/widgets.dart';
@@ -109,43 +110,57 @@ class _GenericTableState extends State<GenericTable> {
   /// Each data row's identity, in step with [GenericTable.data]: the rows are keyed by it (an open select, a focused
   /// field and the "…" stay with their row when rows are added, removed or moved above it), and every edit finds its
   /// row by it when it applies. The rows are plain maps without ids: identities follow them across a new list by the
-  /// row's key, then its content, then its place ([_follow]).
+  /// row's key, then its content, and the row this table just wrote by the value it wrote ([_follow]).
   late List<Object> _ids = [for (final _ in widget.data) Object()];
 
   /// The identity of the trailing virtual row; a value typed there appends a row that keeps it (the field keeps the
   /// focus), and a new virtual row gets a new one.
   Object _virtual = Object();
 
-  /// What this table last handed to [GenericTable.onChange] and its rows' identities: the base the next list is
-  /// matched against (it may come back normalised, or with a row renamed by that very edit).
-  ({List<Json> data, List<Object> ids})? _sent;
+  /// What this table last handed to [GenericTable.onChange], its rows' identities and the cell it wrote ([edit]; none
+  /// for a removal): until the next list comes, the rows may be known by what was sent (a name typed into the row)
+  /// as well as by what was shown.
+  ({List<Json> data, List<Object> ids, ({int index, String key, Object? value})? edit})? _sent;
 
   @override
   void didUpdateWidget(GenericTable old) {
     super.didUpdateWidget(old);
     if (!identical(old.data, widget.data)) {
       final sent = _sent;
-      _ids = sent == null ? _follow(old.data, _ids, widget.data) : _follow(sent.data, sent.ids, widget.data, own: true);
+      _ids = _follow(
+        [
+          if (sent != null)
+            for (final (i, r) in sent.data.indexed) (row: r, id: sent.ids[i]),
+          for (final (i, r) in old.data.indexed) (row: r, id: _ids[i]),
+        ],
+        widget.data,
+        edit: sent?.edit,
+      );
       if (_ids.contains(_virtual)) _virtual = Object();
     }
     _sent = null;
   }
 
-  /// The identities of [next]'s rows: each takes the identity of the first unclaimed row of [data] with the same
-  /// key, else the same content; after this table's [own] edit (the list it sent, maybe normalised by its owner) also
-  /// the row at the same place. Any other row is new: a row another user put where a removed one was is not that row
-  /// (its open select closes, its pending action writes nothing).
-  List<Object> _follow(List<Json> data, List<Object> ids, List<Json> next, {bool own = false}) {
+  /// The identities of [next]'s rows. Each takes the identity of the first unclaimed [known] row (as sent, then as
+  /// shown) with the same key, else the same content. Only the row this table's own last [edit] wrote may also be
+  /// known by its place, and only if the row there now holds the value written (the owner may have normalised the
+  /// rest of it). Any other row is new: a row another user put where a removed one was, also in the same frame as a
+  /// keystroke, is not that row (its open select closes, its focused field goes, its pending action writes nothing).
+  List<Object> _follow(
+    List<({Json row, Object id})> known,
+    List<Json> next, {
+    ({int index, String key, Object? value})? edit,
+  }) {
     final primary = _primaryKey;
-    final free = List<bool>.filled(data.length, true);
+    final taken = <Object>{};
     final out = List<Object?>.filled(next.length, null);
     void claim(bool Function(Json a, Json b) same) {
       for (final (i, row) in next.indexed) {
         if (out[i] != null) continue;
-        for (var j = 0; j < data.length; j++) {
-          if (free[j] && same(data[j], row)) {
-            free[j] = false;
-            out[i] = ids[j];
+        for (final k in known) {
+          if (!taken.contains(k.id) && same(k.row, row)) {
+            taken.add(k.id);
+            out[i] = k.id;
             break;
           }
         }
@@ -154,19 +169,15 @@ class _GenericTableState extends State<GenericTable> {
 
     claim((a, b) => _present(b[primary]) && '${a[primary]}' == '${b[primary]}');
     claim(mapEquals);
-    if (own) {
-      for (final (i, _) in next.indexed) {
-        if (out[i] == null && i < data.length && free[i]) {
-          free[i] = false;
-          out[i] = ids[i];
-        }
-      }
+    if (edit case (:final index, :final key, :final value) when index < next.length && out[index] == null) {
+      final id = known[index].id;
+      if (!taken.contains(id) && '${next[index][key] ?? ''}' == '${value ?? ''}') out[index] = id;
     }
     return [for (final id in out) id ?? Object()];
   }
 
-  void _send(List<Json> data, List<Object> ids) {
-    _sent = (data: data, ids: ids);
+  void _send(List<Json> data, List<Object> ids, [({int index, String key, Object? value})? edit]) {
+    _sent = (data: data, ids: ids, edit: edit);
     widget.onChange(data);
   }
 
@@ -183,14 +194,19 @@ class _GenericTableState extends State<GenericTable> {
           {...widget.emptyRowData, key: value},
         ],
         [..._ids, _virtual],
+        (index: data.length, key: key, value: value),
       );
       return;
     }
     final index = _ids.indexOf(id);
     if (index < 0) return;
-    _send([
-      for (final (i, r) in data.indexed) i == index ? {...r, key: value} : r,
-    ], _ids);
+    _send(
+      [
+        for (final (i, r) in data.indexed) i == index ? {...r, key: value} : r,
+      ],
+      _ids,
+      (index: index, key: key, value: value),
+    );
   }
 
   /// Deletes the row [id] from the table as it is when the action runs (a phone's action sheet may have been open
@@ -238,19 +254,80 @@ class _GenericTableState extends State<GenericTable> {
     };
   }
 
-  /// A phone's column widths: the select and the toggle compact (their values and the 48 px checkbox still fit), so
-  /// the name column takes the rest and its title and placeholder read at 360 dp.
-  static double? _phoneWidth(TableColumn c) => switch ((c.type, c.width)) {
-    (ColumnType.select, final w?) => math.min(w, 88),
-    (ColumnType.toggle, final w?) => math.min(w, 76),
-    (_, final w) => w,
-  };
+  /// A phone's column widths for a table [tableWidth] wide, measured with the text as it is drawn (font and text
+  /// scale): a select as wide as its longest value with its chevron, a toggle as wide as its title (at least its 48 px
+  /// checkbox), at most Dify's widths; the name column takes the rest. Should that leave the name column narrower than
+  /// its title, the selects give way (their longest values then end in "…", not the name column's title).
+  Map<TableColumn, double?> _phoneWidths(BuildContext context, double tableWidth, {required bool moreColumn}) {
+    final base = DefaultTextStyle.of(context).style;
+    final scaler = MediaQuery.textScalerOf(context);
+    double measure(String text, TextStyle style) {
+      final painter = TextPainter(
+        // As DifyText / DifyTextLine draw it (the resolved family and fallbacks).
+        text: TextSpan(text: text, style: DifyFonts.resolveStyle(base.merge(style))),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      final width = painter.width;
+      painter.dispose();
+      return width;
+    }
 
-  Widget _sized(TableColumn c, bool last, Widget child, bool phone) {
-    final width = phone ? _phoneWidth(c) : c.width;
+    // The header as DifyText draws it (its own family, upper-cased); a value as the select's DifyTextLine does.
+    final header = difyStyle(DifyType.systemXsMediumUppercase, DifyColors.textTertiary);
+    final value = difyTextStyle(DifyType.systemXsRegular, DifyColors.textSecondary);
+    double title(TableColumn c) =>
+        _cellInset + measure(difyTransform(DifyType.systemXsMediumUppercase, c.title), header) + 4;
+    final widths = <TableColumn, double?>{
+      for (final c in widget.columns)
+        c: switch ((c.type, c.width)) {
+          (ColumnType.select, final w?) => math.min(
+            w,
+            math
+                .max(
+                  title(c),
+                  _cellInset +
+                      [
+                        for (final o in c.options) measure(o.name, value),
+                        measure(c.placeholder ?? '', value),
+                      ].fold(0.0, math.max) +
+                      _selectChevron +
+                      4,
+                )
+                .ceilToDouble(),
+          ),
+          (ColumnType.toggle, final w?) => math.min(
+            w,
+            math.max(title(c), _cellInset + DifyTouch.minTarget).ceilToDouble(),
+          ),
+          (_, final w) => w,
+        },
+    };
+    final flexible = [
+      for (final c in widget.columns)
+        if (widths[c] == null) c,
+    ];
+    if (flexible.isEmpty) return widths;
+    final fixed = widths.values.whereType<double>().fold(0.0, (a, b) => a + b) + (moreColumn ? _moreWidth : 0);
+    final need = flexible.map(title).fold(0.0, (a, b) => a + b);
+    var deficit = need - (tableWidth - fixed);
+    for (final c in widget.columns) {
+      if (deficit <= 0) break;
+      if (c.type != ColumnType.select || widths[c] == null) continue;
+      final floor = math.max(title(c), _cellInset + _selectChevron + 24);
+      final give = math.min(deficit, math.max(0.0, widths[c]! - floor));
+      widths[c] = widths[c]! - give;
+      deficit -= give;
+    }
+    return widths;
+  }
+
+  Widget _sized(TableColumn c, bool last, Widget child, Map<TableColumn, double?>? widths) {
+    final width = widths == null ? c.width : widths[c];
     final box = Container(
       width: width,
-      padding: const EdgeInsets.only(left: 12),
+      padding: const EdgeInsets.only(left: _cellInset),
       decoration: last
           ? null
           : BoxDecoration(
@@ -295,7 +372,7 @@ class _GenericTableState extends State<GenericTable> {
       final phone = DifyTouch.compactOf(context);
       // A phone's "…" column (none when nothing can be deleted).
       final moreColumn = phone && !w.readonly;
-      body = Container(
+      Widget table(Map<TableColumn, double?>? widths) => Container(
         decoration: BoxDecoration(
           border: Border.all(color: DifyColors.dividerRegular),
           borderRadius: BorderRadius.circular(DifyRadius.lg),
@@ -319,7 +396,7 @@ class _GenericTableState extends State<GenericTable> {
                             alignment: Alignment.centerLeft,
                             child: DifyText(c.title, DifyType.systemXsMediumUppercase, color: DifyColors.textTertiary),
                           ),
-                          phone,
+                          widths,
                         ),
                       if (moreColumn) const SizedBox(width: _moreWidth),
                     ],
@@ -337,13 +414,20 @@ class _GenericTableState extends State<GenericTable> {
                     onDelete: !w.readonly && r.index != null && _present(r.row[primary]) ? () => _remove(id) : null,
                     children: [
                       for (final (j, c) in w.columns.indexed)
-                        _sized(c, j == w.columns.length - 1, _cell(c, r.row, r.index, id, phone), phone),
+                        _sized(c, j == w.columns.length - 1, _cell(c, r.row, r.index, id, phone), widths),
                     ],
                   ),
             ],
           ),
         ),
       );
+      // A phone measures its columns against the table's width (the name column keeps its title).
+      body = phone
+          ? LayoutBuilder(
+              builder: (context, constraints) =>
+                  table(_phoneWidths(context, constraints.maxWidth - 2, moreColumn: moreColumn)),
+            )
+          : table(null);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -361,6 +445,13 @@ class _GenericTableState extends State<GenericTable> {
 
 /// The width of a phone row's "…" column (its 44 px button).
 const _moreWidth = 44.0;
+
+/// A cell's start inset (`pl-3`).
+const _cellInset = 12.0;
+
+/// A phone select's chevron and the gaps around it: 1 px before the 16 px icon, 4 px after it (a desktop trigger keeps
+/// Dify's `pr-6` instead).
+const _selectChevron = 1 + 16 + 4.0;
 
 /// A toggle cell: the checkbox on the cell's text line (`h-7`). A phone: the whole 48 px cell is the checkbox's target
 /// and its node (a tap anywhere in it toggles), the box still at the cell's start, under its column's title.
@@ -593,7 +684,7 @@ class _SelectCell extends StatelessWidget {
             builder: (context, hovered, _) => SizedBox(
               height: phone ? DifyTouch.minTarget : 24,
               child: Padding(
-                padding: const EdgeInsets.only(right: 24),
+                padding: EdgeInsets.only(right: phone ? 4 : 24),
                 child: Row(
                   spacing: 1,
                   children: [
