@@ -41,8 +41,9 @@ The contract it implements is [`docs/agent-v2.md`](../docs/agent-v2.md) (protoco
   conversation (`viewImageConversationBytes`).
 - `report_progress` (with `tools.report_progress`, a dify-sf extension): a preview image and caption for the people
   following the run, uploaded and announced by a `progress` event; never in the model's context.
-- Near-budget submit (a dify-sf extension): when the model calls or the time left are only what finishing needs, the
-  model is told to call `final_output` now; the result is marked `partial`.
+- Near-budget submit (a dify-sf extension): when the model calls left are only what finishing needs plus a wrap-up
+  reserve (a tenth of `max_turns`, at most 20, none below 40), or the time left is only what finishing needs, the
+  model is told to stop exploring and call `final_output`; the result is marked `partial`.
 - Prompt cache: every model request extends the previous one byte for byte (`model_call.prompt.prefix_stable`);
   cache hit and miss tokens in `usage` when reported. `tool/cache_probe.dart` measures them (a logging proxy for the
   provider endpoint, and a direct probe).

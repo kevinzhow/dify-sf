@@ -29,7 +29,24 @@ const fileSchema = {
   'required': ['text', 'report'],
 };
 
-Future<Harness> startShell(List<ScriptedCall> calls) async {
+/// The `default` profile with `max_turns_max` 1000, for budgets above the
+/// implicit profile's 50.
+final largeBudgetProfiles = ExecutorProfiles.parse({
+  'version': 1,
+  'profiles': {
+    'default': {
+      'image':
+          'dify-sf/sandbox@sha256:'
+          '1111111111111111111111111111111111111111111111111111111111111111',
+      'limits': {'max_turns_max': 1000},
+    },
+  },
+});
+
+Future<Harness> startShell(
+  List<ScriptedCall> calls, {
+  ExecutorProfiles? profiles,
+}) async {
   final sup = FakeSupervisor(
     key: testSupervisorKey,
     configure: (s) {
@@ -37,8 +54,18 @@ Future<Harness> startShell(List<ScriptedCall> calls) async {
       s.onJob = (_) => FakeJobSpec(output: 'ok\r\n');
     },
   );
+  if (profiles != null) {
+    sup.profiles = {
+      for (final p in profiles.profiles.values)
+        p.name: {'status': 'ok', 'digest': p.digest},
+    };
+  }
   await sup.start();
-  final h = await Harness.start(calls: calls, supervisorUrl: sup.url);
+  final h = await Harness.start(
+    calls: calls,
+    supervisorUrl: sup.url,
+    profiles: profiles,
+  );
   addTearDown(() async {
     await h.close();
     await sup.close();
@@ -64,6 +91,101 @@ void main() {
     expect(callsToFinish(op(fileSchema)), 2);
     expect(callsToFinish(op(fileSchema, shell: false)), 1);
   });
+
+  test('noticeReserve: a tenth of max_turns, at most 20, none below 40', () {
+    expect(noticeReserve(1), 0);
+    expect(noticeReserve(2), 0);
+    expect(noticeReserve(39), 0);
+    expect(noticeReserve(40), 4);
+    expect(noticeReserve(200), 20);
+    expect(noticeReserve(1000), 20);
+  });
+
+  test('noticeCalls: what finishing needs plus the reserve', () {
+    int calls(int maxTurns, Map<String, Object?>? schema) => noticeCalls(
+      OperationRequest.parse(
+        operation(
+          outputSchema: schema,
+          shell: true,
+          askHuman: false,
+          maxTurns: maxTurns,
+        ),
+      ),
+    );
+    for (final (maxTurns, plain, files) in [
+      (2, 1, 2),
+      (39, 1, 2),
+      (40, 5, 6),
+      (200, 21, 22),
+      (1000, 21, 22),
+    ]) {
+      expect(
+        calls(maxTurns, scoreSchema),
+        plain,
+        reason: 'max_turns $maxTurns',
+      );
+      expect(calls(maxTurns, fileSchema), files, reason: 'max_turns $maxTurns');
+    }
+  });
+
+  for (final (maxTurns, noticeAt) in [(39, 38), (200, 179)]) {
+    test(
+      'max_turns $maxTurns with declared file outputs: the notice before '
+      'call $noticeAt (remaining_calls ${maxTurns - noticeAt + 1})',
+      () async {
+        final h = await startShell([
+          for (var i = 1; i <= noticeAt; i++) shell('c$i'),
+          ScriptedCall.toolCall('fo', 'final_output', {
+            'text': 'partial report',
+            'report': 'out/report.csv',
+          }),
+        ], profiles: largeBudgetProfiles);
+        final run = await h.startOperation(
+          operation(
+            shell: true,
+            askHuman: false,
+            outputSchema: fileSchema,
+            maxTurns: maxTurns,
+            timeoutSeconds: 600,
+          ),
+        );
+        final s = await h.waitEnded(run, timeout: const Duration(seconds: 60));
+        expect(s['status'], 'succeeded', reason: jsonEncode(s));
+        final result = s['result'] as Map;
+        expect(result['partial'], {
+          'reason': 'max_turns',
+          'notice_call_index': noticeAt,
+        });
+        final notice = (await h.events(run))
+            .singleWhere((e) => e.event == 'budget_notice');
+        final left = maxTurns - noticeAt + 1;
+        expect(notice.data, {
+          'reason': 'max_turns',
+          'call_index': noticeAt,
+          'remaining_calls': left,
+        });
+        expect(h.gateway.llmRequests, hasLength(noticeAt + 1));
+        expect(
+          jsonEncode(h.gateway.llmRequests[noticeAt - 2]),
+          isNot(contains('Budget notice')),
+        );
+        final text = messagesOf(h.gateway.llmRequests[noticeAt - 1]).last;
+        expect(text['role'], 'user');
+        expect(
+          text['content'],
+          contains('$left model calls (this one included)'),
+        );
+        expect(
+          text['content'],
+          contains(
+            left == 2
+                ? 'use at most one step to write'
+                : 'use at most ${left - 1} steps to write',
+          ),
+        );
+      },
+    );
+  }
 
   test('the last call gets the notice, kept in the history; final_output '
       'then succeeds with partial', () async {

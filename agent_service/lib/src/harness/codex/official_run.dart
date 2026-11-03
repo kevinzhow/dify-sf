@@ -1814,7 +1814,7 @@ class _OfficialCodexRun {
     final remainingCalls = r.maxTurns - callIndex + 1;
     final remaining = Duration(seconds: r.timeoutSeconds) - run._clock.elapsed;
     final BudgetReason reason;
-    if (remainingCalls <= need) {
+    if (remainingCalls <= noticeCalls(r)) {
       reason = BudgetReason.maxTurns;
     } else if (run._longestStep > Duration.zero &&
         remaining <= run._longestStep * need) {

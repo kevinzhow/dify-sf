@@ -232,6 +232,61 @@ void main() {
     });
   });
 
+  for (final (maxTurns, noticeAt) in [(39, 39), (200, 180)]) {
+    test('max_turns $maxTurns: the notice is steered in before call '
+        '$noticeAt (remaining_calls ${maxTurns - noticeAt + 1})', () async {
+      late FakeCodexAppServer fake;
+      fake = FakeCodexAppServer(
+        turn: (s) async {
+          for (var i = 1; i < noticeAt; i++) {
+            s.usage();
+          }
+          final until = DateTime.now().add(const Duration(seconds: 10));
+          while (!s.methods.contains('turn/steer') &&
+              DateTime.now().isBefore(until)) {
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+          }
+          s
+            ..message('What I have.', phase: 'final_answer', id: 'm1')
+            ..usage()
+            ..complete({'status': 'completed'});
+        },
+      );
+      final (h, run, _) = await fake.startRun(
+        officialCodexOp(maxTurns: maxTurns),
+        limits: {'max_turns_max': 1000},
+      );
+      final status = await h.waitEnded(
+        run,
+        timeout: const Duration(seconds: 30),
+      );
+      final result = (status['result'] as Map).cast<String, Object?>();
+      expect(status['status'], 'succeeded', reason: jsonEncode(status));
+      expect(result['partial'], {
+        'reason': 'max_turns',
+        'notice_call_index': noticeAt,
+      });
+      final left = maxTurns - noticeAt + 1;
+      final notice = (await h.events(run))
+          .singleWhere((e) => e.event == 'budget_notice');
+      expect(notice.data, {
+        'reason': 'max_turns',
+        'call_index': noticeAt,
+        'remaining_calls': left,
+      });
+      final steers = fake.received.where((r) => r.method == 'turn/steer');
+      expect(steers, hasLength(1));
+      final input = (steers.single.params['input'] as List).single as Map;
+      expect(
+        input['text'],
+        startsWith(
+          'Budget notice from the agent service: this run has $left model '
+          'call${left == 1 ? '' : 's'} (this one included) left.',
+        ),
+      );
+    });
+  }
+
   test('app-server diagnostics mask the temporary capability', () async {
     final fake = FakeCodexAppServer(
       turn: (s) async {
