@@ -64,9 +64,11 @@ class _ApikeyInfoPanelState extends State<ApikeyInfoPanel> {
     final title = difyTextStyle(DifyTw.text24SemiboldLeading32, DifyColors.textPrimary);
     // `text-xs font-medium text-primary-600`
     final link = difyTextStyle(DifyType.systemXsMedium, DifyColors.primary600);
+    final phone = DifyTouch.compactOf(context);
     return Container(
       key: const ValueKey('apikey-info-panel'),
-      margin: const EdgeInsets.only(bottom: 24),
+      // A phone's page has no side padding: the panel keeps 16 px from the edges.
+      margin: phone ? const EdgeInsets.fromLTRB(16, 12, 16, 8) : const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: DifyColors.componentsPanelBg,
         borderRadius: BorderRadius.circular(16),
@@ -76,7 +78,7 @@ class _ApikeyInfoPanelState extends State<ApikeyInfoPanel> {
       child: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.all(32),
+            padding: EdgeInsets.all(phone ? 20 : 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
