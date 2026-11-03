@@ -2,6 +2,8 @@
 /// log/var-panel.tsx, the filters' TIME_PERIOD_MAPPING and the logs' loading state.
 library;
 
+import 'dart:async';
+
 import 'package:collab_client/collab_client.dart' show AppModes;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart' show SvgPicture;
@@ -86,7 +88,8 @@ class LogPageTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final href = learnMoreHref, label = learnMoreLabel;
-    return Column(
+    final phone = logsPhone(context);
+    final block = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       spacing: 2,
@@ -108,7 +111,7 @@ class LogPageTitle extends StatelessWidget {
             Flexible(
               child: DifyTextLine(
                 description,
-                maxLines: 1,
+                maxLines: phone ? 3 : 1,
                 overflow: TextOverflow.ellipsis,
                 style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
               ),
@@ -136,7 +139,84 @@ class LogPageTitle extends StatelessWidget {
         ),
       ],
     );
+    return phone ? Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: block) : block;
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Phone layout (a dify-sf divergence: Dify's log pages are desktop tables)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/// Whether the logs and annotations pages use their phone layout: a compact window (below 600 dp). There the page has
+/// no side padding of its own: the title, the filters and the pagination pad themselves (16 px) and the list rows
+/// span the page.
+bool logsPhone(BuildContext context) => DifyTouch.compactOf(context);
+
+/// The filters of a log page on a phone: the search field across the page, then the filter [chips] (Dify's chips,
+/// which are filter chips with an action sheet there) in a [DifyChipBar] that scrolls sideways.
+class LogPhoneFilters extends StatelessWidget {
+  const LogPhoneFilters({super.key, required this.search, required this.chips});
+
+  final Widget search;
+  final List<Widget> chips;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: search),
+        const SizedBox(height: 4),
+        DifyChipBar(children: chips),
+      ],
+    ),
+  );
+}
+
+/// A log on a phone: a [DifyListRow] across the page with the unread dot (or its room), [title] over [subtitle], and
+/// [trailing] (the status); the whole row opens the log's detail. Named for assistive technology by the title,
+/// [status] and the subtitle (the unread dot has no name, as on the desktop).
+class LogPhoneRow extends StatelessWidget {
+  const LogPhoneRow({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.unread,
+    required this.onTap,
+    this.trailing = const [],
+    this.status,
+  });
+
+  final String title, subtitle;
+  final bool unread;
+  final VoidCallback onTap;
+  final List<Widget> trailing;
+
+  /// The status as words (the trailing label is left out of the row's name otherwise).
+  final String? status;
+
+  @override
+  Widget build(BuildContext context) => DifyListRow(
+    title: title,
+    subtitle: subtitle,
+    semanticLabel: [title, ?status, subtitle].join(', '),
+    leading: SizedBox(
+      width: 6,
+      child: unread
+          ? Container(
+              key: const ValueKey('log-unread-dot'),
+              height: 6,
+              decoration: BoxDecoration(
+                color: DifyColors.utilColorsBlueBlue500,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            )
+          : null,
+    ),
+    trailing: trailing,
+    onTap: onTap,
+  );
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -161,9 +241,49 @@ class LogSort extends StatefulWidget {
 class _LogSortState extends State<LogSort> {
   bool _open = false;
 
+  /// On a phone: "Sort by: name" as a filter chip with an action sheet of the items, and the order as a second chip
+  /// that shows the current order and flips it.
+  Widget _phone(BuildContext context, String trigger) {
+    final descending = widget.order.isNotEmpty;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 8,
+      children: [
+        DifyFilterChip(
+          key: const ValueKey('log-sort-phone'),
+          label: '${_l('filter.sortBy')} $trigger',
+          trailing: const RemixIcon('arrow-down-s-line', size: 16),
+          onPressed: () => unawaited(
+            showDifyActionSheet(
+              context,
+              title: _l('filter.sortBy'),
+              actions: [
+                for (final item in widget.items)
+                  DifyActionSheetAction(
+                    label: item.name,
+                    icon: item.value == widget.value
+                        ? const RemixIcon('check-line', size: 20)
+                        : const SizedBox.square(dimension: 20),
+                    onTap: () => widget.onSelect('${widget.order}${item.value}'),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        DifyFilterChip(
+          key: const ValueKey('log-sort-order-phone'),
+          label: _l(descending ? 'filter.descending' : 'filter.ascending'),
+          leading: RemixIcon(descending ? 'sort-desc' : 'sort-asc', size: 16),
+          onPressed: () => widget.onSelect('${descending ? '' : '-'}${widget.value}'),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final trigger = widget.items.where((i) => i.value == widget.value).firstOrNull?.name ?? '';
+    if (logsPhone(context)) return _phone(context, trigger);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -421,6 +541,7 @@ class LogEmptyElement extends StatelessWidget {
       child: Container(
         key: const ValueKey('log-empty-element'),
         width: 560,
+        margin: logsPhone(context) ? const EdgeInsets.symmetric(horizontal: 16) : null,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
           color: DifyColors.backgroundSectionBurn,
