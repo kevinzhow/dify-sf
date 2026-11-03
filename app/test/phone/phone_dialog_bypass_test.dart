@@ -1,7 +1,9 @@
 // Dialogs that bypassed the shared dialog primitive on phones (fixes after PR #90, item 3), now under its policy: forms
 // are sheets (the sheet's header with its close, Back closes them first), confirmations stay centred over the window
-// and Back cancels only them. The annotation drawers and their remove confirmation, Debug & Preview's conversation
-// variables, and the confirmations nested in Create from DSL and the conversation opener; at 411x914 and 360x780.
+// and Back cancels only them. The annotation drawers are pages on a phone (showDifyDrawer's compact form, the sub-pages
+// PR) under the same guarantees: their remove confirmation is centred over them and Back cancels it first, a rotation
+// keeps the typed text and the focus. Debug & Preview's conversation variables, and the confirmations nested in Create
+// from DSL and the conversation opener; at 411x914 and 360x780.
 import 'dart:async';
 
 import 'package:collab_client/collab_client.dart' show AppImport, AppImportStatus, AppModes;
@@ -18,6 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/app_fonts.dart';
+import '../support/platform_semantics.dart';
 import 'phone_harness.dart';
 
 Future<GlobalKey<NavigatorState>> _app(WidgetTester t, Size size, Widget home) async {
@@ -44,6 +47,15 @@ Future<bool> _back(WidgetTester t) async {
 
 final _header = find.byType(DifySheetHeader);
 
+/// An annotation drawer: a page filling the window on a phone, Dify's inset drawer when wider.
+final _drawer = find.byKey(const ValueKey('annotation-drawer'));
+
+/// The drawer's close button (its header's).
+Finder get _drawerClose => find.descendant(
+  of: _drawer,
+  matching: find.byWidgetPredicate((w) => w is DifyIconButton && w.label == _tc('operation.close')),
+);
+
 /// [f]'s box is centred in the window ([size]) and inside it.
 void _centred(WidgetTester t, Finder f, Size size) {
   final r = t.getRect(f);
@@ -64,8 +76,9 @@ void main() {
   for (final size in phoneSizes) {
     final at = '${size.width.toInt()}x${size.height.toInt()}';
 
-    testWidgets('$at: Edit Annotation Reply is a sheet (header and close); its remove confirmation is centred over the '
-        'window, Back cancels only it, then Back closes the sheet', (t) async {
+    testWidgets('$at: Edit Annotation Reply is a page (title and close); its remove confirmation is centred over the '
+        'window, Back cancels only it, then Back closes the page', (t) async {
+      final semantics = t.ensureSemantics();
       var hidden = 0, removed = 0;
       late StateSetter set;
       var show = true;
@@ -93,34 +106,38 @@ void main() {
         ),
       );
       final title = _a('editModal.title');
-      expect(
-        find.descendant(of: _header, matching: find.text(title)),
-        findsOneWidget,
-        reason: 'the sheet header',
-      );
-      final close = find.descendant(of: _header, matching: find.byType(DifyTouchIconButton));
-      expect(t.getSize(close).height, greaterThanOrEqualTo(44));
+      expect(t.getRect(_drawer), Offset.zero & size, reason: 'a page over the window');
+      expect(find.descendant(of: _drawer, matching: find.text(title)), findsOneWidget, reason: 'the page title');
+      expect(t.getSize(_drawerClose).height, greaterThanOrEqualTo(44));
+      expect(t.getSize(_drawerClose).width, greaterThanOrEqualTo(44));
       // The remove confirmation: centred, over the window.
       await t.tap(find.text(_a('editModal.removeThisCache')));
       await settle(t, 600);
       final confirm = find.byKey(const ValueKey('annotation-alert-dialog'));
       expect(confirm, findsOneWidget);
       _centred(t, confirm, size);
+      // Only the confirmation is read, not the page under it.
+      var labels = platformLabels(t).join(' | ');
+      expect(labels, contains(DifyI18n.tr('appDebug', 'feature.annotation.removeConfirm')), reason: labels);
+      expect(labels, isNot(contains(title)), reason: labels);
       expect(await _back(t), isTrue);
       expect(confirm, findsNothing, reason: 'Back cancels the confirmation');
       expect(hidden, 0, reason: 'and only it');
       expect(removed, 0);
-      expect(find.descendant(of: _header, matching: find.text(title)), findsOneWidget);
-      // Back again: the sheet.
+      expect(find.descendant(of: _drawer, matching: find.text(title)), findsOneWidget);
+      labels = platformLabels(t).join(' | ');
+      expect(labels, contains(title), reason: 'the page is read again: $labels');
+      // Back again: the page.
       expect(await _back(t), isTrue);
       expect(hidden, 1);
       set(() {});
       await settle(t, 600);
-      expect(_header, findsNothing);
+      expect(_drawer, findsNothing);
       expect(t.takeException(), isNull);
+      semantics.dispose();
     });
 
-    testWidgets('$at: Add Annotation Reply is a sheet; its close hides it', (t) async {
+    testWidgets('$at: Add Annotation Reply is a page; its close hides it', (t) async {
       var hidden = 0;
       await _app(
         t,
@@ -134,29 +151,30 @@ void main() {
         ),
       );
       final title = _a('addModal.title');
-      expect(find.descendant(of: _header, matching: find.text(title)), findsOneWidget);
-      // The fields are on the sheet, inside the window.
+      expect(find.descendant(of: _drawer, matching: find.text(title)), findsOneWidget);
+      expect(t.getRect(_drawer), Offset.zero & size, reason: 'a page over the window');
+      // The fields are on the page, inside the window.
       final field = find.byType(EditableText).first;
       final r = t.getRect(field);
       expect(r.left >= 0 && r.right <= size.width, isTrue, reason: '$r');
-      // A rotation re-presents it (the drawer in landscape, the sheet again in portrait), keeping what was typed and
+      // A rotation re-presents it (the drawer in landscape, the page again in portrait), keeping what was typed and
       // the focus.
       await t.tap(field);
       t.testTextInput.enterText('Draft question');
       await settle(t, 300);
       final node = t.widget<EditableText>(field).focusNode;
-      for (final (w, h, sheet) in [(size.height, size.width, false), (size.width, size.height, true)]) {
+      for (final (w, h, page) in [(size.height, size.width, false), (size.width, size.height, true)]) {
         t.view.physicalSize = Size(w, h);
         await settle(t, 600);
-        expect(_header, sheet ? findsOneWidget : findsNothing, reason: '${w}x$h');
+        expect(t.getRect(_drawer) == Offset.zero & Size(w, h), page, reason: '${w}x$h');
         expect(t.widget<EditableText>(field).controller.text, 'Draft question', reason: '${w}x$h');
         expect(t.widget<EditableText>(field).focusNode, same(node));
         expect(node.hasFocus, isTrue, reason: '${w}x$h: the field keeps the focus');
       }
-      await t.tap(find.descendant(of: _header, matching: find.byType(DifyTouchIconButton)));
+      await t.tap(_drawerClose);
       await settle(t, 600);
       expect(hidden, 1);
-      expect(_header, findsNothing);
+      expect(_drawer, findsNothing);
       expect(t.takeException(), isNull);
     });
 

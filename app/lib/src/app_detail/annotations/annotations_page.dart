@@ -55,6 +55,7 @@ class AnnotationEmptyElement extends StatelessWidget {
     child: Container(
       key: const ValueKey('annotation-empty'),
       width: 560,
+      margin: DifyTouch.compactOf(context) ? const EdgeInsets.symmetric(horizontal: 16) : null,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: DifyColors.backgroundSectionBurn,
@@ -159,6 +160,7 @@ class AnnotationsPage extends StatefulWidget {
 }
 
 class AnnotationsPageState extends State<AnnotationsPage> {
+  final _optionsKey = GlobalKey(debugLabel: 'annotation header options');
   AnnotationServices? get _s => widget.services;
   AnnotationToast get _toast => widget.toast ?? difyToast;
 
@@ -182,11 +184,16 @@ class AnnotationsPageState extends State<AnnotationsPage> {
     unawaited(_fetchList(1));
     final models = widget.models;
     if (models != null) {
-      if (models.summary == null) unawaited(models.refreshSummary());
-      unawaited(models.ensureModelList(ModelTypeEnum.textEmbedding));
-      if (models.defaultModel(ModelTypeEnum.textEmbedding) == null) {
-        unawaited(models.invalidateDefaultModel(ModelTypeEnum.textEmbedding));
-      }
+      // After this frame: the requests notify the workspace's models at once, and their other listeners (the editor
+      // under a phone's pushed page) may not be marked dirty while this page builds.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (models.summary == null) unawaited(models.refreshSummary());
+        unawaited(models.ensureModelList(ModelTypeEnum.textEmbedding));
+        if (models.defaultModel(ModelTypeEnum.textEmbedding) == null) {
+          unawaited(models.invalidateDefaultModel(ModelTypeEnum.textEmbedding));
+        }
+      });
     }
   }
 
@@ -345,11 +352,13 @@ class AnnotationsPageState extends State<AnnotationsPage> {
 
   Widget _replySwitch() {
     final enabled = annotationConfig?.enabled ?? false;
+    final phone = DifyTouch.compactOf(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          height: 28,
+          // A phone's pill is touch-high (its switch and setup button get 44 px).
+          height: phone ? DifyTouch.controlHeight : 28,
           padding: EdgeInsets.only(left: 8, right: enabled ? 0 : 8),
           decoration: BoxDecoration(
             color: DifyColors.componentsPanelBgBlur,
@@ -396,13 +405,14 @@ class AnnotationsPageState extends State<AnnotationsPage> {
             ],
           ),
         ),
-        // `space-x-2` after the pill, then the divider's own `mx-3`.
-        Container(
-          width: 1,
-          height: 14,
-          margin: const EdgeInsets.only(left: 8 + 12, right: 12),
-          color: DifyColors.dividerRegular,
-        ),
+        // `space-x-2` after the pill, then the divider's own `mx-3` (a phone wraps the pill and the buttons instead).
+        if (!phone)
+          Container(
+            width: 1,
+            height: 14,
+            margin: const EdgeInsets.only(left: 8 + 12, right: 12),
+            color: DifyColors.dividerRegular,
+          ),
       ],
     );
   }
@@ -448,8 +458,23 @@ class AnnotationsPageState extends State<AnnotationsPage> {
       learnMoreHref: difyDocLink('/use-dify/monitor/annotation-reply'),
       learnMoreLabel: _t('common', 'operation.learnMore'),
     );
+    // A phone's page has no side padding: the title, the filter and the pagination pad themselves, the rows span it.
+    final phone = DifyTouch.compactOf(context);
+    final options = s == null
+        ? null
+        : AnnotationHeaderOptions(
+            // One element in the phone's Wrap and the desktop's Row: a rotation keeps its open dialogs.
+            key: _optionsKey,
+            services: s,
+            controlUpdateList: _controlUpdateList,
+            onAdd: _handleAdd,
+            onAdded: () => unawaited(_fetchList()),
+            saveFile: widget.saveFile,
+            pickCsv: widget.pickCsv,
+            toast: widget.toast,
+          );
     final page = Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+      padding: phone ? const EdgeInsets.only(top: 12) : const EdgeInsets.fromLTRB(24, 12, 24, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -466,21 +491,18 @@ class AnnotationsPageState extends State<AnnotationsPage> {
                           services: s,
                           keyword: _keyword,
                           onKeywordChange: _onKeyword,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (widget.isChatApp) _replySwitch(),
-                              AnnotationHeaderOptions(
-                                services: s,
-                                controlUpdateList: _controlUpdateList,
-                                onAdd: _handleAdd,
-                                onAdded: () => unawaited(_fetchList()),
-                                saveFile: widget.saveFile,
-                                pickCsv: widget.pickCsv,
-                                toast: widget.toast,
-                              ),
-                            ],
-                          ),
+                          child: phone
+                              ? Wrap(
+                                  alignment: WrapAlignment.spaceBetween,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [if (widget.isChatApp) _replySwitch(), options!],
+                                )
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [if (widget.isChatApp) _replySwitch(), options!],
+                                ),
                         ),
                         Expanded(
                           child: _isLoading

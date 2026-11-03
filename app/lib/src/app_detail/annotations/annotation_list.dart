@@ -72,6 +72,40 @@ class _AnnotationListState extends State<AnnotationList> {
       for (final item in widget.list)
         (widget.formatTime ?? AccountTime.of(context).formatTime)(item.createdAt, dateFormat),
     ];
+    final confirm = RemoveAnnotationConfirmModal(
+      isShow: _showConfirmDelete,
+      onHide: () => setState(() => _showConfirmDelete = false),
+      onRemove: () {
+        widget.onRemove(_currId!);
+        setState(() => _showConfirmDelete = false);
+      },
+    );
+    if (DifyTouch.compactOf(context)) {
+      // A phone: rows across the page (question over answer, the time and hits), a tap opens the annotation, "…" or
+      // a long press offers Edit and Remove. No checkboxes: the batch delete is the desktop's.
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (i, item) in widget.list.indexed)
+                  _phoneRow(
+                    item,
+                    createdAt: created[i],
+                    onRemove: () => setState(() {
+                      _currId = item.id;
+                      _showConfirmDelete = true;
+                    }),
+                  ),
+              ],
+            ),
+          ),
+          confirm,
+        ],
+      );
+    }
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -130,15 +164,40 @@ class _AnnotationListState extends State<AnnotationList> {
               onSelectedIdsChange: widget.onSelectedIdsChange,
             ),
           ),
-        RemoveAnnotationConfirmModal(
-          isShow: _showConfirmDelete,
-          onHide: () => setState(() => _showConfirmDelete = false),
-          onRemove: () {
-            widget.onRemove(_currId!);
-            setState(() => _showConfirmDelete = false);
-          },
-        ),
+        confirm,
       ],
+    );
+  }
+
+  /// An annotation on a phone ([DifyActionRow]): the question, the answer, then the time and the hits.
+  Widget _phoneRow(Annotation item, {required String createdAt, required VoidCallback onRemove}) {
+    final hits = '${_t('appAnnotation', 'table.header.hits')} ${item.hitCount}';
+    return DecoratedBox(
+      key: ValueKey('annotation-row-${item.id}'),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
+      ),
+      child: DifyActionRow(
+        label: item.question,
+        semanticLabel: [item.question, item.answer, createdAt, hits].join(', '),
+        onTap: () => widget.onView(item),
+        actions: [
+          DifyActionRow.edit(() => widget.onView(item), label: _t('appDebug', 'feature.annotation.edit')),
+          DifyActionRow.delete(onRemove, label: _t('appDebug', 'feature.annotation.remove')),
+        ],
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 0, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 2,
+            children: [
+              DifyText(item.question, DifyType.bodyLgRegular, color: DifyColors.textPrimary),
+              DifyText(item.answer, DifyType.systemSmRegular, color: DifyColors.textSecondary, maxLines: 2),
+              DifyText('$createdAt · $hits', DifyType.systemXsRegular, color: DifyColors.textTertiary),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

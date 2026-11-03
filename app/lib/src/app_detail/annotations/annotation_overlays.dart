@@ -19,17 +19,17 @@ String _c(String key) => DifyI18n.tr('common', key);
 /// runs on Escape and, with [dismissible], on a backdrop click.
 ///
 /// A phone (a compact window; the shared dialog's policy, see [showDifyDialog]): with [sheetOnCompact] (a form: the
-/// annotation dialogs and drawers) the content is the dialog's sheet form in a [DifySheetPortal] (the portal keeps the
-/// page's scopes, which the owners' content reads): [DifyDialogFrame] tells its parts, and Back and Escape call
-/// [onClose] (the scrim and a drag down only with [dismissible]). Without it (a confirmation) the overlay stays centred,
-/// and Back calls [onClose]. The form follows the live width.
+/// annotation dialogs) the content is the dialog's sheet form in a [DifySheetPortal] (the portal keeps the page's
+/// scopes, which the owners' content reads): [DifyDialogFrame] tells its parts, and the scrim and a drag down close it
+/// only with [dismissible]. With [edgeToEdgeOnCompact] (the annotation drawers, pages on a phone as [showDifyDrawer]'s)
+/// the content fills the window. Otherwise (a confirmation) the overlay stays centred. The form follows the live width.
 ///
 /// At every width only the topmost overlay is read by assistive technology, as a modal route's ([DifyPortalSemantics]):
 /// the page under it is hidden, and so is an overlay under a confirmation opened from it. (An overlay child's semantics
 /// hang from its portal's place; a non-modal portal's empty place would drop the overlay from the platform's tree.)
 ///
-/// [onBack]: what Back calls instead of [onClose] (a dialog Dify does not close on Escape or a click outside, whose
-/// phone sheet Back still closes); Back never reaches the page while the overlay is open.
+/// Back (Android) calls [onBack] (by default [onClose]) while open, the newest overlay first, before the page under
+/// it. [onBack] is for a dialog Dify does not close on Escape or a click outside, whose phone sheet Back still closes.
 class ControlledOverlay extends StatefulWidget {
   const ControlledOverlay({
     super.key,
@@ -40,12 +40,17 @@ class ControlledOverlay extends StatefulWidget {
     this.dismissible = true,
     this.backdrop = true,
     this.sheetOnCompact = false,
+    this.edgeToEdgeOnCompact = false,
   });
 
   final bool open;
   final WidgetBuilder builder;
   final VoidCallback? onClose, onBack;
   final bool dismissible, backdrop, sheetOnCompact;
+
+  /// On a phone the content fills the window, under the system bars (a drawer shown as a page keeps its content safe
+  /// itself); elsewhere it stays inside the safe area.
+  final bool edgeToEdgeOnCompact;
 
   @override
   State<ControlledOverlay> createState() => _ControlledOverlayState();
@@ -58,9 +63,6 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
   /// either form, so a rotation moves them, with their state (a focused field, what was typed), to the other.
   final _content = GlobalKey(debugLabel: 'controlled overlay content');
   final _body = GlobalKey(debugLabel: 'controlled overlay body');
-
-  /// A phone's Back: closes the overlay before anything under it.
-  late final _back = DifyBackStep(onDismiss: () => (widget.onBack ?? widget.onClose)?.call());
 
   /// The phone sheet's slide.
   late final _slide = AnimationController(vsync: this, duration: DifySheetRecipe.openDuration);
@@ -83,7 +85,6 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
 
   @override
   void dispose() {
-    _back.detach();
     _curved.dispose();
     _slide.dispose();
     super.dispose();
@@ -104,11 +105,6 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
       _portal.hide();
       setState(() {});
     }
-    if (open && _phone) {
-      _back.attach(context);
-    } else {
-      _back.detach();
-    }
   });
 
   @override
@@ -116,15 +112,21 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
     // Modal at every width: a wider window's drawer or dialog is as modal as Dify's (`aria-modal`), and the place a
     // non-modal portal gives its overlay is empty, which drops the overlay from the platform's tree.
     final modal = widget.open && _portal.isShowing;
-    return DifyPortalSemantics(
-      modal: modal,
-      child: OverlayPortal(
-        controller: _portal,
-        overlayChildBuilder: (context) => _ControlledOverlayKeys(
-          body: _body,
-          child: _asSheet ? _sheet(context) : _centred(context),
+    final back = widget.onBack ?? widget.onClose;
+    return DifyBackDismiss(
+      // Android back closes the newest open overlay before the page (these overlays are not routes).
+      enabled: widget.open && back != null,
+      onDismiss: () => back?.call(),
+      child: DifyPortalSemantics(
+        modal: modal,
+        child: OverlayPortal(
+          controller: _portal,
+          overlayChildBuilder: (context) => _ControlledOverlayKeys(
+            body: _body,
+            child: _asSheet ? _sheet(context) : _centred(context),
+          ),
+          child: DifyPortalSemantics.place(modal: modal, child: const SizedBox.shrink()),
         ),
-        child: DifyPortalSemantics.place(modal: modal, child: const SizedBox.shrink()),
       ),
     );
   }
@@ -156,10 +158,11 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
     );
   }
 
-  // Inside the window's safe area, as when the app kept the whole navigator inside it. A layer opened over the content
-  // (a confirmation) hides it from assistive technology.
-  Widget _centred(BuildContext context) => DifyOverlaySafeArea(
-    child: Stack(
+  // Inside the window's safe area, as when the app kept the whole navigator inside it (a phone's page form: the whole
+  // window). A layer opened over the content (a confirmation) hides it from assistive technology.
+  Widget _centred(BuildContext context) => _safe(
+    context,
+    Stack(
       fit: StackFit.expand,
       children: [
         if (widget.backdrop)
@@ -180,6 +183,23 @@ class _ControlledOverlayState extends State<ControlledOverlay> with SingleTicker
       ],
     ),
   );
+
+  /// [DifyOverlaySafeArea], or the whole window on a phone with [ControlledOverlay.edgeToEdgeOnCompact]. One tree for
+  /// both, so a rotation keeps the content's state.
+  Widget _safe(BuildContext context, Widget child) {
+    final edge = widget.edgeToEdgeOnCompact && _phone;
+    return Padding(
+      padding: edge ? EdgeInsets.zero : DifyWindowInsets.of(context),
+      child: MediaQuery.removePadding(
+        context: context,
+        removeLeft: !edge,
+        removeTop: !edge,
+        removeRight: !edge,
+        removeBottom: !edge,
+        child: child,
+      ),
+    );
+  }
 }
 
 /// The key of the part of a [ControlledOverlay]'s content that both forms show ([ControlledOverlay.bodyKeyOf]).
@@ -315,80 +335,67 @@ class AnnotationDrawer extends StatelessWidget {
   Widget build(BuildContext context) => ControlledOverlay(
     open: true,
     dismissible: false,
+    edgeToEdgeOnCompact: true,
     onClose: onClose,
-    sheetOnCompact: true,
-    builder: (context) => DifyDialogFrame.sheetOf(context)
-        ? _sheet(context)
-        : LayoutBuilder(
-            builder: (context, c) => Stack(
-              children: [
-                Positioned(
-                  top: 64,
-                  right: 8,
-                  bottom: 12,
-                  width: width.clamp(0, c.maxWidth - 16).toDouble(),
-                  child: DifyDrawerPopup(
-                    key: const ValueKey('annotation-drawer'),
-                    label: label,
-                    scopesRoute: true,
-                    border: Border.all(color: DifyColors.dividerSubtle, width: Css.hairline),
-                    borderRadius: BorderRadius.circular(DifyRadius.xl),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+    builder: (context) => LayoutBuilder(
+      builder: (context, c) {
+        final phone = DifyTouch.compactOf(context);
+        final popup = DifyDrawerPopup(
+          key: const ValueKey('annotation-drawer'),
+          label: label,
+          scopesRoute: true,
+          border: Border.all(color: DifyColors.dividerSubtle, width: Css.hairline),
+          borderRadius: BorderRadius.circular(DifyRadius.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(vertical: phone ? 6 : 16),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 24, right: 20),
+                  child: SizedBox(
+                    // A phone's close button is touch-sized (44 px).
+                    height: phone ? DifyTouch.controlHeight : 24,
+                    child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 24, right: 20),
-                            child: SizedBox(
-                              height: 24,
-                              child: Row(
-                                children: [
-                                  Expanded(child: title),
-                                  DifyIconButton(
-                                    label: _c('operation.close'),
-                                    size: DifyIconButtonSize.md,
-                                    icon: const RemixIcon('close-line', size: 16),
-                                    onPressed: onClose,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        Expanded(child: title),
+                        DifyIconButton(
+                          label: _c('operation.close'),
+                          size: DifyIconButtonSize.md,
+                          icon: const RemixIcon('close-line', size: 16),
+                          onPressed: onClose,
                         ),
-                        Expanded(child: SingleChildScrollView(child: _keepAcrossForms(context, body))),
-                        ?footer,
                       ],
                     ),
                   ),
                 ),
-              ],
+              ),
+              Expanded(child: SingleChildScrollView(child: _keepAcrossForms(context, body))),
+              ?footer,
+            ],
+          ),
+        );
+        // A phone shows the drawer as a page (showDifyDrawer's compact form). One tree for both forms, so a rotation
+        // keeps the fields' state and focus.
+        return Stack(
+          children: [
+            Positioned(
+              top: phone ? 0 : 64,
+              left: phone ? 0 : null,
+              right: phone ? 0 : 8,
+              bottom: phone ? 0 : 12,
+              width: phone ? null : width.clamp(0, c.maxWidth - 16).toDouble(),
+              child: DifyDrawerPage(
+                page: phone,
+                child: DifyTouchSurface(enabled: phone, child: popup),
+              ),
             ),
-          ),
-  );
-}
-
-/// A phone's form of an [AnnotationDrawer] (the dialog's sheet form): the sheet's header (named [AnnotationDrawer.label],
-/// its 44 px close), a title that is more than text (the view's tabs) under it, the body scrolling, the footer pinned.
-extension on AnnotationDrawer {
-  Widget _sheet(BuildContext context) => DifyDialogSurface(
-    label: label,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DifyDialogTitle(title: label ?? '', onClose: onClose, child: const SizedBox.shrink()),
-        if (title is! DifyTextLine)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(height: 40, child: title),
-          ),
-        Flexible(child: SingleChildScrollView(child: _keepAcrossForms(context, body))),
-        ?footer,
-      ],
+          ],
+        );
+      },
     ),
   );
 }
