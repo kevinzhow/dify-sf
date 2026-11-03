@@ -143,8 +143,8 @@ class _GenericTableState extends State<GenericTable> {
 
   /// The identities of [next]'s rows. Each takes the identity of the first unclaimed [known] row (as sent, then as
   /// shown) with the same key, else the same content. Only the row this table's own last [edit] wrote may also be
-  /// known by its place, and only if the row there now holds the value written (the owner may have normalised the
-  /// rest of it). Any other row is new: a row another user put where a removed one was, also in the same frame as a
+  /// known by its place, and only if the row there now holds the value written and, for a cell other than the key,
+  /// still the key it had (the owner may have normalised the rest of it). Any other row is new: a row another user put where a removed one was, also in the same frame as a
   /// keystroke, is not that row (its open select closes, its focused field goes, its pending action writes nothing).
   List<Object> _follow(
     List<({Json row, Object id})> known,
@@ -170,8 +170,13 @@ class _GenericTableState extends State<GenericTable> {
     claim((a, b) => _present(b[primary]) && '${a[primary]}' == '${b[primary]}');
     claim(mapEquals);
     if (edit case (:final index, :final key, :final value) when index < next.length && out[index] == null) {
-      final id = known[index].id;
-      if (!taken.contains(id) && '${next[index][key] ?? ''}' == '${value ?? ''}') out[index] = id;
+      final (:row, :id) = known[index];
+      String text(Object? v) => '${v ?? ''}';
+      // The written value is there, and (for any cell but the key) the row's key is still the one it had: another
+      // row with the same value in that cell is not the row.
+      final written = text(next[index][key]) == text(value);
+      final sameKey = key == primary || text(next[index][primary]) == text(row[primary]);
+      if (!taken.contains(id) && written && sameKey) out[index] = id;
     }
     return [for (final id in out) id ?? Object()];
   }

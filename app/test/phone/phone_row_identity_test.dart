@@ -4,7 +4,7 @@
 // its own change on the latest list (rows added or changed meanwhile survive). At 411x914.
 //
 // The first seven cases are Winnie's review tests (pr90_row_identity_review2_test.dart: 4, review7: 1, review8: 2),
-// adapted to this suite's harness; her review17, review25 and review32 are in the groups below.
+// adapted to this suite's harness; her review17, review25, review32 and review44 are in the groups below.
 
 import 'package:dify_sf_app/src/design/dify_theme.dart';
 import 'package:dify_sf_app/src/design/widgets/widgets.dart';
@@ -849,6 +849,87 @@ void main() {
               {'name': 'alpha12', 'type': 'string'},
               {'name': 'beta', 'type': 'string', 'description': 'updated'},
             ], reason: 'the surviving original keeps focus and beta keeps the new value');
+            expect(writes, 2);
+          }
+          expect(t.takeException(), isNull);
+        } finally {
+          await unmount(t);
+        }
+      });
+    }
+
+    // Winnie's pr90_nonprimary_coalesced_review44_test.dart, adapted to this suite's harness.
+    for (final replaced in [false, true]) {
+      testWidgets('coalesced value input does not transfer focus to a distinct row with the same value; '
+          'replaced=$replaced', (t) async {
+        phoneWindow(t);
+        var rows = <_Json>[
+          {'name': 'alpha', 'value': 'old'},
+          {'name': 'beta', 'value': 'keep'},
+        ];
+        late StateSetter update;
+        var writes = 0;
+        try {
+          await t.pumpWidget(
+            DifyApplication(
+              theme: difyTheme(),
+              home: DifyPage(
+                edgeToEdge: true,
+                body: StatefulBuilder(
+                  builder: (context, set) {
+                    update = set;
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
+                      child: GenericTable(
+                        title: 'Headers',
+                        columns: const [
+                          TableColumn(key: 'name', title: 'Name', type: ColumnType.input),
+                          TableColumn(key: 'value', title: 'Value', type: ColumnType.input, width: 120),
+                        ],
+                        data: rows,
+                        onChange: (next) => update(() {
+                          rows = next;
+                          writes++;
+                        }),
+                        emptyRowData: const {'name': '', 'value': ''},
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+          await settle(t, 400);
+          await t.tap(find.byWidgetPredicate((w) => w is EditableText && w.controller.text == 'old'));
+          await settle(t, 200);
+          t.testTextInput.updateEditingValue(
+            const TextEditingValue(text: 'common', selection: TextSelection.collapsed(offset: 6)),
+          );
+          expect(writes, 1);
+          final next = <_Json>[
+            {'name': replaced ? 'new' : 'alpha', 'value': 'common'},
+            {'name': 'beta', 'value': 'updated'},
+          ];
+          update(() => rows = next);
+          await settle(t, 300);
+          if (t.testTextInput.hasAnyClients) {
+            t.testTextInput.updateEditingValue(
+              const TextEditingValue(text: 'common-more', selection: TextSelection.collapsed(offset: 11)),
+            );
+            await settle(t, 300);
+          }
+          if (replaced) {
+            expect(
+              rows,
+              next,
+              reason: 'equal cell values do not establish row identity when the primary name changed remotely',
+            );
+            expect(writes, 1);
+          } else {
+            expect(rows, [
+              {'name': 'alpha', 'value': 'common-more'},
+              {'name': 'beta', 'value': 'updated'},
+            ]);
             expect(writes, 2);
           }
           expect(t.takeException(), isNull);
