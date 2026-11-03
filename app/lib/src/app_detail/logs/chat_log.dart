@@ -82,6 +82,54 @@ class ChatLogFilter extends StatelessWidget {
     final count = annotationCount;
     if (count == null) return const SizedBox.shrink();
     final q = queryParams;
+    final phone = logsPhone(context);
+    final chips = [
+      DifyChip(
+        key: const ValueKey('chat-log-period'),
+        minWidth: 150,
+        panelWidth: 270,
+        leftIcon: RemixIcon('calendar-line', size: 16, color: DifyColors.textSecondary),
+        value: q.period,
+        items: logPeriodItems(),
+        onSelect: (item) => setQueryParams(q.copyWith(period: item.value)),
+        onClear: () => setQueryParams(q.copyWith(period: '9')),
+      ),
+      DifyChip(
+        key: const ValueKey('chat-log-annotation'),
+        minWidth: 150,
+        panelWidth: 270,
+        showLeftIcon: false,
+        value: q.annotationStatus ?? 'all',
+        items: [
+          (value: 'all', name: _l('filter.annotation.all')),
+          (value: 'annotated', name: _l('filter.annotation.annotated', {'count': count})),
+          (value: 'not_annotated', name: _l('filter.annotation.not_annotated')),
+        ],
+        onSelect: (item) => setQueryParams(q.copyWith(annotationStatus: item.value)),
+        onClear: () => setQueryParams(q.copyWith(annotationStatus: 'all')),
+      ),
+    ];
+    final search = DifySearchInput(
+      key: const ValueKey('chat-log-keyword'),
+      width: phone ? null : 200,
+      height: phone ? 40 : 32,
+      value: q.keyword ?? '',
+      placeholder: _c('operation.search'),
+      onValueChange: (v) => setQueryParams(q.copyWith(keyword: v)),
+    );
+    final sort = isChatMode
+        ? LogSort(
+            key: const ValueKey('chat-log-sort'),
+            order: (q.sortBy ?? '').startsWith('-') ? '-' : '',
+            value: (q.sortBy ?? '').replaceFirst('-', '').isEmpty ? 'created_at' : q.sortBy!.replaceFirst('-', ''),
+            items: [
+              (value: 'created_at', name: _l('table.header.time')),
+              (value: 'updated_at', name: _l('table.header.updatedTime')),
+            ],
+            onSelect: (v) => setQueryParams(q.copyWith(sortBy: v)),
+          )
+        : null;
+    if (phone) return LogPhoneFilters(search: search, chips: [...chips, ?sort]);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Wrap(
@@ -89,50 +137,9 @@ class ChatLogFilter extends StatelessWidget {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          DifyChip(
-            key: const ValueKey('chat-log-period'),
-            minWidth: 150,
-            panelWidth: 270,
-            leftIcon: RemixIcon('calendar-line', size: 16, color: DifyColors.textSecondary),
-            value: q.period,
-            items: logPeriodItems(),
-            onSelect: (item) => setQueryParams(q.copyWith(period: item.value)),
-            onClear: () => setQueryParams(q.copyWith(period: '9')),
-          ),
-          DifyChip(
-            key: const ValueKey('chat-log-annotation'),
-            minWidth: 150,
-            panelWidth: 270,
-            showLeftIcon: false,
-            value: q.annotationStatus ?? 'all',
-            items: [
-              (value: 'all', name: _l('filter.annotation.all')),
-              (value: 'annotated', name: _l('filter.annotation.annotated', {'count': count})),
-              (value: 'not_annotated', name: _l('filter.annotation.not_annotated')),
-            ],
-            onSelect: (item) => setQueryParams(q.copyWith(annotationStatus: item.value)),
-            onClear: () => setQueryParams(q.copyWith(annotationStatus: 'all')),
-          ),
-          DifySearchInput(
-            key: const ValueKey('chat-log-keyword'),
-            width: 200,
-            value: q.keyword ?? '',
-            placeholder: _c('operation.search'),
-            onValueChange: (v) => setQueryParams(q.copyWith(keyword: v)),
-          ),
-          if (isChatMode) ...[
-            Container(width: 1, height: 14, color: DifyColors.dividerRegular),
-            LogSort(
-              key: const ValueKey('chat-log-sort'),
-              order: (q.sortBy ?? '').startsWith('-') ? '-' : '',
-              value: (q.sortBy ?? '').replaceFirst('-', '').isEmpty ? 'created_at' : q.sortBy!.replaceFirst('-', ''),
-              items: [
-                (value: 'created_at', name: _l('table.header.time')),
-                (value: 'updated_at', name: _l('table.header.updatedTime')),
-              ],
-              onSelect: (v) => setQueryParams(q.copyWith(sortBy: v)),
-            ),
-          ],
+          ...chips,
+          search,
+          if (sort != null) ...[Container(width: 1, height: 14, color: DifyColors.dividerRegular), sort],
         ],
       ),
     );
@@ -562,10 +569,46 @@ class _ConversationListState extends State<ConversationList> {
     );
   }
 
+  /// A conversation on a phone: its title (the summary) over the end user, the message count (or the output) and
+  /// the update time; the chatflow's status on the right. The ratings are in the conversation's detail.
+  Widget _phoneRow(Json log) {
+    final id = '${log['id']}';
+    final row = getConversationRowValues(
+      isChatMode: _isChatMode,
+      log: log,
+      noChatLabel: _l('table.empty.noChat'),
+      noOutputLabel: _l('table.empty.noOutput'),
+    );
+    final status = _isChatflow ? chatflowStatusCell(log['status_count'] as Json?) : null;
+    final count = _isChatMode ? '${_l('table.header.messageCount')} ${row.rightValue}' : '${row.rightValue}';
+    return LogPhoneRow(
+      key: ValueKey('chat-log-row-$id'),
+      title: '${row.leftValue}',
+      subtitle: [
+        '${row.endUser ?? 'N/A'}',
+        count,
+        AccountTime.of(context).formatTime(((log['updated_at'] as num?) ?? 0).toInt(), _l('dateTimeFormat')),
+      ].join(' · '),
+      unread: log['read_at'] == null,
+      status: switch (status) {
+        LogStatusLabel(:final text) => text,
+        _ => null,
+      },
+      trailing: [?status],
+      onTap: () => _open(id),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final logs = widget.logs;
     if (logs == null) return const DifyLoading(key: ValueKey('logs-loading'), app: true);
+    if (logsPhone(context)) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [for (final log in (logs['data'] as List? ?? const []).cast<Json>()) _phoneRow(log)],
+      );
+    }
     final columns = <DifyTableColumn>[
       DifyTableColumn(header: null, width: 20),
       DifyTableColumn(
@@ -894,10 +937,13 @@ class ConversationDetailPanelState extends State<ConversationDetailPanel> {
     final chat = widget.chatBuilder?.call(context, props) ?? LogChatView(props: props);
     return Container(
       key: const ValueKey('conversation-detail'),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(DifyRadius.xl),
-        border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-      ),
+      // Shown as a page on a phone: no border of its own.
+      decoration: DifyDrawerPage.of(context)
+          ? null
+          : BoxDecoration(
+              borderRadius: BorderRadius.circular(DifyRadius.xl),
+              border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

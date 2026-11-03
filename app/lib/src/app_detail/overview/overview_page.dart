@@ -79,26 +79,29 @@ class OverviewView extends StatelessWidget {
     builder: (context, info, _) {
       final acl = appACLCapabilities(info.permissionKeys);
       if (!acl.canMonitor) return const SizedBox.shrink();
+      final panel = ApikeyInfoPanel(
+        models: models,
+        openUrl: openUrl,
+        openProviderSettings: () {
+          if (openProviderSettings case final open?) return open(context);
+          if (models case final m?) showModelProviderSettings(context, models: m, role: role);
+        },
+      );
+      final charts = ChartView(
+        app: info,
+        stats: stats,
+        now: now,
+        openUrl: openUrl,
+        headerRight: acl.canConfigureTracing ? tracingPanel : null,
+        // A phone scrolls the panel away with the charts.
+        leading: DifyWindowClass.of(context) == DifyWindowClass.compact ? panel : null,
+      );
+      if (DifyWindowClass.of(context) == DifyWindowClass.compact) return charts;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ApikeyInfoPanel(
-            models: models,
-            openUrl: openUrl,
-            openProviderSettings: () {
-              if (openProviderSettings case final open?) return open(context);
-              if (models case final m?) showModelProviderSettings(context, models: m, role: role);
-            },
-          ),
-          Expanded(
-            child: ChartView(
-              app: info,
-              stats: stats,
-              now: now,
-              openUrl: openUrl,
-              headerRight: acl.canConfigureTracing ? tracingPanel : null,
-            ),
-          ),
+          panel,
+          Expanded(child: charts),
         ],
       );
     },
@@ -108,7 +111,10 @@ class OverviewView extends StatelessWidget {
 /// `ChartView`: the header (`h-26.5`: the title, the description with "Learn more", the period picker and
 /// [headerRight]) over the scrolling chart grid (one column, two from Tailwind's `xl`, 1280 px).
 class ChartView extends StatefulWidget {
-  const ChartView({super.key, required this.app, this.stats, this.headerRight, this.now, this.openUrl});
+  const ChartView({super.key, required this.app, this.stats, this.headerRight, this.now, this.openUrl, this.leading});
+
+  /// On a phone: what scrolls above the header (the API key panel).
+  final Widget? leading;
 
   final AppInfo app;
   final StatsApi? stats;
@@ -159,29 +165,105 @@ class _ChartViewState extends State<ChartView> {
           now: widget.now,
         ),
     ];
+    final grid = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 12,
+      children: [
+        if (!twoColumns)
+          ...cells
+        else
+          for (var i = 0; i < cells.length; i += 2)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 12,
+              children: [
+                Expanded(child: cells[i]),
+                Expanded(child: i + 1 < cells.length ? cells[i + 1] : const SizedBox.shrink()),
+              ],
+            ),
+      ],
+    );
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) {
+      // A phone: one scroll (the header as tall as it needs: the description wraps, the picker is touch-high).
+      return SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ?widget.leading,
+            _header(context),
+            Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: grid),
+          ],
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(height: 106, child: _header(context)),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: 12,
-              children: [
-                if (!twoColumns)
-                  ...cells
-                else
-                  for (var i = 0; i < cells.length; i += 2)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 12,
-                      children: [
-                        Expanded(child: cells[i]),
-                        Expanded(child: i + 1 < cells.length ? cells[i + 1] : const SizedBox.shrink()),
-                      ],
+          child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(24, 8, 24, 24), child: grid),
+        ),
+      ],
+    );
+  }
+
+  Widget _header(BuildContext context) {
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
+    final side = phone ? 16.0 : 24.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(side, 12, side, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 24,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Semantics(
+                    header: true,
+                    child: DifyTextLine(
+                      DifyI18n.tr('common', 'appMenus.overview'),
+                      style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
                     ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              SizedBox(
+                height: phone ? null : 16,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 2,
+                  children: [
+                    Flexible(
+                      child: DifyTextLine(
+                        DifyI18n.tr('appLog', 'monitoring.description'),
+                        maxLines: phone ? 3 : 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                      ),
+                    ),
+                    _LearnMore(onOpen: () => (widget.openUrl ?? openExternalUrl)(overviewDocLink())),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          height: phone ? DifyTouch.minTarget : 40,
+          child: Padding(
+            padding: phone ? EdgeInsets.symmetric(horizontal: side) : const EdgeInsets.only(left: 24, right: 40),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                LongTimeRangePicker(today: _today, onSelect: (p) => setState(() => _period = p)),
+                ?widget.headerRight,
               ],
             ),
           ),
@@ -189,66 +271,6 @@ class _ChartViewState extends State<ChartView> {
       ],
     );
   }
-
-  Widget _header(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 24,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Semantics(
-                  header: true,
-                  child: DifyTextLine(
-                    DifyI18n.tr('common', 'appMenus.overview'),
-                    style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 2),
-            SizedBox(
-              height: 16,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 2,
-                children: [
-                  Flexible(
-                    child: DifyTextLine(
-                      DifyI18n.tr('appLog', 'monitoring.description'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
-                    ),
-                  ),
-                  _LearnMore(onOpen: () => (widget.openUrl ?? openExternalUrl)(overviewDocLink())),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 4),
-      SizedBox(
-        height: 40,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 24, right: 40),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              LongTimeRangePicker(today: _today, onSelect: (p) => setState(() => _period = p)),
-              ?widget.headerRight,
-            ],
-          ),
-        ),
-      ),
-    ],
-  );
 }
 
 /// "Learn more" (`inline-flex items-center text-text-accent hover:underline` + `i-ri-external-link-line size-3`).

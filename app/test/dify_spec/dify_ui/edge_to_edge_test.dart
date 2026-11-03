@@ -121,11 +121,23 @@ void main() {
         showDifyBottomSheet<void>(nav.currentContext!, _sheetContent);
         await t.pumpAndSettle();
         final surface = _sheetSurface(t);
-        expect(surface.left, 0);
-        expect(surface.right, w.size.width);
+        if (w.size.width > DifySheetRecipe.maxWidth) {
+          // Batch 5: wider than 640 dp (a landscape phone) the sheet is Material's large-screen sheet, centred; its
+          // content still keeps clear of the insets.
+          expect(surface.width, DifySheetRecipe.maxWidth);
+          expect(surface.center.dx, w.size.width / 2);
+          final content = _sheetContentRect(t);
+          expect(content.left, greaterThanOrEqualTo(safe.left));
+          expect(content.right, lessThanOrEqualTo(safe.right));
+          expect(content.top, safe.top);
+          expect(content.bottom, safe.bottom);
+        } else {
+          expect(surface.left, 0);
+          expect(surface.right, w.size.width);
+          expect(_sheetContentRect(t), Rect.fromLTRB(safe.left, safe.top, safe.right, safe.bottom));
+        }
         expect(surface.top, w.insets.top, reason: 'full stops at the top safe area');
         expect(surface.bottom, greaterThanOrEqualTo(w.size.height));
-        expect(_sheetContentRect(t), Rect.fromLTRB(safe.left, safe.top, safe.right, safe.bottom));
         expect(t.getRect(find.byType(ModalBarrier).last), window, reason: 'the scrim covers the system bars too');
       });
 

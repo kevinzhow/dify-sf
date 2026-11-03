@@ -89,6 +89,7 @@ class DifyPromptEditorPanel extends StatefulWidget {
     this.jinjaEditorBuilder,
     this.controller,
     this.focusNode,
+    this.phoneActions = const [],
   });
 
   final Object title;
@@ -123,6 +124,10 @@ class DifyPromptEditorPanel extends StatefulWidget {
   final Widget Function(BuildContext context, JinjaEditorArgs args)? jinjaEditorBuilder;
   final PromptEditorController? controller;
   final FocusNode? focusNode;
+
+  /// More of the row's own actions in a phone's "…" sheet, after Remove (a list's Move up / Move down, which a wide
+  /// window does with its hover drag handle). Each finds its row by identity when it runs.
+  final List<DifyActionSheetAction> phoneActions;
 
   @override
   State<DifyPromptEditorPanel> createState() => _DifyPromptEditorPanelState();
@@ -181,6 +186,16 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
   Widget _header() {
     final w = widget;
     final tip = w.titleTooltip;
+    // A phone: a long press on the header opens the "…" sheet too (the row's actions, Move up / Move down among
+    // them, as a touch row's long press does).
+    if (_asPage && w.phoneActions.isNotEmpty && !w.readOnly) {
+      return GestureDetector(onLongPress: _openMore, child: _headerRow(tip));
+    }
+    return _headerRow(tip);
+  }
+
+  Widget _headerRow(Object? tip) {
+    final w = widget;
     return Padding(
       padding: const EdgeInsets.only(top: 4, right: 8, left: 12),
       child: Row(
@@ -238,6 +253,34 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
     setState(() => _isCopied = true);
   }
 
+  /// A phone's "…" sheet: expand, copy, remove and the row's own [DifyPromptEditorPanel.phoneActions].
+  void _openMore([String? copy, String? remove]) {
+    final w = widget;
+    showDifyActionSheet(
+      context,
+      actions: [
+        DifyActionSheetAction(
+          label: DifyI18n.tr('share', 'chat.expand'),
+          icon: const RemixIcon('expand-diagonal-line', size: 20),
+          onTap: () => _setExpand(true),
+        ),
+        DifyActionSheetAction(
+          label: copy ?? DifyI18n.tr('common', 'operation.copy'),
+          icon: const DifyIcon('vender/line/files/copy', size: 20),
+          onTap: _copy,
+        ),
+        if (w.showRemove && w.onRemove != null)
+          DifyActionSheetAction(
+            label: remove ?? DifyI18n.tr('common', 'operation.remove'),
+            icon: const RemixIcon('delete-bin-line', size: 20),
+            destructive: true,
+            onTap: w.onRemove!,
+          ),
+        if (!w.readOnly) ...w.phoneActions,
+      ],
+    );
+  }
+
   /// The header's buttons. On a phone each has its own 48 px touch box: insert variable shows, expand, copy and
   /// remove are under "…" (an action sheet; the title keeps its room); elsewhere Dify's row of 24 px buttons.
   Widget _controls() {
@@ -277,28 +320,7 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
               key: const Key('prompt-editor-more'),
               label: DifyI18n.tr('common', 'operation.more'),
               icon: const RemixIcon('more-fill', size: 16),
-              onPressed: () => showDifyActionSheet(
-                context,
-                actions: [
-                  DifyActionSheetAction(
-                    label: DifyI18n.tr('share', 'chat.expand'),
-                    icon: const RemixIcon('expand-diagonal-line', size: 20),
-                    onTap: () => _setExpand(true),
-                  ),
-                  DifyActionSheetAction(
-                    label: copy,
-                    icon: const DifyIcon('vender/line/files/copy', size: 20),
-                    onTap: _copy,
-                  ),
-                  if (w.showRemove && w.onRemove != null)
-                    DifyActionSheetAction(
-                      label: remove,
-                      icon: const RemixIcon('delete-bin-line', size: 20),
-                      destructive: true,
-                      onTap: w.onRemove!,
-                    ),
-                ],
-              ),
+              onPressed: () => _openMore(copy, remove),
             ),
           ),
         ],

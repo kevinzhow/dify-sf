@@ -72,6 +72,41 @@ class _AnnotationListState extends State<AnnotationList> {
       for (final item in widget.list)
         (widget.formatTime ?? AccountTime.of(context).formatTime)(item.createdAt, dateFormat),
     ];
+    final confirm = RemoveAnnotationConfirmModal(
+      isShow: _showConfirmDelete,
+      onHide: () => setState(() => _showConfirmDelete = false),
+      onRemove: () {
+        widget.onRemove(_currId!);
+        setState(() => _showConfirmDelete = false);
+      },
+    );
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) {
+      // A phone: rows across the page (question over answer, the time and hits), a tap opens the annotation, "…" or
+      // a long press offers Edit and Remove. No checkboxes: the batch delete is the desktop's.
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (i, item) in widget.list.indexed)
+                  _phoneRow(
+                    item,
+                    createdAt: created[i],
+                    onRemove: () => setState(() {
+                      _currId = item.id;
+                      _showConfirmDelete = true;
+                    }),
+                  ),
+              ],
+            ),
+          ),
+          confirm,
+        ],
+      );
+    }
+    final touch = DifyLayoutMode.of(context) == DifyLayoutMode.touch;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -80,15 +115,19 @@ class _AnnotationListState extends State<AnnotationList> {
           child: DifyTable(
             columns: [
               DifyTableColumn(
-                width: _checkW,
+                // The touch desktop: the checkboxes are 44 px touch boxes, the column as wide as they need.
+                width: touch ? _checkW + 12 : _checkW,
                 headerPadding: const EdgeInsets.symmetric(horizontal: 8),
                 header: Align(
                   alignment: AlignmentDirectional.centerStart,
-                  child: DifyCheckbox(
-                    checked: all,
-                    indeterminate: selected > 0 && !all,
-                    label: _t('common', 'operation.selectAll'),
-                    onChanged: (_) => widget.onSelectedIdsChange(all ? const [] : ids),
+                  child: _touchBox(
+                    touch,
+                    DifyCheckbox(
+                      checked: all,
+                      indeterminate: selected > 0 && !all,
+                      label: _t('common', 'operation.selectAll'),
+                      onChanged: (_) => widget.onSelectedIdsChange(all ? const [] : ids),
+                    ),
                   ),
                 ),
               ),
@@ -130,21 +169,50 @@ class _AnnotationListState extends State<AnnotationList> {
               onSelectedIdsChange: widget.onSelectedIdsChange,
             ),
           ),
-        RemoveAnnotationConfirmModal(
-          isShow: _showConfirmDelete,
-          onHide: () => setState(() => _showConfirmDelete = false),
-          onRemove: () {
-            widget.onRemove(_currId!);
-            setState(() => _showConfirmDelete = false);
-          },
-        ),
+        confirm,
       ],
+    );
+  }
+
+  /// An annotation on a phone ([DifyActionRow]): the question, the answer, then the time and the hits.
+  Widget _phoneRow(Annotation item, {required String createdAt, required VoidCallback onRemove}) {
+    final hits = '${_t('appAnnotation', 'table.header.hits')} ${item.hitCount}';
+    return DecoratedBox(
+      key: ValueKey('annotation-row-${item.id}'),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
+      ),
+      child: DifyActionRow(
+        label: item.question,
+        semanticLabel: [item.question, item.answer, createdAt, hits].join(', '),
+        onTap: () => widget.onView(item),
+        actions: [
+          DifyActionRow.edit(() => widget.onView(item), label: _t('appDebug', 'feature.annotation.edit')),
+          DifyActionRow.delete(onRemove, label: _t('appDebug', 'feature.annotation.remove')),
+        ],
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 0, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 2,
+            children: [
+              DifyText(item.question, DifyType.bodyLgRegular, color: DifyColors.textPrimary),
+              DifyText(item.answer, DifyType.systemSmRegular, color: DifyColors.textSecondary, maxLines: 2),
+              DifyText('$createdAt · $hits', DifyType.systemXsRegular, color: DifyColors.textTertiary),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
 
 /// The fixed columns: the checkbox `w-12`, the actions `w-24`.
 const _checkW = 48.0, _actionsW = 96.0;
+
+/// [checkbox] in a 44 px touch box (also its accessible bounds) when [touch] (the touch desktop's table).
+Widget _touchBox(bool touch, Widget checkbox) =>
+    touch ? DifyTouchArea(minSize: DifyTouch.controlHeight, accessibleBox: true, child: checkbox) : checkbox;
 
 /// The header cells' `pl-3` (the row is `h-7`: [DifyTable.headerHeight]).
 const _headPadding = EdgeInsets.only(left: 12);
@@ -186,10 +254,13 @@ extension on _AnnotationListState {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Align(
               alignment: AlignmentDirectional.centerStart,
-              child: DifyCheckbox(
-                checked: widget.selectedIds.contains(item.id),
-                label: item.question,
-                onChanged: (v) => _toggle(item.id, v),
+              child: _touchBox(
+                DifyLayoutMode.of(context) == DifyLayoutMode.touch,
+                DifyCheckbox(
+                  checked: widget.selectedIds.contains(item.id),
+                  label: item.question,
+                  onChanged: (v) => _toggle(item.id, v),
+                ),
               ),
             ),
           ),

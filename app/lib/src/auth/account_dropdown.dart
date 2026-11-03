@@ -355,7 +355,14 @@ class _AccountTriggerState extends State<_AccountTrigger> {
           onTap: w.onTap,
           child: Container(
             constraints: w.compact ? null : const BoxConstraints(maxWidth: 180),
-            padding: w.compact ? const EdgeInsets.all(4) : const EdgeInsets.fromLTRB(4, 4, 16, 4),
+            // The touch desktop (a touch tablet): 44 px high (the 28 px avatar with 8 px above and below); a mouse
+            // keeps Dify's.
+            padding: switch ((w.compact, DifyLayoutMode.of(context) == DifyLayoutMode.touch)) {
+              (true, true) => const EdgeInsets.all(8),
+              (true, false) => const EdgeInsets.all(4),
+              (false, true) => const EdgeInsets.fromLTRB(4, 8, 16, 8),
+              (false, false) => const EdgeInsets.fromLTRB(4, 4, 16, 4),
+            },
             decoration: BoxDecoration(
               color: _hover || w.open ? DifyColors.stateBaseHover : null,
               borderRadius: BorderRadius.circular(999),

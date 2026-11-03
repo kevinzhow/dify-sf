@@ -153,20 +153,29 @@ class _AddAnnotationModalState extends State<AddAnnotationModal> {
         ),
       ),
       footer: AnnotationDrawerFooter(
-        leading: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() => _isCreateNext = !_isCreateNext),
-          child: Row(
-            spacing: 8,
-            children: [
-              DifyCheckbox(
-                checked: _isCreateNext,
-                label: _a('addModal.createNext'),
-                onChanged: (v) => setState(() => _isCreateNext = v),
+        // On a phone's page the checkbox and its label are one 44 px touch box (one node: the checkbox, named by it).
+        leading: Builder(
+          builder: (context) {
+            final touch = DifyTouchArea.appliesIn(context);
+            return DifyTouchArea.inPhoneSheet(
+              context,
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _isCreateNext = !_isCreateNext),
+                child: Row(
+                  spacing: 8,
+                  children: [
+                    DifyCheckbox(
+                      checked: _isCreateNext,
+                      label: _a('addModal.createNext'),
+                      onChanged: (v) => setState(() => _isCreateNext = v),
+                    ),
+                    ExcludeSemantics(excluding: touch, child: DifyTextLine(_a('addModal.createNext'))),
+                  ],
+                ),
               ),
-              DifyTextLine(_a('addModal.createNext')),
-            ],
-          ),
+            );
+          },
         ),
         trailing: Padding(
           padding: const EdgeInsets.only(top: 8),
@@ -279,16 +288,20 @@ class _AnnotationEditItemState extends State<AnnotationEditItem> {
     final name = _a(query ? 'editModal.queryName' : 'editModal.answerName');
     final editTitle = _a(query ? 'editModal.yourQuery' : 'editModal.yourAnswer');
     final body = difyTextStyle(DifyType.systemSmRegular, DifyColors.textPrimary);
-    Widget link(String label, String icon, Color color, VoidCallback onTap) => DifyPressable(
-      onPressed: onTap,
-      semanticLabel: label,
-      builder: (context, _, _) => Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 4,
-        children: [
-          RemixIcon(icon, size: 14, color: color),
-          DifyTextLine(label, style: difyTextStyle(DifyType.systemXsMedium, color)),
-        ],
+    // On a phone's page each link is in a 44 px touch box.
+    Widget link(String label, String icon, Color color, VoidCallback onTap) => DifyTouchArea.inPhoneSheet(
+      context,
+      DifyPressable(
+        onPressed: onTap,
+        semanticLabel: label,
+        builder: (context, _, _) => Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 4,
+          children: [
+            RemixIcon(icon, size: 14, color: color),
+            DifyTextLine(label, style: difyTextStyle(DifyType.systemXsMedium, color)),
+          ],
+        ),
       ),
     );
     return Row(
@@ -403,19 +416,25 @@ class _AnnotationEditItemState extends State<AnnotationEditItem> {
   }
 }
 
-/// The footer's "Remove this Annotation" (`message-check-remove` and the label, `pl-3`).
-Widget _removeThisCache(VoidCallback onTap) => DifyPressable(
-  onPressed: onTap,
-  semanticLabel: _a('editModal.removeThisCache'),
-  builder: (context, _, _) => Padding(
-    padding: const EdgeInsets.only(left: 12),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: 8,
-      children: [
-        DifyIcon('vender/line/communication/message-check-remove', size: 16, color: DifyColors.textTertiary),
-        DifyTextLine(_a('editModal.removeThisCache')),
-      ],
+/// The footer's "Remove this Annotation" (`message-check-remove` and the label, `pl-3`); a 44 px touch box on a
+/// phone's page.
+Widget _removeThisCache(VoidCallback onTap) => Builder(
+  builder: (context) => DifyTouchArea.inPhoneSheet(
+    context,
+    DifyPressable(
+      onPressed: onTap,
+      semanticLabel: _a('editModal.removeThisCache'),
+      builder: (context, _, _) => Padding(
+        padding: const EdgeInsets.only(left: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 8,
+          children: [
+            DifyIcon('vender/line/communication/message-check-remove', size: 16, color: DifyColors.textTertiary),
+            DifyTextLine(_a('editModal.removeThisCache')),
+          ],
+        ),
+      ),
     ),
   ),
 );

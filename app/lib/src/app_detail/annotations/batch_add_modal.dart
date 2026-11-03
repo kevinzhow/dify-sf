@@ -339,9 +339,14 @@ class AnnotationCsvDownloader extends StatelessWidget {
                       padding: const EdgeInsets.only(right: 4),
                       child: DifyIcon('vender/solid/general/download-02', size: 12, color: DifyColors.textAccent),
                     ),
-                    DifyTextLine(
-                      _a('batchModal.template'),
-                      style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent),
+                    // A narrow phone sheet shrinks the label rather than overflowing.
+                    Flexible(
+                      child: DifyTextLine(
+                        _a('batchModal.template'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent),
+                      ),
                     ),
                   ],
                 ),
@@ -450,17 +455,25 @@ class _AnnotationBatchModalState extends State<AnnotationBatchModal> {
       radius: DifyRadius.xl,
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       label: _a('batchModal.title'),
+      // Dify's BatchModal ignores Escape and a click outside (`onClose={noop}`); a phone's Back closes its sheet.
+      onBack: widget.onCancel,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: DifyTextLine(
-                  _a('batchModal.title'),
-                  style: difyTextStyle(DifyType.systemXlMedium, DifyColors.textPrimary),
+              // A phone's sheet: the sheet's header with its 44 px close (the title row and the close below are the
+              // centred dialog's).
+              DifyDialogTitle(
+                title: _a('batchModal.title'),
+                onClose: widget.onCancel,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: DifyTextLine(
+                    _a('batchModal.title'),
+                    style: difyTextStyle(DifyType.systemXlMedium, DifyColors.textPrimary),
+                  ),
                 ),
               ),
               widget.uploader?.call(_currentCsv, update) ??
@@ -499,11 +512,16 @@ class _AnnotationBatchModalState extends State<AnnotationBatchModal> {
           Positioned(
             top: -16,
             right: -24,
-            child: DifyIconButton(
-              label: _c('operation.close'),
-              size: DifyIconButtonSize.lg,
-              icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
-              onPressed: widget.onCancel,
+            // The centred dialog's close (the sheet's is in its header).
+            child: Builder(
+              builder: (context) => DifyDialogFrame.sheetOf(context)
+                  ? const SizedBox.shrink()
+                  : DifyIconButton(
+                      label: _c('operation.close'),
+                      size: DifyIconButtonSize.lg,
+                      icon: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+                      onPressed: widget.onCancel,
+                    ),
             ),
           ),
         ],

@@ -584,34 +584,39 @@ class StudioPageState extends State<StudioPage> {
       header: true,
       child: DifyTextLine(_c('menus.apps'), style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
     );
-    return Container(
-      color: DifyColors.backgroundBody,
-      padding: EdgeInsets.fromLTRB(compact ? 12 : 32, 16, compact ? 12 : 32, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 14,
-        children: [
-          SizedBox(
-            height: compact ? 36 : 24,
-            child: Row(
-              children: [
-                Expanded(child: title),
-                if (compact && _canCreate) create,
-              ],
+    // On a touch tablet the filters and Create are touch-high (the desktop structure, touch sizes).
+    return DifyTouchSurface(
+      enabled: DifyTouch.compactOf(context),
+      child: Container(
+        color: DifyColors.backgroundBody,
+        padding: EdgeInsets.fromLTRB(compact ? 12 : 32, 16, compact ? 12 : 32, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 14,
+          children: [
+            SizedBox(
+              // A narrow window's row also holds Create (touch-high on touch).
+            height: compact ? (DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 36) : 24,
+              child: Row(
+                children: [
+                  Expanded(child: title),
+                  if (compact && _canCreate) create,
+                ],
+              ),
             ),
-          ),
-          if (compact)
-            filters
-          else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 8,
-              children: [
-                Expanded(child: filters),
-                if (_canCreate) create,
-              ],
-            ),
-        ],
+            if (compact)
+              filters
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 8,
+                children: [
+                  Expanded(child: filters),
+                  if (_canCreate) create,
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }

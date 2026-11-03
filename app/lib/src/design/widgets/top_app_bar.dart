@@ -35,6 +35,7 @@ class DifyTopAppBar extends StatelessWidget {
     this.backgroundColor,
     this.automaticallyImplyLeading = true,
     this.onBack,
+    this.dense = false,
   }) : large = false,
        field = null;
 
@@ -44,6 +45,7 @@ class DifyTopAppBar extends StatelessWidget {
       leading = null,
       automaticallyImplyLeading = false,
       onBack = null,
+      dense = false,
       field = null;
 
   const DifyTopAppBar.search({
@@ -53,6 +55,7 @@ class DifyTopAppBar extends StatelessWidget {
     this.actions = const [],
     this.backgroundColor,
   }) : large = false,
+       dense = false,
        title = '',
        subtitle = null,
        leading = null,
@@ -60,6 +63,13 @@ class DifyTopAppBar extends StatelessWidget {
 
   /// The bar's height below the status bar.
   static const height = 56.0;
+
+  /// A [dense] bar's height: a short window's (a phone in landscape), where every row the content loses counts. Its
+  /// 44 px buttons still have their whole 48 px targets.
+  static const denseHeight = 48.0;
+
+  /// [denseHeight] instead of [height].
+  final bool dense;
 
   final String title;
   final String? subtitle;
@@ -110,7 +120,7 @@ class DifyTopAppBar extends StatelessWidget {
     Widget bar = Padding(
       padding: EdgeInsets.fromLTRB(insets.left, insets.top, insets.right, 0),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: height),
+        constraints: BoxConstraints(minHeight: dense ? denseHeight : height),
         // `gap-1 px-2`, with the row reaching 2 px past the outer buttons: a 44 px button's 48 px target
         // ([DifyTouchIconButton]) stays inside the row, which is what forwards a tap to it.
         child: Padding(

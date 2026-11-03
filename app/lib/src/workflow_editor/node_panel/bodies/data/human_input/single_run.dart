@@ -126,6 +126,7 @@ class HumanInputRunForm extends StatefulWidget {
     required this.data,
     this.showBackButton = false,
     this.busy = false,
+    this.answers,
     this.onBack,
     this.onSubmit,
     this.onError,
@@ -137,6 +138,10 @@ class HumanInputRunForm extends StatefulWidget {
 
   /// A request of the owner is in flight (the form was just fetched, or the answer is being sent): the actions wait.
   final bool busy;
+
+  /// Where the answers are kept (the owner's, so a remount keeps them: dify-sf's single-run draft); empty, it gets the
+  /// form's initial values. Null: the form's own.
+  final Map<String, Object?>? answers;
   final VoidCallback? onBack;
   final Future<void> Function(Map<String, Object?> inputs, String action)? onSubmit;
 
@@ -162,13 +167,19 @@ class HumanInputRunForm extends StatefulWidget {
 class _HumanInputRunFormState extends State<HumanInputRunForm> {
   late final _content = jsStr(widget.data['form_content']) ?? '';
   late final _fields = jsList(widget.data['inputs']);
-  late final Map<String, Object?> _inputs = initializeInputs(
-    renderedFormInputs(_fields, _content),
-    switch (widget.data['resolved_default_values']) {
-      final Map<String, Object?> m => m,
-      _ => const {},
-    },
-  );
+  late final Map<String, Object?> _inputs = () {
+    final initial = initializeInputs(
+      renderedFormInputs(_fields, _content),
+      switch (widget.data['resolved_default_values']) {
+        final Map<String, Object?> m => m,
+        _ => const {},
+      },
+    );
+    final kept = widget.answers;
+    if (kept == null) return initial;
+    if (kept.isEmpty) kept.addAll(initial);
+    return kept;
+  }();
   bool _submitting = false;
 
   Future<void> _submit(String action) async {
@@ -205,16 +216,24 @@ class _HumanInputRunFormState extends State<HumanInputRunForm> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Row(
               children: [
-                DifyPressable(
-                  semanticLabel: hi('singleRun.back'),
-                  onPressed: w.onBack,
-                  builder: (context, _, _) => Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      RemixIcon('arrow-left-line', size: 16, color: DifyColors.textAccent),
-                      const SizedBox(width: 4),
-                      DifyText(hi('singleRun.back'), DifyType.systemSmSemiboldUppercase, color: DifyColors.textAccent),
-                    ],
+                // A phone's sheet: the link is a 44 px touch box.
+                DifyTouchArea.inPhoneSheet(
+                  context,
+                  DifyPressable(
+                    semanticLabel: hi('singleRun.back'),
+                    onPressed: w.onBack,
+                    builder: (context, _, _) => Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        RemixIcon('arrow-left-line', size: 16, color: DifyColors.textAccent),
+                        const SizedBox(width: 4),
+                        DifyText(
+                          hi('singleRun.back'),
+                          DifyType.systemSmSemiboldUppercase,
+                          color: DifyColors.textAccent,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 Padding(

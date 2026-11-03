@@ -345,10 +345,10 @@ class _EditorPageState extends State<EditorPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final c = _controller;
-    // On a phone the editor's own bars reach under the system bars (dify-sf's phone layout); until the document is
-    // shown, its states keep to the safe area.
+    // In the touch layout (a phone, a tablet, a landscape phone) the editor's own bars reach under the system bars
+    // (dify-sf's phone chrome); until the document is shown, its states keep to the safe area.
     // The SafeArea stays in the tree (only its sides change), so a rotation keeps the editor's state.
-    final edge = DifyWindowClass.of(context) == DifyWindowClass.compact && _error == null && (c?.ready ?? false);
+    final edge = DifyLayoutMode.of(context) != DifyLayoutMode.desktop && _error == null && (c?.ready ?? false);
     return DifyPage(
       edgeToEdge: true,
       body: SafeArea(left: !edge, top: !edge, right: !edge, bottom: !edge, child: _body(context, c)),

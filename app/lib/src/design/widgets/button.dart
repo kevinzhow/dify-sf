@@ -9,6 +9,7 @@ import 'dialog.dart' show DifyDialogFrame;
 import 'kbd.dart' show DifyKbd, DifyKeycaps;
 import 'loading.dart' show DifySpinner;
 import 'responsive.dart';
+import 'touch_target.dart' show DifyTouchSurface;
 
 /// Button sizes (button/index.tsx): height, gap, radius, horizontal padding, text.
 enum DifyButtonSize {
@@ -73,13 +74,12 @@ class DifyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final off = disabled || loading;
-    // In a sheet or a dialog on a phone a button is touch-high (44 px), as the fields there are; elsewhere Dify's
-    // sizes.
-    final height =
+    // In a sheet, a dialog or a touch surface (a pushed page) on a phone a button is touch-high (44 px), as the fields
+    // there are, and at least as wide (a short label: "Add"); elsewhere Dify's sizes.
+    final touch =
         DifyTouch.compactOf(context) &&
-            (DifySheetRecipe.contains(context) || DifyDialogFrame.maybeOf(context) != null)
-        ? math.max(size.height, DifyTouch.controlHeight)
-        : size.height;
+        (DifySheetRecipe.contains(context) || DifyDialogFrame.maybeOf(context) != null || DifyTouchSurface.of(context));
+    final height = touch ? math.max(size.height, DifyTouch.controlHeight) : size.height;
     // Keycaps a phone does not show leave the row, with the gap before them (the label stays centred).
     final keycaps = DifyKbd.shownIn(context);
     final leading = this.leading is DifyKeycaps && !keycaps ? null : this.leading;
@@ -100,8 +100,9 @@ class DifyButton extends StatelessWidget {
           look: look,
           radius: size.radius,
           focused: focused,
-          child: SizedBox(
+          child: Container(
             height: height,
+            constraints: BoxConstraints(minWidth: touch ? DifyTouch.controlHeight : 0),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: paddingX ?? (primarySmall ? 8 : size.paddingX)),
               child: DefaultTextStyle.merge(

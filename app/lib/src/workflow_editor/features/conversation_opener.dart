@@ -2,6 +2,8 @@
 /// (app/configuration/config-prompt/confirm-add-var).
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -201,7 +203,11 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
         missing = keys.where((k) => !promptKeys.contains(k)).toList();
       }
       if (missing.isNotEmpty) {
-        setState(() => _notIncludeKeys = missing);
+        if (DifyDialogFrame.sheetOf(context)) {
+          unawaited(_askOnPhone(missing));
+        } else {
+          setState(() => _notIncludeKeys = missing);
+        }
         return;
       }
     }
@@ -213,11 +219,43 @@ class _OpeningSettingModalState extends State<OpeningSettingModal> {
     _save(ignoreVariablesCheck: true);
   }
 
-  void _autoAddVar() {
-    final keys = _notIncludeKeys ?? const [];
+  void _autoAddVar([List<String>? asked]) {
+    final keys = asked ?? _notIncludeKeys ?? const [];
     widget.onAutoAddPromptVariable?.call([for (final k in keys) getNewVar(k)]);
     setState(() => _notIncludeKeys = null);
     _save(ignoreVariablesCheck: true);
+  }
+
+  /// A phone (the modal is a sheet): [ConfirmAddVar] is the dialog primitive's centred confirmation over the window
+  /// ([showDifyAlertDialog]), not a layer inside the sheet. Cancel saves without adding, as in Dify; Back and Escape
+  /// only close the question (nothing is saved).
+  Future<void> _askOnPhone(List<String> keys) async {
+    final add = await showDifyAlertDialog<bool>(
+      context,
+      builder: (dialog) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Semantics(
+              container: true,
+              scopesRoute: true,
+              namesRoute: true,
+              explicitChildNodes: true,
+              label: ad('autoAddVar'),
+              child: ConfirmAddVar(
+                varNameArr: keys,
+                backdrop: false,
+                onConfirm: () => Navigator.of(dialog).pop(true),
+                onCancel: () => Navigator.of(dialog).pop(false),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted || add == null) return;
+    add ? _autoAddVar(keys) : _cancelAutoAddVar();
   }
 
   // ---- keyboard sorting (useKeyboardSortable) ----
@@ -726,89 +764,105 @@ class _AddQuestionState extends State<_AddQuestion> {
 /// ConfirmAddVar: over the dialog (`rgba(35, 56, 118, 0.2)`), "add these variables?" with the names as `{{name}}`
 /// highlights, Cancel (save without adding) and Add.
 class ConfirmAddVar extends StatelessWidget {
-  const ConfirmAddVar({super.key, required this.varNameArr, required this.onConfirm, required this.onCancel});
+  const ConfirmAddVar({
+    super.key,
+    required this.varNameArr,
+    required this.onConfirm,
+    required this.onCancel,
+    this.backdrop = true,
+  });
   final List<String> varNameArr;
   final VoidCallback onConfirm, onCancel;
 
+  /// Dify's tinted layer over the dialog, the 420 px card centred on it; without it (a phone's confirmation route) the
+  /// card alone, as wide as it is given.
+  final bool backdrop;
+
   @override
-  Widget build(BuildContext context) => Container(
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      color: DifyConfirmAddVarColors.backdrop,
-      borderRadius: BorderRadius.circular(DifyRadius.xl),
-    ),
-    child: Container(
-      width: 420,
-      padding: const EdgeInsets.all(24),
+  Widget build(BuildContext context) {
+    final card = _card();
+    if (!backdrop) return card;
+    return Container(
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: DifyColors.componentsPanelBg,
+        color: DifyConfirmAddVarColors.backdrop,
         borderRadius: BorderRadius.circular(DifyRadius.xl),
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0, 12),
-            blurRadius: 16,
-            spreadRadius: -4,
-            color: DifyConfirmAddVarColors.shadow,
-          ),
-          BoxShadow(
-            offset: const Offset(0, 4),
-            blurRadius: 6,
-            spreadRadius: -2,
-            color: DifyConfirmAddVarColors.shadowNear,
-          ),
-        ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 12,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: DifyColors.componentsCardBgAlt,
-                  border: Border.all(color: DifyColors.componentsCardBorder),
-                  borderRadius: BorderRadius.circular(DifyRadius.xl),
-                  boxShadow: DifyShadows.lg,
-                ),
-                child: Center(child: SvgPicture.string(_varIcon, width: 16, height: 14)),
+      child: card,
+    );
+  }
+
+  Widget _card() => Container(
+    width: backdrop ? 420 : null,
+    padding: const EdgeInsets.all(24),
+    decoration: BoxDecoration(
+      color: DifyColors.componentsPanelBg,
+      borderRadius: BorderRadius.circular(DifyRadius.xl),
+      boxShadow: [
+        BoxShadow(
+          offset: const Offset(0, 12),
+          blurRadius: 16,
+          spreadRadius: -4,
+          color: DifyConfirmAddVarColors.shadow,
+        ),
+        BoxShadow(
+          offset: const Offset(0, 4),
+          blurRadius: 6,
+          spreadRadius: -2,
+          color: DifyConfirmAddVarColors.shadowNear,
+        ),
+      ],
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 12,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: DifyColors.componentsCardBgAlt,
+                border: Border.all(color: DifyColors.componentsCardBorder),
+                borderRadius: BorderRadius.circular(DifyRadius.xl),
+                boxShadow: DifyShadows.lg,
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    DifyTextLine(
-                      ad('autoAddVar'),
-                      style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
-                    ),
-                    const SizedBox(height: 15),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 66),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Wrap(spacing: 4, children: [for (final n in varNameArr) _VarHighlight(n)]),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 28),
-          FeatureFooter([
-            DifyButton(onPressed: onCancel, child: DifyTextLine(tc('operation.cancel'))),
-            DifyButton(
-              variant: DifyButtonVariant.primary,
-              onPressed: onConfirm,
-              child: DifyTextLine(tc('operation.add')),
+              child: Center(child: SvgPicture.string(_varIcon, width: 16, height: 14)),
             ),
-          ]),
-        ],
-      ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DifyTextLine(
+                    ad('autoAddVar'),
+                    style: difyTextStyle(DifyType.systemMdMedium, DifyColors.textPrimary),
+                  ),
+                  const SizedBox(height: 15),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 66),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Wrap(spacing: 4, children: [for (final n in varNameArr) _VarHighlight(n)]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 28),
+        FeatureFooter([
+          DifyButton(onPressed: onCancel, child: DifyTextLine(tc('operation.cancel'))),
+          DifyButton(
+            variant: DifyButtonVariant.primary,
+            onPressed: onConfirm,
+            child: DifyTextLine(tc('operation.add')),
+          ),
+        ]),
+      ],
     ),
   );
 }

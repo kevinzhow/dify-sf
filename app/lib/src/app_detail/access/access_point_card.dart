@@ -127,12 +127,37 @@ class AccessPointCard extends StatelessWidget {
       }
     }
     final footer = actions;
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
+    final statusRow = Semantics(
+      liveRegion: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 4,
+        children: [
+          if (busy)
+            const DifyPulse(child: DifyStatusDotSkeleton())
+          else
+            DifyStatusDot(
+              status: enabled ? DifyStatusDotStatus.success : DifyStatusDotStatus.disabled,
+            ),
+          DifyTextLine(
+            difyTransform(DifyType.systemXsSemiboldUppercase, statusLabel),
+            semanticsLabel: statusLabel,
+            style: difyTextStyle(
+              DifyType.systemXsSemiboldUppercase,
+              enabled ? DifyColors.textSuccess : DifyColors.textTertiary,
+            ),
+          ),
+        ],
+      ),
+    );
     return Semantics(
       container: true,
       explicitChildNodes: true,
       label: title,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 272),
+        // A phone's cards are as tall as their content (Dify's 272 px evens out a grid row).
+        constraints: BoxConstraints(minHeight: phone ? 0 : 272),
         padding: const EdgeInsets.all(4),
         decoration: DifyFocusDecoration(
           color: DifyColors.backgroundSectionBurn,
@@ -167,37 +192,17 @@ class AccessPointCard extends StatelessWidget {
                           ),
                           DifyTextLine(
                             description,
-                            maxLines: 1,
+                            maxLines: phone ? 2 : 1,
                             overflow: TextOverflow.ellipsis,
                             style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
                           ),
+                          // A phone puts the status under the description: the title keeps the row's width.
+                          if (phone && showStatus) Padding(padding: const EdgeInsets.only(top: 4), child: statusRow),
                         ],
                       ),
                     ),
                     if (showStatus) ...[
-                      Semantics(
-                        liveRegion: true,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          spacing: 4,
-                          children: [
-                            if (busy)
-                              const DifyPulse(child: DifyStatusDotSkeleton())
-                            else
-                              DifyStatusDot(
-                                status: enabled ? DifyStatusDotStatus.success : DifyStatusDotStatus.disabled,
-                              ),
-                            DifyTextLine(
-                              difyTransform(DifyType.systemXsSemiboldUppercase, statusLabel),
-                              semanticsLabel: statusLabel,
-                              style: difyTextStyle(
-                                DifyType.systemXsSemiboldUppercase,
-                                enabled ? DifyColors.textSuccess : DifyColors.textTertiary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      if (!phone) statusRow,
                       ?switchControl,
                     ],
                   ],
@@ -207,7 +212,7 @@ class AccessPointCard extends StatelessWidget {
             Expanded(
               flex: 0,
               child: Container(
-                constraints: const BoxConstraints(minHeight: 272 - 8 - 56 - 2),
+                constraints: BoxConstraints(minHeight: phone ? 0 : 272 - 8 - 56 - 2),
                 decoration: BoxDecoration(
                   color: DifyColors.componentsPanelOnPanelItemBg,
                   borderRadius: BorderRadius.circular(10),
@@ -263,77 +268,82 @@ class AccessPointEndpoint extends StatelessWidget {
   final bool dimmed, loading, unavailable;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 4,
-      children: [
-        SizedBox(
-          height: 24,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: DifyTextLine(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
-          ),
-        ),
-        Container(
-          height: 36,
-          padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
-          decoration: BoxDecoration(
-            color: DifyColors.componentsInputBgNormal,
-            borderRadius: BorderRadius.circular(DifyRadius.lg),
-            border: Border.all(color: DifyColors.dividerSubtle, width: Css.hairline),
-          ),
-          child: LayoutBuilder(
-            builder: (context, box) => Row(
-              spacing: 2,
-              children: [
-                if (unavailable && !loading)
-                  Container(
-                    // `shrink-0`; a translation too long for the row is cut instead of pushing the actions out.
-                    constraints: BoxConstraints(maxWidth: box.maxWidth / 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(5),
-                      border: Border.all(color: DifyColors.dividerDeep),
-                    ),
-                    child: DifyTextLine(
-                      difyTransform(DifyType.system2xsMediumUppercase, unavailableLabel),
-                      semanticsLabel: unavailableLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: difyTextStyle(DifyType.system2xsMediumUppercase, DifyColors.textTertiary),
-                    ),
-                  ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: loading
-                        ? const DifySkeletonRectangle(
-                            widthFactor: 0.42,
-                            radius: 4,
-                            margin: EdgeInsets.zero,
-                            pulse: true,
-                          )
-                        : DifyTextLine(
-                            value,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: difyTextStyle(
-                              DifyType.systemSmRegular,
-                              dimmed || unavailable ? DifyColors.textQuaternary : DifyColors.textSecondary,
-                            ),
-                          ),
-                  ),
-                ),
-                ?actions,
-              ],
+  Widget build(BuildContext context) {
+    final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 4,
+        children: [
+          SizedBox(
+            height: 24,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: DifyTextLine(label, style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textSecondary)),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+          Container(
+            height: phone ? DifyTouch.controlHeight : 36,
+            padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
+            decoration: BoxDecoration(
+              color: DifyColors.componentsInputBgNormal,
+              borderRadius: BorderRadius.circular(DifyRadius.lg),
+              border: Border.all(color: DifyColors.dividerSubtle, width: Css.hairline),
+            ),
+            child: LayoutBuilder(
+              builder: (context, box) => Row(
+                spacing: 2,
+                children: [
+                  if (unavailable && !loading)
+                    Container(
+                      // `shrink-0`; a translation too long for the row is cut instead of pushing the actions out.
+                      constraints: BoxConstraints(maxWidth: box.maxWidth / 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(color: DifyColors.dividerDeep),
+                      ),
+                      child: DifyTextLine(
+                        difyTransform(DifyType.system2xsMediumUppercase, unavailableLabel),
+                        semanticsLabel: unavailableLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: difyTextStyle(DifyType.system2xsMediumUppercase, DifyColors.textTertiary),
+                      ),
+                    ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: loading
+                          ? const DifySkeletonRectangle(
+                              widthFactor: 0.42,
+                              radius: 4,
+                              margin: EdgeInsets.zero,
+                              pulse: true,
+                            )
+                          : DifyTextLine(
+                              value,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: difyTextStyle(
+                                DifyType.systemSmRegular,
+                                dimmed || unavailable ? DifyColors.textQuaternary : DifyColors.textSecondary,
+                              ),
+                            ),
+                    ),
+                  ),
+                  if (!phone) ?actions,
+                ],
+              ),
+            ),
+          ),
+          // A phone gives the value the field's width and the touch-sized actions their own row under it.
+          if (phone && actions != null) Align(alignment: AlignmentDirectional.centerStart, child: actions),
+        ],
+      ),
+    );
+  }
 }
 
 /// An external link drawn as a secondary button (`<a target="_blank" rel="noopener noreferrer">`): opens [url] with

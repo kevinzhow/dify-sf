@@ -91,7 +91,8 @@ class CanvasA11y extends ChangeNotifier {
       node.title.isEmpty ? node.id : node.title,
       '${node.type} node',
       if (n.status != 'idle') n.status,
-      if (selection.nodes.contains(n.slot)) 'selected',
+      // Selected is the node's state (its `selected` flag, which screen readers announce), not part of its name:
+      // in the name too it was read twice.
     ].join(', ');
   }
 

@@ -66,6 +66,12 @@ class _DifyDrawerPortalState extends State<DifyDrawerPortal> {
 /// inset callers can explicitly override it to match their source recipe. [backdrop]: DrawerBackdrop's
 /// `bg-background-overlay` (false: none, as the logs open it on desktop). Escape closes it, and so does a click outside
 /// unless [dismissible] is false (`disablePointerDismissal`). Resolves with what it pops.
+///
+/// In a compact window (a phone; a dify-sf divergence, raft-flutter's `RaftPresentationPolicy.detail`) the drawer is a
+/// page unless [pageOnCompact] is false: it fills the window edge to edge, [insets] and [maxWidth] do not apply, and the
+/// [DifyDrawerPopup] inside drops its rounded border and keeps its content in the safe area ([DifyDrawerPage]). Its
+/// controls are touch-sized ([DifyTouchSurface]) there and on a touch tablet (the inset drawer of the touch desktop). The form follows the live width, so a rotation switches it with the
+/// content's state kept. Back closes it, as before.
 Future<T?> showDifyDrawer<T>(
   BuildContext context, {
   required Widget Function(BuildContext context, VoidCallback close) builder,
@@ -77,6 +83,7 @@ Future<T?> showDifyDrawer<T>(
   String? barrierLabel,
   Duration duration = const Duration(milliseconds: 200),
   Curve curve = Curves.easeOutCubic,
+  bool pageOnCompact = true,
 }) => showGeneralDialog<T>(
   context: context,
   barrierDismissible: dismissible,
@@ -90,25 +97,65 @@ Future<T?> showDifyDrawer<T>(
     ).animate(CurvedAnimation(parent: animation, curve: curve)),
     child: child,
   ),
-  pageBuilder: (dialogContext, _, _) => SafeArea(
-    child: Padding(
-      padding: insets + EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(dialogContext).bottom),
-      child: LayoutBuilder(
-        builder: (context, constraints) => Align(
-          alignment: Alignment.centerRight,
-          child: SizedBox(
-            width: math.max(
-              0,
-              math.min(maxWidth, math.min(constraints.maxWidth, MediaQuery.sizeOf(context).width - viewportGutter)),
+  // One tree for both forms (the page form only flips its parameters), so a rotation keeps the content's state.
+  pageBuilder: (dialogContext, _, _) {
+    final page = pageOnCompact && DifyWindowClass.of(dialogContext) == DifyWindowClass.compact;
+    return SafeArea(
+      left: !page,
+      top: !page,
+      right: !page,
+      bottom: !page,
+      child: Padding(
+        padding:
+            (page ? EdgeInsets.zero : insets) + EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(dialogContext).bottom),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Align(
+            alignment: Alignment.centerRight,
+            child: SizedBox(
+              width: page
+                  ? constraints.maxWidth
+                  : math.max(
+                      0,
+                      math.min(
+                        maxWidth,
+                        math.min(constraints.maxWidth, MediaQuery.sizeOf(context).width - viewportGutter),
+                      ),
+                    ),
+              height: constraints.maxHeight,
+              child: DifyDrawerPage(
+                page: page,
+                child: DifyTouchSurface(
+                  enabled: page || DifyTouch.compactOf(dialogContext),
+                  child: DifySelectionRegion(
+                    child: builder(dialogContext, () => Navigator.of(dialogContext).maybePop()),
+                  ),
+                ),
+              ),
             ),
-            height: constraints.maxHeight,
-            child: DifySelectionRegion(child: builder(dialogContext, () => Navigator.of(dialogContext).maybePop())),
           ),
         ),
       ),
-    ),
-  ),
+    );
+  },
 );
+
+/// Marks a drawer shown as a page (a compact window, see [showDifyDrawer]): the [DifyDrawerPopup] under it fills the
+/// window without its rounded border and shadow, its colour reaching under the system bars and its content inside
+/// the safe area. Drawers a screen shows in its own tree put it around their popup the same way.
+///
+/// [page] false marks nothing: a drawer that switches between its forms in place keeps this widget in its tree (and
+/// so its content's state) and flips [page].
+class DifyDrawerPage extends InheritedWidget {
+  const DifyDrawerPage({super.key, this.page = true, required super.child});
+
+  final bool page;
+
+  /// Whether [context] is inside a drawer shown as a page.
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<DifyDrawerPage>()?.page ?? false;
+
+  @override
+  bool updateShouldNotify(DifyDrawerPage oldWidget) => oldWidget.page != page;
+}
 
 /// DrawerBackdrop for drawers shown in the tree (not as a route): [color] (`bg-background-overlay` by default) faded by
 /// [opacity] (the open animation and the swipe progress); a click on it calls [onTap].
@@ -166,15 +213,22 @@ class DifyDrawerPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final side = BorderSide(color: DifyColors.componentsPanelBorder, width: Css.hairline);
+    final page = DifyDrawerPage.of(context);
     Widget box = Container(
-      width: width,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: color ?? DifyColors.componentsPanelBg,
-        border: border ?? Border(top: side, bottom: side, left: side),
-        borderRadius: borderRadius,
-        boxShadow: boxShadow ?? DifyShadows.xl,
+      // Always constrained (a tight size in a page), so switching the form keeps the content's elements.
+      constraints: BoxConstraints.tightFor(
+        width: page ? double.infinity : width,
+        height: page ? double.infinity : null,
       ),
+      clipBehavior: Clip.antiAlias,
+      decoration: page
+          ? BoxDecoration(color: color ?? DifyColors.componentsPanelBg)
+          : BoxDecoration(
+              color: color ?? DifyColors.componentsPanelBg,
+              border: border ?? Border(top: side, bottom: side, left: side),
+              borderRadius: borderRadius,
+              boxShadow: boxShadow ?? DifyShadows.xl,
+            ),
       // A drawer is a separate route: it does not inherit the page's typography boundary.
       // Establish the Dify body style here so plain labels cannot receive WidgetsApp's debug text style.
       child: DefaultTextStyle(
@@ -182,7 +236,8 @@ class DifyDrawerPopup extends StatelessWidget {
           DifyType.systemSmRegular,
           DifyColors.textPrimary,
         ).copyWith(decoration: TextDecoration.none),
-        child: child,
+        // Always a SafeArea (off outside a page), so a rotation that switches the form keeps the content's state.
+        child: SafeArea(left: page, top: page, right: page, bottom: page, child: child),
       ),
     );
     if (material) box = Material(type: MaterialType.transparency, child: box);

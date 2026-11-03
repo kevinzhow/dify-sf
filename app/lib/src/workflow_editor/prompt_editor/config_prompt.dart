@@ -127,17 +127,21 @@ class PromptRoleTitle extends StatelessWidget {
               ),
             )
           else
-            Transform.translate(
-              // A phone: no shift (the role's touch box would stick out of the row, where taps do not reach).
-              offset: DifyTouch.compactOf(context) ? Offset.zero : const Offset(-8, 0),
-              child: TypeSelector<PromptRole>(
-                value: r,
-                options: [
-                  for (final o in PromptRole.values)
-                    if (!(canNotChooseSystemRole && o == PromptRole.system)) (value: o, label: o.name),
-                ],
-                onChanged: onChange,
-                trigger: _RoleTrigger(label: r?.name ?? '', style: style),
+            // A narrow header (a 360 dp phone: "ASSISTANT" beside the touch-size buttons) cuts the role rather than
+            // overflowing.
+            Flexible(
+              child: Transform.translate(
+                // A phone: no shift (the role's touch box would stick out of the row, where taps do not reach).
+                offset: DifyTouch.compactOf(context) ? Offset.zero : const Offset(-8, 0),
+                child: TypeSelector<PromptRole>(
+                  value: r,
+                  options: [
+                    for (final o in PromptRole.values)
+                      if (!(canNotChooseSystemRole && o == PromptRole.system)) (value: o, label: o.name),
+                  ],
+                  onChanged: onChange,
+                  trigger: _RoleTrigger(label: r?.name ?? '', style: style),
+                ),
               ),
             ),
           if (description != null) DifyInfotip(label: description, width: 180, content: DifyTextLine(description)),
@@ -173,7 +177,14 @@ class _RoleTriggerState extends State<_RoleTrigger> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          DifyTextLine(widget.label.toUpperCase(), style: widget.style),
+          Flexible(
+            child: DifyTextLine(
+              widget.label.toUpperCase(),
+              style: widget.style,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           DifyIcon('vender/line/arrows/chevron-selector-vertical', size: 12, color: DifyColors.textSecondary),
         ],
       ),
@@ -318,6 +329,20 @@ class _ConfigPromptState extends State<ConfigPrompt> {
   void _update(int index, PromptItem Function(PromptItem p) f) =>
       widget.onChange([for (final (i, p) in _prompts.indexed) i == index ? f(p) : p]);
 
+  /// Where the message [id] is in the latest list ([fallback], its place when built, for a message without an id
+  /// yet); -1 once it is gone. A phone's "…" sheet may have been open while the list changed.
+  int _indexOf(String? id, int fallback) => id == null ? fallback : _prompts.indexWhere((p) => p.id == id);
+
+  /// Moves the message [id] by [delta] in the latest list, below a leading system prompt; nothing at an end.
+  void _move(String? id, int fallback, int delta) {
+    final list = [..._prompts];
+    final i = _indexOf(id, fallback);
+    final j = i + delta;
+    if (i < _minIndex || j < _minIndex || j >= list.length) return;
+    list.insert(j, list.removeAt(i));
+    widget.onChange(list);
+  }
+
   void _add() {
     final list = _prompts;
     if (list.isEmpty) {
@@ -346,6 +371,7 @@ class _ConfigPromptState extends State<ConfigPrompt> {
     bool showRemove = false,
     VoidCallback? onRemove,
     bool isSupportFileVar = false,
+    List<DifyActionSheetAction> phoneActions = const [],
   }) {
     final w = widget, e = w.env;
     return DifyPromptEditorPanel(
@@ -373,6 +399,7 @@ class _ConfigPromptState extends State<ConfigPrompt> {
       editionType: item.editionType ?? PromptEditionType.basic,
       onEditionTypeChange: onEditionTypeChange,
       isSupportFileVar: isSupportFileVar,
+      phoneActions: phoneActions,
     );
   }
 
@@ -380,6 +407,7 @@ class _ConfigPromptState extends State<ConfigPrompt> {
     final w = widget;
     final key = _keyOf(index);
     final canDrag = !w.readOnly && !(index == 0 && item.role == PromptRole.system);
+    final phone = DifyTouch.compactOf(context);
     final canChooseSystem = !_prompts.any((p) => p.role == PromptRole.system);
     final editor = _panel(
       key: ValueKey(item.id ?? 'prompt-$key'),
@@ -392,12 +420,24 @@ class _ConfigPromptState extends State<ConfigPrompt> {
       item: item,
       onChange: (v) => _update(key, (p) => p.withPrompt(v)),
       showRemove: _prompts.length > 1 && !(index == 0 && item.role == PromptRole.system),
-      onRemove: () => widget.onChange([
-        for (final (i, p) in _prompts.indexed)
-          if (i != key) p,
-      ]),
+      // The removal finds the message by its id in the latest list.
+      onRemove: () {
+        final i = _indexOf(item.id, key);
+        if (i < 0) return;
+        widget.onChange([
+          for (final (k, p) in _prompts.indexed)
+            if (k != i) p,
+        ]);
+      },
       onEditionTypeChange: (t) => _update(key, (p) => p.copyWith(editionType: t)),
       isSupportFileVar: true,
+      // A phone (no hover drag handle): Move up / Move down in the editor's "…" sheet.
+      phoneActions: [
+        if (phone && canDrag && _sortable(key)) ...[
+          DifyActionRow.moveUp(() => _move(item.id, key, -1), enabled: index > _minIndex),
+          DifyActionRow.moveDown(() => _move(item.id, key, 1), enabled: index < _prompts.length - 1),
+        ],
+      ],
     );
     final c = _current;
     final pressed = c != null && c.order.indexOf(c.origin) == index;
@@ -408,7 +448,7 @@ class _ConfigPromptState extends State<ConfigPrompt> {
         clipBehavior: Clip.none,
         children: [
           editor,
-          if (canDrag)
+          if (canDrag && !phone)
             Positioned(
               top: 4,
               left: -24,

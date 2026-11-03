@@ -67,9 +67,10 @@ Future<T?> showCreateAppDialogShell<T>(BuildContext context, {required String ti
                                 key: const ValueKey('create-app-shell-close'),
                                 semanticLabel: 'Close',
                                 onPressed: () => Navigator.pop(context),
+                                // A touch tablet's close is touch-sized (44 px); a mouse keeps Dify's 36.
                                 builder: (context, hovered, focused) => Container(
-                                  width: 36,
-                                  height: 36,
+                                  width: DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 36,
+                                  height: DifyTouch.compactOf(context) ? DifyTouch.controlHeight : 36,
                                   alignment: Alignment.center,
                                   decoration: BoxDecoration(
                                     color: hovered

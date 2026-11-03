@@ -62,8 +62,13 @@ abstract final class DifySheetRecipe {
   static const openDuration = Duration(milliseconds: 250);
 
   /// Whether [context] is inside a bottom sheet's content (a sheet route, a [DifySheetPortal], a
-  /// [DifyPersistentSheet], a picker sheet).
-  static bool contains(BuildContext context) => _SheetDragScope.of(context) != null;
+  /// [DifyPersistentSheet], a picker sheet) or a sheet's side form ([DifySidePanel]): content laid out for touch.
+  static bool contains(BuildContext context) =>
+      _SheetDragScope.of(context) != null || context.getInheritedWidgetOfExactType<_SidePanelScope>() != null;
+
+  /// A modal sheet route in a window wider than this is this wide, centred at the bottom (Material 3's bottom sheet
+  /// on large screens); a phone's sheet spans the window.
+  static const maxWidth = 640.0;
 }
 
 enum _DetentKind { peek, half, full }
@@ -185,14 +190,21 @@ Future<T?> showDifyBottomSheet<T>(
   bool useRootNavigator = true,
   bool? backDismissible,
   bool closeOnEscape = true,
+  DifySheetWideForm? wide,
 }) {
   assert(detents.isNotEmpty, 'A sheet needs at least one detent');
   final back = backDismissible ?? dismissible;
   assert(initialDetent == null || detents.contains(initialDetent), 'initialDetent must be one of detents');
   final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
   late final _DifySheetRoute<T> route;
+  // A dialog that opens wide comes in as the dialog does (its duration); one that opens compact as the sheet.
+  final openWide = wide != null && DifyWindowClass.of(context) != DifyWindowClass.compact;
   route = _DifySheetRoute<T>(
     modal: modal,
+    wide: wide,
+    sheetAnimationStyle: openWide
+        ? AnimationStyle(duration: wide.transitionDuration, reverseDuration: wide.transitionDuration)
+        : null,
     isDismissible: dismissible,
     barrierLabel: barrierLabel ?? MaterialLocalizations.of(context).modalBarrierDismissLabel,
     capturedThemes: InheritedTheme.capture(from: context, to: navigator.context),
@@ -234,9 +246,31 @@ Future<T?> showDifyBottomSheet<T>(
   return navigator.push(route);
 }
 
+/// A route sheet's other form ([showDifyBottomSheet]'s `wide`): a dialog ([showDifyDialog]) is a sheet while the
+/// window is compact and this page, centred over [barrierColor] and coming in through [transitionsBuilder] over
+/// [transitionDuration], while it is not. The route follows the live width (raft-flutter's `RaftPresentedRoute`): a
+/// rotation or a resize across the breakpoint switches the form in place, and content built under the same
+/// [GlobalKey] in both forms keeps its state (what was typed, the scroll position's owner).
+@immutable
+class DifySheetWideForm {
+  const DifySheetWideForm({
+    required this.builder,
+    required this.barrierColor,
+    required this.transitionsBuilder,
+    required this.transitionDuration,
+  });
+
+  final WidgetBuilder builder;
+  final Color barrierColor;
+  final RouteTransitionsBuilder transitionsBuilder;
+  final Duration transitionDuration;
+}
+
 /// The framework's modal bottom sheet route with nothing of its own look: the sheet paints itself ([_DifySheet]),
-/// the framework drag is off (the detents drag it), the width is not capped and the route reaches under the status
-/// bar (the sheet stops at the top safe area itself). When not [modal], the barrier lets pointers through to the page.
+/// the framework drag is off (the detents drag it), the width is capped only past [DifySheetRecipe.maxWidth] (a
+/// tablet) and the route reaches under the status bar (the sheet stops at the top safe area itself). When not [modal],
+/// the barrier lets pointers through to the page. With [wide], a window that is not compact shows
+/// [DifySheetWideForm.builder] instead, read from the live width.
 class _DifySheetRoute<T> extends ModalBottomSheetRoute<T> {
   _DifySheetRoute({
     required this.modal,
@@ -244,6 +278,8 @@ class _DifySheetRoute<T> extends ModalBottomSheetRoute<T> {
     required super.isDismissible,
     required super.barrierLabel,
     super.capturedThemes,
+    super.sheetAnimationStyle,
+    this.wide,
   }) : super(
          isScrollControlled: true,
          useSafeArea: false,
@@ -251,23 +287,67 @@ class _DifySheetRoute<T> extends ModalBottomSheetRoute<T> {
          showDragHandle: false,
          backgroundColor: const Color(0x00000000),
          elevation: 0,
-         constraints: const BoxConstraints(),
+         constraints: const BoxConstraints(maxWidth: DifySheetRecipe.maxWidth),
          modalBarrierColor: DifySheetRecipe.scrim,
        );
 
   final bool modal;
+  final DifySheetWideForm? wide;
+
+  // Width, not input (DifyTouch.compactOf is also true on a touch tablet): a tablet or a landscape phone shows the
+  // dialog form, a phone the sheet.
+  bool _wideIn(BuildContext context) => wide != null && DifyWindowClass.of(context) != DifyWindowClass.compact;
 
   @override
-  Widget buildModalBarrier() => modal ? super.buildModalBarrier() : const IgnorePointer(child: SizedBox.expand());
+  Widget buildModalBarrier() {
+    if (!modal) return const IgnorePointer(child: SizedBox.expand());
+    final wide = this.wide;
+    if (wide == null) return super.buildModalBarrier();
+    return Builder(
+      builder: (context) => _wideIn(context)
+          // ModalRoute's own barrier, in the dialog's colour.
+          ? AnimatedModalBarrier(
+              color: animation!.drive(
+                ColorTween(
+                  begin: wide.barrierColor.withValues(alpha: 0),
+                  end: wide.barrierColor,
+                ).chain(CurveTween(curve: barrierCurve)),
+              ),
+              dismissible: barrierDismissible,
+              semanticsLabel: barrierLabel,
+              barrierSemanticsDismissible: semanticsDismissible,
+            )
+          : super.buildModalBarrier(),
+    );
+  }
 
   // The framework removes the top padding from the sheet's MediaQuery (useSafeArea: false); the sheet still needs it
   // to stop below the status bar.
   @override
-  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) =>
-      _SheetTopInset(
-        top: MediaQuery.paddingOf(context).top,
-        child: super.buildPage(context, animation, secondaryAnimation),
+  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
+    if (_wideIn(context)) {
+      // As a dialog route's page (showGeneralDialog).
+      return Semantics(
+        scopesRoute: true,
+        explicitChildNodes: true,
+        child: capturedThemes!.wrap(Builder(builder: wide!.builder)),
       );
+    }
+    return _SheetTopInset(
+      top: MediaQuery.paddingOf(context).top,
+      child: super.buildPage(context, animation, secondaryAnimation),
+    );
+  }
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => _wideIn(context)
+      ? wide!.transitionsBuilder(context, animation, secondaryAnimation, child)
+      : super.buildTransitions(context, animation, secondaryAnimation, child);
 }
 
 class _SheetTopInset extends InheritedWidget {
@@ -1060,6 +1140,7 @@ class DifySheetPortal extends StatefulWidget {
     this.initialDetent,
     this.controller,
     this.dismissible = true,
+    this.backDismissible,
     this.barrierLabel,
   });
 
@@ -1073,6 +1154,10 @@ class DifySheetPortal extends StatefulWidget {
   final DifySheetDetent? initialDetent;
   final DifySheetController? controller;
   final bool dismissible;
+
+  /// Whether Android back and Escape call [onDismiss] (default: [dismissible]); true with [dismissible] false is a
+  /// dialog whose outside clicks do not close it (Dify's `disablePointerDismissal`), as [showDifyBottomSheet]'s.
+  final bool? backDismissible;
   final String? barrierLabel;
 
   @override
@@ -1091,7 +1176,7 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
       }
     });
   late final _curved = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
-  late final _back = DifyBackStep(onDismiss: () => widget.onDismiss());
+  late final _back = DifyBackStep(onDismiss: _backDismiss);
 
   /// The content the sheet shows: rebuilt while open, kept while it closes.
   Widget? _content;
@@ -1102,10 +1187,16 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
     if (widget.open) _sync();
   }
 
+  bool get _backCloses => widget.backDismissible ?? widget.dismissible;
+
   @override
   void didUpdateWidget(DifySheetPortal old) {
     super.didUpdateWidget(old);
-    if (old.open != widget.open || old.dismissible != widget.dismissible) _sync();
+    if (old.open != widget.open ||
+        old.dismissible != widget.dismissible ||
+        old.backDismissible != widget.backDismissible) {
+      _sync();
+    }
   }
 
   @override
@@ -1126,7 +1217,7 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
       if (widget.open) {
         final opening = !_portal.isShowing || _anim.status == AnimationStatus.reverse;
         if (!_portal.isShowing) _portal.show();
-        if (widget.dismissible) {
+        if (_backCloses) {
           _back.attach(context);
         } else {
           _back.detach();
@@ -1148,6 +1239,11 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
 
   void _dismiss() {
     if (widget.open && widget.dismissible) widget.onDismiss();
+  }
+
+  /// Back and Escape.
+  void _backDismiss() {
+    if (widget.open && _backCloses) widget.onDismiss();
   }
 
   @override
@@ -1172,7 +1268,7 @@ class _DifySheetPortalState extends State<DifySheetPortal> with SingleTickerProv
         actions: {
           DismissIntent: CallbackAction<DismissIntent>(
             onInvoke: (_) {
-              _dismiss();
+              _backDismiss();
               return null;
             },
           ),
@@ -1581,5 +1677,340 @@ class _PortalScrim extends StatelessWidget {
       sortKey: const OrdinalSortKey(1),
       child: scrim,
     );
+  }
+}
+
+/// The side form of a sheet (raft-flutter's `RaftSideFrame`; dify-sf's touch desktop: a tablet, a landscape phone):
+/// the same content a bottom sheet shows (usually a [DifySheetHeader] over a scrolling body), docked to the window's
+/// end edge at the full height of the area it is given, beside the page instead of over it. Put it in a
+/// [DifySideDock]'s panels. It paints `bg-components-panel-bg` with a divider-subtle start border to the window's end
+/// and bottom edges and keeps its content clear of the end and bottom system insets (the keyboard's height replacing
+/// the bottom inset, so a focused field stays above it). Where the keyboard leaves less than [minRoomAboveKeyboard]
+/// (a landscape phone), the content keeps that height and the panel scrolls instead, header included: a focused field
+/// (which reveals itself through every scrollable around it) comes into view above the keyboard, as in a phone sheet.
+///
+/// Its content is laid out for touch as a sheet's is ([DifySheetRecipe.contains]). [onDismiss] is what the header's
+/// close button does (none without it); Back is the owner's, as for a [DifyPersistentSheet]. Only the topmost panel of
+/// a [DifySideDock] is read by assistive technology and holds the focus ([DifySideDock]).
+class DifySidePanel extends StatelessWidget {
+  const DifySidePanel({super.key, required this.child, this.onDismiss, this.semanticLabel});
+
+  final Widget child;
+
+  /// Closes the panel (the owner then stops showing it): [DifySheetHeader]'s default close.
+  final VoidCallback? onDismiss;
+
+  /// Names the panel's region for assistive technology.
+  final String? semanticLabel;
+
+  /// The room above the keyboard under which the panel's content keeps its height and scrolls (see the class).
+  static const minRoomAboveKeyboard = 200.0;
+
+  /// The width of a side panel in a window of [size]: a fixed 360 dp in a short window (a landscape phone, where the
+  /// canvas needs the rest), else 40 % of the width between 360 and 420 dp (Dify's 400-420 px panels).
+  static double widthFor(Size size) =>
+      size.height < DifyWindowClass.shortMaxHeight ? 360 : (size.width * 0.4).clamp(360.0, 420.0);
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final end = rtl ? media.padding.left : media.padding.right;
+    // The keyboard replaces the bottom inset, as in a sheet.
+    final keyboard = media.viewInsets.bottom;
+    final bottom = keyboard > 0 ? keyboard : media.padding.bottom;
+    final content = MediaQuery.removeViewInsets(
+      context: context,
+      removeBottom: true,
+      child: MediaQuery.removePadding(
+        context: context,
+        removeLeft: true,
+        removeRight: true,
+        removeBottom: true,
+        child: _SidePanelScope(
+          child: onDismiss == null ? child : _ModalSheetScope(close: onDismiss, child: child),
+        ),
+      ),
+    );
+    return _DockedPanel(
+      child: Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: semanticLabel,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: DifyColors.componentsPanelBg,
+            border: BorderDirectional(start: BorderSide(color: DifyColors.dividerSubtle)),
+          ),
+          child: LayoutBuilder(
+            builder: (context, c) {
+              // The room left (above the keyboard: the page may have made room for it already), at least
+              // [minRoomAboveKeyboard] while the keyboard is up. One tree in both cases (only the height changes), so
+              // the focused field keeps its state when the keyboard comes and goes.
+              final room = c.maxHeight - 8 - bottom;
+              final up = keyboard > 0 || DifyWindowInsets.viewInsetsOf(context).bottom > 0;
+              final height = up ? math.max(room, minRoomAboveKeyboard) : room;
+              return Padding(
+                padding: EdgeInsetsDirectional.only(top: 8, end: end, bottom: bottom),
+                child: SingleChildScrollView(
+                  primary: false,
+                  physics: const ClampingScrollPhysics(),
+                  child: SizedBox(height: math.max(0.0, height), child: content),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Marks a [DifySidePanel]'s content (for [DifySheetRecipe.contains]).
+class _SidePanelScope extends InheritedWidget {
+  const _SidePanelScope({required super.child});
+
+  @override
+  bool updateShouldNotify(_SidePanelScope oldWidget) => false;
+}
+
+/// A page's [body] with an end-docked side panel area beside it (dify-sf's touch desktop: the workflow editor's
+/// canvas and its node settings, run, version list...). While [open], the area is [width] (by default
+/// [DifySidePanel.widthFor] the window) and the body takes the rest without the end inset (the panel keeps it); closed,
+/// the body takes the whole width. [panels] are stacked in the area, the last on top: each is a [DifySidePanel] while
+/// it shows and nothing otherwise, and stays mounted while closed, so a panel that opens or a window that rotates
+/// keeps its state.
+///
+/// The panels stack as modal layers do (a phone's sheets over sheets, [DifyModalLayer]): only the topmost
+/// [DifySidePanel] is in the semantics tree (the ones it covers are hidden from assistive technology, the body beside
+/// them stays); a panel that opens over a focused field takes the focus (the keyboard goes down), and when it closes the
+/// panel under it gets the focus back (the field it had, else the panel).
+class DifySideDock extends StatefulWidget {
+  const DifySideDock({super.key, required this.body, required this.panels, required this.open, this.width});
+
+  final Widget body;
+  final List<Widget> panels;
+  final bool open;
+  final double? width;
+
+  @override
+  State<DifySideDock> createState() => _DifySideDockState();
+}
+
+class _DifySideDockState extends State<DifySideDock> {
+  final _panels = <_DockedPanelState>{};
+  _RenderSideStack? _stack;
+
+  /// The topmost panel's render object: the last [DifySidePanel] in paint order under the panel area.
+  _RenderDockedPanel? get _top {
+    _RenderDockedPanel? top;
+    void visit(RenderObject o) {
+      if (o is _RenderDockedPanel) {
+        top = o;
+        return;
+      }
+      o.visitChildren(visit);
+    }
+
+    _stack?.visitChildren(visit);
+    return top;
+  }
+
+  bool _isTop(_RenderDockedPanel panel) => identical(_top, panel);
+
+  void _changed() {
+    for (final p in _panels) {
+      p._render?.markNeedsSemanticsUpdate();
+    }
+  }
+
+  void _opened(_DockedPanelState panel) {
+    _panels.add(panel);
+    _changed();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !panel.mounted || _top?._panel != panel) return;
+      // Over a focused field of a panel it covers: the focus moves in, and goes back to that field when it closes.
+      final focus = FocusManager.instance.primaryFocus;
+      if (focus == null) return;
+      for (final covered in _panels) {
+        if (covered != panel && covered._scope.hasFocus) {
+          covered._restore = focus;
+          panel._scope.requestFocus();
+          return;
+        }
+      }
+    });
+  }
+
+  void _closed(_DockedPanelState panel) {
+    _panels.remove(panel);
+    _changed();
+    if (!panel._scope.hasFocus && FocusManager.instance.primaryFocus != null) return;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final top = _top?._panel;
+      if (top == null || !top.mounted) return;
+      // The focus was in the panel that closed (it is gone with it): the panel now on top gets it back.
+      final focus = FocusManager.instance.primaryFocus;
+      if (focus != null && focus is! FocusScopeNode) return;
+      if (focus != null && _panels.any((p) => p._scope.hasFocus)) return;
+      final restore = top._restore;
+      top._restore = null;
+      if (restore != null &&
+          restore.context != null &&
+          restore.canRequestFocus &&
+          restore.ancestors.contains(top._scope)) {
+        restore.requestFocus();
+      } else {
+        top._scope.requestFocus();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget.width ?? DifySidePanel.widthFor(MediaQuery.sizeOf(context));
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: widget.open
+              ? MediaQuery.removePadding(context: context, removeRight: !rtl, removeLeft: rtl, child: widget.body)
+              : widget.body,
+        ),
+        // Closed, the area is 0 wide but its panels keep being laid out at the panel's width (and clipped), so a panel
+        // that is closing or opening in the same frame never overflows.
+        ClipRect(
+          child: SizedBox(
+            width: widget.open ? w : 0,
+            child: OverflowBox(
+              minWidth: w,
+              maxWidth: w,
+              alignment: AlignmentDirectional.centerStart,
+              child: _SideDockScope(
+                dock: this,
+                child: _SideStack(
+                  dock: this,
+                  child: Stack(fit: StackFit.expand, children: widget.panels),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SideDockScope extends InheritedWidget {
+  const _SideDockScope({required this.dock, required super.child});
+  final _DifySideDockState dock;
+
+  @override
+  bool updateShouldNotify(_SideDockScope oldWidget) => dock != oldWidget.dock;
+}
+
+/// The panel area of a [DifySideDock]: where it looks for the topmost panel.
+class _SideStack extends SingleChildRenderObjectWidget {
+  const _SideStack({required this.dock, super.child});
+  final _DifySideDockState dock;
+
+  @override
+  _RenderSideStack createRenderObject(BuildContext context) => _RenderSideStack().._attachTo(dock);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderSideStack renderObject) => renderObject._attachTo(dock);
+
+  @override
+  void didUnmountRenderObject(_RenderSideStack renderObject) {
+    if (dock._stack == renderObject) dock._stack = null;
+  }
+}
+
+class _RenderSideStack extends RenderProxyBox {
+  void _attachTo(_DifySideDockState dock) => dock._stack = this;
+}
+
+/// A [DifySidePanel] in a [DifySideDock]: its focus scope, and its semantics while it is the topmost panel only. Outside
+/// a dock it is the panel as it is.
+class _DockedPanel extends StatefulWidget {
+  const _DockedPanel({required this.child});
+  final Widget child;
+
+  @override
+  State<_DockedPanel> createState() => _DockedPanelState();
+}
+
+class _DockedPanelState extends State<_DockedPanel> {
+  final _scope = FocusScopeNode(debugLabel: 'side panel');
+  _DifySideDockState? _dock;
+  _RenderDockedPanel? _render;
+
+  /// The field to give the focus back to when the panel covering this one closes.
+  FocusNode? _restore;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final dock = context.dependOnInheritedWidgetOfExactType<_SideDockScope>()?.dock;
+    if (dock != _dock) {
+      _dock?._closed(this);
+      _dock = dock;
+      dock?._opened(this);
+    }
+  }
+
+  @override
+  void dispose() {
+    _dock?._closed(this);
+    _scope.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FocusScope(
+    node: _scope,
+    child: _DockedPanelBox(panel: this, child: widget.child),
+  );
+}
+
+class _DockedPanelBox extends SingleChildRenderObjectWidget {
+  const _DockedPanelBox({required this.panel, super.child});
+  final _DockedPanelState panel;
+
+  @override
+  _RenderDockedPanel createRenderObject(BuildContext context) => _RenderDockedPanel(panel).._attachTo(panel);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderDockedPanel renderObject) => renderObject._attachTo(panel);
+
+  @override
+  void didUnmountRenderObject(_RenderDockedPanel renderObject) {
+    if (panel._render == renderObject) panel._render = null;
+  }
+}
+
+/// Covered by a later panel of its dock: no semantics.
+class _RenderDockedPanel extends RenderProxyBox {
+  _RenderDockedPanel(this._panel);
+  _DockedPanelState _panel;
+
+  void _attachTo(_DockedPanelState panel) {
+    if (_panel != panel) {
+      _panel = panel;
+      markNeedsSemanticsUpdate();
+    }
+    panel._render = this;
+  }
+
+  bool get _covered => switch (_panel._dock) {
+    final dock? => !dock._isTop(this),
+    null => false,
+  };
+
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    if (!_covered) super.visitChildrenForSemantics(visitor);
   }
 }

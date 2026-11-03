@@ -67,14 +67,18 @@ class DifyDialogFrame extends InheritedWidget {
 /// false (Dify's `disablePointerDismissal`). [barrierColor] defaults to dify-ui's `modalBackdropClassName`
 /// (`bg-background-overlay`); [transition] and [transitionDuration] (150 ms) default to its popup animation.
 ///
-/// In a compact window (below 600 dp, when it opens) and with [sheetOnCompact] (the default; confirmations pass
-/// false and stay centred) it is a modal bottom sheet instead ([showDifyBottomSheet], a route like the dialog's, so
-/// its content sees what a dialog's sees): as tall as its content up to the window below the status bar, rising with
-/// the keyboard, its content clear of the gesture bar. Its parts draw the sheet's form ([DifyDialogFrame]): the
-/// title row is the sheet's header with a 44 px close, the actions a row of 44 px buttons pinned at the bottom.
-/// Back and Escape close it first (before any sheet or layer under it); the scrim and a drag down close it unless
-/// [dismissible] is false. Only the topmost layer is read by assistive technology: the page under the route, and the
-/// dialog's own content while a picker sheet covers it ([DifyModalLayer]).
+/// In a compact window (below 600 dp) and with [sheetOnCompact] (the default; confirmations pass false and stay
+/// centred) it is a modal bottom sheet instead ([showDifyBottomSheet], a route like the dialog's, so its content sees
+/// what a dialog's sees): as tall as its content up to the window below the status bar, rising with the keyboard, its
+/// content clear of the gesture bar. Its parts draw the sheet's form ([DifyDialogFrame]): the title row is the sheet's
+/// header with a 44 px close, the actions a row of 44 px buttons pinned at the bottom. Back and Escape close it first
+/// (before any sheet or layer under it); the scrim and a drag down close it unless [dismissible] is false. Only the
+/// topmost layer is read by assistive technology: the page under the route, and the dialog's own content while a
+/// picker sheet covers it ([DifyModalLayer]).
+///
+/// Such a dialog follows the live width (raft-flutter's `RaftPresentedRoute`): rotating a phone or resizing the window
+/// across 600 dp while it is open re-presents it in place, a sheet when compact and the centred dialog when not, and
+/// [builder]'s content keeps its state (it is built under one key in both forms).
 Future<T?> showDifyDialog<T>(
   BuildContext context, {
   required WidgetBuilder builder,
@@ -87,33 +91,87 @@ Future<T?> showDifyDialog<T>(
   bool useRootNavigator = true,
   bool sheetOnCompact = true,
 }) {
-  if (sheetOnCompact && DifyTouch.compactOf(context)) {
-    return showDifyBottomSheet<T>(
+  if (!sheetOnCompact) {
+    return _showCentred<T>(
       context,
-      (context) => DifyDialogFrame(
-        form: DifyDialogForm.sheet,
-        // Layers opened from the dialog (a picker sheet) hide it from assistive technology, as the sheets' do.
-        child: DifyModalLayer(
-          child: FocusScope(autofocus: true, child: Builder(builder: builder)),
-        ),
-      ),
+      builder: builder,
       dismissible: dismissible,
-      backDismissible: true,
       closeOnEscape: closeOnEscape,
+      barrierColor: barrierColor,
       barrierLabel: barrierLabel,
+      transition: transition,
+      transitionDuration: transitionDuration,
       useRootNavigator: useRootNavigator,
     );
   }
-  return _showCentred<T>(
+  // The content, under one key in either form, so a switch moves it with its state.
+  final content = GlobalKey(debugLabel: 'dify dialog content');
+  Widget body(BuildContext context) => KeyedSubtree(key: content, child: Builder(builder: builder));
+  return showDifyBottomSheet<T>(
     context,
-    builder: builder,
+    (context) => DifyDialogFrame(
+      form: DifyDialogForm.sheet,
+      // Layers opened from the dialog (a picker sheet) hide it from assistive technology, as the sheets' do.
+      child: DifyModalLayer(
+        child: FocusScope(autofocus: true, child: body(context)),
+      ),
+    ),
     dismissible: dismissible,
+    backDismissible: true,
     closeOnEscape: closeOnEscape,
-    barrierColor: barrierColor,
     barrierLabel: barrierLabel,
-    transition: transition,
-    transitionDuration: transitionDuration,
     useRootNavigator: useRootNavigator,
+    wide: DifySheetWideForm(
+      builder: (context) => _centredPage(context, closeOnEscape, body),
+      barrierColor: barrierColor ?? DifyColors.backgroundOverlay,
+      transitionsBuilder: (context, animation, _, child) => _transition(transition, animation, child),
+      transitionDuration: transitionDuration,
+    ),
+  );
+}
+
+Widget _transition(DifyDialogTransition transition, Animation<double> animation, Widget child) => switch (transition) {
+  DifyDialogTransition.scaleFade => () {
+    final a = CurvedAnimation(parent: animation, curve: difyTransitionCurve);
+    return FadeTransition(
+      opacity: a,
+      child: ScaleTransition(scale: Tween(begin: 0.95, end: 1.0).animate(a), child: child),
+    );
+  }(),
+  DifyDialogTransition.fade => FadeTransition(
+    opacity: CurvedAnimation(parent: animation, curve: difyTransitionCurve),
+    child: child,
+  ),
+  DifyDialogTransition.linearFade => FadeTransition(opacity: animation, child: child),
+  DifyDialogTransition.none => child,
+};
+
+/// The centred dialog's page: the backdrop covers the whole window; the dialog stays inside the safe area
+/// (DifyApplication no longer consumes the system insets for the navigator).
+Widget _centredPage(BuildContext context, bool closeOnEscape, WidgetBuilder builder) {
+  final scope = FocusScope(
+    autofocus: true,
+    child: DifySelectionRegion(
+      child: DifyDialogFrame(form: DifyDialogForm.dialog, child: builder(context)),
+    ),
+  );
+  return SafeArea(
+    child: !closeOnEscape
+        ? scope
+        : Shortcuts(
+            shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
+            child: Actions(
+              actions: {
+                DismissIntent: CallbackAction<DismissIntent>(
+                  onInvoke: (_) {
+                    Navigator.of(context).pop();
+                    return null;
+                  },
+                ),
+              },
+              child: scope,
+            ),
+          ),
   );
 }
 
@@ -134,51 +192,8 @@ Future<T?> _showCentred<T>(
   barrierColor: barrierColor ?? DifyColors.backgroundOverlay,
   transitionDuration: transitionDuration,
   useRootNavigator: useRootNavigator,
-  transitionBuilder: (context, animation, _, child) => switch (transition) {
-    DifyDialogTransition.scaleFade => () {
-      final a = CurvedAnimation(parent: animation, curve: difyTransitionCurve);
-      return FadeTransition(
-        opacity: a,
-        child: ScaleTransition(scale: Tween(begin: 0.95, end: 1.0).animate(a), child: child),
-      );
-    }(),
-    DifyDialogTransition.fade => FadeTransition(
-      opacity: CurvedAnimation(parent: animation, curve: difyTransitionCurve),
-      child: child,
-    ),
-    DifyDialogTransition.linearFade => FadeTransition(opacity: animation, child: child),
-    DifyDialogTransition.none => child,
-  },
-  // The backdrop covers the whole window; the dialog stays inside the safe area (DifyApplication no longer consumes
-  // the system insets for the navigator).
-  pageBuilder: (context, _, _) => SafeArea(
-    child: !closeOnEscape
-        ? FocusScope(
-            autofocus: true,
-            child: DifySelectionRegion(
-              child: DifyDialogFrame(form: DifyDialogForm.dialog, child: builder(context)),
-            ),
-          )
-        : Shortcuts(
-            shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
-            child: Actions(
-              actions: {
-                DismissIntent: CallbackAction<DismissIntent>(
-                  onInvoke: (_) {
-                    Navigator.of(context).pop();
-                    return null;
-                  },
-                ),
-              },
-              child: FocusScope(
-                autofocus: true,
-                child: DifySelectionRegion(
-                  child: DifyDialogFrame(form: DifyDialogForm.dialog, child: builder(context)),
-                ),
-              ),
-            ),
-          ),
-  ),
+  transitionBuilder: (context, animation, _, child) => _transition(transition, animation, child),
+  pageBuilder: (context, _, _) => _centredPage(context, closeOnEscape, builder),
 );
 
 /// DialogContent: centred (or [top] below the viewport's top: `mt-*`), [width] wide (at most the viewport less 2 rem),

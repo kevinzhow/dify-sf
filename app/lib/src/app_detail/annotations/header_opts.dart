@@ -74,6 +74,25 @@ class _AnnotationFilterState extends State<AnnotationFilter> {
   @override
   Widget build(BuildContext context) {
     if (_count == null) return const SizedBox.shrink();
+    if (DifyWindowClass.of(context) == DifyWindowClass.compact) {
+      // A phone: the search across the page, the actions under it.
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 8,
+          children: [
+            DifySearchInput(
+              height: 40,
+              value: widget.keyword,
+              placeholder: _c('operation.search'),
+              onValueChange: widget.onKeywordChange,
+            ),
+            widget.child,
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Wrap(

@@ -19,8 +19,10 @@ void main() {
         home: Builder(
           builder: (context) => Center(
             child: DifyButton(
+              // Dify's narrow geometry (a phone shows the page form, tested below).
               onPressed: () => showDifyDrawer<void>(
                 context,
+                pageOnCompact: false,
                 builder: (_, close) => DifyDrawerPopup(
                   child: DifyDrawerCloseButton(onPressed: close),
                 ),
@@ -72,6 +74,7 @@ void main() {
           builder: (context) => DifyButton(
             onPressed: () => showDifyDrawer<void>(
               context,
+              pageOnCompact: false,
               insets: const EdgeInsets.fromLTRB(8, 64, 8, 12),
               maxWidth: 640,
               viewportGutter: 16,
@@ -97,6 +100,60 @@ void main() {
     await t.pumpAndSettle();
     expect(t.getRect(find.byType(DifyDrawerPopup)), const Rect.fromLTWH(8, 64, 304, 464));
     await t.tap(find.bySemanticsLabel('Close drawer'));
+    await t.pumpAndSettle();
+    expect(find.byType(DifyDrawerPopup), findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('dify-sf: on a phone the drawer is a page that fills the window, back closes it', (t) async {
+    t.view.devicePixelRatio = 1;
+    t.view.physicalSize = const Size(360, 780);
+    t.view.padding = const FakeViewPadding(top: 32, bottom: 24);
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Center(
+            child: DifyButton(
+              onPressed: () => showDifyDrawer<void>(
+                context,
+                insets: const EdgeInsets.fromLTRB(8, 64, 8, 12),
+                maxWidth: 640,
+                builder: (_, close) => DifyDrawerPopup(
+                  borderRadius: BorderRadius.circular(DifyRadius.xl),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: DifyDrawerCloseButton(onPressed: close),
+                  ),
+                ),
+              ),
+              child: const DifyTextLine('Open drawer'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.tap(find.text('Open drawer'));
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+    // Edge to edge, no rounded border; the content inside the safe area; the close button touch-sized.
+    expect(t.getRect(find.byType(DifyDrawerPopup)), const Rect.fromLTWH(0, 0, 360, 780));
+    final box = t.widget<Container>(
+      find.descendant(of: find.byType(DifyDrawerPopup), matching: find.byType(Container)).first,
+    );
+    final decoration = box.decoration! as BoxDecoration;
+    expect(decoration.border, isNull);
+    expect(decoration.borderRadius, isNull);
+    final close = find.byType(DifyDrawerCloseButton);
+    expect(t.getRect(close).top, greaterThanOrEqualTo(32));
+    expect(t.getSize(close).height, greaterThanOrEqualTo(44));
+    // Wider, the same route turns into Dify's drawer.
+    t.view.physicalSize = const Size(800, 640);
+    await t.pumpAndSettle();
+    expect(t.getRect(find.byType(DifyDrawerPopup)).width, 640);
+    t.view.physicalSize = const Size(360, 780);
+    await t.pumpAndSettle();
+    expect(await t.binding.handlePopRoute(), isTrue);
     await t.pumpAndSettle();
     expect(find.byType(DifyDrawerPopup), findsNothing);
     expect(t.takeException(), isNull);

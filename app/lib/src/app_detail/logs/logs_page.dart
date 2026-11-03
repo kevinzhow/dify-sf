@@ -57,8 +57,9 @@ class LogAnnotation extends StatelessWidget {
       );
     }
     final isWorkflow = a.mode == AppModes.workflow;
+    // A phone's page has no side padding: its parts pad themselves and the list rows span it (logsPhone).
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+      padding: logsPhone(context) ? const EdgeInsets.only(top: 12) : const EdgeInsets.fromLTRB(24, 12, 24, 0),
       child: switch (pageType) {
         LogPageType.annotation => annotationBuilder?.call(context, a) ?? const SizedBox.shrink(),
         LogPageType.log when isWorkflow => workflowLogBuilder?.call(context, a) ?? WorkflowLogs(app: a, source: source),

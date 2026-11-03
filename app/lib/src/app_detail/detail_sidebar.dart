@@ -184,23 +184,27 @@ class DetailSidebarFrameState extends State<DetailSidebarFrame> {
           alignment: Alignment.topLeft,
           minWidth: visibleExpanded ? 240 : 56,
           maxWidth: visibleExpanded ? 240 : 56,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: MouseRegion(
-                  onEnter: _expanded ? null : (_) => _openPreview(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      widget.renderTop(context, visibleExpanded, toggle),
-                      Expanded(child: widget.renderSection(context, visibleExpanded)),
-                    ],
+          // On a touch tablet the sidebar's links and buttons are touch-sized (the desktop structure, touch sizes).
+          child: DifyTouchSurface(
+            enabled: DifyTouch.compactOf(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: MouseRegion(
+                    onEnter: _expanded ? null : (_) => _openPreview(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        widget.renderTop(context, visibleExpanded, toggle),
+                        Expanded(child: widget.renderSection(context, visibleExpanded)),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              _bottom(visibleExpanded),
-            ],
+                _bottom(visibleExpanded),
+              ],
+            ),
           ),
         ),
       ),
@@ -328,26 +332,29 @@ class DetailSidebarToggleButton extends StatelessWidget {
           ],
         ),
       ),
-      child: DifyPressable(
-        key: const ValueKey('detail-sidebar-toggle'),
-        semanticLabel: label,
-        onPressed: onToggle,
-        builder: (context, hovered, focused) {
-          final color = hovered ? DifyColors.textSecondary : DifyColors.textTertiary;
-          return Container(
-            width: 32,
-            height: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: hovered ? DifyColors.stateBaseHover : null,
-              borderRadius: BorderRadius.circular(10),
-              border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
-            ),
-            child:
-                icon?.call(color) ??
-                RemixIcon(expand ? 'arrow-left-s-line' : 'arrow-right-s-line', size: 16, color: color),
-          );
-        },
+      child: DifyTouchArea.inPhoneSheet(
+        context,
+        DifyPressable(
+          key: const ValueKey('detail-sidebar-toggle'),
+          semanticLabel: label,
+          onPressed: onToggle,
+          builder: (context, hovered, focused) {
+            final color = hovered ? DifyColors.textSecondary : DifyColors.textTertiary;
+            return Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: hovered ? DifyColors.stateBaseHover : null,
+                borderRadius: BorderRadius.circular(10),
+                border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+              ),
+              child:
+                  icon?.call(color) ??
+                  RemixIcon(expand ? 'arrow-left-s-line' : 'arrow-right-s-line', size: 16, color: color),
+            );
+          },
+        ),
       ),
     );
   }

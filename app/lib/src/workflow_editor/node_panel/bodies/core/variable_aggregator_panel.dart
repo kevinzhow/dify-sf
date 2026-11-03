@@ -622,6 +622,12 @@ class _VarGroupItemState extends State<VarGroupItem> {
     widget.onGroupNameChange?.call(value);
   }
 
+  void _startRename() {
+    if (!mounted || widget.readOnly) return;
+    _name.text = _groupName;
+    setState(() => _editName = true);
+  }
+
   Widget _groupTitle() {
     final name = _groupName;
     final Widget label;
@@ -650,10 +656,7 @@ class _VarGroupItemState extends State<VarGroupItem> {
     } else {
       label = DifyPressable(
         semanticLabel: name,
-        onPressed: () {
-          _name.text = name;
-          setState(() => _editName = true);
-        },
+        onPressed: _startRename,
         // `flex h-6 items-center px-1`: as wide as the name.
         builder: (context, hovered, focused) => Container(
           height: 24,
@@ -680,7 +683,8 @@ class _VarGroupItemState extends State<VarGroupItem> {
           child: DifyIcon('vender/line/files/folder', size: 14, color: DifyColors.textSecondary),
         ),
         Flexible(child: label),
-        if (widget.canRemove && _hovered)
+        // A phone has no hover: Delete is under the row's "…" and its long press ([build]).
+        if (widget.canRemove && _hovered && !DifyTouch.compactOf(context))
           Padding(
             padding: const EdgeInsets.only(left: 2),
             child: DifyPressable(
@@ -747,6 +751,18 @@ class _VarGroupItemState extends State<VarGroupItem> {
     if (!w.groupEnabled) {
       return Field(title: tw('nodes.variableAssigner.title'), operations: operations, child: list);
     }
+    Widget header(Widget? more) => Row(
+      children: [
+        Expanded(
+          child: Align(alignment: Alignment.centerLeft, child: _groupTitle()),
+        ),
+        operations,
+        ?more,
+      ],
+    );
+    // A phone (no hover): the group's header is a touch row. A tap renames the group; its "…" and a long press offer
+    // Rename and Delete (the removal finds the group by its id when it runs).
+    final phone = DifyTouch.compactOf(context) && !w.readOnly;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -754,14 +770,18 @@ class _VarGroupItemState extends State<VarGroupItem> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Align(alignment: Alignment.centerLeft, child: _groupTitle()),
-              ),
-              operations,
-            ],
-          ),
+          if (phone)
+            DifyActionRow.builder(
+              label: _groupName,
+              onTap: _startRename,
+              actions: [
+                DifyActionRow.edit(_startRename, label: tc('operation.rename')),
+                if (w.canRemove && w.onRemove != null) DifyActionRow.delete(w.onRemove!),
+              ],
+              builder: (context, more) => header(more),
+            )
+          else
+            header(null),
           Padding(padding: const EdgeInsets.only(top: 4), child: list),
         ],
       ),

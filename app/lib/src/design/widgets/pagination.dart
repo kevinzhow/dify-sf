@@ -55,6 +55,11 @@ List<PageItem> paginationPageItems({
 
 /// dify-ui's Pagination facade as the logs use it: previous / "page / total" (click to type a page) / next on the
 /// left, the page buttons in the middle, the page size control ("Items per page" on hover) on the right.
+///
+/// In a compact window (a phone, a dify-sf divergence) it is one row: previous / "page / total" / next as 44 px
+/// controls on the left and the page size as the touch segmented control on the right (under them when both do not
+/// fit); the page buttons are left out (previous, next and typing a page reach every page) and so is the hover-only
+/// "Items per page".
 class DifyPagination extends StatefulWidget {
   const DifyPagination({
     super.key,
@@ -102,13 +107,13 @@ class _DifyPaginationState extends State<DifyPagination> {
     if (next != _clampPage(widget.page, widget.totalPages)) widget.onPageChange(next);
   }
 
-  Widget _arrow(String label, String icon, bool disabled, VoidCallback onPressed) => DifyPressable(
+  Widget _arrow(String label, String icon, bool disabled, VoidCallback onPressed, {double size = 28}) => DifyPressable(
     semanticLabel: label,
     disabled: disabled,
     onPressed: onPressed,
     builder: (context, hovered, focused) => Container(
-      width: 28,
-      height: 28,
+      width: size,
+      height: size,
       decoration: DifyFocusDecoration(
         color: disabled
             ? DifyColors.componentsButtonSecondaryBgDisabled
@@ -140,6 +145,8 @@ class _DifyPaginationState extends State<DifyPagination> {
   Widget build(BuildContext context) {
     final total = widget.totalPages < 0 ? 0 : widget.totalPages;
     if (total <= 0) return const SizedBox.shrink();
+    final compact = DifyWindowClass.of(context) == DifyWindowClass.compact;
+    final controlHeight = compact ? DifyTouch.controlHeight : 28.0;
     final page = _clampPage(widget.page, total);
     final items = paginationPageItems(
       page: page,
@@ -148,7 +155,7 @@ class _DifyPaginationState extends State<DifyPagination> {
       boundaryCount: widget.boundaryCount,
     );
     final summary = Container(
-      height: 28,
+      height: controlHeight,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -171,7 +178,7 @@ class _DifyPaginationState extends State<DifyPagination> {
     final jump = _editing
         ? SizedBox(
             width: 56,
-            height: 28,
+            height: controlHeight,
             child: _PageInput(
               initial: page,
               label: _c('pagination.pageNumber'),
@@ -198,6 +205,59 @@ class _DifyPaginationState extends State<DifyPagination> {
               child: MouseRegion(cursor: SystemMouseCursors.text, child: summary),
             ),
           );
+    final arrows = Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: DifyColors.backgroundSectionBurn,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 2,
+        children: [
+          _arrow(
+            _c('pagination.previous'),
+            'arrow-left-line',
+            page <= 1,
+            () => _go(page - 1),
+            size: controlHeight,
+          ),
+          jump,
+          _arrow(_c('pagination.next'), 'arrow-right-line', page >= total, () => _go(page + 1), size: controlHeight),
+        ],
+      ),
+    );
+    if (compact) {
+      return Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: 'Pagination',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          // The page size moves under the arrows when both do not fit (large text).
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              arrows,
+              if (widget.pageSize case final size?)
+                DifySegmentedControl<int>(
+                  value: size,
+                  size: DifySegmentedControlSize.touch,
+                  semanticLabel: _c('pagination.perPage'),
+                  onChanged: widget.onPageSizeChange,
+                  segments: [
+                    for (final o in widget.pageSizeOptions)
+                      (value: o, label: '$o', child: DifyTextLine(centerCap: true, '$o', textAlign: TextAlign.center)),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      );
+    }
     return Semantics(
       container: true,
       explicitChildNodes: true,
@@ -209,22 +269,7 @@ class _DifyPaginationState extends State<DifyPagination> {
             Expanded(
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: DifyColors.backgroundSectionBurn,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: 2,
-                    children: [
-                      _arrow(_c('pagination.previous'), 'arrow-left-line', page <= 1, () => _go(page - 1)),
-                      jump,
-                      _arrow(_c('pagination.next'), 'arrow-right-line', page >= total, () => _go(page + 1)),
-                    ],
-                  ),
-                ),
+                child: arrows,
               ),
             ),
             Row(

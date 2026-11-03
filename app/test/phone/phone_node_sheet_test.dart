@@ -1127,8 +1127,9 @@ void main() {
     expect(data.flagsCollection.isButton, isTrue);
     expect(data.flagsCollection.isToggled, Tristate.none, reason: 'not a switch');
     await expectTouchTarget(t, role.evaluate().single, 'the role');
-    // The messages can be reordered: the hover drag handle is there (it swallowed the block).
-    expect(_inSheet(find.byWidgetPredicate((w) => '${w.key}'.contains('sort-handle-'))), findsWidgets);
+    // A phone has no hover drag handle (it swallowed the block): the messages are reordered from their "…" sheet
+    // (Move up / Move down, fixes after PR #90 item 4, phone_action_rows_test).
+    expect(_inSheet(find.byWidgetPredicate((w) => '${w.key}'.contains('sort-handle-'))), findsNothing);
     final reorder = DifyI18n.tr('common', 'sort.handle', {'item': 'user'});
     final labels = platformLabels(t);
     expect(labels.where((l) => l.contains(reorder) || l.contains('USER') && l != 'USER'), isEmpty, reason: '$labels');

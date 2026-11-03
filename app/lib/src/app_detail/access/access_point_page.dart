@@ -82,6 +82,8 @@ class AccessPointPage extends StatefulWidget {
 }
 
 class AccessPointPageState extends State<AccessPointPage> {
+  final _pointsKey = GlobalKey(debugLabel: 'access points');
+
   /// The app with the switches' stored changes (Dify's `setAppDetail`) until the shell refetches it.
   late final ValueNotifier<AppInfo> app = ValueNotifier(widget.app.value);
 
@@ -215,67 +217,85 @@ class AccessPointPageState extends State<AccessPointPage> {
     valueListenable: app,
     builder: (context, info, _) {
       final caps = appACLCapabilitiesOf(info);
-      return ColoredBox(
-        color: DifyColors.componentsPanelBg,
+      // A phone scrolls the header with the cards (it would take a fifth of the screen) and pads by 16 px.
+      final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
+      final header = Padding(
+        padding: phone ? const EdgeInsets.fromLTRB(16, 12, 16, 8) : const EdgeInsets.fromLTRB(24, 12, 24, 8),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 12,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 12,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: 2,
-                    children: [
-                      SizedBox(
-                        height: 24,
-                        child: Semantics(
-                          header: true,
-                          child: DifyTextLine(
-                            _t('common', 'appMenus.accessPoint'),
-                            style: difyTextStyle(DifyType.titleXlSemiBold, DifyColors.textPrimary),
-                          ),
-                        ),
-                      ),
-                      DifyTextLine(
-                        _t('deployments', 'studio.accessPoint.description'),
-                        style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
-                      ),
-                    ],
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 2,
+              children: [
+                SizedBox(
+                  height: 24,
+                  child: Semantics(
+                    header: true,
+                    child: DifyTextLine(
+                      _t('common', 'appMenus.accessPoint'),
+                      style: difyTextStyle(DifyType.titleXlSemiBold, DifyColors.textPrimary),
+                    ),
                   ),
-                  // The environment tabs show for workflows and chatflows the user may view: on the community edition
-                  // the built-in environment alone (deployment environments are enterprise).
-                  if (isAdvancedApp(info.mode) && caps.canViewAccessPoint) const EnvironmentTabs(),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: BuiltInAccessPoints(
-                  app: info,
-                  appListenable: app,
-                  access: widget.access,
-                  workflow: workflow,
-                  workflowPending: workflowPending,
-                  workflowError: workflowError,
-                  canDeploy: caps.canDeploy,
-                  canManageAccessPoint: caps.canManageAccessPoint,
-                  canReleaseAndVersion: caps.canReleaseAndVersion,
-                  highlightedAccessPoint: widget.highlightedAccessPoint,
-                  onAppChanged: (a) => app.value = a,
-                  onRefreshApp: widget.refreshApp,
-                  onSaveSiteConfig: (p) => saveSiteConfig(p, canManageAccessPoint: caps.canManageAccessPoint),
-                  goToPublish: widget.goToPublish,
-                  openUrl: widget.openUrl,
                 ),
-              ),
+                DifyTextLine(
+                  _t('deployments', 'studio.accessPoint.description'),
+                  style: difyTextStyle(DifyType.systemXsRegular, DifyColors.textTertiary),
+                ),
+              ],
             ),
+            // The environment tabs show for workflows and chatflows the user may view: on the community edition
+            // the built-in environment alone (deployment environments are enterprise).
+            if (isAdvancedApp(info.mode) && caps.canViewAccessPoint) const EnvironmentTabs(),
           ],
         ),
+      );
+      // One element in both layouts: a rotation keeps the cards' state.
+      final points = KeyedSubtree(
+        key: _pointsKey,
+        child: BuiltInAccessPoints(
+          app: info,
+          appListenable: app,
+          access: widget.access,
+          workflow: workflow,
+          workflowPending: workflowPending,
+          workflowError: workflowError,
+          canDeploy: caps.canDeploy,
+          canManageAccessPoint: caps.canManageAccessPoint,
+          canReleaseAndVersion: caps.canReleaseAndVersion,
+          highlightedAccessPoint: widget.highlightedAccessPoint,
+          onAppChanged: (a) => app.value = a,
+          onRefreshApp: widget.refreshApp,
+          onSaveSiteConfig: (p) => saveSiteConfig(p, canManageAccessPoint: caps.canManageAccessPoint),
+          goToPublish: widget.goToPublish,
+          openUrl: widget.openUrl,
+        ),
+      );
+      return ColoredBox(
+        color: DifyColors.componentsPanelBg,
+        child: phone
+            ? SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    header,
+                    Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), child: points),
+                  ],
+                ),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  header,
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      child: points,
+                    ),
+                  ),
+                ],
+              ),
       );
     },
   );

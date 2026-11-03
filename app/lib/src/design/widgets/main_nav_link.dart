@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../dify_icon.dart';
 import '../dify_tokens.g.dart';
 import 'button_style.dart';
+import 'responsive.dart' show DifyLayoutMode, DifyTouch;
 import 'surface.dart';
 import 'text.dart';
 
@@ -29,7 +30,10 @@ class MainNavLink extends StatelessWidget {
     onPressed: onTap,
     builder: (context, hovered, focused) {
       final content = Container(
-        constraints: const BoxConstraints(minHeight: 32),
+        // The touch desktop (a touch tablet's Studio): touch-high; a mouse keeps Dify's `h-8`.
+        constraints: BoxConstraints(
+          minHeight: DifyLayoutMode.of(context) == DifyLayoutMode.touch ? DifyTouch.controlHeight : 32,
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: active

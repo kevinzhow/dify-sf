@@ -76,39 +76,38 @@ class WorkflowLogFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final q = queryParams;
+    final phone = logsPhone(context);
+    final chips = [
+      DifyChip(
+        key: const ValueKey('workflow-log-status'),
+        value: q.status ?? 'all',
+        items: workflowLogStatusItems,
+        onSelect: (item) => setQueryParams(q.copyWith(status: item.value)),
+        onClear: () => setQueryParams(q.copyWith(status: 'all')),
+      ),
+      DifyChip(
+        key: const ValueKey('workflow-log-period'),
+        minWidth: 150,
+        panelWidth: 270,
+        leftIcon: RemixIcon('calendar-line', size: 16, color: DifyColors.textSecondary),
+        value: q.period,
+        items: logPeriodItems(),
+        onSelect: (item) => setQueryParams(q.copyWith(period: item.value)),
+        onClear: () => setQueryParams(q.copyWith(period: '9')),
+      ),
+    ];
+    final search = DifySearchInput(
+      key: const ValueKey('workflow-log-keyword'),
+      width: phone ? null : 200,
+      height: phone ? 40 : 32,
+      value: q.keyword ?? '',
+      placeholder: _c('operation.search'),
+      onValueChange: (v) => setQueryParams(WorkflowLogFilterQuery(period: q.period, status: q.status, keyword: v)),
+    );
+    if (phone) return LogPhoneFilters(search: search, chips: chips);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          DifyChip(
-            key: const ValueKey('workflow-log-status'),
-            value: q.status ?? 'all',
-            items: workflowLogStatusItems,
-            onSelect: (item) => setQueryParams(q.copyWith(status: item.value)),
-            onClear: () => setQueryParams(q.copyWith(status: 'all')),
-          ),
-          DifyChip(
-            key: const ValueKey('workflow-log-period'),
-            minWidth: 150,
-            panelWidth: 270,
-            leftIcon: RemixIcon('calendar-line', size: 16, color: DifyColors.textSecondary),
-            value: q.period,
-            items: logPeriodItems(),
-            onSelect: (item) => setQueryParams(q.copyWith(period: item.value)),
-            onClear: () => setQueryParams(q.copyWith(period: '9')),
-          ),
-          DifySearchInput(
-            key: const ValueKey('workflow-log-keyword'),
-            width: 200,
-            value: q.keyword ?? '',
-            placeholder: _c('operation.search'),
-            onValueChange: (v) =>
-                setQueryParams(WorkflowLogFilterQuery(period: q.period, status: q.status, keyword: v)),
-          ),
-        ],
-      ),
+      child: Wrap(spacing: 8, runSpacing: 8, children: [...chips, search]),
     );
   }
 }
@@ -367,6 +366,17 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
     _triggers[id]?.requestFocus();
   }
 
+  /// The status label's words (null: none).
+  static String? _statusText(String? status) => switch (status) {
+    'succeeded' => 'Success',
+    'failed' => 'Failure',
+    'stopped' => 'Stop',
+    'paused' => 'Pending',
+    'running' => 'Running',
+    'partial-succeeded' => 'Partial Success',
+    _ => null,
+  };
+
   Widget _status(String? status) => switch (status) {
     'succeeded' => LogStatusLabel(
       dot: DifyStatusDotStatus.success,
@@ -402,42 +412,64 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
     final app = widget.app;
     if (widget.logs == null || app == null) return const DifyLoading(key: ValueKey('logs-loading'), app: true);
     final isWorkflow = app.mode == AppModes.workflow;
+    final phone = logsPhone(context);
+    final sort = DifyPressable(
+      key: const ValueKey('workflow-log-sort'),
+      semanticLabel: _l('table.header.startTime'),
+      onPressed: () => setState(() => _asc = !_asc),
+      builder: (context, hovered, focused) => Container(
+        // On a phone the sort is the list's header row: a 44 px target across the page; with touch in a wider window
+        // (the table's header) it is 44 px high too.
+        constraints: BoxConstraints(
+          minHeight: phone || DifyLayoutMode.of(context) == DifyLayoutMode.touch ? DifyTouch.controlHeight : 0,
+        ),
+        padding: phone ? const EdgeInsets.symmetric(horizontal: 16) : EdgeInsets.zero,
+        alignment: AlignmentDirectional.centerStart,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: DifyTextLine(
+                difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.startTime')),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: phone
+                    ? difyTextStyle(
+                        DifyType.systemXsMediumUppercase,
+                        hovered ? DifyColors.textSecondary : DifyColors.textTertiary,
+                      )
+                    : TextStyle(color: hovered ? DifyColors.textSecondary : null),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 2),
+              child: RotatedBox(
+                key: ValueKey(_asc ? 'workflow-log-sort-asc' : 'workflow-log-sort-desc'),
+                quarterTurns: _asc ? 2 : 0,
+                child: SvgPicture.string(
+                  _arrowDownSvg,
+                  width: 12,
+                  height: 12,
+                  colorFilter: ColorFilter.mode(DifyColors.textTertiary, BlendMode.srcIn),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (phone) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          sort,
+          for (final log in _sorted) _phoneRow(log),
+        ],
+      );
+    }
     final columns = <DifyTableColumn>[
       DifyTableColumn(header: null, width: 20),
-      DifyTableColumn(
-        header: DifyPressable(
-          key: const ValueKey('workflow-log-sort'),
-          semanticLabel: _l('table.header.startTime'),
-          onPressed: () => setState(() => _asc = !_asc),
-          builder: (context, hovered, focused) => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: DifyTextLine(
-                  difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.startTime')),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: hovered ? DifyColors.textSecondary : null),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 2),
-                child: RotatedBox(
-                  key: ValueKey(_asc ? 'workflow-log-sort-asc' : 'workflow-log-sort-desc'),
-                  quarterTurns: _asc ? 2 : 0,
-                  child: SvgPicture.string(
-                    _arrowDownSvg,
-                    width: 12,
-                    height: 12,
-                    colorFilter: ColorFilter.mode(DifyColors.textTertiary, BlendMode.srcIn),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        width: 180,
-      ),
+      DifyTableColumn(header: sort, width: 180),
       DifyTableColumn(
         header: DifyTextLine(difyTransform(DifyType.systemXsMediumUppercase, _l('table.header.status'))),
         width: null,
@@ -471,6 +503,33 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
       ),
     );
   }
+
+  /// A log on a phone: the start time over the run time, the tokens and the user, the status on the right.
+  Widget _phoneRow(Json log) {
+    final run = (log['workflow_run'] as Json?) ?? const {};
+    final id = '${log['id']}';
+    final elapsed = ((run['elapsed_time'] as num?) ?? 0).toDouble();
+    final status = run['status'] as String?;
+    return LogPhoneRow(
+      key: ValueKey('workflow-log-row-$id'),
+      title: AccountTime.of(context).formatTime(((log['created_at'] as num?) ?? 0).toInt(), _l('dateTimeFormat')),
+      subtitle: [
+        '${elapsed.toStringAsFixed(3)}s',
+        '${run['total_tokens'] ?? 0} ${_l('table.header.tokens').toLowerCase()}',
+        _endUser(log),
+      ].join(' · '),
+      unread: log['read_at'] == null,
+      status: _statusText(status),
+      trailing: [_status(status)],
+      onTap: () => _open(log),
+    );
+  }
+
+  static String _endUser(Json log) => switch ((log['created_by_end_user'], log['created_by_account'])) {
+    (final Json u, _) => '${u['session_id']}',
+    (_, final Json a) => '${a['name']}',
+    _ => 'N/A',
+  };
 
   DifyTableRow _row(Json log, bool isWorkflow) {
     final run = (log['workflow_run'] as Json?) ?? const {};
@@ -560,6 +619,8 @@ class WorkflowLogDetailPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final id = appId;
+    // The detail as a phone page: its icon controls in 44 px touch boxes (the close's glyph where it was).
+    final touch = DifyTouchArea.appliesIn(context);
     return Stack(
       key: const ValueKey('workflow-log-detail'),
       children: [
@@ -586,23 +647,26 @@ class WorkflowLogDetailPanel extends StatelessWidget {
                     if (canReplay)
                       DifyTooltip(
                         content: DifyTextLine(_l('runDetail.testWithParams')),
-                        child: DifyPressable(
-                          key: const ValueKey('workflow-log-replay'),
-                          semanticLabel: _l('runDetail.testWithParams'),
-                          onPressed: () {
-                            if (id == null || id.isEmpty) return;
-                            onReplay?.call(runID);
-                          },
-                          builder: (context, hovered, focused) => Container(
-                            width: 24,
-                            height: 24,
-                            margin: const EdgeInsets.only(right: 4),
-                            decoration: BoxDecoration(
-                              color: hovered ? DifyColors.stateBaseHover : null,
-                              borderRadius: BorderRadius.circular(DifyRadius.md),
-                            ),
-                            child: Center(
-                              child: RemixIcon('play-large-line', size: 16, color: DifyColors.textTertiary),
+                        child: DifyTouchArea.inPhoneSheet(
+                          context,
+                          DifyPressable(
+                            key: const ValueKey('workflow-log-replay'),
+                            semanticLabel: _l('runDetail.testWithParams'),
+                            onPressed: () {
+                              if (id == null || id.isEmpty) return;
+                              onReplay?.call(runID);
+                            },
+                            builder: (context, hovered, focused) => Container(
+                              width: 24,
+                              height: 24,
+                              margin: const EdgeInsets.only(right: 4),
+                              decoration: BoxDecoration(
+                                color: hovered ? DifyColors.stateBaseHover : null,
+                                borderRadius: BorderRadius.circular(DifyRadius.md),
+                              ),
+                              child: Center(
+                                child: RemixIcon('play-large-line', size: 16, color: DifyColors.textTertiary),
+                              ),
                             ),
                           ),
                         ),
@@ -635,15 +699,18 @@ class WorkflowLogDetailPanel extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: 16,
-          right: 12,
-          child: DifyPressable(
-            key: const ValueKey('workflow-log-detail-close'),
-            semanticLabel: _c('operation.close'),
-            onPressed: onClose,
-            builder: (context, hovered, focused) => Padding(
-              padding: const EdgeInsets.all(4),
-              child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+          top: touch ? 6 : 16,
+          right: touch ? 2 : 12,
+          child: DifyTouchArea.inPhoneSheet(
+            context,
+            DifyPressable(
+              key: const ValueKey('workflow-log-detail-close'),
+              semanticLabel: _c('operation.close'),
+              onPressed: onClose,
+              builder: (context, hovered, focused) => Padding(
+                padding: const EdgeInsets.all(4),
+                child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+              ),
             ),
           ),
         ),

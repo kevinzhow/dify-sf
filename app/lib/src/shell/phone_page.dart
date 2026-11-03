@@ -30,7 +30,7 @@ Future<T?> pushPhonePage<T>(
 
 /// A pushed phone page: the app bar (title, back) on background-body under the status bar, then [child] on
 /// components-panel-bg, scrolling (`px-4 pt-4`) when [scrollable]. The page's background reaches under the system
-/// bars; its content stays inside the safe area.
+/// bars; its content stays inside the safe area. Its controls are touch-sized ([DifyTouchSurface]).
 class PhonePage extends StatelessWidget {
   const PhonePage({
     super.key,
@@ -65,15 +65,17 @@ class PhonePage extends StatelessWidget {
             backgroundColor: DifyColors.componentsPanelBg,
           ),
           Expanded(
-            child: MediaQuery.removePadding(
-              context: context,
-              removeTop: true,
-              child: scrollable
-                  ? SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottom),
-                      child: SafeArea(top: false, bottom: false, child: child),
-                    )
-                  : SafeArea(top: false, child: child),
+            child: DifyTouchSurface(
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: scrollable
+                    ? SingleChildScrollView(
+                        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottom),
+                        child: SafeArea(top: false, bottom: false, child: child),
+                      )
+                    : SafeArea(top: false, child: child),
+              ),
             ),
           ),
         ],

@@ -168,7 +168,14 @@ class _AppCardState extends State<AppCard> with StudioAppActions<AppCard> {
             fit: StackFit.expand,
             children: [
               link,
-              if (!previewOnly) _actionBar(context, services, ops, visible: _hovered || _focusWithin || popup),
+              // Touch has no hover: the bar always shows (Dify's `[@media(hover:none)]` on the card's actions).
+              if (!previewOnly)
+                _actionBar(
+                  context,
+                  services,
+                  ops,
+                  visible: _hovered || _focusWithin || popup || DifyTouch.compactOf(context),
+                ),
             ],
           ),
         ),
@@ -278,11 +285,17 @@ class _AppCardState extends State<AppCard> with StudioAppActions<AppCard> {
 
   Widget _actionBar(BuildContext context, StudioServices services, AppOperations ops, {required bool visible}) {
     final starLabel = _a('studio.starApp');
+    // Touch (a tablet): each 32 px button in a 44 px box that is its target and its accessible bounds; the bar still
+    // fits its 120 x 64 corner.
+    Widget touch(Widget b) => DifyTouch.compactOf(context)
+        ? DifyTouchArea(minSize: DifyTouch.controlHeight, accessibleBox: true, child: b)
+        : b;
     return Positioned(
       top: -0.5,
       right: -0.5,
       width: 120,
-      height: 64,
+      // Touch: room for the 44 px boxes (`p-2`, the bar's `p-0.5` and its hairline border around them).
+      height: DifyTouch.compactOf(context) ? 66 : 64,
       child: IgnorePointer(
         ignoring: !visible,
         child: Opacity(
@@ -314,28 +327,30 @@ class _AppCardState extends State<AppCard> with StudioAppActions<AppCard> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DifyTooltip(
-                      content: DifyTextLine(starLabel),
-                      child: MergeSemantics(
-                        child: Semantics(
-                          toggled: app.isStarred,
-                          child: Opacity(
-                            opacity: _togglingStar ? 0.7 : 1,
-                            child: DifyIconButton(
-                              key: ValueKey('app-card-star-${app.id}'),
-                              label: '$starLabel: ${app.name}',
-                              size: DifyIconButtonSize.lg,
-                              disabled: _togglingStar,
-                              icon: SvgPicture.string(
-                                _starSvg,
-                                width: 18,
-                                height: 18,
-                                colorFilter: ColorFilter.mode(
-                                  app.isStarred ? DifyColors.textWarningSecondary : DifyColors.textTertiary,
-                                  BlendMode.srcIn,
+                    touch(
+                      DifyTooltip(
+                        content: DifyTextLine(starLabel),
+                        child: MergeSemantics(
+                          child: Semantics(
+                            toggled: app.isStarred,
+                            child: Opacity(
+                              opacity: _togglingStar ? 0.7 : 1,
+                              child: DifyIconButton(
+                                key: ValueKey('app-card-star-${app.id}'),
+                                label: '$starLabel: ${app.name}',
+                                size: DifyIconButtonSize.lg,
+                                disabled: _togglingStar,
+                                icon: SvgPicture.string(
+                                  _starSvg,
+                                  width: 18,
+                                  height: 18,
+                                  colorFilter: ColorFilter.mode(
+                                    app.isStarred ? DifyColors.textWarningSecondary : DifyColors.textTertiary,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
+                                onPressed: () => unawaited(toggleStar(!app.isStarred)),
                               ),
-                              onPressed: () => unawaited(toggleStar(!app.isStarred)),
                             ),
                           ),
                         ),
@@ -349,18 +364,22 @@ class _AppCardState extends State<AppCard> with StudioAppActions<AppCard> {
                         onOpenChange: (v) => setState(() => _menuOpen = v),
                         placement: DifyPlacement.bottomEnd,
                         width: 216,
-                        builder: (context, controller) => DifyIconButton(
-                          key: ValueKey('app-card-more-${app.id}'),
-                          label: _exporting
-                              ? _c('operation.exporting')
-                              : _c('operation.moreActionsFor', {'name': app.name}),
-                          size: DifyIconButtonSize.lg,
-                          disabled: _exporting,
-                          restyle: _menuOpen ? (look, _) => look.copyWith(background: DifyColors.stateBaseHover) : null,
-                          icon: _exporting
-                              ? DifySpinner(color: DifyColors.textTertiary, size: 18)
-                              : RemixIcon('more-fill', size: 18, color: DifyColors.textTertiary),
-                          onPressed: controller.toggle,
+                        builder: (context, controller) => touch(
+                          DifyIconButton(
+                            key: ValueKey('app-card-more-${app.id}'),
+                            label: _exporting
+                                ? _c('operation.exporting')
+                                : _c('operation.moreActionsFor', {'name': app.name}),
+                            size: DifyIconButtonSize.lg,
+                            disabled: _exporting,
+                            restyle: _menuOpen
+                                ? (look, _) => look.copyWith(background: DifyColors.stateBaseHover)
+                                : null,
+                            icon: _exporting
+                                ? DifySpinner(color: DifyColors.textTertiary, size: 18)
+                                : RemixIcon('more-fill', size: 18, color: DifyColors.textTertiary),
+                            onPressed: controller.toggle,
+                          ),
                         ),
                         children: _menuItems(context, services, ops),
                       ),

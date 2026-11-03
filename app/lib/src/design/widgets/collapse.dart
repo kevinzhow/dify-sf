@@ -7,7 +7,9 @@ import 'package:flutter/widgets.dart';
 import '../dify_icon.dart';
 import '../dify_tokens.g.dart';
 import 'button_style.dart';
+import 'responsive.dart' show DifyTouch;
 import 'text.dart';
+import 'touch_target.dart';
 
 /// Collapse: `overflow-hidden rounded-xl bg-background-section-burn` with the toggle (`px-3 py-2 text-xs leading-4.5
 /// font-medium text-text-secondary`, drawn `system-xs-medium` in a `py-[9px]` row, a heroicons chevron right / down `size-3` in `text-components-button-tertiary-text`,
@@ -49,6 +51,9 @@ class _DifyCollapseState<T> extends State<DifyCollapse<T>> {
           semanticLabel: widget.title,
           onPressed: () => setState(() => _open = !_open),
           builder: (context, hovered, focused) => Container(
+            // A touch surface (a phone page): the toggle row is touch-high.
+            constraints: BoxConstraints(minHeight: DifyTouchArea.appliesIn(context) ? DifyTouch.controlHeight : 0),
+            alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: focused
                 ? BoxDecoration(
