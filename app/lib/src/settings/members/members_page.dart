@@ -243,6 +243,8 @@ class _MembersPageState extends State<MembersPage> {
         children: [header, ...rows],
       );
     }
+    // The touch desktop (a touch tablet, a landscape phone): the rows' menus are touch-sized; a mouse keeps Dify's.
+    final touchTable = DifyTouchSurface(enabled: DifyLayoutMode.of(context) == DifyLayoutMode.touch, child: table);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -251,12 +253,12 @@ class _MembersPageState extends State<MembersPage> {
           // `min-w-120`: narrower than that, the table keeps its width (and is cut). On a phone (a compact window) it
           // scrolls sideways instead, so the role column and the row menus stay reachable.
           builder: (context, c) => c.maxWidth >= 480
-              ? table
+              ? touchTable
               : DifyWindowClass.of(context) == DifyWindowClass.compact
               ? SingleChildScrollView(
                   key: const ValueKey('members-table-scroll'),
                   scrollDirection: Axis.horizontal,
-                  child: SizedBox(width: 480, child: table),
+                  child: SizedBox(width: 480, child: touchTable),
                 )
               : ClipRect(
                   child: OverflowBox(
@@ -264,7 +266,7 @@ class _MembersPageState extends State<MembersPage> {
                     minWidth: 480,
                     maxWidth: 480,
                     fit: OverflowBoxFit.deferToChild,
-                    child: table,
+                    child: touchTable,
                   ),
                 ),
         ),

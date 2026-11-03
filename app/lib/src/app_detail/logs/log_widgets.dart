@@ -441,7 +441,10 @@ class LogDrawerTrigger extends StatelessWidget {
     semanticLabel: text,
     focusNode: focusNode,
     onPressed: onPressed,
-    builder: (context, hovered, focused) => DecoratedBox(
+    builder: (context, hovered, focused) => Container(
+      // A touch table (the touch desktop): the row's trigger is touch-high.
+      constraints: BoxConstraints(minHeight: DifyTouchArea.appliesIn(context) ? DifyTouch.controlHeight : 0),
+      alignment: AlignmentDirectional.centerStart,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(DifyRadius.sm),
         border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,

@@ -18,7 +18,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../dify_tokens.g.dart';
+import 'responsive.dart' show DifyLayoutMode;
 import 'text.dart';
+import 'touch_target.dart' show DifyTouchSurface;
 
 /// The column widths of a table of [fixed] columns (`w-*` on a cell: that width, or the content's minimum if wider;
 /// null: automatic) [width] wide, from each column's minimum and maximum content widths:
@@ -455,7 +457,12 @@ class DifyTable extends StatelessWidget {
       final table = DifyAutoTableScope(
         fixed: [for (final c in columns) c.width],
         fixedLayout: layout == DifyTableLayout.fixed,
-        child: Semantics(container: true, child: body),
+        // The touch desktop (a touch tablet, a landscape phone): the rows' icon buttons and actions are touch-sized
+        // (a [DifyTouchSurface]); a mouse keeps Dify's sizes.
+        child: DifyTouchSurface(
+          enabled: DifyLayoutMode.of(context) == DifyLayoutMode.touch,
+          child: Semantics(container: true, child: body),
+        ),
       );
       // `table-fixed` keeps the table's width (cells clip); an automatic table at least [minWidth] wide grows with its
       // columns' minimums and scrolls sideways.
