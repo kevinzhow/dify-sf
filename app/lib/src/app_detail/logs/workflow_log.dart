@@ -418,8 +418,11 @@ class _WorkflowAppLogListState extends State<WorkflowAppLogList> {
       semanticLabel: _l('table.header.startTime'),
       onPressed: () => setState(() => _asc = !_asc),
       builder: (context, hovered, focused) => Container(
-        // On a phone the sort is the list's header row: a 44 px target across the page.
-        constraints: BoxConstraints(minHeight: phone ? DifyTouch.controlHeight : 0),
+        // On a phone the sort is the list's header row: a 44 px target across the page; with touch in a wider window
+        // (the table's header) it is 44 px high too.
+        constraints: BoxConstraints(
+          minHeight: phone || DifyLayoutMode.of(context) == DifyLayoutMode.touch ? DifyTouch.controlHeight : 0,
+        ),
         padding: phone ? const EdgeInsets.symmetric(horizontal: 16) : EdgeInsets.zero,
         alignment: AlignmentDirectional.centerStart,
         child: Row(

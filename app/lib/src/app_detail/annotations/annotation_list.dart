@@ -106,6 +106,7 @@ class _AnnotationListState extends State<AnnotationList> {
         ],
       );
     }
+    final touch = DifyLayoutMode.of(context) == DifyLayoutMode.touch;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -114,15 +115,19 @@ class _AnnotationListState extends State<AnnotationList> {
           child: DifyTable(
             columns: [
               DifyTableColumn(
-                width: _checkW,
+                // The touch desktop: the checkboxes are 44 px touch boxes, the column as wide as they need.
+                width: touch ? _checkW + 12 : _checkW,
                 headerPadding: const EdgeInsets.symmetric(horizontal: 8),
                 header: Align(
                   alignment: AlignmentDirectional.centerStart,
-                  child: DifyCheckbox(
-                    checked: all,
-                    indeterminate: selected > 0 && !all,
-                    label: _t('common', 'operation.selectAll'),
-                    onChanged: (_) => widget.onSelectedIdsChange(all ? const [] : ids),
+                  child: _touchBox(
+                    touch,
+                    DifyCheckbox(
+                      checked: all,
+                      indeterminate: selected > 0 && !all,
+                      label: _t('common', 'operation.selectAll'),
+                      onChanged: (_) => widget.onSelectedIdsChange(all ? const [] : ids),
+                    ),
                   ),
                 ),
               ),
@@ -205,6 +210,10 @@ class _AnnotationListState extends State<AnnotationList> {
 /// The fixed columns: the checkbox `w-12`, the actions `w-24`.
 const _checkW = 48.0, _actionsW = 96.0;
 
+/// [checkbox] in a 44 px touch box (also its accessible bounds) when [touch] (the touch desktop's table).
+Widget _touchBox(bool touch, Widget checkbox) =>
+    touch ? DifyTouchArea(minSize: DifyTouch.controlHeight, accessibleBox: true, child: checkbox) : checkbox;
+
 /// The header cells' `pl-3` (the row is `h-7`: [DifyTable.headerHeight]).
 const _headPadding = EdgeInsets.only(left: 12);
 
@@ -245,10 +254,13 @@ extension on _AnnotationListState {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Align(
               alignment: AlignmentDirectional.centerStart,
-              child: DifyCheckbox(
-                checked: widget.selectedIds.contains(item.id),
-                label: item.question,
-                onChanged: (v) => _toggle(item.id, v),
+              child: _touchBox(
+                DifyLayoutMode.of(context) == DifyLayoutMode.touch,
+                DifyCheckbox(
+                  checked: widget.selectedIds.contains(item.id),
+                  label: item.question,
+                  onChanged: (v) => _toggle(item.id, v),
+                ),
               ),
             ),
           ),

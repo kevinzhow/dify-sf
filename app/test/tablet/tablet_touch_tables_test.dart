@@ -75,7 +75,11 @@ void main() {
     await DifyI18n.load('en-US');
     await useAppFonts();
   });
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    // The members harness switches to Dify's test translator (keys as text): back to English for the next case.
+    await DifyI18n.load('en-US');
+  });
   tearDown(() => DifyInteraction.debugDefault = null);
 
   for (final touch in [true, false]) {
@@ -196,6 +200,65 @@ void main() {
       touch ? expect(h, greaterThanOrEqualTo(44)) : expect(h, 32);
       expect(t.takeException(), isNull);
     });
+
+    testWidgets('1280x800 $input: the workflow Logs START TIME sort is ${touch ? 'touch-high' : "Dify's"}', (t) async {
+      phoneWindow(t, size: _tablet, insets: _insets);
+      DifyInteraction.debugDefault = touch ? DifyInteractionMode.touch : DifyInteractionMode.pointer;
+      final ws = await workspace();
+      ws.api.seed(name: 'Support triage');
+      await _pumpApp(t, ws);
+      await _openPage(t, 'Support triage', AppDetailPageId.logs);
+      final h = t.getSize(find.byKey(const ValueKey('workflow-log-sort'))).height;
+      touch ? expect(h, greaterThanOrEqualTo(44)) : expect(h, lessThan(44));
+      expect(t.takeException(), isNull);
+      await unmount(t);
+    });
+
+    testWidgets(
+      '800x1280 $input: the Studio sidebar\'s links, workspace and account are ${touch ? 'touch-high' : "Dify's"}',
+      (
+        t,
+      ) async {
+        phoneWindow(t, size: const Size(800, 1280), insets: _insets);
+        DifyInteraction.debugDefault = touch ? DifyInteractionMode.touch : DifyInteractionMode.pointer;
+        final ws = await workspace();
+        ws.api.seed(name: 'Support triage');
+        await _pumpApp(t, ws);
+        for (final key in ['main-nav-studio', 'main-nav-integrations', 'workspace-card-trigger', 'account-trigger']) {
+          final f = find.byKey(ValueKey(key));
+          if (f.evaluate().isEmpty) continue;
+          final h = t.getSize(f.first).height;
+          touch ? expect(h, greaterThanOrEqualTo(44), reason: key) : expect(h, lessThan(44), reason: key);
+        }
+        expect(find.byKey(const ValueKey('main-nav-studio')), findsOneWidget);
+        expect(find.byKey(const ValueKey('account-trigger')), findsOneWidget);
+        expect(t.takeException(), isNull);
+        await unmount(t);
+      },
+    );
+
+    testWidgets(
+      '1280x800 $input: the Annotations table\'s checkboxes are ${touch ? '44 dp touch boxes' : "Dify's 16 dp"}',
+      (
+        t,
+      ) async {
+        phoneWindow(t, size: _tablet, insets: _insets);
+        DifyInteraction.debugDefault = touch ? DifyInteractionMode.touch : DifyInteractionMode.pointer;
+        final ws = await workspace();
+        final app = ws.api.seed(name: 'Help desk bot', mode: AppModes.advancedChat);
+        await FakeAnnotationsApi(ws.api).create(app.id, question: 'How do I reset it?', answer: 'Open Settings.');
+        await _pumpApp(t, ws);
+        await _openPage(t, 'Help desk bot', AppDetailPageId.annotations);
+        final boxes = find.descendant(of: find.byType(DifyTable), matching: find.byType(DifyCheckbox));
+        expect(boxes, findsNWidgets(2), reason: 'Select All and the row');
+        for (final e in boxes.evaluate()) {
+          final size = t.getSize(_box(find.byWidget(e.widget)));
+          touch ? expect(size, const Size(44, 44)) : expect(size.height, lessThan(44));
+        }
+        expect(t.takeException(), isNull);
+        await unmount(t);
+      },
+    );
 
     testWidgets('800x1280 $input: Create from Blank\'s close is ${touch ? '44' : '36'} dp', (t) async {
       phoneWindow(t, size: const Size(800, 1280), insets: _insets);

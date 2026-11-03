@@ -125,6 +125,10 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
             behavior: HitTestBehavior.opaque,
             onTap: _popover.toggle,
             child: Container(
+              // The touch desktop (a touch tablet): at least 44 px high; a mouse keeps Dify's.
+              constraints: BoxConstraints(
+                minHeight: DifyLayoutMode.of(context) == DifyLayoutMode.touch ? DifyTouch.controlHeight : 0,
+              ),
               padding: const EdgeInsets.fromLTRB(6, 6, 12, 6),
               decoration: BoxDecoration(
                 color: !_open && _hovered ? DifyColors.stateBaseHover : null,
