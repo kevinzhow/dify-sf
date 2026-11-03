@@ -139,6 +139,20 @@ void main() {
       final field = find.byType(EditableText).first;
       final r = t.getRect(field);
       expect(r.left >= 0 && r.right <= size.width, isTrue, reason: '$r');
+      // A rotation re-presents it (the drawer in landscape, the sheet again in portrait), keeping what was typed and
+      // the focus.
+      await t.tap(field);
+      t.testTextInput.enterText('Draft question');
+      await settle(t, 300);
+      final node = t.widget<EditableText>(field).focusNode;
+      for (final (w, h, sheet) in [(size.height, size.width, false), (size.width, size.height, true)]) {
+        t.view.physicalSize = Size(w, h);
+        await settle(t, 600);
+        expect(_header, sheet ? findsOneWidget : findsNothing, reason: '${w}x$h');
+        expect(t.widget<EditableText>(field).controller.text, 'Draft question', reason: '${w}x$h');
+        expect(t.widget<EditableText>(field).focusNode, same(node));
+        expect(node.hasFocus, isTrue, reason: '${w}x$h: the field keeps the focus');
+      }
       await t.tap(find.descendant(of: _header, matching: find.byType(DifyTouchIconButton)));
       await settle(t, 600);
       expect(hidden, 1);
