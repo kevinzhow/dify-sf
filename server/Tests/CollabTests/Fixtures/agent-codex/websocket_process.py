@@ -15,7 +15,7 @@ options = {
     'model_providers.difysf.requires_openai_auth': False,
     'model_providers.difysf.supports_websockets': True,
     'model_providers.difysf.http_headers': {'X-DifySF-Require-Incremental':'v1'},
-    'model_providers.difysf.stream_max_retries': 0,
+    'model_providers.difysf.stream_max_retries': 2 if os.environ.get('CODEX_FIXTURE_RECOVERY') else 0,
 }
 args = [binary, 'app-server', '--listen', 'stdio://']
 for key, value in options.items():
@@ -50,8 +50,11 @@ try:
     assert done['params']['turn']['status']=='completed'
     send({'id':4,'method':'turn/start','params':{'threadId':thread,'input':[{'type':'text','text':'One more synthetic answer.'}],'effort':'max'}})
     done = until(lambda v:v.get('method')=='turn/completed')
-    assert done['params']['turn']['status']=='completed'
-    print(json.dumps({'turns':2,'status':'completed','officialCodex':True,'accountLogin':False}))
+    expected='failed' if os.environ.get('CODEX_FIXTURE_RECOVERY')=='twice' else 'completed'
+    assert done['params']['turn']['status']==expected,done
+    count=(root/'recovery-counter').read_text().count('fixture-delta') if os.environ.get('CODEX_FIXTURE_RECOVERY') else None
+    if os.environ.get('CODEX_FIXTURE_RECOVERY'):assert count==1,count
+    print(json.dumps({'turns':2,'status':expected,'officialCodex':True,'accountLogin':False,'toolExecutions':count}))
 finally:
     process.terminate()
     try:process.wait(timeout=5)

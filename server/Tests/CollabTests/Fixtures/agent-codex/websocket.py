@@ -4,6 +4,7 @@ import base64, hashlib, http.server, json, os, pathlib, socket, struct, threadin
 signal.pthread_sigmask(signal.SIG_SETMASK, [])
 records=pathlib.Path(os.environ['CODEX_WS_RECORDS'])
 lock=threading.Lock(); connections=0; calls=0
+failure=os.environ.get('CODEX_WS_FAILURE')
 
 def record(value):
     with lock:
@@ -45,15 +46,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 with lock:
                     if not warm:calls+=1
                     call=calls
-                record({'connection':connection,'warmup':warm,'call':call,'bytes':n,'previous':body.get('previous_response_id'),'model':body['model'],'store':body.get('store'),'effort':body.get('reasoning',{}).get('effort'),'max_output_tokens':body.get('max_output_tokens'),'inputs':len(body['input']),'types':[x.get('type') for x in body['input']]})
+                record({'connection':connection,'warmup':warm,'call':call,'bytes':n,'previous':body.get('previous_response_id'),'model':body['model'],'store':body.get('store'),'effort':body.get('reasoning',{}).get('effort'),'max_output_tokens':body.get('max_output_tokens'),'inputs':len(body['input']),'types':[x.get('type') for x in body['input']], 'toolResults':[x.get('call_id') for x in body['input'] if x.get('type')=='function_call_output']})
                 response='resp_ws_warm' if warm else 'resp_ws_'+str(call)
                 frame(self.connection,{'type':'response.created','response':{'id':response}})
+                if failure and not warm and (call==2 or failure=='twice' and call==4):
+                    frame(self.connection,{'type':'response.in_progress','response':{'id':response}})
+                    if failure=='reset':self.connection.setsockopt(socket.SOL_SOCKET,socket.SO_LINGER,struct.pack('ii',1,0))
+                    else:self.connection.shutdown(socket.SHUT_RDWR)
+                    self.close_connection=True
+                    return
                 output=[]
                 if not warm:
                     if call==1:
                         item={'type':'function_call','id':'fc_ws_1','call_id':'call_ws_1','name':'exec_command','arguments':'{"cmd":"printf fixture-delta"}'}
                     else:
                         item={'type':'message','id':'msg_ws_'+str(call),'role':'assistant','status':'completed','phase':'final_answer','content':[{'type':'output_text','text':'Synthetic WebSocket complete.','annotations':[]}]}
+                    if failure and call==1:item['arguments']=json.dumps({'cmd':'printf fixture-delta >> recovery-counter; cat recovery-counter'})
                     output=[item]
                     frame(self.connection,{'type':'response.output_item.added','output_index':0,'item':item})
                     frame(self.connection,{'type':'response.output_item.done','output_index':0,'item':item})

@@ -201,7 +201,8 @@ struct ServerAgentRuntime: AgentRuntime {
             let scope = AgentModelScope(operationID: operation, generation: session.generation, execution: identity,
                 provider: soul.provider!, model: soul.model!, maxCalls: maxTurns, expiresAt: deadline, inputFileIDs: prompt.inputFileIDs,
                 endUserID: endUserID, modelParameters: soul.modelParameters, credentialReference: soul.json["model"]?["credential_ref"], durableOwner: routes.agentOwner, harnessStyle: soul.harnessStyle, modelWire: wire,
-                outputTokenLimit: modelEnvelope["max_output_tokens"]?.int)
+                outputTokenLimit: modelEnvelope["max_output_tokens"]?.int,
+                codexWebsocketRecoveryEnabled: routes.config.agentService.codexWebsocketRecoveryEnabled && modelEnvelope["transport"] == "websocket")
             let token = try await routes.agentModelScopes.activate(scope)
             if soul.harnessStyle == "codex", wire == "responses" {
                 var model = body["model"]!.object!

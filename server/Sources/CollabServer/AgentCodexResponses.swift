@@ -113,6 +113,7 @@ extension Routes {
             "provider": .string(scope.provider), "model": .string(model), "wire": "responses", "harness_style": "codex",
             "reasoning_effort": body["reasoning"]?["effort"] ?? .null,
             "include": body["include"] ?? .array([]), "max_output_tokens": body["max_output_tokens"] ?? .null]
+        if body["recovery_attempt"] == 1 { data["recovery_attempt"] = 1 }
         data["transport"] = .string(transport)
         data["has_previous_response_id"] = .bool(body["previous_response_id"] != nil)
         if let receivedBytes { data["received_bytes"] = .int(receivedBytes) }

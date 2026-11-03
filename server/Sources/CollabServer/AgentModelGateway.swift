@@ -15,9 +15,12 @@ public struct AgentServiceConfig: Sendable {
     public var inlineEnabled: Bool
     /// Optional internal WebSocket listener. Zero keeps the existing HTTP path unchanged.
     public var codexWebsocketPort: Int
+    /// Explicit deployment opt-in: one lost WebSocket may recover per node execution.
+    public var codexWebsocketRecoveryEnabled: Bool
     public var shellEnabled: Bool
 
     public init(reader: ConfigReader) {
+        codexWebsocketRecoveryEnabled = reader.bool(forKey: "collab.agent.codex.websocket.recovery.enabled", default: false)
         codexWebsocketPort = reader.int(forKey: "collab.agent.codex.websocket.port", default: 0)
         shellEnabled = reader.bool(forKey: "collab.agent.shell.enabled", default: false)
         inlineEnabled = reader.bool(forKey: "collab.agent.inline.enabled", default: false)
@@ -50,6 +53,7 @@ struct AgentModelScope: Sendable {
     var harnessStyle: String = "dify"
     var modelWire: String = "plugin"
     var outputTokenLimit: Int? = nil
+    var codexWebsocketRecoveryEnabled: Bool = false
 
     var appID: String { execution["app_id"]?.string ?? "" }
     var workflowRunID: String { execution["workflow_run_id"]?.string ?? "" }
@@ -185,11 +189,15 @@ actor AgentModelScopes {
         var sockets: [String: Task<Void, Never>] = [:]
         var socketLanes: Set<String> = []
         var startedSocketLanes: Set<String> = []
+        var socketIDs: [String: String] = [:]
+        var recoveryLanes: [String: AgentCodexSocketCheckpoint] = [:]
         var warmupUsage: [String: LLMUsage] = [:]
     }
     struct Claim: Sendable { var digest: String; var scope: AgentModelScope; var index: Int; var attempt: Int = 1; var codex: Bool = false }
     private var entries: [String: Entry] = [:]
     private var generations: [String: Int] = [:]
+    // Survives operation/token replacement for this same node execution; children share it.
+    private var recoveredExecutions: Set<String> = []
 
     func activate(_ scope: AgentModelScope) throws -> String {
         guard scope.generation >= 1, scope.maxCalls >= 1, scope.maxCalls <= 1000,
@@ -293,19 +301,41 @@ actor AgentModelScopes {
         entries[claim.digest] = entry
     }
 
-    /// No implicit full-history replay after a socket that submitted a request
-    /// disconnects. Only identities/flags are retained, never conversation items.
-    func openCodexSocket(token: String, lane: String, id: String, task: Task<Void, Never>) throws {
+    /// A used lane can reopen only with a single, explicitly offered recovery checkpoint.
+    /// No conversation content is cached: the live Codex must supply its own history/results.
+    @discardableResult
+    func openCodexSocket(token: String, lane: String, id: String, task: Task<Void, Never>) throws -> AgentCodexSocketCheckpoint? {
         let digest = Tokens.sha256(token)
         guard var entry = entries[digest], entry.scope.expiresAt > Date(),
               generations[entry.scope.executionKey] == entry.scope.generation else { throw Self.denied() }
-        guard !entry.startedSocketLanes.contains(lane) else {
+        let recovery = entry.recoveryLanes[lane]
+        guard !entry.startedSocketLanes.contains(lane) || recovery != nil else {
             throw AgentCodexSocketError(status: 400, code: "agent_incremental_context_lost")
         }
         guard entry.sockets.count < 8, !entry.socketLanes.contains(lane), entry.startedSocketLanes.count < 256 else {
             throw AgentCodexSocketError(status: 400, code: "agent_socket_limit")
         }
+        entry.recoveryLanes[lane] = nil
+        entry.socketIDs[lane] = id
         entry.socketLanes.insert(lane); entry.sockets[id] = task; entries[digest] = entry
+        return recovery
+    }
+
+    /// The old call has already been settled. Reserve the one attempt atomically before
+    /// closing downstream; releasing the old lane here avoids a reconnect/cleanup race.
+    func offerCodexRecovery(token: String, lane: String, checkpoint: AgentCodexSocketCheckpoint) throws -> Bool {
+        let digest = Tokens.sha256(token)
+        guard var entry = entries[digest], entry.scope.expiresAt > Date(),
+              generations[entry.scope.executionKey] == entry.scope.generation else { throw Self.denied() }
+        guard entry.scope.codexWebsocketRecoveryEnabled, entry.startedSocketLanes.contains(lane),
+              !checkpoint.unsafe, !recoveredExecutions.contains(entry.scope.executionKey),
+              (entry.calls.max() ?? 0) < entry.scope.maxCalls else { return false }
+        recoveredExecutions.insert(entry.scope.executionKey)
+        entry.recoveryLanes[lane] = checkpoint
+        if let old = entry.socketIDs.removeValue(forKey: lane) { entry.sockets[old] = nil }
+        entry.socketLanes.remove(lane)
+        entries[digest] = entry
+        return true
     }
 
     func startCodexSocket(token: String, lane: String) throws {
@@ -323,7 +353,11 @@ actor AgentModelScopes {
     func closeCodexSocket(token: String, lane: String, id: String) {
         let digest = Tokens.sha256(token)
         guard var entry = entries[digest] else { return }
-        entry.socketLanes.remove(lane); entry.sockets[id] = nil; entries[digest] = entry
+        entry.sockets[id] = nil
+        if entry.socketIDs[lane] == id {
+            entry.socketIDs[lane] = nil; entry.socketLanes.remove(lane)
+        }
+        entries[digest] = entry
     }
 
     /// Official Codex owns retry identities. Every accepted HTTP POST consumes
