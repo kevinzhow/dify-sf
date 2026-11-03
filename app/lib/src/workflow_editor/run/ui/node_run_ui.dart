@@ -293,6 +293,19 @@ bool handleNodeSingleRun(BuildContext context, Node node, Document doc) {
 
 /// The single-run form over the node panel (BasePanel's `shouldRenderSingleRunPanel`): shown while the node's
 /// `_isSingleRun` is on; Start Run runs with the values (handleRunWithParams) and switches to Last Run.
+/// What a node's single-run form holds: the typed values, and a human input node's generated form with the values it
+/// was generated with. An owner that keeps it outside the form ([NodeSingleRunOverlay.draft]) keeps it across the
+/// form's remounts.
+class SingleRunFormDraft {
+  Map<String, Object?> values = {};
+
+  /// A human input node's generated form (`use-single-run-form-params`): null until "Run this step" asks for it.
+  Map<String, Object?>? generatedForm;
+
+  /// The values the form was generated with (its `inputs`, sent back with the answers).
+  Map<String, Object?> generatedWith = const {};
+}
+
 class NodeSingleRunOverlay extends StatefulWidget {
   const NodeSingleRunOverlay({
     super.key,
@@ -300,10 +313,15 @@ class NodeSingleRunOverlay extends StatefulWidget {
     required this.doc,
     this.dataSourceForm,
     this.fill = true,
+    this.draft,
   });
   final Node node;
   final Document doc;
   final Widget Function()? dataSourceForm;
+
+  /// Where the form keeps what was typed (dify-sf: the phone editor's, so the form keeps it when a rotation moves it
+  /// between a sheet and a side panel); null: the form's own.
+  final SingleRunFormDraft? draft;
 
   /// Over the node panel it fills the panel's Stack ([Positioned.fill]); false (dify-sf: a phone sheet) it is the
   /// form alone, as tall as its fields.
@@ -314,13 +332,17 @@ class NodeSingleRunOverlay extends StatefulWidget {
 }
 
 class _NodeSingleRunOverlayState extends State<NodeSingleRunOverlay> {
-  Map<String, Object?> _values = {};
+  final _own = SingleRunFormDraft();
+  SingleRunFormDraft get _draft => widget.draft ?? _own;
 
-  /// A human input node's generated form (`use-single-run-form-params`): null until "Run this step" asks for it.
-  Map<String, Object?>? _generatedForm;
+  Map<String, Object?> get _values => _draft.values;
+  set _values(Map<String, Object?> v) => _draft.values = v;
 
-  /// The values the form was generated with (its `inputs`, sent back with the answers).
-  Map<String, Object?> _generatedWith = const {};
+  Map<String, Object?>? get _generatedForm => _draft.generatedForm;
+  set _generatedForm(Map<String, Object?>? v) => _draft.generatedForm = v;
+
+  Map<String, Object?> get _generatedWith => _draft.generatedWith;
+  set _generatedWith(Map<String, Object?> v) => _draft.generatedWith = v;
 
   /// A request of the owner is in flight (the form is being rendered, or the answer is being sent).
   bool _busy = false;

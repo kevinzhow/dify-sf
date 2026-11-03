@@ -341,6 +341,8 @@ class AnnotationDrawer extends StatelessWidget {
     builder: (context) => LayoutBuilder(
       builder: (context, c) {
         final phone = DifyWindowClass.of(context) == DifyWindowClass.compact;
+        // The page form on a phone, and the inset drawer on a touch tablet, are touch-sized.
+        final touch = phone || DifyTouch.compactOf(context);
         final popup = DifyDrawerPopup(
           key: const ValueKey('annotation-drawer'),
           label: label,
@@ -351,15 +353,15 @@ class AnnotationDrawer extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                padding: EdgeInsets.symmetric(vertical: phone ? 6 : 16),
+                padding: EdgeInsets.symmetric(vertical: touch ? 6 : 16),
                 decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: DifyColors.dividerSubtle)),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.only(left: 24, right: 20),
                   child: SizedBox(
-                    // A phone's close button is touch-sized (44 px).
-                    height: phone ? DifyTouch.controlHeight : 24,
+                    // A touch close button (44 px).
+                    height: touch ? DifyTouch.controlHeight : 24,
                     child: Row(
                       children: [
                         Expanded(child: title),
@@ -391,7 +393,7 @@ class AnnotationDrawer extends StatelessWidget {
               width: phone ? null : width.clamp(0, c.maxWidth - 16).toDouble(),
               child: DifyDrawerPage(
                 page: phone,
-                child: DifyTouchSurface(enabled: phone, child: popup),
+                child: DifyTouchSurface(enabled: touch, child: popup),
               ),
             ),
           ],

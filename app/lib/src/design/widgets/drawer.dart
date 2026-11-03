@@ -69,8 +69,8 @@ class _DifyDrawerPortalState extends State<DifyDrawerPortal> {
 ///
 /// In a compact window (a phone; a dify-sf divergence, raft-flutter's `RaftPresentationPolicy.detail`) the drawer is a
 /// page unless [pageOnCompact] is false: it fills the window edge to edge, [insets] and [maxWidth] do not apply, and the
-/// [DifyDrawerPopup] inside drops its rounded border and keeps its content in the safe area ([DifyDrawerPage]); its
-/// controls are touch-sized ([DifyTouchSurface]). The form follows the live width, so a rotation switches it with the
+/// [DifyDrawerPopup] inside drops its rounded border and keeps its content in the safe area ([DifyDrawerPage]). Its
+/// controls are touch-sized ([DifyTouchSurface]) there and on a touch tablet (the inset drawer of the touch desktop). The form follows the live width, so a rotation switches it with the
 /// content's state kept. Back closes it, as before.
 Future<T?> showDifyDrawer<T>(
   BuildContext context, {
@@ -125,7 +125,7 @@ Future<T?> showDifyDrawer<T>(
               child: DifyDrawerPage(
                 page: page,
                 child: DifyTouchSurface(
-                  enabled: page,
+                  enabled: page || DifyTouch.compactOf(dialogContext),
                   child: DifySelectionRegion(
                     child: builder(dialogContext, () => Navigator.of(dialogContext).maybePop()),
                   ),

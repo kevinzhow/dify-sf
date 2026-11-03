@@ -1685,10 +1685,13 @@ class _PortalScrim extends StatelessWidget {
 /// end edge at the full height of the area it is given, beside the page instead of over it. Put it in a
 /// [DifySideDock]'s panels. It paints `bg-components-panel-bg` with a divider-subtle start border to the window's end
 /// and bottom edges and keeps its content clear of the end and bottom system insets (the keyboard's height replacing
-/// the bottom inset, so a focused field stays above it).
+/// the bottom inset, so a focused field stays above it). Where the keyboard leaves less than [minRoomAboveKeyboard]
+/// (a landscape phone), the content keeps that height and the panel scrolls instead, header included: a focused field
+/// (which reveals itself through every scrollable around it) comes into view above the keyboard, as in a phone sheet.
 ///
 /// Its content is laid out for touch as a sheet's is ([DifySheetRecipe.contains]). [onDismiss] is what the header's
-/// close button does (none without it); Back is the owner's, as for a [DifyPersistentSheet].
+/// close button does (none without it); Back is the owner's, as for a [DifyPersistentSheet]. Only the topmost panel of
+/// a [DifySideDock] is read by assistive technology and holds the focus ([DifySideDock]).
 class DifySidePanel extends StatelessWidget {
   const DifySidePanel({super.key, required this.child, this.onDismiss, this.semanticLabel});
 
@@ -1699,6 +1702,9 @@ class DifySidePanel extends StatelessWidget {
 
   /// Names the panel's region for assistive technology.
   final String? semanticLabel;
+
+  /// The room above the keyboard under which the panel's content keeps its height and scrolls (see the class).
+  static const minRoomAboveKeyboard = 200.0;
 
   /// The width of a side panel in a window of [size]: a fixed 360 dp in a short window (a landscape phone, where the
   /// canvas needs the rest), else 40 % of the width between 360 and 420 dp (Dify's 400-420 px panels).
@@ -1711,30 +1717,48 @@ class DifySidePanel extends StatelessWidget {
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final end = rtl ? media.padding.left : media.padding.right;
     // The keyboard replaces the bottom inset, as in a sheet.
-    final bottom = media.viewInsets.bottom > 0 ? media.viewInsets.bottom : media.padding.bottom;
-    return Semantics(
-      container: true,
-      explicitChildNodes: true,
-      label: semanticLabel,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBg,
-          border: BorderDirectional(start: BorderSide(color: DifyColors.dividerSubtle)),
+    final keyboard = media.viewInsets.bottom;
+    final bottom = keyboard > 0 ? keyboard : media.padding.bottom;
+    final content = MediaQuery.removeViewInsets(
+      context: context,
+      removeBottom: true,
+      child: MediaQuery.removePadding(
+        context: context,
+        removeLeft: true,
+        removeRight: true,
+        removeBottom: true,
+        child: _SidePanelScope(
+          child: onDismiss == null ? child : _ModalSheetScope(close: onDismiss, child: child),
         ),
-        child: Padding(
-          padding: EdgeInsetsDirectional.only(top: 8, end: end, bottom: bottom),
-          child: MediaQuery.removeViewInsets(
-            context: context,
-            removeBottom: true,
-            child: MediaQuery.removePadding(
-              context: context,
-              removeLeft: true,
-              removeRight: true,
-              removeBottom: true,
-              child: _SidePanelScope(
-                child: onDismiss == null ? child : _ModalSheetScope(close: onDismiss, child: child),
-              ),
-            ),
+      ),
+    );
+    return _DockedPanel(
+      child: Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: semanticLabel,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: DifyColors.componentsPanelBg,
+            border: BorderDirectional(start: BorderSide(color: DifyColors.dividerSubtle)),
+          ),
+          child: LayoutBuilder(
+            builder: (context, c) {
+              // The room left (above the keyboard: the page may have made room for it already), at least
+              // [minRoomAboveKeyboard] while the keyboard is up. One tree in both cases (only the height changes), so
+              // the focused field keeps its state when the keyboard comes and goes.
+              final room = c.maxHeight - 8 - bottom;
+              final up = keyboard > 0 || DifyWindowInsets.viewInsetsOf(context).bottom > 0;
+              final height = up ? math.max(room, minRoomAboveKeyboard) : room;
+              return Padding(
+                padding: EdgeInsetsDirectional.only(top: 8, end: end, bottom: bottom),
+                child: SingleChildScrollView(
+                  primary: false,
+                  physics: const ClampingScrollPhysics(),
+                  child: SizedBox(height: math.max(0.0, height), child: content),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -1756,7 +1780,12 @@ class _SidePanelScope extends InheritedWidget {
 /// the body takes the whole width. [panels] are stacked in the area, the last on top: each is a [DifySidePanel] while
 /// it shows and nothing otherwise, and stays mounted while closed, so a panel that opens or a window that rotates
 /// keeps its state.
-class DifySideDock extends StatelessWidget {
+///
+/// The panels stack as modal layers do (a phone's sheets over sheets, [DifyModalLayer]): only the topmost
+/// [DifySidePanel] is in the semantics tree (the ones it covers are hidden from assistive technology, the body beside
+/// them stays); a panel that opens over a focused field takes the focus (the keyboard goes down), and when it closes the
+/// panel under it gets the focus back (the field it had, else the panel).
+class DifySideDock extends StatefulWidget {
   const DifySideDock({super.key, required this.body, required this.panels, required this.open, this.width});
 
   final Widget body;
@@ -1765,31 +1794,223 @@ class DifySideDock extends StatelessWidget {
   final double? width;
 
   @override
+  State<DifySideDock> createState() => _DifySideDockState();
+}
+
+class _DifySideDockState extends State<DifySideDock> {
+  final _panels = <_DockedPanelState>{};
+  _RenderSideStack? _stack;
+
+  /// The topmost panel's render object: the last [DifySidePanel] in paint order under the panel area.
+  _RenderDockedPanel? get _top {
+    _RenderDockedPanel? top;
+    void visit(RenderObject o) {
+      if (o is _RenderDockedPanel) {
+        top = o;
+        return;
+      }
+      o.visitChildren(visit);
+    }
+
+    _stack?.visitChildren(visit);
+    return top;
+  }
+
+  bool _isTop(_RenderDockedPanel panel) => identical(_top, panel);
+
+  void _changed() {
+    for (final p in _panels) {
+      p._render?.markNeedsSemanticsUpdate();
+    }
+  }
+
+  void _opened(_DockedPanelState panel) {
+    _panels.add(panel);
+    _changed();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !panel.mounted || _top?._panel != panel) return;
+      // Over a focused field of a panel it covers: the focus moves in, and goes back to that field when it closes.
+      final focus = FocusManager.instance.primaryFocus;
+      if (focus == null) return;
+      for (final covered in _panels) {
+        if (covered != panel && covered._scope.hasFocus) {
+          covered._restore = focus;
+          panel._scope.requestFocus();
+          return;
+        }
+      }
+    });
+  }
+
+  void _closed(_DockedPanelState panel) {
+    _panels.remove(panel);
+    _changed();
+    if (!panel._scope.hasFocus && FocusManager.instance.primaryFocus != null) return;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final top = _top?._panel;
+      if (top == null || !top.mounted) return;
+      // The focus was in the panel that closed (it is gone with it): the panel now on top gets it back.
+      final focus = FocusManager.instance.primaryFocus;
+      if (focus != null && focus is! FocusScopeNode) return;
+      if (focus != null && _panels.any((p) => p._scope.hasFocus)) return;
+      final restore = top._restore;
+      top._restore = null;
+      if (restore != null &&
+          restore.context != null &&
+          restore.canRequestFocus &&
+          restore.ancestors.contains(top._scope)) {
+        restore.requestFocus();
+      } else {
+        top._scope.requestFocus();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final w = width ?? DifySidePanel.widthFor(MediaQuery.sizeOf(context));
+    final w = widget.width ?? DifySidePanel.widthFor(MediaQuery.sizeOf(context));
     final rtl = Directionality.of(context) == TextDirection.rtl;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: open
-              ? MediaQuery.removePadding(context: context, removeRight: !rtl, removeLeft: rtl, child: body)
-              : body,
+          child: widget.open
+              ? MediaQuery.removePadding(context: context, removeRight: !rtl, removeLeft: rtl, child: widget.body)
+              : widget.body,
         ),
         // Closed, the area is 0 wide but its panels keep being laid out at the panel's width (and clipped), so a panel
         // that is closing or opening in the same frame never overflows.
         ClipRect(
           child: SizedBox(
-            width: open ? w : 0,
+            width: widget.open ? w : 0,
             child: OverflowBox(
               minWidth: w,
               maxWidth: w,
               alignment: AlignmentDirectional.centerStart,
-              child: Stack(fit: StackFit.expand, children: panels),
+              child: _SideDockScope(
+                dock: this,
+                child: _SideStack(
+                  dock: this,
+                  child: Stack(fit: StackFit.expand, children: widget.panels),
+                ),
+              ),
             ),
           ),
         ),
       ],
     );
+  }
+}
+
+class _SideDockScope extends InheritedWidget {
+  const _SideDockScope({required this.dock, required super.child});
+  final _DifySideDockState dock;
+
+  @override
+  bool updateShouldNotify(_SideDockScope oldWidget) => dock != oldWidget.dock;
+}
+
+/// The panel area of a [DifySideDock]: where it looks for the topmost panel.
+class _SideStack extends SingleChildRenderObjectWidget {
+  const _SideStack({required this.dock, super.child});
+  final _DifySideDockState dock;
+
+  @override
+  _RenderSideStack createRenderObject(BuildContext context) => _RenderSideStack().._attachTo(dock);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderSideStack renderObject) => renderObject._attachTo(dock);
+
+  @override
+  void didUnmountRenderObject(_RenderSideStack renderObject) {
+    if (dock._stack == renderObject) dock._stack = null;
+  }
+}
+
+class _RenderSideStack extends RenderProxyBox {
+  void _attachTo(_DifySideDockState dock) => dock._stack = this;
+}
+
+/// A [DifySidePanel] in a [DifySideDock]: its focus scope, and its semantics while it is the topmost panel only. Outside
+/// a dock it is the panel as it is.
+class _DockedPanel extends StatefulWidget {
+  const _DockedPanel({required this.child});
+  final Widget child;
+
+  @override
+  State<_DockedPanel> createState() => _DockedPanelState();
+}
+
+class _DockedPanelState extends State<_DockedPanel> {
+  final _scope = FocusScopeNode(debugLabel: 'side panel');
+  _DifySideDockState? _dock;
+  _RenderDockedPanel? _render;
+
+  /// The field to give the focus back to when the panel covering this one closes.
+  FocusNode? _restore;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final dock = context.dependOnInheritedWidgetOfExactType<_SideDockScope>()?.dock;
+    if (dock != _dock) {
+      _dock?._closed(this);
+      _dock = dock;
+      dock?._opened(this);
+    }
+  }
+
+  @override
+  void dispose() {
+    _dock?._closed(this);
+    _scope.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FocusScope(
+    node: _scope,
+    child: _DockedPanelBox(panel: this, child: widget.child),
+  );
+}
+
+class _DockedPanelBox extends SingleChildRenderObjectWidget {
+  const _DockedPanelBox({required this.panel, super.child});
+  final _DockedPanelState panel;
+
+  @override
+  _RenderDockedPanel createRenderObject(BuildContext context) => _RenderDockedPanel(panel).._attachTo(panel);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderDockedPanel renderObject) => renderObject._attachTo(panel);
+
+  @override
+  void didUnmountRenderObject(_RenderDockedPanel renderObject) {
+    if (panel._render == renderObject) panel._render = null;
+  }
+}
+
+/// Covered by a later panel of its dock: no semantics.
+class _RenderDockedPanel extends RenderProxyBox {
+  _RenderDockedPanel(this._panel);
+  _DockedPanelState _panel;
+
+  void _attachTo(_DockedPanelState panel) {
+    if (_panel != panel) {
+      _panel = panel;
+      markNeedsSemanticsUpdate();
+    }
+    panel._render = this;
+  }
+
+  bool get _covered => switch (_panel._dock) {
+    final dock? => !dock._isTop(this),
+    null => false,
+  };
+
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    if (!_covered) super.visitChildrenForSemantics(visitor);
   }
 }

@@ -110,47 +110,53 @@ class AppDetailTop extends StatelessWidget {
             child: Row(
               spacing: 1,
               children: [
-                DifyPressable(
-                  key: const ValueKey('app-detail-home'),
-                  semanticLabel: _t('common', 'mainNav.home'),
-                  onPressed: onHome,
-                  builder: (context, hovered, focused) {
-                    final color = hovered ? DifyColors.textSecondary : DifyColors.textTertiary;
-                    return Container(
-                      padding: const EdgeInsets.fromLTRB(2, 8, 6, 8),
-                      decoration: BoxDecoration(
-                        color: hovered ? DifyColors.backgroundDefaultHover : null,
-                        borderRadius: BorderRadius.circular(DifyRadius.lg),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          RemixIcon('arrow-left-s-line', size: 16, color: color),
-                          DifyIcon('vender/main-nav/app-home', size: 16, color: color),
-                        ],
-                      ),
-                    );
-                  },
+                DifyTouchArea.inPhoneSheet(
+                  context,
+                  DifyPressable(
+                    key: const ValueKey('app-detail-home'),
+                    semanticLabel: _t('common', 'mainNav.home'),
+                    onPressed: onHome,
+                    builder: (context, hovered, focused) {
+                      final color = hovered ? DifyColors.textSecondary : DifyColors.textTertiary;
+                      return Container(
+                        padding: const EdgeInsets.fromLTRB(2, 8, 6, 8),
+                        decoration: BoxDecoration(
+                          color: hovered ? DifyColors.backgroundDefaultHover : null,
+                          borderRadius: BorderRadius.circular(DifyRadius.lg),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            RemixIcon('arrow-left-s-line', size: 16, color: color),
+                            DifyIcon('vender/main-nav/app-home', size: 16, color: color),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
                 DifyTextLine('/', style: difyTextStyle(DifyType.systemMdRegular, DifyColors.textQuaternary)),
                 Flexible(
-                  child: DifyPressable(
-                    key: const ValueKey('app-detail-studio'),
-                    semanticLabel: _t('common', 'menus.apps'),
-                    onPressed: onHome,
-                    builder: (context, hovered, focused) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: hovered ? DifyColors.backgroundDefaultHover : null,
-                        borderRadius: BorderRadius.circular(DifyRadius.lg),
-                      ),
-                      child: DifyTextLine(
-                        difyTransform(DifyType.systemSmSemiboldUppercase, _t('common', 'menus.apps')),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: difyTextStyle(
-                          DifyType.systemSmSemiboldUppercase,
-                          hovered ? DifyColors.textPrimary : DifyColors.textSecondary,
+                  child: DifyTouchArea.inPhoneSheet(
+                    context,
+                    DifyPressable(
+                      key: const ValueKey('app-detail-studio'),
+                      semanticLabel: _t('common', 'menus.apps'),
+                      onPressed: onHome,
+                      builder: (context, hovered, focused) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: hovered ? DifyColors.backgroundDefaultHover : null,
+                          borderRadius: BorderRadius.circular(DifyRadius.lg),
+                        ),
+                        child: DifyTextLine(
+                          difyTransform(DifyType.systemSmSemiboldUppercase, _t('common', 'menus.apps')),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: difyTextStyle(
+                            DifyType.systemSmSemiboldUppercase,
+                            hovered ? DifyColors.textPrimary : DifyColors.textSecondary,
+                          ),
                         ),
                       ),
                     ),
@@ -203,6 +209,8 @@ class AppDetailNavLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // On a touch tablet's sidebar (a DifyTouchSurface) the link is touch-high, and a touch square collapsed.
+    final height = DifyTouchArea.appliesIn(context) ? DifyTouch.controlHeight : 32.0;
     Widget link = DifyPressable(
       disabled: disabled,
       semanticLabel: name,
@@ -216,8 +224,8 @@ class AppDetailNavLink extends StatelessWidget {
             : DifyColors.componentsMenuItemText;
         final borderColor = DifyColors.effectsHighlightLightmodeOff.withValues(alpha: on ? null : 0);
         Widget box = Container(
-          height: 32,
-          width: expand ? null : 32,
+          height: height,
+          width: expand ? null : height,
           // Collapsed: `size-8 p-1.5` leaves 19 px for the 20 px icon box (CSS lets it overflow); centred, it is the same.
           padding: expand ? const EdgeInsets.only(left: 12, right: 4) : EdgeInsets.zero,
           decoration: BoxDecoration(
@@ -405,6 +413,8 @@ class _AppInfoTriggerState extends State<AppInfoTrigger> {
         if (g.isNotEmpty) g,
     ];
     final modeLabel = getAppModeLabel(app.mode);
+    // A touch tablet's sidebar: the "…" is a 44 px box beside the name and mode (it does not fit in the name's row).
+    final touch = DifyTouchArea.appliesIn(context);
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Row(
@@ -434,7 +444,7 @@ class _AppInfoTriggerState extends State<AppInfoTrigger> {
                             style: difyTextStyle(DifyType.systemMdSemibold, DifyColors.textSecondary),
                           ),
                         ),
-                        if (groups.isNotEmpty) _operations(app, groups),
+                        if (groups.isNotEmpty && !touch) _operations(app, groups),
                       ],
                     ),
                   ),
@@ -449,6 +459,7 @@ class _AppInfoTriggerState extends State<AppInfoTrigger> {
               ),
             ),
           ),
+          if (groups.isNotEmpty && touch) _operations(app, groups),
         ],
       ),
     );
@@ -462,20 +473,23 @@ class _AppInfoTriggerState extends State<AppInfoTrigger> {
     placement: DifyPlacement.bottomEnd,
     sideOffset: 4,
     width: 160,
-    builder: (context, controller) => DifyPressable(
-      key: const ValueKey('app-info-more'),
-      semanticLabel: _t('common', 'operation.moreActionsFor', {'name': app.name}),
-      onPressed: controller.toggle,
-      builder: (context, hovered, focused) => Container(
-        width: 20,
-        height: 20,
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: hovered || _open ? DifyColors.stateBaseHover : null,
-          borderRadius: BorderRadius.circular(DifyRadius.md),
-          border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+    builder: (context, controller) => DifyTouchArea.inPhoneSheet(
+      context,
+      DifyPressable(
+        key: const ValueKey('app-info-more'),
+        semanticLabel: _t('common', 'operation.moreActionsFor', {'name': app.name}),
+        onPressed: controller.toggle,
+        builder: (context, hovered, focused) => Container(
+          width: 20,
+          height: 20,
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: hovered || _open ? DifyColors.stateBaseHover : null,
+            borderRadius: BorderRadius.circular(DifyRadius.md),
+            border: focused ? Border.all(color: DifyColors.stateAccentSolid, width: 2) : null,
+          ),
+          child: RemixIcon('more-fill', size: 16, color: DifyColors.textTertiary),
         ),
-        child: RemixIcon('more-fill', size: 16, color: DifyColors.textTertiary),
       ),
     ),
     children: [

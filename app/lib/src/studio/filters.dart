@@ -34,8 +34,9 @@ Widget _chip({
   bool popupOpen = false,
   EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 8),
   Color? hoverSelected,
+  double height = 32,
 }) => Container(
-  height: 32,
+  height: height,
   padding: padding,
   decoration: DifyFocusDecoration(
     color: selected
@@ -58,6 +59,9 @@ Widget _chip({
     ),
   ),
 );
+
+/// The filter chips' height: Dify's 32 px, touch-high (44 px) on a touch tablet's Studio (a [DifyTouchSurface]).
+double _chipHeight(BuildContext context) => DifyTouchArea.appliesIn(context) ? DifyTouch.controlHeight : 32;
 
 /// AppTypeFilter: a radio dropdown of [studioAppListCategories]; the trigger reads "Types" until a type is picked.
 class AppTypeFilter extends StatefulWidget {
@@ -97,6 +101,7 @@ class _AppTypeFilterState extends State<AppTypeFilter> {
         semanticLabel: label,
         onPressed: controller.toggle,
         builder: (context, hovered, focused) => _chip(
+          height: _chipHeight(context),
           selected: selected,
           hovered: hovered,
           focused: focused,
@@ -163,7 +168,7 @@ class _AppSortFilterState extends State<AppSortFilter> {
         semanticLabel: '$sortByLabel $active',
         onPressed: controller.toggle,
         builder: (context, hovered, focused) => Container(
-          height: 32,
+          height: _chipHeight(context),
           padding: const EdgeInsets.fromLTRB(8, 4, 10, 4),
           decoration: DifyFocusDecoration(
             color: hovered || _open ? DifyColors.stateBaseHover : DifyColors.componentsInputBgNormal,
@@ -338,6 +343,7 @@ class _CreatorsFilterState extends State<CreatorsFilter> {
               semanticLabel: label,
               onPressed: controller.toggle,
               builder: (context, hovered, focused) => _chip(
+                height: _chipHeight(context),
                 selected: count > 0,
                 hovered: hovered,
                 focused: focused,

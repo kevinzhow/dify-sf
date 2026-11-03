@@ -153,7 +153,7 @@ class DifyBottomToolbar extends StatelessWidget {
 ///
 /// [vertical]: the bar as a rail on a short window's start edge, like [DifyBottomToolbar.vertical]: the close glyph on
 /// top, then [leading] over the [title] (two lines of the toolbar's label type; the subtitle is part of the rail's
-/// name), then the actions.
+/// name, after the title: "Summarize, selected"), then the actions.
 class DifySelectionBar extends StatelessWidget {
   const DifySelectionBar({
     super.key,
@@ -204,24 +204,28 @@ class DifySelectionBar extends StatelessWidget {
       return _DifyRailSurface(
         children: [
           if (onClose case final close?) Center(child: _closeGlyph(close)),
-          MergeSemantics(
-            child: Semantics(
-              label: subtitle,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-                child: Column(
-                  spacing: 4,
-                  children: [
-                    ?leading,
-                    DifyText(
-                      title,
-                      DifyPhoneType.toolbarLabel,
-                      color: DifyColors.textPrimary,
-                      align: TextAlign.center,
-                      maxLines: 2,
-                    ),
-                  ],
-                ),
+          // One node read as the title, then the state ("Summarize, selected"); the subtitle is not shown on the rail.
+          Semantics(
+            container: true,
+            label: switch (subtitle) {
+              final s? => '$title, $s',
+              null => title,
+            },
+            excludeSemantics: true,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+              child: Column(
+                spacing: 4,
+                children: [
+                  ?leading,
+                  DifyText(
+                    title,
+                    DifyPhoneType.toolbarLabel,
+                    color: DifyColors.textPrimary,
+                    align: TextAlign.center,
+                    maxLines: 2,
+                  ),
+                ],
               ),
             ),
           ),
