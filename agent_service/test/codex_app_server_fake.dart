@@ -343,8 +343,9 @@ class FakeCodexAppServer {
   /// A harness with a sandbox whose app-server job is this fake; returns
   /// the harness, the run ID and the fake sandbox.
   Future<(Harness, String, FakeShellctl)> startRun(
-    Map<String, Object?> op,
-  ) async {
+    Map<String, Object?> op, {
+    Map<String, Object?>? limits,
+  }) async {
     final profiles = ExecutorProfiles.parse({
       'version': 1,
       'profiles': {
@@ -355,6 +356,7 @@ class FakeCodexAppServer {
           'mounts': [
             {'source': '/srv/codex', 'target': '/opt/codex'},
           ],
+          'limits': ?limits,
         },
       },
     });

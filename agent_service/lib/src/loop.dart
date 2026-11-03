@@ -74,10 +74,34 @@ class BudgetExhausted implements Exception {
 /// gives the result (`final_output`, or the final answer without declared
 /// outputs), plus one to write declared file outputs into the workspace
 /// first when the schema declares any (they must exist when `final_output`
-/// names them). Derived from what finishing needs; not a tuned margin.
+/// names them). Derived from what finishing needs; the wrap-up margin on top
+/// of it is [noticeReserve].
 int callsToFinish(OperationRequest r) {
   final schema = r.outputSchema;
   return schema != null && r.shell && declaresFileOutputs(schema) ? 2 : 1;
+}
+
+/// Model calls the near-budget notice keeps beyond [callsToFinish] for
+/// wrapping up: finishing a real task often takes several tool calls after
+/// the model is told to (export a result, a last render, write the declared
+/// files), more than [callsToFinish] counts. A tenth of [maxTurns], at most
+/// 20, from 40 calls up; none below 40, where the notice comes as late as
+/// finishing allows.
+int noticeReserve(int maxTurns) => maxTurns >= 40 ? min(20, maxTurns ~/ 10) : 0;
+
+/// The calls left (this one included) at or below which the run sends the
+/// near-budget notice: [callsToFinish] plus [noticeReserve].
+int noticeCalls(OperationRequest r) =>
+    callsToFinish(r) + noticeReserve(r.maxTurns);
+
+/// What the notice offers for writing declared files before the finishing
+/// call: all calls left but the last one (when told by the call budget), or
+/// one step (when told by the time left, which is about [callsToFinish]
+/// steps); null when no call is left for it.
+String? _writeStepsText(int remainingCalls, int? remainingSeconds) {
+  final steps = remainingSeconds != null ? 1 : remainingCalls - 1;
+  if (steps < 1) return null;
+  return steps == 1 ? 'at most one step' : 'at most $steps steps';
 }
 
 /// Why the run told the model to finish now (see `budget_notice`).
@@ -109,9 +133,12 @@ String budgetNoticeText(
         'Give your final answer as text now, without calling tools, with the '
         'best result you have, and say what is unfinished.';
   } else {
-    final call = files
-        ? 'If a file you will name in final_output does not exist yet, use at '
-              'most one step to write it into the workspace; then call'
+    final steps = files
+        ? _writeStepsText(remainingCalls, remainingSeconds)
+        : null;
+    final call = steps != null
+        ? 'If a file you will name in final_output does not exist yet, use '
+              '$steps to write it into the workspace; then call'
         : 'Call';
     finish =
         '$call final_output now with the best result you have: fill every '
@@ -907,9 +934,10 @@ class AgentRun {
     _lastCallStart = now;
   }
 
-  /// Before model call [callIndex]: when the calls or the time left are no
-  /// more than what finishing needs ([callsToFinish] calls; for time, that
-  /// many of the longest step so far), appends the budget notice to
+  /// Before model call [callIndex]: when the calls left are no more than
+  /// [noticeCalls] (what finishing needs plus the wrap-up reserve) or the
+  /// time left is no more than [callsToFinish] times the longest step so
+  /// far, appends the budget notice to
   /// [req]'s messages, once per run. Genkit 1.0.1 builds the next turn's
   /// history from this same request object, so the notice stays in the
   /// history at the place it was added (append-only; tested).
@@ -920,7 +948,7 @@ class AgentRun {
     final remainingCalls = r.maxTurns - callIndex + 1;
     final remaining = Duration(seconds: r.timeoutSeconds) - _clock.elapsed;
     final BudgetReason reason;
-    if (remainingCalls <= need) {
+    if (remainingCalls <= noticeCalls(r)) {
       reason = BudgetReason.maxTurns;
     } else if (_longestStep > Duration.zero &&
         remaining <= _longestStep * need) {

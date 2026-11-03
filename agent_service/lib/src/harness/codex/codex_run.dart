@@ -145,9 +145,12 @@ String codexBudgetNoticeText(
         'Give your final answer as text now, without calling tools, with the '
         'best result you have, and say what is unfinished.';
   } else {
-    final give = files
+    final steps = files
+        ? _writeStepsText(remainingCalls, remainingSeconds)
+        : null;
+    final give = steps != null
         ? 'If a file you will name in the final answer does not exist yet, '
-              'use at most one step to write it into the workspace; then give'
+              'use $steps to write it into the workspace; then give'
         : 'Give';
     finish =
         '$give your final answer now, without calling tools: the JSON object '
@@ -466,7 +469,7 @@ class _CodexLoop {
     final remainingCalls = r.maxTurns - callIndex + 1;
     final remaining = Duration(seconds: r.timeoutSeconds) - run._clock.elapsed;
     final BudgetReason reason;
-    if (remainingCalls <= need) {
+    if (remainingCalls <= noticeCalls(r)) {
       reason = BudgetReason.maxTurns;
     } else if (run._longestStep > Duration.zero &&
         remaining <= run._longestStep * need) {

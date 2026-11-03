@@ -132,8 +132,8 @@ Starts one operation. Every operation is a separate request; there is no separat
   it whenever the shell is on (the image never goes to the model, so no `vision` is needed); it is not a Soul key.
 - `limits.max_turns` is the most model calls of this operation (Genkit's `maxTurns`; default 50). With the shell it
   must not exceed the executor profile's `max_turns_max` (`422 invalid_request`, see
-  [Executor profiles](#executor-profiles)). When the calls or the time left are only what finishing needs, the
-  service tells the model to finish (see [Near-budget submit](#near-budget-submit)).
+  [Executor profiles](#executor-profiles)). When the calls left are only what finishing needs plus a wrap-up
+  reserve, or the time left only what finishing needs, the service tells the model to finish (see [Near-budget submit](#near-budget-submit)).
 - The `X-Agent-Run-Token` header is required for a new operation (`400 invalid_request` otherwise). The service keeps
   it in memory only.
 - Files are referenced by stable `file_id`; snapshots and model requests never contain URLs. Model inputs carry
@@ -473,17 +473,21 @@ what it has before the limit is reached:
 
 - Finishing needs one model call: the one that calls `final_output` (or, without declared outputs, gives the final
   answer as text). When the schema declares file outputs and the shell is on, it needs two: one step to write the
-  files into the workspace, then `final_output`. This number is the reserve; it is derived from what finishing
-  needs, not tuned.
-- Before each model call the service compares what is left with the reserve. Calls: `max_turns - call_index + 1`
-  (this call included) `<=` the reserve. Time: the time left of `timeout_seconds` `<=` the reserve times the longest
-  step of this run so far (a step: from one model call's start to the next one's, its tools included); before the
-  first step has ended there is no estimate and no time notice.
+  files into the workspace, then `final_output`. This number (`need`) is derived from what finishing needs.
+- On top of it the call budget keeps a wrap-up reserve: finishing a real task often takes more tool calls once the
+  model is told to (export a result, a last render, write the declared files). `reserve = max_turns >= 40 ?
+  min(20, max_turns / 10, rounded down) : 0`: `max_turns` 200 gets the notice with 22 calls left when files are
+  declared (21 without), `max_turns` below 40 as late as finishing allows (no reserve).
+- Before each model call the service compares what is left with these numbers. Calls: `max_turns - call_index + 1`
+  (this call included) `<=` `need + reserve`. Time: the time left of `timeout_seconds` `<=` `need` times the longest
+  step of this run so far (a step: from one model call's start to the next one's, its tools included; no reserve);
+  before the first step has ended there is no estimate and no time notice.
 - The first time either holds, it appends one user message to the history, the budget notice ("this run has N model
-  calls (this one included) [and about S seconds] left. Stop exploring. Call final_output now …"), emits
-  `budget_notice`, and sends the call. The notice stays in the history where it was added (append-only, also in the
-  snapshot); a later operation (an answer or an output retry) gets a new budget and no new notice unless it runs low
-  again.
+  calls (this one included) [and about S seconds] left. Stop exploring. Call final_output now …"; with declared file
+  outputs it first offers all calls left but the last one to write missing files, or one step when the time is
+  short), emits `budget_notice`, and sends the call. The notice stays in the history where it was added (append-only,
+  also in the snapshot); a later operation (an answer or an output retry) gets a new budget and no new notice unless
+  it runs low again.
 - A result after the notice is `succeeded` as usual, with `partial: {"reason", "notice_call_index"}`. The Swift server
   should mark the node's outputs partial (for example in `process_data` or the run record); the outputs are still
   checked as usual.
@@ -646,8 +650,8 @@ previous final answer and the feedback (the conversation itself is not resumed i
 `kind: answer` is `422 snapshot_incompatible`.
 
 **Near-budget notice.** agent_service does not see the gateway's call numbers. It counts Codex's finished model calls
-(one token-usage notification each, sub-agents included) and, when the calls left reach what finishing needs (or the
-time left, as in [Near-budget submit](#near-budget-submit)), sends the notice text with `turn/steer` and emits
+(one token-usage notification each, sub-agents included) and, when the calls left reach what finishing needs plus the
+wrap-up reserve (or the time left, as in [Near-budget submit](#near-budget-submit)), sends the notice text with `turn/steer` and emits
 `budget_notice`. Codex retries and refused attempts count at the gateway but not here, so the notice can come late; the
 gateway's limit is the hard stop.
 

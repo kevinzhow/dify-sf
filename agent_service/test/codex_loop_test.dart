@@ -640,6 +640,43 @@ void main() {
     expect(tool['content'], 'unsupported call: unknown_tool');
   });
 
+  for (final (maxTurns, noticeAt) in [(39, 39), (200, 180)]) {
+    test('max_turns $maxTurns: the notice before call $noticeAt '
+        '(remaining_calls ${maxTurns - noticeAt + 1})', () async {
+      final (h, _) = await start([
+        for (var i = 1; i < noticeAt; i++) calls([('c$i', 'unknown_tool', {})]),
+        ScriptedCall.text('what I have'),
+      ]);
+      final (status, events) = await runToEnd(h, codexOp(maxTurns: maxTurns));
+      expect(status['status'], 'succeeded', reason: jsonEncode(status));
+      expect(resultOf(status)['partial'], {
+        'reason': 'max_turns',
+        'notice_call_index': noticeAt,
+      });
+      final left = maxTurns - noticeAt + 1;
+      expect(events.singleWhere((e) => e.event == 'budget_notice').data, {
+        'reason': 'max_turns',
+        'call_index': noticeAt,
+        'remaining_calls': left,
+      });
+      expect(h.gateway.llmRequests, hasLength(noticeAt));
+      if (noticeAt > 1) {
+        expect(
+          jsonEncode(h.gateway.llmRequests[noticeAt - 2]),
+          isNot(contains('Budget notice')),
+        );
+      }
+      final last = messagesOf(h.gateway.llmRequests[noticeAt - 1]).last;
+      expect(
+        last['content'],
+        startsWith(
+          'Budget notice from the agent service: this run has $left model '
+          'call${left == 1 ? '' : 's'} (this one included) left.',
+        ),
+      );
+    });
+  }
+
   test('view_image: Codex schema; the image follows the tool message on the '
       'plugin wire', () async {
     final (h, _) = await start(
