@@ -616,6 +616,8 @@ class WorkflowLogDetailPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final id = appId;
+    // The detail as a phone page: its icon controls in 44 px touch boxes (the close's glyph where it was).
+    final touch = DifyTouchArea.appliesIn(context);
     return Stack(
       key: const ValueKey('workflow-log-detail'),
       children: [
@@ -642,23 +644,26 @@ class WorkflowLogDetailPanel extends StatelessWidget {
                     if (canReplay)
                       DifyTooltip(
                         content: DifyTextLine(_l('runDetail.testWithParams')),
-                        child: DifyPressable(
-                          key: const ValueKey('workflow-log-replay'),
-                          semanticLabel: _l('runDetail.testWithParams'),
-                          onPressed: () {
-                            if (id == null || id.isEmpty) return;
-                            onReplay?.call(runID);
-                          },
-                          builder: (context, hovered, focused) => Container(
-                            width: 24,
-                            height: 24,
-                            margin: const EdgeInsets.only(right: 4),
-                            decoration: BoxDecoration(
-                              color: hovered ? DifyColors.stateBaseHover : null,
-                              borderRadius: BorderRadius.circular(DifyRadius.md),
-                            ),
-                            child: Center(
-                              child: RemixIcon('play-large-line', size: 16, color: DifyColors.textTertiary),
+                        child: DifyTouchArea.inPhoneSheet(
+                          context,
+                          DifyPressable(
+                            key: const ValueKey('workflow-log-replay'),
+                            semanticLabel: _l('runDetail.testWithParams'),
+                            onPressed: () {
+                              if (id == null || id.isEmpty) return;
+                              onReplay?.call(runID);
+                            },
+                            builder: (context, hovered, focused) => Container(
+                              width: 24,
+                              height: 24,
+                              margin: const EdgeInsets.only(right: 4),
+                              decoration: BoxDecoration(
+                                color: hovered ? DifyColors.stateBaseHover : null,
+                                borderRadius: BorderRadius.circular(DifyRadius.md),
+                              ),
+                              child: Center(
+                                child: RemixIcon('play-large-line', size: 16, color: DifyColors.textTertiary),
+                              ),
                             ),
                           ),
                         ),
@@ -691,15 +696,18 @@ class WorkflowLogDetailPanel extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: 16,
-          right: 12,
-          child: DifyPressable(
-            key: const ValueKey('workflow-log-detail-close'),
-            semanticLabel: _c('operation.close'),
-            onPressed: onClose,
-            builder: (context, hovered, focused) => Padding(
-              padding: const EdgeInsets.all(4),
-              child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+          top: touch ? 6 : 16,
+          right: touch ? 2 : 12,
+          child: DifyTouchArea.inPhoneSheet(
+            context,
+            DifyPressable(
+              key: const ValueKey('workflow-log-detail-close'),
+              semanticLabel: _c('operation.close'),
+              onPressed: onClose,
+              builder: (context, hovered, focused) => Padding(
+                padding: const EdgeInsets.all(4),
+                child: RemixIcon('close-line', size: 16, color: DifyColors.textTertiary),
+              ),
             ),
           ),
         ),

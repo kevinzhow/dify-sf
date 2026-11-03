@@ -147,6 +147,14 @@ void main() {
       await settle(t, 1500);
       _isPage(t, win.size);
       expect(find.byKey(const ValueKey('log-drawer')), findsOneWidget);
+      // Its icon controls (the close, Test With Params) are in 44 px touch boxes, the close's glyph inside the window.
+      for (final key in const ['workflow-log-detail-close', 'workflow-log-replay']) {
+        final control = find.byKey(ValueKey(key));
+        if (key == 'workflow-log-replay' && control.evaluate().isEmpty) continue;
+        _touchSized(t, find.ancestor(of: control, matching: find.byType(DifyTouchArea)).first, key);
+        final r = t.getRect(control);
+        expect(r.right <= width && r.top >= win.insets.top, isTrue, reason: '$key: $r');
+      }
       expect(await systemBack(t), isTrue);
       expect(find.byType(DifyDrawerPopup), findsNothing);
       expect(find.byType(PhonePage), findsOneWidget);
