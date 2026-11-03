@@ -138,80 +138,87 @@ class _AccountSettingState extends State<AccountSetting> {
     final items = _items;
     final active = items.firstWhere((i) => i.tab == _tab, orElse: () => items.first);
     final sidebarWidth = mobile ? 44.0 : 224.0;
-    return DifySurface(
-      child: Semantics(
-        container: true,
-        scopesRoute: true,
-        namesRoute: true,
-        explicitChildNodes: true,
-        label: title,
-        child: CallbackShortcuts(
-          bindings: {const SingleActivator(LogicalKeyboardKey.escape): _close},
-          child: Focus(
-            autofocus: true,
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: ColoredBox(
-                  color: DifyColors.backgroundSidenavBg,
-                  child: LayoutBuilder(
-                    builder: (context, c) {
-                      final boxWidth = c.maxWidth < 1080 ? c.maxWidth : 1080.0;
-                      final contentLeft = (c.maxWidth - boxWidth) / 2 + 16 + sidebarWidth;
-                      return Stack(
-                        children: [
-                          // The panel colour from the content's left edge to the screen's right edge.
-                          Positioned(
-                            left: contentLeft,
-                            top: 0,
-                            bottom: 0,
-                            right: 0,
-                            child: ColoredBox(color: DifyColors.componentsPanelBg),
-                          ),
-                          Center(
-                            child: SizedBox(
-                              width: boxWidth,
-                              height: c.maxHeight,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    SizedBox(width: sidebarWidth, child: _sidebar(context, items, mobile)),
-                                    Expanded(child: _content(context, active)),
-                                  ],
+    // A touch tablet: the close, the tabs and the pages' controls are touch-sized (a mouse keeps Dify's).
+    return DifyTouchSurface(
+      enabled: DifyLayoutMode.of(context) == DifyLayoutMode.touch,
+      child: DifySurface(
+        child: Semantics(
+          container: true,
+          scopesRoute: true,
+          namesRoute: true,
+          explicitChildNodes: true,
+          label: title,
+          child: CallbackShortcuts(
+            bindings: {const SingleActivator(LogicalKeyboardKey.escape): _close},
+            child: Focus(
+              autofocus: true,
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: ColoredBox(
+                    color: DifyColors.backgroundSidenavBg,
+                    child: LayoutBuilder(
+                      builder: (context, c) {
+                        final boxWidth = c.maxWidth < 1080 ? c.maxWidth : 1080.0;
+                        final contentLeft = (c.maxWidth - boxWidth) / 2 + 16 + sidebarWidth;
+                        return Stack(
+                          children: [
+                            // The panel colour from the content's left edge to the screen's right edge.
+                            Positioned(
+                              left: contentLeft,
+                              top: 0,
+                              bottom: 0,
+                              right: 0,
+                              child: ColoredBox(color: DifyColors.componentsPanelBg),
+                            ),
+                            Center(
+                              child: SizedBox(
+                                width: boxWidth,
+                                height: c.maxHeight,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      SizedBox(width: sidebarWidth, child: _sidebar(context, items, mobile)),
+                                      Expanded(child: _content(context, active)),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          Positioned(
-                            top: 24,
-                            right: 24,
-                            child: Column(
-                              children: [
-                                DifyIconButton(
-                                  key: const ValueKey('account-setting-close'),
-                                  label: stc(context, 'operation.close'),
-                                  variant: DifyButtonVariant.tertiary,
-                                  size: DifyIconButtonSize.xl,
-                                  icon: const RemixIcon('close-line', size: 20),
-                                  onPressed: _close,
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: ExcludeSemantics(
-                                    child: DifyTextLine(
-                                      'ESC',
-                                      style: difyTextStyle(DifyType.system2xsMediumUppercase, DifyColors.textTertiary),
+                            Positioned(
+                              top: 24,
+                              right: 24,
+                              child: Column(
+                                children: [
+                                  DifyIconButton(
+                                    key: const ValueKey('account-setting-close'),
+                                    label: stc(context, 'operation.close'),
+                                    variant: DifyButtonVariant.tertiary,
+                                    size: DifyIconButtonSize.xl,
+                                    icon: const RemixIcon('close-line', size: 20),
+                                    onPressed: _close,
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: ExcludeSemantics(
+                                      child: DifyTextLine(
+                                        'ESC',
+                                        style: difyTextStyle(
+                                          DifyType.system2xsMediumUppercase,
+                                          DifyColors.textTertiary,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      );
-                    },
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -372,7 +379,7 @@ class _TabButton extends StatelessWidget {
         semanticLabel: name,
         onPressed: onTap,
         builder: (context, hovered, focused) => Container(
-          height: 32,
+          height: DifyTouchArea.appliesIn(context) ? DifyTouch.controlHeight : 32,
           padding: EdgeInsets.symmetric(horizontal: mobile ? 14 : 12),
           decoration: BoxDecoration(
             color: active ? DifyColors.stateBaseActive : null,

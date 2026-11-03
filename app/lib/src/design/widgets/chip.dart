@@ -61,6 +61,9 @@ class _DifyChipState extends State<DifyChip> {
     final hasValue = selected != null && widget.value.isNotEmpty;
     final clearLabel = trigger.isNotEmpty ? '${_c('operation.clear')} $trigger' : _c('operation.clear');
     if (DifyWindowClass.of(context) == DifyWindowClass.compact) return _phone(context, trigger);
+    // The touch desktop (a touch tablet): the chip is touch-high and its clear a 44 px box; a mouse keeps Dify's.
+    final touch = DifyLayoutMode.of(context) == DifyLayoutMode.touch;
+    final clearBox = touch ? DifyTouch.controlHeight : 20.0;
     // Keep the clear action anchored to the intrinsic trigger, even when the
     // call site gives the component a tight, wider box. Align loosens only the
     // inner stack; the component still honours its parent's layout contract.
@@ -83,8 +86,11 @@ class _DifyChipState extends State<DifyChip> {
                 builder: (context, hovered, focused) {
                   final active = hovered || _open;
                   final chip = Container(
-                    constraints: BoxConstraints(minHeight: 32, minWidth: widget.minWidth ?? 0),
-                    padding: EdgeInsets.fromLTRB(8, 4, hasValue ? 24 : 8, 4),
+                    constraints: BoxConstraints(
+                      minHeight: touch ? DifyTouch.controlHeight : 32,
+                      minWidth: widget.minWidth ?? 0,
+                    ),
+                    padding: EdgeInsets.fromLTRB(8, 4, hasValue ? (touch ? clearBox : 24) : 8, 4),
                     decoration: DifyFocusDecoration(
                       color: hasValue
                           ? (active
@@ -161,7 +167,7 @@ class _DifyChipState extends State<DifyChip> {
           ),
           if (hasValue)
             Positioned(
-              right: 6,
+              right: touch ? 0 : 6,
               top: 0,
               bottom: 0,
               child: Center(
@@ -169,7 +175,7 @@ class _DifyChipState extends State<DifyChip> {
                   semanticLabel: clearLabel,
                   onPressed: widget.onClear,
                   builder: (context, hovered, focused) => SizedBox.square(
-                    dimension: 20,
+                    dimension: clearBox,
                     child: Center(
                       child: RemixIcon(
                         'close-circle-fill',

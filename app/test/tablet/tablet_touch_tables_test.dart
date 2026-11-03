@@ -1,6 +1,7 @@
-// The touch desktop's tables and the create dialog (device-check leftovers): with touch on a tablet the Logs table's
-// rows, the Annotations table's Edit / Remove, the Members table's row menu and Create from Blank's close are touch-sized
-// (44 dp); a mouse keeps Dify's sizes.
+// The touch desktop's tables and dialogs (device-check leftovers): with touch on a tablet the Logs table's rows and
+// filter chips (their clear too), the Annotations table's Edit / Remove and its header's Add Annotation / "…", the
+// Members table's row menu, Create from Blank's close and the settings dialog's close and tabs are touch-sized (44 dp);
+// a mouse keeps Dify's sizes.
 import 'package:collab_client/collab_client.dart';
 import 'package:collab_client/testing.dart';
 import 'package:dify_sf_app/src/app_detail/app_detail_page.dart';
@@ -11,6 +12,7 @@ import 'package:dify_sf_app/src/design/widgets/widgets.dart';
 import 'package:dify_sf_app/src/home_page.dart';
 import 'package:dify_sf_app/src/i18n/dify_i18n.dart';
 import 'package:dify_sf_app/src/settings.dart';
+import 'package:dify_sf_app/src/settings/account_setting.dart';
 import 'package:dify_sf_app/src/settings/members/members_page.dart';
 import 'package:dify_sf_app/src/studio/create_app_modal.dart';
 import 'package:flutter/widgets.dart';
@@ -125,6 +127,73 @@ void main() {
       );
       expect(menu, findsWidgets);
       _sized(t, _box(menu.first), touch, 'row menu');
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('1280x800 $input: the Logs filter chips and their clear are ${touch ? 'touch-sized' : "Dify's"}', (
+      t,
+    ) async {
+      phoneWindow(t, size: _tablet, insets: _insets);
+      DifyInteraction.debugDefault = touch ? DifyInteractionMode.touch : DifyInteractionMode.pointer;
+      final ws = await workspace();
+      ws.api.seed(name: 'Support triage');
+      await _pumpApp(t, ws);
+      await _openPage(t, 'Support triage', AppDetailPageId.logs);
+      final chips = find.byType(DifyChip);
+      expect(chips, findsWidgets);
+      for (final chip in chips.evaluate()) {
+        final trigger = find.descendant(of: find.byWidget(chip.widget), matching: find.byType(DifyPressable)).first;
+        _sized(t, trigger, touch, 'chip');
+      }
+      final clear = find.byWidgetPredicate(
+        (w) => w is DifyPressable && (w.semanticLabel ?? '').startsWith(DifyI18n.tr('common', 'operation.clear')),
+      );
+      expect(clear, findsWidgets, reason: 'a chip with a value has its clear');
+      final size = t.getSize(clear.first);
+      touch ? expect(size, const Size(44, 44)) : expect(size, const Size(20, 20));
+      expect(t.takeException(), isNull);
+      await unmount(t);
+    });
+
+    testWidgets(
+      '1280x800 $input: the Annotations header\'s Add Annotation and "…" are ${touch ? 'touch-sized' : "Dify's"}',
+      (
+        t,
+      ) async {
+        phoneWindow(t, size: _tablet, insets: _insets);
+        DifyInteraction.debugDefault = touch ? DifyInteractionMode.touch : DifyInteractionMode.pointer;
+        final ws = await workspace();
+        final app = ws.api.seed(name: 'Help desk bot', mode: AppModes.advancedChat);
+        await FakeAnnotationsApi(ws.api).create(app.id, question: 'How do I reset it?', answer: 'Open Settings.');
+        await _pumpApp(t, ws);
+        await _openPage(t, 'Help desk bot', AppDetailPageId.annotations);
+        final add = find.ancestor(
+          of: find.text(DifyI18n.tr('appAnnotation', 'table.header.addAnnotation')),
+          matching: find.byType(DifyButton),
+        );
+        final h = t.getSize(add.first).height;
+        touch ? expect(h, greaterThanOrEqualTo(44)) : expect(h, lessThan(44));
+        _sized(t, _box(find.byKey(const ValueKey('annotation-more'))), touch, 'more');
+        expect(t.takeException(), isNull);
+        await unmount(t);
+      },
+    );
+
+    testWidgets('1440x900 $input: the settings dialog\'s close and tabs are ${touch ? 'touch-sized' : "Dify's"}', (
+      t,
+    ) async {
+      DifyInteraction.debugDefault = touch ? DifyInteractionMode.touch : DifyInteractionMode.pointer;
+      final f = await MembersFixture.create();
+      await renderMembers(t, AccountSetting(members: f.members, onCancel: () {}));
+      _sized(t, _box(find.byKey(const ValueKey('account-setting-close'))), touch, 'close');
+      final tab = find.byWidgetPredicate(
+        (w) =>
+            w is DifyPressable &&
+            w.semanticLabel == accountSettingItems.first.name(t.element(find.byType(AccountSetting))),
+      );
+      expect(tab, findsWidgets);
+      final h = t.getSize(tab.first).height;
+      touch ? expect(h, greaterThanOrEqualTo(44)) : expect(h, 32);
       expect(t.takeException(), isNull);
     });
 

@@ -469,7 +469,11 @@ class AppDetailPageState extends State<AppDetailPage> {
                     ),
                   ),
                 ),
-          child: _content(app, page),
+          // A touch tablet: the desktop pages' buttons and icon buttons are touch-sized (a mouse keeps Dify's).
+          child: DifyTouchSurface(
+            enabled: DifyLayoutMode.of(context) == DifyLayoutMode.touch,
+            child: _content(app, page),
+          ),
         ),
       ),
     );

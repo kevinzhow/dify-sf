@@ -284,6 +284,8 @@ class _LogSortState extends State<LogSort> {
   Widget build(BuildContext context) {
     final trigger = widget.items.where((i) => i.value == widget.value).firstOrNull?.name ?? '';
     if (logsPhone(context)) return _phone(context, trigger);
+    // The touch desktop (a touch tablet): the sort and its order are touch-high; a mouse keeps Dify's.
+    final touch = DifyLayoutMode.of(context) == DifyLayoutMode.touch;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -296,7 +298,7 @@ class _LogSortState extends State<LogSort> {
             semanticLabel: '${_l('filter.sortBy')} $trigger',
             onPressed: controller.toggle,
             builder: (context, hovered, focused) => Container(
-              constraints: const BoxConstraints(minHeight: 32),
+              constraints: BoxConstraints(minHeight: touch ? DifyTouch.controlHeight : 32),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: hovered || _open ? DifyColors.stateBaseHoverAlt : DifyColors.componentsInputBgNormal,
@@ -352,6 +354,10 @@ class _LogSortState extends State<LogSort> {
           semanticLabel: _l(widget.order.isNotEmpty ? 'filter.ascending' : 'filter.descending'),
           onPressed: () => widget.onSelect('${widget.order.isNotEmpty ? '' : '-'}${widget.value}'),
           builder: (context, hovered, focused) => Container(
+            constraints: touch
+                ? const BoxConstraints(minWidth: DifyTouch.controlHeight, minHeight: DifyTouch.controlHeight)
+                : null,
+            alignment: touch ? Alignment.center : null,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: hovered ? DifyColors.componentsButtonTertiaryBgHover : DifyColors.componentsButtonTertiaryBg,
