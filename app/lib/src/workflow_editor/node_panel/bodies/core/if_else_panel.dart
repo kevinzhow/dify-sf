@@ -216,13 +216,38 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
   String _willDelete = '';
   String? _hovered;
 
+  /// Moves the case [caseId] by [delta] in the cases as they are when the action runs (a phone's "…" sheet may have
+  /// been open while they changed); nothing once it is gone or at an end.
+  void _move(String caseId, int delta) {
+    final list = [...widget.cases];
+    final i = list.indexWhere((c) => jsKey(c['case_id']) == caseId);
+    final j = i + delta;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    list.insert(j, list.removeAt(i));
+    widget.env.onSortCase?.call([
+      for (final c in list) {...c, 'id': c['case_id']},
+    ]);
+  }
+
   Widget _case(int index, Json item) {
     final w = widget, env = w.env;
     final caseId = jsKey(item['case_id']);
     final conditions = jsList(item['conditions']);
     final n = w.cases.length;
     final listCaseId = w.subVariable ? w.caseId! : caseId;
-    final footer = Padding(
+    // A phone (no hover): the case is a touch row whose "…" (where Remove is) and long press offer Delete, Move up and
+    // Move down (the hover drag handle's reorder); each finds the case by its id when it runs.
+    final phone = DifyTouch.compactOf(context) && !w.subVariable && !env.readOnly;
+    final removable = index > 0 || n > 1;
+    final actions = [
+      if (removable) DifyActionRow.delete(() => env.onRemoveCase?.call(caseId)),
+      if (n > 1) ...[
+        DifyActionRow.moveUp(() => _move(caseId, -1), enabled: index > 0),
+        DifyActionRow.moveDown(() => _move(caseId, 1), enabled: index < n - 1),
+      ],
+    ];
+    final rowed = phone && actions.isNotEmpty;
+    Widget footer(Widget? more) => Padding(
       padding: EdgeInsets.only(
         left: w.subVariable ? 0 : 60,
         right: 30,
@@ -247,7 +272,9 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
                 onSelectVariable: (c, s, v) => env.onAddCondition?.call(c, s, v),
               ),
             ),
-          if (index > 0 || n > 1)
+          if (rowed)
+            ?more
+          else if (removable)
             Flexible(
               child: MouseRegion(
                 onEnter: (_) => setState(() => _willDelete = caseId),
@@ -266,7 +293,7 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
         ],
       ),
     );
-    final body = Column(
+    Widget body(Widget? more) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (conditions.isNotEmpty)
@@ -280,10 +307,11 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
               subVariable: w.subVariable,
             ),
           ),
-        footer,
+        footer(more),
       ],
     );
-    final box = Container(
+    final label = n > 1 ? '${index == 0 ? 'IF' : 'ELIF'} CASE${index + 1}' : 'IF';
+    Widget box(Widget? more) => Container(
       constraints: BoxConstraints(minHeight: w.subVariable ? 0 : 40),
       padding: w.subVariable
           ? const EdgeInsets.symmetric(horizontal: 4, vertical: 8)
@@ -293,11 +321,11 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
         borderRadius: BorderRadius.circular(10),
       ),
       child: w.subVariable
-          ? body
+          ? body(more)
           : Stack(
               clipBehavior: Clip.none,
               children: [
-                body,
+                body(more),
                 Positioned(
                   left: 4,
                   top: n == 1 ? 6 : 0,
@@ -321,20 +349,23 @@ class _IfElseConditionWrapState extends State<IfElseConditionWrap> {
               ],
             ),
     );
+    final block = rowed
+        ? DifyActionRow.builder(label: label, actions: actions, builder: (context, more) => box(more))
+        : box(null);
     return MouseRegion(
       key: ValueKey(caseId),
       onEnter: (_) => setState(() => _hovered = caseId),
       onExit: (_) => setState(() => _hovered = _hovered == caseId ? null : _hovered),
       child: w.subVariable
-          ? box
+          ? block
           : Stack(
               children: [
                 // The block sits 4 px in, so the handle (`-left-2` over the panel's `p-1`) stays hit-testable.
                 Padding(
                   padding: const EdgeInsets.only(left: 4),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [box, const _Divider()]),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [block, const _Divider()]),
                 ),
-                if (!env.readOnly && n > 1)
+                if (!env.readOnly && n > 1 && !phone)
                   Positioned(
                     left: 0,
                     top: 4,
@@ -795,6 +826,68 @@ class _IfElseConditionItemState extends State<IfElseConditionItem> {
       ),
     );
     final selected = _isArrayValue ? jsStr(jsGet(value, '0')) : jsStr(value);
+    // A phone: the 24 px bin is the row's 44 px "…" (Delete), and a long press offers it too; the removal goes by the
+    // condition's id.
+    if (DifyTouch.compactOf(context) && !disabled) {
+      final selector = [for (final s in jsList(_c['variable_selector'])) jsKey(s)];
+      final name = w.subVariableKey ? (jsStr(_c['key']) ?? '') : (selector.lastOrNull ?? '');
+      final label = [
+        if (name.isNotEmpty) name else tw('$_p.selectVariable'),
+        if (op != null) tw('$_p.comparisonOperator.$op'),
+      ].join(' ');
+      return DifyActionRow.builder(
+        label: label,
+        actions: [DifyActionRow.delete(_remove)],
+        builder: (context, more) => _row(
+          head,
+          selected,
+          value,
+          top,
+          needsValue,
+          isNotInput,
+          isSelect,
+          isSubVariable,
+          showBoolean,
+          type,
+          selectOptions,
+          disabled,
+          more,
+        ),
+      );
+    }
+    return _row(
+      head,
+      selected,
+      value,
+      top,
+      needsValue,
+      isNotInput,
+      isSelect,
+      isSubVariable,
+      showBoolean,
+      type,
+      selectOptions,
+      disabled,
+      null,
+    );
+  }
+
+  Widget _row(
+    Widget head,
+    String? selected,
+    Object? value,
+    Border top,
+    bool needsValue,
+    bool isNotInput,
+    bool isSelect,
+    bool isSubVariable,
+    bool showBoolean,
+    String? type,
+    List<SelectOption<String>> selectOptions,
+    bool disabled,
+    Widget? more,
+  ) {
+    final w = widget, env = w.env;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -889,33 +982,36 @@ class _IfElseConditionItemState extends State<IfElseConditionItem> {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(top: 4, left: 4),
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            onEnter: (_) => setState(() => _hovered = true),
-            onExit: (_) => setState(() => _hovered = false),
-            child: DifyPressable(
-              semanticLabel: tc('operation.remove'),
-              onPressed: _remove,
-              builder: (context, hovered, focused) => Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: hovered ? DifyColors.stateDestructiveHover : null,
-                  borderRadius: BorderRadius.circular(DifyRadius.lg),
-                ),
-                child: Center(
-                  child: RemixIcon(
-                    'delete-bin-line',
-                    size: 16,
-                    color: hovered ? DifyColors.textDestructive : DifyColors.textTertiary,
+        if (more != null)
+          more
+        else
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onEnter: (_) => setState(() => _hovered = true),
+              onExit: (_) => setState(() => _hovered = false),
+              child: DifyPressable(
+                semanticLabel: tc('operation.remove'),
+                onPressed: _remove,
+                builder: (context, hovered, focused) => Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: hovered ? DifyColors.stateDestructiveHover : null,
+                    borderRadius: BorderRadius.circular(DifyRadius.lg),
+                  ),
+                  child: Center(
+                    child: RemixIcon(
+                      'delete-bin-line',
+                      size: 16,
+                      color: hovered ? DifyColors.textDestructive : DifyColors.textTertiary,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }

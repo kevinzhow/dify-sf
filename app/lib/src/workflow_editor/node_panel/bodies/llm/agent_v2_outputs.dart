@@ -56,6 +56,24 @@ class AgentOutputVariablesState extends State<AgentOutputVariables> {
 
   void _set(OutputEditingState? s) => setState(() => _editing = s);
 
+  /// Where the output named [name] is in the latest list, and its child named by [names] under it: an action (a
+  /// phone's action sheet may have been open while the list changed) finds its row by these names when it runs, and
+  /// does nothing once the row is gone.
+  ({int index, List<int> path})? _find(String name, [List<String> names = const []]) {
+    final outs = _outputs;
+    final i = outs.indexWhere((o) => jsKey(o['name']) == name);
+    if (i < 0) return null;
+    var children = getOutputChildren(outs[i]);
+    final path = <int>[];
+    for (final n in names) {
+      final k = children.indexWhere((c) => jsKey(c['name']) == n);
+      if (k < 0) return null;
+      path.add(k);
+      children = getOutputChildren(children[k]);
+    }
+    return (index: i, path: path);
+  }
+
   void _confirm(Json output, OutputEditingState state) {
     final i = state.outputIndex;
     final outs = _outputs;
@@ -102,11 +120,14 @@ class AgentOutputVariablesState extends State<AgentOutputVariables> {
     List<Json> children,
     bool editable,
     List<int> parentPath,
+    List<String> parentNames,
   ) {
     final e = _editing;
     final out = <Widget>[];
+    final top = jsKey(output['name']);
     for (final (ci, child) in children.indexed) {
       final childPath = [...parentPath, ci];
+      final names = [...parentNames, jsKey(child['name'])];
       final nested = getOutputChildren(child);
       final isEditingChild = e?.outputIndex == outputIndex && _pathsEqual(e?.childPath, childPath);
       out.add(
@@ -123,26 +144,29 @@ class AgentOutputVariablesState extends State<AgentOutputVariables> {
                   output: child,
                   editable: editable && !widget.readOnly,
                   onAddChild: editable && canOutputHaveChildren(child)
-                      ? () => _set((
-                          draft: createDraft(),
-                          outputIndex: outputIndex,
-                          childPath: null,
-                          parentPath: childPath,
-                        ))
+                      ? () {
+                          if (_find(top, names) case (:final index, :final path)) {
+                            _set((draft: createDraft(), outputIndex: index, childPath: null, parentPath: path));
+                          }
+                        }
                       : null,
-                  onDelete: () => widget.onChange([
-                    for (final (k, o) in _outputs.indexed) k == outputIndex ? deleteOutputChildAtPath(o, childPath) : o,
-                  ]),
-                  onEdit: () => _set((
-                    draft: createDraft(child),
-                    outputIndex: outputIndex,
-                    childPath: childPath,
-                    parentPath: null,
-                  )),
+                  onDelete: () {
+                    if (_find(top, names) case (:final index, :final path)) {
+                      widget.onChange([
+                        for (final (k, o) in _outputs.indexed) k == index ? deleteOutputChildAtPath(o, path) : o,
+                      ]);
+                    }
+                  },
+                  onEdit: () {
+                    if (_find(top, names) case (:final index, :final path)) {
+                      final now = getOutputChildrenAtPath(_outputs[index], path.sublist(0, path.length - 1))[path.last];
+                      _set((draft: createDraft(now), outputIndex: index, childPath: path, parentPath: null));
+                    }
+                  },
                 ),
         ),
       );
-      out.addAll(_children(output, outputIndex, depth + 1, nested, editable, childPath));
+      out.addAll(_children(output, outputIndex, depth + 1, nested, editable, childPath, names));
       if (e != null && e.outputIndex == outputIndex && _pathsEqual(e.parentPath, childPath)) {
         out.add(
           ChildOutputFrame(
@@ -161,6 +185,7 @@ class AgentOutputVariablesState extends State<AgentOutputVariables> {
     final outs = _outputs;
     final rows = <Widget>[];
     for (final (i, output) in outs.indexed) {
+      final name = jsKey(output['name']);
       final editable = !isDefaultOutput(output);
       final children = getOutputChildren(output);
       final isEditing = e?.outputIndex == i && e?.childPath == null && e?.parentPath == null;
@@ -171,16 +196,28 @@ class AgentOutputVariablesState extends State<AgentOutputVariables> {
                 output: output,
                 editable: editable && !widget.readOnly,
                 onAddChild: editable && canOutputHaveChildren(output)
-                    ? () => _set((draft: createDraft(), outputIndex: i, childPath: null, parentPath: const []))
+                    ? () {
+                        if (_find(name) case (:final index, path: _)) {
+                          _set((draft: createDraft(), outputIndex: index, childPath: null, parentPath: const []));
+                        }
+                      }
                     : null,
-                onDelete: () => widget.onChange([
-                  for (final (k, o) in outs.indexed)
-                    if (k != i) o,
-                ]),
-                onEdit: () => _set((draft: createDraft(output), outputIndex: i, childPath: null, parentPath: null)),
+                onDelete: () {
+                  if (_find(name) case (:final index, path: _)) {
+                    widget.onChange([
+                      for (final (k, o) in _outputs.indexed)
+                        if (k != index) o,
+                    ]);
+                  }
+                },
+                onEdit: () {
+                  if (_find(name) case (:final index, path: _)) {
+                    _set((draft: createDraft(_outputs[index]), outputIndex: index, childPath: null, parentPath: null));
+                  }
+                },
               ),
       );
-      rows.addAll(_children(output, i, 1, children, editable, const []));
+      rows.addAll(_children(output, i, 1, children, editable, const [], const []));
       if (e != null && e.outputIndex == i && e.parentPath != null && e.parentPath!.isEmpty) {
         rows.add(
           ChildOutputFrame(
@@ -316,7 +353,10 @@ class _OutputRowState extends State<OutputRow> {
       icon: RemixIcon(icon, size: 16),
       onPressed: onPressed,
     );
-    return MouseRegion(
+    // A phone has no hover: the row is a touch row (a tap edits; its "…" and a long press offer Edit, the add-child
+    // action and Delete), and the hover buttons are not drawn.
+    final phone = DifyTouch.compactOf(context);
+    final row = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Focus(
@@ -364,7 +404,7 @@ class _OutputRowState extends State<OutputRow> {
                           ),
                         ),
                       const Spacer(),
-                      if (widget.editable)
+                      if (widget.editable && !phone)
                         Opacity(
                           opacity: show ? 1 : 0,
                           alwaysIncludeSemantics: true,
@@ -396,6 +436,27 @@ class _OutputRowState extends State<OutputRow> {
           ),
         ),
       ),
+    );
+    if (!phone || !widget.editable) return row;
+    return DifyActionRow(
+      label: name,
+      semanticLabel: [
+        name,
+        getOutputDisplayType(o),
+        if (o['required'] == true) _w('nodes.agent.outputVars.requiredLabel'),
+      ].join(', '),
+      onTap: widget.onEdit,
+      actions: [
+        DifyActionRow.edit(widget.onEdit),
+        if (widget.onAddChild case final add?)
+          DifyActionSheetAction(
+            label: '${_c('operation.add')} $name',
+            icon: const RemixIcon('add-circle-line', size: 20),
+            onTap: add,
+          ),
+        DifyActionRow.delete(widget.onDelete),
+      ],
+      child: row,
     );
   }
 }

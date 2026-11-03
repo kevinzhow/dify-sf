@@ -79,6 +79,7 @@ class ClassItem extends StatefulWidget {
     required this.env,
     this.readonly = false,
     this.onLabelEditStart,
+    this.phoneActions = const [],
   });
 
   /// The topic (`{id, name, label?}`).
@@ -91,6 +92,9 @@ class ClassItem extends StatefulWidget {
   final PromptEditorEnv env;
   final bool readonly;
   final VoidCallback? onLabelEditStart;
+
+  /// A phone's Move up / Move down, in the editor's "…" sheet.
+  final List<DifyActionSheetAction> phoneActions;
 
   @override
   State<ClassItem> createState() => _ClassItemState();
@@ -175,7 +179,7 @@ class _ClassItemState extends State<ClassItem> {
                 border: Border.all(color: DifyColors.componentsInputBorderActive),
               ),
               child: EditableText(
-          contextMenuBuilder: difySelectionToolbar,
+                contextMenuBuilder: difySelectionToolbar,
                 controller: _draft,
                 focusNode: _focus,
                 style: style,
@@ -249,6 +253,7 @@ class _ClassItemState extends State<ClassItem> {
       availableNodes: e.availableNodes,
       getVarType: e.getVarType,
       onOpenUrl: e.onOpenUrl,
+      phoneActions: widget.phoneActions,
     );
   }
 }
@@ -471,26 +476,48 @@ class _ClassListState extends State<ClassList> {
     );
   }
 
+  /// Moves the class [id] by [delta] in the list as it is when the action runs (a phone's "…" sheet may have been
+  /// open while the list changed); nothing once it is gone or at an end.
+  void _move(String id, int delta) {
+    final items = [..._list];
+    final i = items.indexWhere((x) => _idOf(x) == id);
+    final j = i + delta;
+    if (i < 0 || j < 0 || j >= items.length) return;
+    items.insert(j, items.removeAt(i));
+    widget.onSort?.call(items);
+  }
+
   Widget _row(int position, Json t, bool canDrag) {
-    final key = _keyOf(position);
     final id = _idOf(t);
     final c = _current;
     final pressed = c != null && c.order.indexOf(c.origin) == position;
+    // A phone: no hover drag handle; Move up / Move down are in the class editor's "…" sheet.
+    final phone = DifyTouch.compactOf(context);
     final item = ClassItem(
       key: ValueKey('class-item-$id'),
       payload: t,
       index: position + 1,
       readonly: widget.readonly,
       env: widget.env,
+      // Edits and the removal find the class by its id in the latest list.
       onChange: (v) => widget.onChange([
-        for (final (i, x) in _list.indexed) i == key ? v : x,
+        for (final x in _list) _idOf(x) == id ? v : x,
       ]),
-      onRemove: () => widget.onRemove(key),
+      onRemove: () {
+        final i = _list.indexWhere((x) => _idOf(x) == id);
+        if (i >= 0) widget.onRemove(i);
+      },
       onLabelEditStart: () {
         if (!inlineLabelHintDismissed.value) inlineLabelHintDismissed.value = true;
       },
+      phoneActions: [
+        if (phone && canDrag && widget.onSort != null) ...[
+          DifyActionRow.moveUp(() => _move(id, -1), enabled: position > 0),
+          DifyActionRow.moveDown(() => _move(id, 1), enabled: position < _list.length - 1),
+        ],
+      ],
     );
-    if (!canDrag) return item;
+    if (!canDrag || phone) return item;
     final label = DifyI18n.tr('common', 'sort.handle', {'item': displayClassLabel(jsStr(t['label']), position + 1)});
     return _Hover(
       builder: (hovered) => Stack(
@@ -512,25 +539,25 @@ class _ClassListState extends State<ClassList> {
                   return ExcludeSemantics(
                     excluding: DifyTouch.compactOf(context),
                     child: Semantics(
-                    container: true,
-                    button: true,
-                    toggled: pressed,
-                    label: label,
-                    child: Opacity(
-                      opacity: visible ? 1 : 0,
-                      child: ReorderableDragStartListener(
-                        index: position,
-                        enabled: c == null,
-                        child: DifyIconButton(
-                          key: ValueKey('class-sort-handle-$position'),
-                          touchBox: false, // A drag handle shown on hover.
-                          focusNode: _handle(id),
-                          label: label,
-                          icon: const RemixIcon('draggable', size: 12),
+                      container: true,
+                      button: true,
+                      toggled: pressed,
+                      label: label,
+                      child: Opacity(
+                        opacity: visible ? 1 : 0,
+                        child: ReorderableDragStartListener(
+                          index: position,
+                          enabled: c == null,
+                          child: DifyIconButton(
+                            key: ValueKey('class-sort-handle-$position'),
+                            touchBox: false, // A drag handle shown on hover.
+                            focusNode: _handle(id),
+                            label: label,
+                            icon: const RemixIcon('draggable', size: 12),
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   );
                 },
               ),
