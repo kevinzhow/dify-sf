@@ -185,14 +185,21 @@ Future<T?> showDifyBottomSheet<T>(
   bool useRootNavigator = true,
   bool? backDismissible,
   bool closeOnEscape = true,
+  DifySheetWideForm? wide,
 }) {
   assert(detents.isNotEmpty, 'A sheet needs at least one detent');
   final back = backDismissible ?? dismissible;
   assert(initialDetent == null || detents.contains(initialDetent), 'initialDetent must be one of detents');
   final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
   late final _DifySheetRoute<T> route;
+  // A dialog that opens wide comes in as the dialog does (its duration); one that opens compact as the sheet.
+  final openWide = wide != null && !DifyTouch.compactOf(context);
   route = _DifySheetRoute<T>(
     modal: modal,
+    wide: wide,
+    sheetAnimationStyle: openWide
+        ? AnimationStyle(duration: wide.transitionDuration, reverseDuration: wide.transitionDuration)
+        : null,
     isDismissible: dismissible,
     barrierLabel: barrierLabel ?? MaterialLocalizations.of(context).modalBarrierDismissLabel,
     capturedThemes: InheritedTheme.capture(from: context, to: navigator.context),
@@ -234,9 +241,30 @@ Future<T?> showDifyBottomSheet<T>(
   return navigator.push(route);
 }
 
+/// A route sheet's other form ([showDifyBottomSheet]'s `wide`): a dialog ([showDifyDialog]) is a sheet while the
+/// window is compact and this page, centred over [barrierColor] and coming in through [transitionsBuilder] over
+/// [transitionDuration], while it is not. The route follows the live width (raft-flutter's `RaftPresentedRoute`): a
+/// rotation or a resize across the breakpoint switches the form in place, and content built under the same
+/// [GlobalKey] in both forms keeps its state (what was typed, the scroll position's owner).
+@immutable
+class DifySheetWideForm {
+  const DifySheetWideForm({
+    required this.builder,
+    required this.barrierColor,
+    required this.transitionsBuilder,
+    required this.transitionDuration,
+  });
+
+  final WidgetBuilder builder;
+  final Color barrierColor;
+  final RouteTransitionsBuilder transitionsBuilder;
+  final Duration transitionDuration;
+}
+
 /// The framework's modal bottom sheet route with nothing of its own look: the sheet paints itself ([_DifySheet]),
 /// the framework drag is off (the detents drag it), the width is not capped and the route reaches under the status
 /// bar (the sheet stops at the top safe area itself). When not [modal], the barrier lets pointers through to the page.
+/// With [wide], a window that is not compact shows [DifySheetWideForm.builder] instead, read from the live width.
 class _DifySheetRoute<T> extends ModalBottomSheetRoute<T> {
   _DifySheetRoute({
     required this.modal,
@@ -244,6 +272,8 @@ class _DifySheetRoute<T> extends ModalBottomSheetRoute<T> {
     required super.isDismissible,
     required super.barrierLabel,
     super.capturedThemes,
+    super.sheetAnimationStyle,
+    this.wide,
   }) : super(
          isScrollControlled: true,
          useSafeArea: false,
@@ -256,18 +286,60 @@ class _DifySheetRoute<T> extends ModalBottomSheetRoute<T> {
        );
 
   final bool modal;
+  final DifySheetWideForm? wide;
+
+  bool _wideIn(BuildContext context) => wide != null && !DifyTouch.compactOf(context);
 
   @override
-  Widget buildModalBarrier() => modal ? super.buildModalBarrier() : const IgnorePointer(child: SizedBox.expand());
+  Widget buildModalBarrier() {
+    if (!modal) return const IgnorePointer(child: SizedBox.expand());
+    final wide = this.wide;
+    if (wide == null) return super.buildModalBarrier();
+    return Builder(
+      builder: (context) => _wideIn(context)
+          // ModalRoute's own barrier, in the dialog's colour.
+          ? AnimatedModalBarrier(
+              color: animation!.drive(
+                ColorTween(
+                  begin: wide.barrierColor.withValues(alpha: 0),
+                  end: wide.barrierColor,
+                ).chain(CurveTween(curve: barrierCurve)),
+              ),
+              dismissible: barrierDismissible,
+              semanticsLabel: barrierLabel,
+              barrierSemanticsDismissible: semanticsDismissible,
+            )
+          : super.buildModalBarrier(),
+    );
+  }
 
   // The framework removes the top padding from the sheet's MediaQuery (useSafeArea: false); the sheet still needs it
   // to stop below the status bar.
   @override
-  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) =>
-      _SheetTopInset(
-        top: MediaQuery.paddingOf(context).top,
-        child: super.buildPage(context, animation, secondaryAnimation),
+  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
+    if (_wideIn(context)) {
+      // As a dialog route's page (showGeneralDialog).
+      return Semantics(
+        scopesRoute: true,
+        explicitChildNodes: true,
+        child: capturedThemes!.wrap(Builder(builder: wide!.builder)),
       );
+    }
+    return _SheetTopInset(
+      top: MediaQuery.paddingOf(context).top,
+      child: super.buildPage(context, animation, secondaryAnimation),
+    );
+  }
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => _wideIn(context)
+      ? wide!.transitionsBuilder(context, animation, secondaryAnimation, child)
+      : super.buildTransitions(context, animation, secondaryAnimation, child);
 }
 
 class _SheetTopInset extends InheritedWidget {
