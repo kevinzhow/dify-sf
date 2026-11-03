@@ -25,9 +25,10 @@
       "evidence": [
         "app/test/design_typography_test.dart",
         "app/test/dify_spec/studio/app_card_test.dart",
-        "app/test/dify_spec/dify_ui/alert_dialog_test.dart"
+        "app/test/dify_spec/dify_ui/alert_dialog_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Confirmations stay centred on phones (raft confirm policy) with 44 px buttons; DifyAlertDialogActions is the pinned px-4 py-2 action row of a dialog sheet, DifyAlertDialogContent drops its box in a sheet."
     },
     "app_icon.dart": {
       "kind": "text-composition",
@@ -86,9 +87,12 @@
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
         "app/test/dify_spec/dify_ui/modal_layers_test.dart",
-        "app/test/dify_spec/dify_ui/nested_popover_sheet_test.dart"
+        "app/test/dify_spec/dify_ui/nested_popover_sheet_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart",
+        "app/test/phone/phone_dialogs_test.dart",
+        "app/test/dify_spec/dify_ui/phone_recheck_controls_test.dart"
       ],
-      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular. DifySheetPortal (batch 4a): the same sheet shown from a page's tree in the root overlay (keeps its scopes); DifyPortalSheetFrame; DifySheetHeader.titleWidget. Device check: DifyPortalSemantics keeps portal sheets in the platform's semantics tree (modal from the page side); DifySheetRecipe.contains. Batch 4a round 2: DifyModalLayer (a page, a portal sheet, a portal page) hides its whole content from accessibility while a modal layer opened from it is open and is that layer's semantics place, so only the topmost layer is read and it is never dropped; the portal sheet is a semantics boundary. The non-modal page sheet (DifyPersistentSheet) also slides in, dismisses (drag, controller) and moves only once its content has a single scroll view."
+      "note": "dify-sf phone sheets on the framework modal bottom sheet route and DraggableScrollableSheet (raft-flutter pattern, no Dify counterpart): detents, flicks, scroll hand-over, close requests, scrim, keyboard and insets are tested; header text uses DifyText with DifyPhoneType.title / system-xs-regular. DifySheetPortal (batch 4a): the same sheet shown from a page's tree in the root overlay (keeps its scopes); DifyPortalSheetFrame; DifySheetHeader.titleWidget. Device check: DifyPortalSemantics keeps portal sheets in the platform's semantics tree (modal from the page side); DifySheetRecipe.contains. Batch 4a round 2: DifyModalLayer (a page, a portal sheet, a portal page) hides its whole content from accessibility while a modal layer opened from it is open and is that layer's semantics place, so only the topmost layer is read and it is never dropped; the portal sheet is a semantics boundary. The non-modal page sheet (DifyPersistentSheet) also slides in, dismisses (drag, controller) and moves only once its content has a single scroll view. showDifyBottomSheet backDismissible / closeOnEscape carry a dialog's dismissal rules (scrim and drag off, Back and Escape on) into its sheet form. DifyPortalSheetFrame.takeFocus: a sheet opened over a focused field takes the focus (keyboard down, keys no longer reach the field) and gives it back with the caret when it closes; phone_dialogs_test types after opening the prompt's variable sheet. Recheck 2 (PR #90): a sheet shown from a page (DifyPortalSheetFrame) gives a screen reader's focus back to the node it was on when the sheet opened (FocusSemanticEvent after 300 ms on Android, as Navigator does for routes). Recheck 3: DifySheetHeader's title wraps to two lines instead of being cut."
     },
     "bottom_toolbar.dart": {
       "kind": "text-composition",
@@ -110,9 +114,10 @@
         "app/test/human_input/m1_second_review_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
-        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Batch 4a device check: touch-high (44 px) inside a sheet in a compact window, Dify's sizes elsewhere. Polish (after batch 4): a leading or trailing DifyKeycaps a phone does not show leaves the row with its gap (the label stays centred)."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Batch 4a device check: touch-high (44 px) inside a sheet in a compact window, Dify's sizes elsewhere. Polish (after batch 4): a leading or trailing DifyKeycaps a phone does not show leaves the row with its gap (the label stays centred). In a compact window's dialog (DifyDialogFrame) a button is touch-high too."
     },
     "button_style.dart": {
       "kind": "text-composition",
@@ -129,9 +134,10 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/dify_spec/dify_ui/phone_recheck_controls_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Recheck 2 (PR #90): DifyCheckbox is one node (name, state and tap merged; it was a state node beside an unnamed button). DifyCheckboxLabel: the box and its text label (a tap on the text toggles), one node; in a compact window the row is at least 44 px and the node is the whole row; wide windows keep the h-6 row."
     },
     "checkbox_list.dart": {
       "kind": "gallery",
@@ -194,9 +200,11 @@
         "app/test/design_typography_test.dart",
         "app/test/design/page_selection_test.dart",
         "app/test/dify_spec/dify_ui/dialog_test.dart",
-        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart",
+        "app/test/phone/phone_dialogs_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. On a compact window showDifyDialog is a modal bottom sheet (DifyDialogFrame; raft-flutter form policy): DifyDialogSurface drops its box, DifyDialogTitle is the sheet header (title, description, 44 px close), Back closes it first, DifyModalLayer hides it under a picker; dialog_sheet_test and phone_dialogs_test cover header, pinned 44 px actions, keyboard, Back order, semantics, and the unchanged wide dialog."
     },
     "divider.dart": {
       "kind": "layout-or-non-text",
@@ -328,9 +336,11 @@
         "app/test/phone/phone_node_sheet_test.dart",
         "app/test/dify_spec/dify_ui/phone_lists_test.dart",
         "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart",
-        "app/test/phone/phone_body_targets_test.dart"
+        "app/test/phone/phone_body_targets_test.dart",
+        "app/test/dify_spec/dify_ui/phone_recheck_controls_test.dart",
+        "app/test/phone/phone_dialogs_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: at least 44 px tall in a compact window. Polish (after batch 4): difyTextField (DifyInput and the fields built on it) ignores autofocus in a picker sheet, as DifyTextField does. Polish recheck (PR #89): an addon's focusing tap is excluded from semantics (a search icon is no unlabelled button; an interactive addon keeps its own)."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Batch 4a follow-up: at least 44 px tall in a compact window. Polish (after batch 4): difyTextField (DifyInput and the fields built on it) ignores autofocus in a picker sheet, as DifyTextField does. Polish recheck (PR #89): an addon's focusing tap is excluded from semantics (a search icon is no unlabelled button; an interactive addon keeps its own). Recheck 2 (PR #90): in a compact window the field is one node named by semanticLabel and as tall as the 44 px box (DifyTouchTarget accessible), so no name node of its own is left above it. Recheck 3: in a compact window the placeholder is the hint of the named field, left out when it is the same word as the label (\"Search\", not \"Search, Search\")."
     },
     "input_mode.dart": {
       "kind": "text-composition",
@@ -366,9 +376,13 @@
         "app/test/phone/phone_account_test.dart",
         "app/test/phone/phone_studio_test.dart",
         "app/tool/phone_gallery_main.dart",
-        "app/test/dify_spec/dify_ui/phone_gallery_test.dart"
+        "app/test/dify_spec/dify_ui/phone_gallery_test.dart",
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart",
+        "app/test/phone/phone_dialogs_test.dart",
+        "app/test/dify_spec/dify_ui/phone_recheck_controls_test.dart",
+        "app/test/phone/phone_row_identity_test.dart"
       ],
-      "note": "dify-sf phone list rows (no Dify counterpart): DifyText in DifyType/DifyPhoneType styles; tests cover 52/64 px heights, one-line ellipsis, the row target, separate action semantics, destructive colour, section headings."
+      "note": "dify-sf phone list rows (no Dify counterpart): DifyText in DifyType/DifyPhoneType styles; tests cover 52/64 px heights, one-line ellipsis, the row target, separate action semantics, destructive colour, section headings. DifyActionRow: a panel row whose actions Dify shows on hover, by touch on a compact window (48 px, one named node with custom actions, tap, long press and a 44 px \"…\" opening an action sheet: Edit, Delete, Move up, Move down); wide windows render the child unchanged. Recheck 2 (PR #90): with childInteractive the row is a named group (explicit child nodes: a checkbox state no longer merges into it); DifyActionRow.builder places the \"…\" inside the row's own layout (a table row); semanticLabel lets the node say more than the sheet title. Contract: actions run as built when the sheet opened, so call sites find their row by identity in the list as it is when the action runs."
     },
     "loading.dart": {
       "kind": "layout-or-non-text",
@@ -718,9 +732,10 @@
         "app/test/control_gallery_typography_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
-        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart",
+        "app/test/phone/phone_dialogs_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Round 2: the caret is the accent on a compact window, whatever the call site's desktop caret colour. Polish (after batch 4): a field in a picker sheet does not take the focus at once (autofocus ignored in DifyFloating.inSheet): no keyboard over the list until tapped."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Round 2: the caret is the accent on a compact window, whatever the call site's desktop caret colour. Polish (after batch 4): a field in a picker sheet does not take the focus at once (autofocus ignored in DifyFloating.inSheet): no keyboard over the list until tapped. Recheck 3 (PR #90): DifyFieldDecoration.semanticLabel names the field by its form label (one merged node) and makes the placeholder its hint; difyPlaceholderSemantics leaves a placeholder that repeats the label out."
     },
     "text_input_scope.dart": {
       "kind": "layout-or-non-text",

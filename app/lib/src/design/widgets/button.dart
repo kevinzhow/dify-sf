@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import '../dify_tokens.g.dart';
 import 'button_style.dart';
 import 'bottom_sheet.dart' show DifySheetRecipe;
+import 'dialog.dart' show DifyDialogFrame;
 import 'kbd.dart' show DifyKbd, DifyKeycaps;
 import 'loading.dart' show DifySpinner;
 import 'responsive.dart';
@@ -72,8 +73,11 @@ class DifyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final off = disabled || loading;
-    // In a sheet on a phone a button is touch-high (44 px), as the fields there are; elsewhere Dify's sizes.
-    final height = DifyTouch.compactOf(context) && DifySheetRecipe.contains(context)
+    // In a sheet or a dialog on a phone a button is touch-high (44 px), as the fields there are; elsewhere Dify's
+    // sizes.
+    final height =
+        DifyTouch.compactOf(context) &&
+            (DifySheetRecipe.contains(context) || DifyDialogFrame.maybeOf(context) != null)
         ? math.max(size.height, DifyTouch.controlHeight)
         : size.height;
     // Keycaps a phone does not show leave the row, with the gap before them (the label stays centred).

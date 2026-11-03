@@ -21,32 +21,39 @@ class WorkflowConfirm extends StatelessWidget {
       builder: (context, confirm, _) {
         if (confirm == null) return const SizedBox.shrink();
         void cancel() => store.setShowConfirm(null);
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: cancel,
-                child: ColoredBox(color: DifyColors.backgroundOverlay),
-              ),
-            ),
-            CallbackShortcuts(
-              bindings: {const SingleActivator(LogicalKeyboardKey.escape): cancel},
-              child: FocusScope(
-                autofocus: true,
-                child: DifyAlertDialog(
-                  surfaceKey: const ValueKey('workflow-confirm'),
-                  title: confirm.title,
-                  description: confirm.desc,
-                  cancelKey: const ValueKey('workflow-confirm-cancel'),
-                  confirmKey: const ValueKey('workflow-confirm-confirm'),
-                  semanticButtonLabels: true,
-                  onCancel: cancel,
-                  onConfirm: confirm.onConfirm,
+        // A confirmation stays centred on a phone too (the design's confirm policy). It is part of the page, not a
+        // route: Back cancels it before any layer under it, and only it is read by assistive technology.
+        return DifyBackDismiss(
+          onDismiss: cancel,
+          child: BlockSemantics(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: cancel,
+                    child: ColoredBox(color: DifyColors.backgroundOverlay),
+                  ),
                 ),
-              ),
+                CallbackShortcuts(
+                  bindings: {const SingleActivator(LogicalKeyboardKey.escape): cancel},
+                  child: FocusScope(
+                    autofocus: true,
+                    child: DifyAlertDialog(
+                      surfaceKey: const ValueKey('workflow-confirm'),
+                      title: confirm.title,
+                      description: confirm.desc,
+                      cancelKey: const ValueKey('workflow-confirm-cancel'),
+                      confirmKey: const ValueKey('workflow-confirm-confirm'),
+                      semanticButtonLabels: true,
+                      onCancel: cancel,
+                      onConfirm: confirm.onConfirm,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );

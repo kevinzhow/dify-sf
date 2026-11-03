@@ -256,6 +256,43 @@ class _NextStepItemState extends State<NextStepItem> {
   Widget build(BuildContext context) {
     final w = widget;
     final show = !w.readonly && (_hovered || _menu);
+    final row = _row(context, show);
+    if (w.readonly) return row;
+    // A phone: tap jumps to the step; "…" and a long press offer the hover actions (Jump, Change, Disconnect, Delete).
+    final a = w.actions;
+    final id = w.node.id;
+    return DifyActionRow(
+      label: w.node.title,
+      onTap: a.onSelectNode == null ? null : () => a.onSelectNode!(id),
+      actions: [
+        if (a.onSelectNode case final select?)
+          DifyActionSheetAction(
+            label: _wf('common.jumpToNode'),
+            icon: const RemixIcon('arrow-right-up-line', size: 20),
+            onTap: () => select(id),
+          ),
+        if (a.onChange case final change?)
+          DifyActionSheetAction(
+            label: _wf('panel.change'),
+            icon: const RemixIcon('exchange-2-line', size: 20),
+            onTap: () {
+              if (mounted) change(context, id, 'source');
+            },
+          ),
+        if (a.onDisconnect case final disconnect?)
+          DifyActionSheetAction(
+            label: _wf('common.disconnect'),
+            icon: const RemixIcon('link-unlink', size: 20),
+            onTap: () => disconnect(id),
+          ),
+        if (a.onDelete case final delete?) DifyActionRow.delete(() => delete(id)),
+      ],
+      child: row,
+    );
+  }
+
+  Widget _row(BuildContext context, bool show) {
+    final w = widget;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),

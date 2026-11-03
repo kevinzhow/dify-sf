@@ -42,6 +42,8 @@ void main() {
 
     final dialog = showDifyDialog<void>(
       navigator.currentContext!,
+      // The centred form (a phone shows confirmations so; other dialogs are sheets there).
+      sheetOnCompact: false,
       builder: (_) => const SizedBox.expand(key: dialogBody),
     );
     await t.pumpAndSettle();

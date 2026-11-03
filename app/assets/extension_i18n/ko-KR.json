@@ -2,6 +2,8 @@
   "common": {
     "operation.cut": "잘라내기",
     "operation.paste": "붙여넣기",
+    "operation.moveUp": "위로 이동",
+    "operation.moveDown": "아래로 이동",
     "web.fontLoadFailed": "일부 글자를 불러오지 못했습니다. 연결 후 다시 시도하세요.",
     "release.title": "버전 및 기능",
     "release.client": "클라이언트",

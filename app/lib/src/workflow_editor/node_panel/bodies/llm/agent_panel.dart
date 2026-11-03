@@ -475,7 +475,16 @@ class _NoStrategies extends StatelessWidget {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const DifyIcon('vender/other/no-tool-placeholder', size: 64),
+        // The art is 204 x 36 (Dify draws it at that size); a square icon box shrank it to 64 px wide.
+        const SizedBox(
+          width: 204,
+          height: 36,
+          child: FittedBox(
+            fit: BoxFit.cover,
+            clipBehavior: Clip.hardEdge,
+            child: DifyIcon('vender/other/no-tool-placeholder', size: 204),
+          ),
+        ),
         const SizedBox(height: 8),
         DifyText(
           DifyI18n.tr('tools', 'addToolModal.agent.title'),
@@ -1186,6 +1195,32 @@ class _ToolItemState extends State<_ToolItem> {
     final uninstalled = provider == null;
     final noAuth = provider != null && provider['is_team_authorization'] == false;
     final mcpBlocked = v['type'] == ToolCollectionType.mcp && !widget.isMcpAllowed;
+    // A phone: tap opens the tool's settings; "…" and a long press offer Settings and Delete (hover-only in Dify). The
+    // switch and "Not authorized" stay the row's own controls.
+    // The sheet's actions run on this row as it is then (rows are keyed by tool), and do nothing once it is gone.
+    void open() {
+      if (mounted) widget.onOpen();
+    }
+
+    void delete() {
+      if (mounted) widget.onDelete?.call();
+    }
+
+    return DifyActionRow(
+      label: '${_providerShortName(v)}, ${v['tool_label'] ?? v['tool_name'] ?? ''}',
+      onTap: widget.onOpen,
+      childInteractive: true,
+      actions: [
+        if (!widget.disabled) ...[
+          DifyActionRow.edit(open, label: DifyI18n.tr('common', 'operation.settings')),
+          if (widget.onDelete != null) DifyActionRow.delete(delete),
+        ],
+      ],
+      child: _row(v, provider, uninstalled, noAuth, mcpBlocked),
+    );
+  }
+
+  Widget _row(Json v, Json? provider, bool uninstalled, bool noAuth, bool mcpBlocked) {
     return DifyPressable(
       semanticLabel: '${v['tool_label'] ?? v['tool_name'] ?? ''}',
       onPressed: widget.onOpen,
@@ -1290,6 +1325,19 @@ class _MultipleToolSelectorState extends State<MultipleToolSelector> {
   bool _open = true;
 
   String _key(Json t) => '${t['provider_name']}:${t['tool_name']}';
+
+  /// Replaces ([next]) or drops (null) the tool [key] (a row's identity) in the list as it is when the row's action
+  /// runs: a collaborator may have changed it while the tool's settings or a phone's action sheet were open. Nothing
+  /// once the tool is gone.
+  void _update(String key, Json? next) {
+    final value = widget.value;
+    final i = value.indexWhere((t) => _key(t) == key);
+    if (i < 0) return;
+    widget.onChange([
+      for (final (j, o) in value.indexed)
+        if (j != i) o else ?next,
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1402,7 +1450,7 @@ class _MultipleToolSelectorState extends State<MultipleToolSelector> {
               ),
             )
           else
-            for (final (i, t) in value.indexed)
+            for (final t in value)
               Padding(
                 key: ValueKey(_key(t)),
                 padding: const EdgeInsets.only(bottom: 4),
@@ -1412,12 +1460,9 @@ class _MultipleToolSelectorState extends State<MultipleToolSelector> {
                   isMcpAllowed: widget.isMcpAllowed,
                   disabled: widget.disabled,
                   selected: selectedKeys,
-                  onSelect: (next) => widget.onChange([for (final (j, o) in value.indexed) j == i ? next : o]),
-                  onSelectMultiple: (ts) => widget.onChange(addToolValues(value, ts)),
-                  onDelete: () => widget.onChange([
-                    for (final (j, o) in value.indexed)
-                      if (j != i) o,
-                  ]),
+                  onSelect: (next) => _update(_key(t), next),
+                  onSelectMultiple: (ts) => widget.onChange(addToolValues(widget.value, ts)),
+                  onDelete: () => _update(_key(t), null),
                 ),
               ),
       ],

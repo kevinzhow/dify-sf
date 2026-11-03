@@ -58,7 +58,9 @@ class DifyCheckboxBox extends StatelessWidget {
   }
 }
 
-/// dify-ui's Checkbox: a [DifyCheckboxBox] that toggles on a click (or Space / Enter), named [label].
+/// dify-ui's Checkbox: a [DifyCheckboxBox] that toggles on a click (or Space / Enter), named [label]. One node for
+/// assistive technology (Base UI's `role="checkbox"` button): its name, state and tap together (a state node without
+/// the tap and an unnamed button beside it were two stops for TalkBack).
 class DifyCheckbox extends StatelessWidget {
   const DifyCheckbox({
     super.key,
@@ -80,23 +82,91 @@ class DifyCheckbox extends StatelessWidget {
   final String? description;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    checked: checked,
-    mixed: indeterminate,
-    enabled: !disabled,
-    label: label,
-    hint: description,
-    validationResult: invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
-    child: DifyPressable(
-      disabled: disabled,
-      onPressed: onChanged == null ? null : () => onChanged!(!checked),
-      builder: (context, hovered, focused) => DifyCheckboxBox(
-        checked: checked,
-        indeterminate: indeterminate,
+  Widget build(BuildContext context) => MergeSemantics(
+    child: Semantics(
+      checked: checked,
+      mixed: indeterminate,
+      enabled: !disabled,
+      label: label,
+      hint: description,
+      validationResult: invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
+      child: DifyPressable(
         disabled: disabled,
-        hovered: hovered,
-        focused: focused,
+        onPressed: onChanged == null ? null : () => onChanged!(!checked),
+        builder: (context, hovered, focused) => DifyCheckboxBox(
+          checked: checked,
+          indeterminate: indeterminate,
+          disabled: disabled,
+          hovered: hovered,
+          focused: focused,
+        ),
       ),
     ),
   );
+}
+
+/// A [DifyCheckbox] and its text in a `<label>` (`flex h-6 items-center space-x-2`): a tap on the text toggles too.
+/// [child] is the visible text (by default [label] in system-sm-medium text-secondary); [label] names the box.
+///
+/// One node for assistive technology (the box's name, state and tap; the text is not a stop of its own). In a compact
+/// window (a phone) the row is at least [DifyTouch.controlHeight] tall and that node is the whole row, box and text:
+/// the 16 px box alone is no target for a finger or for TalkBack's focus. Wider windows keep the `h-6` row.
+class DifyCheckboxLabel extends StatelessWidget {
+  const DifyCheckboxLabel({
+    super.key,
+    required this.label,
+    required this.checked,
+    this.onChanged,
+    this.disabled = false,
+    this.child,
+  });
+
+  final String label;
+  final bool checked, disabled;
+  final ValueChanged<bool>? onChanged;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final toggle = disabled || onChanged == null ? null : () => onChanged!(!checked);
+    final text =
+        child ??
+        DifyTextLine(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: difyTextStyle(DifyType.systemSmMedium, DifyColors.textSecondary),
+        );
+    final box = DifyCheckbox(checked: checked, disabled: disabled, label: label, onChanged: onChanged);
+    final phone = DifyTouch.compactOf(context);
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 8,
+      children: [
+        box,
+        Flexible(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: toggle,
+            // The box carries the name: the text is no unlabelled button of its own.
+            excludeFromSemantics: true,
+            child: ExcludeSemantics(child: text),
+          ),
+        ),
+      ],
+    );
+    if (!phone) return SizedBox(height: 24, child: row);
+    // A phone: the row is the target (a tap anywhere on it toggles) and the box's node grows to it.
+    return MergeSemantics(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: toggle,
+        excludeFromSemantics: true,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: DifyTouch.controlHeight),
+          child: Padding(padding: const EdgeInsets.only(right: 8), child: row),
+        ),
+      ),
+    );
+  }
 }

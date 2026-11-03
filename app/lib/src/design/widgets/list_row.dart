@@ -1,14 +1,19 @@
 /// dify-sf's phone lists: rows and section headers (a dify-sf divergence: Dify's console lists are cards and tables).
 library;
 
+import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 
 import '../dify_icon.dart';
 import '../dify_phone_tokens.dart';
 import '../dify_tokens.g.dart';
+import '../../i18n/dify_i18n.dart';
+import 'action_sheet.dart';
 import 'button_style.dart';
 import 'form_control_shared.dart' show DifyFocusDecoration, difyFocusRing;
+import 'responsive.dart';
 import 'text.dart';
+import 'touch_target.dart';
 
 /// A phone list row (mockup 1's app rows, gen.py `.row`): at least [minHeight] (52 px, 64 px with a [subtitle]),
 /// `gap-3 px-4 py-2`, then [leading] (an icon or a 44 px tile), the one-line [title] over an optional one-line
@@ -170,4 +175,147 @@ class DifyListSectionHeader extends StatelessWidget {
       child: DifyText(label, DifyType.systemXsMediumUppercase, color: DifyColors.textTertiary),
     ),
   );
+}
+
+/// A row of a panel's list as Dify draws it (var-item.tsx and its kind: a card whose edit, remove and reorder actions
+/// show on hover), with those actions reachable by touch on a phone (a dify-sf divergence; raft-flutter's
+/// `RaftListRowAction`, the input layer of a row that brings its own layout).
+///
+/// In a window of 600 dp and wider it is [child], unchanged: Dify's row with its hover actions. In a compact window:
+/// - [child] is laid out at least 48 px tall (a fixed-height Dify card grows to it) and is one node for assistive
+///   technology named [label] (the child's own nodes are left out), with its actions as the node's custom actions;
+/// - a tap runs [onTap] (the row's edit form: a sheet on a phone), or opens the actions when there is no [onTap];
+/// - a long press and a trailing "…" (44 px, "More actions for [label]") open [actions] in an action sheet titled
+///   [label]: Edit, Delete, Move up, Move down ([DifyActionRow.edit], [DifyActionRow.delete], [DifyActionRow.moveUp],
+///   [DifyActionRow.moveDown]) and the row's own. Reordering is by these actions, not by a drag.
+///
+/// The child's hover-only controls get no pointer on a phone (they are not shown there); with [childInteractive] the
+/// child keeps its own taps and nodes (a switch that is always visible: it wins a tap on it, the rest of the row is
+/// the row's): the row's node is then a named group whose children are those controls, and text the child shows
+/// that [label] already says should be left out of the semantics by the caller (it would be read twice).
+///
+/// [DifyActionRow.builder] lays the row out itself, with the "…" inside it ([builder]'s `more`, null in a wide
+/// window): a table row whose cells stay editable, the "…" a column of its own within the row's borders.
+///
+/// The actions run as built when the sheet opened, after the list may have changed under it (a collaborator added,
+/// removed or moved a row): each must find its row by the row's identity (its name, id or key) when it runs, from
+/// the list as it is then, never by an index caught when the row was built, and do nothing once the row is gone.
+class DifyActionRow extends StatelessWidget {
+  const DifyActionRow({
+    super.key,
+    required this.label,
+    required Widget this.child,
+    this.onTap,
+    this.actions = const [],
+    this.childInteractive = false,
+    this.semanticLabel,
+  }) : builder = null;
+
+  /// A row that places the "…" itself: [builder] gets it as `more` (null in a wide window, where the row is Dify's).
+  /// The row's own controls keep their taps and nodes ([childInteractive]).
+  const DifyActionRow.builder({
+    super.key,
+    required this.label,
+    required Widget Function(BuildContext context, Widget? more) this.builder,
+    this.onTap,
+    this.actions = const [],
+    this.semanticLabel,
+  }) : child = null,
+       childInteractive = true;
+
+  /// The row's name: the action sheet's title and the "…"'s ("More actions for [label]").
+  final String label;
+
+  /// What the row's node reads, when it says more than [label] (a table row's key and its cells' values).
+  final String? semanticLabel;
+  final Widget? child;
+  final Widget Function(BuildContext context, Widget? more)? builder;
+  final VoidCallback? onTap;
+  final List<DifyActionSheetAction> actions;
+  final bool childInteractive;
+
+  /// The row's height on a phone.
+  static const minHeight = DifyTouch.minTarget;
+
+  /// "Edit" (`edit-line`).
+  static DifyActionSheetAction edit(VoidCallback onTap, {String? label}) => DifyActionSheetAction(
+    label: label ?? DifyI18n.tr('common', 'operation.edit'),
+    icon: const RemixIcon('edit-line', size: 20),
+    onTap: onTap,
+  );
+
+  /// "Delete" (`delete-bin-line`, destructive). The action runs the row's own removal: a confirmation, if Dify asks
+  /// for one there, is the caller's.
+  static DifyActionSheetAction delete(VoidCallback onTap, {String? label}) => DifyActionSheetAction(
+    label: label ?? DifyI18n.tr('common', 'operation.delete'),
+    icon: const RemixIcon('delete-bin-line', size: 20),
+    onTap: onTap,
+    destructive: true,
+  );
+
+  /// "Move up" (`arrow-up-line`); off for the first row.
+  static DifyActionSheetAction moveUp(VoidCallback onTap, {bool enabled = true}) => DifyActionSheetAction(
+    label: DifyI18n.tr('common', 'operation.moveUp'),
+    icon: const RemixIcon('arrow-up-line', size: 20),
+    onTap: onTap,
+    enabled: enabled,
+  );
+
+  /// "Move down" (`arrow-down-line`); off for the last row.
+  static DifyActionSheetAction moveDown(VoidCallback onTap, {bool enabled = true}) => DifyActionSheetAction(
+    label: DifyI18n.tr('common', 'operation.moveDown'),
+    icon: const RemixIcon('arrow-down-line', size: 20),
+    onTap: onTap,
+    enabled: enabled,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    if (!DifyTouch.compactOf(context)) return builder?.call(context, null) ?? child!;
+    final hasActions = actions.isNotEmpty;
+    void open() => showDifyActionSheet(context, title: label, actions: actions);
+    final tap = onTap ?? (hasActions ? open : null);
+    final more = !hasActions
+        ? null
+        : DifyTouchIconButton(
+            key: ValueKey('dify-action-row-more-$label'),
+            label: DifyI18n.tr('common', 'operation.moreActionsFor', {'name': label}),
+            icon: const RemixIcon('more-fill', size: 20),
+            onPressed: open,
+          );
+    Widget body = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: minHeight),
+      child: builder?.call(context, more) ?? child!,
+    );
+    if (!childInteractive) body = ExcludeSemantics(child: IgnorePointer(child: body));
+    body = Semantics(
+      container: true,
+      // The child's controls are nodes of their own under the row's (not merged into it: a checkbox's state would
+      // become the row's, and its name lost).
+      explicitChildNodes: childInteractive,
+      button: tap != null,
+      label: semanticLabel ?? label,
+      onTap: tap,
+      onLongPress: hasActions ? open : null,
+      customSemanticsActions: {
+        for (final a in actions)
+          if (a.enabled && a.onTap != null) CustomSemanticsAction(label: a.label): a.onTap!,
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        excludeFromSemantics: true,
+        // With an interactive child its own controls win their taps; the rest of the row is the row's.
+        onTap: tap,
+        onLongPress: hasActions ? open : null,
+        child: body,
+      ),
+    );
+    if (more == null || builder != null) return body;
+    return Row(
+      children: [
+        Expanded(child: body),
+        more,
+      ],
+    );
+  }
 }

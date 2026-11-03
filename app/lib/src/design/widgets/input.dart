@@ -138,6 +138,7 @@ TextField difyTextField({
   int? maxLines = 1,
   bool expands = false,
   bool centerCap = true,
+  String? semanticLabel,
 }) => TextField(
   controller: controller,
   focusNode: focusNode,
@@ -174,14 +175,19 @@ TextField difyTextField({
     contentPadding: padding,
     // Not the desktop platforms' compact density, which takes 8 px off the box (CSS has no such thing).
     visualDensity: VisualDensity.standard,
+    // Named by [semanticLabel] (a phone's DifyInput): the placeholder is the hint, left out when it is the same word.
     hint: placeholder == null
         ? null
-        : DifyTextLine(
-            centerCap: centerCap,
-            placeholder,
-            style: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        : difyPlaceholderSemantics(
+            label: semanticLabel,
+            placeholder: placeholder,
+            child: DifyTextLine(
+              centerCap: centerCap,
+              placeholder,
+              style: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
     hintStyle: style.copyWith(color: DifyColors.componentsInputTextPlaceholder),
     // `maxlength` shows no counter in a browser.
@@ -347,10 +353,27 @@ class _DifyInputState extends State<DifyInput> with DifyControlledText<DifyInput
       autofillHints: w.autofillHints,
       maxLength: w.maxLength,
       textInputAction: w.textInputAction,
+      semanticLabel: DifyTouch.compactOf(context) ? w.semanticLabel : null,
     );
-    final height = DifyTouch.compactOf(context)
+    final compact = DifyTouch.compactOf(context);
+    final height = compact
         ? (w.height == null || w.height! < DifyTouch.controlHeight ? DifyTouch.controlHeight : w.height)
         : w.height;
+    if (compact) {
+      // A phone: the field is one node with the input's name and state, as tall as the box, border included
+      // (TalkBack's focus and the target's size are the 44 px box, not the 16 px text line); a tap in the box's
+      // padding focuses the field. The
+      // name is not left to the node above (a picker's search read as a stop of its own before the field).
+      field = DifyTouchTarget(
+        accessible: true,
+        minSize: height!,
+        child: Semantics(
+          label: w.semanticLabel,
+          validationResult: w.invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
+          child: field,
+        ),
+      );
+    }
     if (height != null) {
       field = SizedBox(
         height: height - 2,
@@ -392,8 +415,8 @@ class _DifyInputState extends State<DifyInput> with DifyControlledText<DifyInput
       );
     }
     return Semantics(
-      label: w.semanticLabel,
-      validationResult: w.invalid ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
+      label: compact ? null : w.semanticLabel,
+      validationResult: w.invalid && !compact ? SemanticsValidationResult.invalid : SemanticsValidationResult.none,
       child: DifyInputBox(
         focusNode: _focus,
         disabled: w.disabled,

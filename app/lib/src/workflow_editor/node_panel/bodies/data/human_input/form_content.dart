@@ -332,16 +332,15 @@ class _InputFieldChipState extends State<InputFieldChip> {
       context,
       builder: (context) {
         _dialog = context;
-        return Center(
-          child: DifySurface(
-            child: InputFieldEditor(
-              scope: w.scope,
-              payload: w.formInput,
-              unavailable: w.unavailable,
-              isEdit: true,
-              onChange: (p) => Navigator.of(context).pop(p),
-              onCancel: () => Navigator.of(context).pop(),
-            ),
+        return _framed(
+          context,
+          InputFieldEditor(
+            scope: w.scope,
+            payload: w.formInput,
+            unavailable: w.unavailable,
+            isEdit: true,
+            onChange: (p) => Navigator.of(context).pop(p),
+            onCancel: () => Navigator.of(context).pop(),
           ),
         );
       },
@@ -468,19 +467,22 @@ Future<Map<String, Object?>?> showInputFieldDialog(
   bool isEdit = false,
 }) => showDifyDialog<Map<String, Object?>>(
   context,
-  builder: (context) => Center(
-    child: DifySurface(
-      child: InputFieldEditor(
-        scope: scope,
-        payload: payload,
-        unavailable: unavailable,
-        isEdit: isEdit,
-        onChange: (p) => Navigator.of(context).pop(p),
-        onCancel: () => Navigator.of(context).pop(),
-      ),
+  builder: (context) => _framed(
+    context,
+    InputFieldEditor(
+      scope: scope,
+      payload: payload,
+      unavailable: unavailable,
+      isEdit: isEdit,
+      onChange: (p) => Navigator.of(context).pop(p),
+      onCancel: () => Navigator.of(context).pop(),
     ),
   ),
 );
+
+/// The editor in its dialog: centred on a wide window; on a phone the design's sheet is its surface.
+Widget _framed(BuildContext context, Widget editor) =>
+    DifyDialogFrame.sheetOf(context) ? DifyDialogSurface(child: editor) : Center(child: DifySurface(child: editor));
 
 /// InputField (`w-93`): "Insert Input Field", the Field Type (Paragraph, Select, Single File, File List; a new type
 /// resets the field but keeps its name), "Save Response As" (the name: `^[a-z_]\w{0,29}$`, unique), then by type the
@@ -574,28 +576,36 @@ class _InputFieldEditorState extends State<InputFieldEditor> {
     final w = widget;
     final source = jsGet(_p, 'option_source');
     final strings = [for (final e in jsList(jsGet(source, 'value'))) jsKey(e)];
+    final sheet = DifyDialogFrame.sheetOf(context);
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.enter, control: true): _save,
         const SingleActivator(LogicalKeyboardKey.enter, meta: true): _save,
       },
+      // In a phone's sheet the sheet is the box: full width, its header for the title.
       child: Container(
-        width: 372,
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.8),
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: DifyColors.componentsPanelBgBlur,
-          borderRadius: BorderRadius.circular(DifyRadius.xl),
-          border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
-          boxShadow: DifyShadows.lg,
-        ),
+        width: sheet ? null : 372,
+        constraints: sheet ? null : BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.8),
+        clipBehavior: sheet ? Clip.none : Clip.antiAlias,
+        decoration: sheet
+            ? null
+            : BoxDecoration(
+                color: DifyColors.componentsPanelBgBlur,
+                borderRadius: BorderRadius.circular(DifyRadius.xl),
+                border: Border.all(color: DifyColors.componentsPanelBorder, width: Css.hairline),
+                boxShadow: DifyShadows.lg,
+              ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-              child: DifyText(_t('title'), DifyType.systemMdSemibold, color: DifyColors.textPrimary),
+            DifyDialogTitle(
+              title: _t('title'),
+              onClose: w.onCancel,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                child: DifyText(_t('title'), DifyType.systemMdSemibold, color: DifyColors.textPrimary),
+              ),
             ),
             Flexible(
               child: SingleChildScrollView(

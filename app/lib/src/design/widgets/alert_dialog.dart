@@ -16,7 +16,8 @@ import 'widgets.dart';
 /// AlertDialogContent: centred, [width] wide (`w-120`; at most the viewport less 2 rem) and at most the viewport less
 /// 2 rem high (scrolling), `rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg
 /// shadow-lg`; named [label] for assistive technology. The className overrides sites use: [bordered] false
-/// (`border-none`), [shadow] (`shadow-xl`), [padding].
+/// (`border-none`), [shadow] (`shadow-xl`), [padding]. In a sheet ([DifyDialogFrame]) the sheet is the popup: the
+/// content scrolls in it, without the box.
 class DifyAlertDialogContent extends StatelessWidget {
   const DifyAlertDialogContent({
     super.key,
@@ -42,7 +43,23 @@ class DifyAlertDialogContent extends StatelessWidget {
   final Key? surfaceKey;
 
   @override
-  Widget build(BuildContext context) => Center(
+  Widget build(BuildContext context) => DifyDialogFrame.sheetOf(context)
+      // In a sheet (an alert opened with showDifyDialog on a phone) the sheet is the popup.
+      ? Material(
+          type: MaterialType.transparency,
+          child: Semantics(
+            container: true,
+            role: SemanticsRole.alertDialog,
+            scopesRoute: true,
+            namesRoute: true,
+            explicitChildNodes: true,
+            label: label,
+            child: SingleChildScrollView(key: surfaceKey, padding: padding, child: child),
+          ),
+        )
+      : _dialog(context);
+
+  Widget _dialog(BuildContext context) => Center(
     child: Padding(
       padding: const EdgeInsets.all(16),
       child: ConstrainedBox(
@@ -77,7 +94,11 @@ class DifyAlertDialogContent extends StatelessWidget {
 }
 
 /// AlertDialogActions: `flex items-start justify-end gap-2 self-stretch p-6`; long translations wrap to a new row
-/// rather than overflow.
+/// rather than overflow. Every dialog's action row (Cancel / Save), also outside alert dialogs.
+///
+/// In a sheet ([DifyDialogFrame]) it is the sheet's action row, end-aligned in `px-4 py-2` whatever [padding] the
+/// dialog gives (raft-flutter's form sheet footer): its [DifyButton]s are 44 px there, and as the last part of the
+/// dialog's column under a [Flexible] body it stays at the sheet's bottom, above the keyboard and the gesture bar.
 class DifyAlertDialogActions extends StatelessWidget {
   const DifyAlertDialogActions({super.key, required this.children, this.padding = const EdgeInsets.all(24)});
 
@@ -86,7 +107,7 @@ class DifyAlertDialogActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: padding,
+    padding: DifyDialogFrame.sheetOf(context) ? const EdgeInsets.fromLTRB(16, 8, 16, 8) : padding,
     child: Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 8, children: children),
   );
 }
@@ -210,12 +231,21 @@ class DifyAlertDialog extends StatelessWidget {
 
 /// Opens [builder]'s alert dialog (usually a [DifyAlertDialog]) as a modal route ([showDifyDialog]); Escape closes
 /// it. dify-ui's AlertDialog stays open on an outside click: [dismissible] true is for the sites that close there.
+///
+/// A confirmation stays a centred dialog on a phone too (raft-flutter's `RaftPresentationPolicy.confirm`): a short
+/// question over the page it is about, its buttons touch-high there ([DifyButton] in a compact window's dialog).
 Future<T?> showDifyAlertDialog<T>(
   BuildContext context, {
   required WidgetBuilder builder,
   bool dismissible = false,
   bool closeOnEscape = true,
-}) => showDifyDialog<T>(context, builder: builder, dismissible: dismissible, closeOnEscape: closeOnEscape);
+}) => showDifyDialog<T>(
+  context,
+  builder: builder,
+  dismissible: dismissible,
+  closeOnEscape: closeOnEscape,
+  sheetOnCompact: false,
+);
 
 /// The common case: [title], [description], Cancel and Confirm; true when confirmed. With [onConfirm], Confirm runs
 /// it showing its loading state (and Cancel disabled with [lockCancelWhileBusy]); the dialog closes (true) when it

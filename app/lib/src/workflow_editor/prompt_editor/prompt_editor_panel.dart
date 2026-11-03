@@ -205,9 +205,15 @@ class _DifyPromptEditorPanelState extends State<DifyPromptEditorPanel> {
               ],
             ),
           ),
-          DifyTextLine(
-            '${w.value.length}',
-            style: difyTextStyle(DifyTw.textXsMediumLeading18, DifyColors.textTertiary),
+          // Read as "46 characters", not a bare number (the message's container was read as just "46").
+          Semantics(
+            label:
+                '${w.value.length} ${DifyI18n.tr('dataset-documents', w.value.length == 1 ? 'segment.characters_one' : 'segment.characters_other')}',
+            excludeSemantics: true,
+            child: DifyTextLine(
+              '${w.value.length}',
+              style: difyTextStyle(DifyTw.textXsMediumLeading18, DifyColors.textTertiary),
+            ),
           ),
           // `<div className="ml-1.25">` around the inline button: the div's text line ends below it.
           if (w.headerExtra != null)

@@ -1043,6 +1043,9 @@ class DifyPromptEditorState extends State<DifyPromptEditor> with SingleTickerPro
       animation: _sheetCurve,
       onDismiss: _dismissSheet,
       isOpen: () => mounted && _menuVisible,
+      // The button's sheet takes the focus (the keyboard goes down; the caret comes back when it closes); a typed
+      // `{` or `/` keeps it in the editor, where its query is typed.
+      takeFocus: _variableSheet,
       child: TextFieldTapRegion(
         child: DifyPopupSheetScope(
           child: Column(

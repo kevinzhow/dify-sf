@@ -12,7 +12,7 @@ library;
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, listEquals;
 import 'package:flutter/material.dart' show MaterialLocalizations, ModalBottomSheetRoute;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
@@ -164,7 +164,9 @@ class _ModalSheetScope extends InheritedWidget {
 /// [modal], a scrim (`DifySheetRecipe.scrim`) covers the window and blocks the page; otherwise the page stays
 /// interactive around the sheet. When [dismissible], dragging it down below its lowest detent, a tap on the scrim, the
 /// system back button and Escape close it (each through [Navigator.maybePop], so a PopScope in the content can veto
-/// it); otherwise only the content can close it (`Navigator.pop`).
+/// it); otherwise only the content can close it (`Navigator.pop`), unless [backDismissible]: then the system back
+/// button and Escape still close it (a dialog whose outside clicks do not close it, Dify's `disablePointerDismissal`).
+/// With [closeOnEscape] false the content handles Escape itself.
 ///
 /// The sheet paints to the window's bottom and side edges and keeps its content clear of the system insets and the
 /// keyboard: the keyboard's height replaces the bottom inset (never added to it) and the sheet rises with it, so a
@@ -181,8 +183,11 @@ Future<T?> showDifyBottomSheet<T>(
   DifySheetController? controller,
   String? barrierLabel,
   bool useRootNavigator = true,
+  bool? backDismissible,
+  bool closeOnEscape = true,
 }) {
   assert(detents.isNotEmpty, 'A sheet needs at least one detent');
+  final back = backDismissible ?? dismissible;
   assert(initialDetent == null || detents.contains(initialDetent), 'initialDetent must be one of detents');
   final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
   late final _DifySheetRoute<T> route;
@@ -208,7 +213,8 @@ Future<T?> showDifyBottomSheet<T>(
           child: DifySelectionRegion(child: Builder(builder: builder)),
         ),
       );
-      if (!dismissible) sheet = PopScope<T>(canPop: false, child: sheet);
+      if (!back) sheet = PopScope<T>(canPop: false, child: sheet);
+      if (!closeOnEscape) return sheet;
       return Shortcuts(
         shortcuts: const {SingleActivator(LogicalKeyboardKey.escape): DismissIntent()},
         child: Actions(
@@ -925,7 +931,7 @@ class DifySheetGrabHandle extends StatelessWidget {
   );
 }
 
-/// A sheet's header (mockups 4-6): `gap-2.5 pl-4 pr-2 pb-1`, [leading] (a node icon), a one-line [title] in
+/// A sheet's header (mockups 4-6): `gap-2.5 pl-4 pr-2 pb-1`, [leading] (a node icon), a [title] of up to two lines in
 /// [DifyPhoneType.title] and an optional [subtitle] in system-xs-regular text-tertiary, the [actions]
 /// ([DifyTouchIconButton]s) and a close button, in a row at least 48 px tall so the buttons' 48 px targets are whole.
 /// Under it, an optional [tabs] row (`px-4`) over a divider-subtle line. The header drags the sheet with any pointer.
@@ -1000,7 +1006,10 @@ class DifySheetHeader extends StatelessWidget {
                         titleWidget ??
                             Semantics(
                               header: true,
-                              child: DifyText(title, DifyPhoneType.title, color: DifyColors.textPrimary),
+                              // Names the sheet's route scope: announced when the sheet opens.
+                              namesRoute: true,
+                              // A long title wraps to a second line rather than being cut on a phone's width.
+                              child: DifyText(title, DifyPhoneType.title, color: DifyColors.textPrimary, maxLines: 2),
                             ),
                         if (subtitle case final s?)
                           DifyText(s, DifyType.systemXsRegular, color: DifyColors.textTertiary),
@@ -1385,6 +1394,7 @@ class DifyPortalSheetFrame extends StatelessWidget {
     this.initialDetent,
     this.controller,
     this.barrierLabel,
+    this.takeFocus = true,
   });
 
   final Animation<double> animation;
@@ -1395,6 +1405,11 @@ class DifyPortalSheetFrame extends StatelessWidget {
   final DifySheetDetent? initialDetent;
   final DifySheetController? controller;
   final String? barrierLabel;
+
+  /// The sheet takes the focus when it opens over a focused field: the keyboard goes down and keys no longer reach
+  /// the field behind it; when the sheet closes with the focus still in it, the field gets it back (its caret where
+  /// it was). False for a sheet that follows what is typed in the field (the prompt editor's typed `{` / `/`).
+  final bool takeFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -1426,22 +1441,26 @@ class DifyPortalSheetFrame extends StatelessWidget {
                   // A node of its own (a semantics boundary): nothing in the sheet can block past it.
                   child: Semantics(
                     container: true,
+                    sortKey: const OrdinalSortKey(0),
                     scopesRoute: true,
                     explicitChildNodes: true,
-                    child: _DifySheet(
-                      detents: detents,
-                      initialDetent: initialDetent,
-                      controller: controller,
-                      requestClose: dismiss == null
-                          ? null
-                          : () async {
-                              dismiss();
-                              await SchedulerBinding.instance.endOfFrame;
-                              return isOpen();
-                            },
-                      modalRoute: true,
-                      shadow: false,
-                      child: DifySelectionRegion(child: child),
+                    child: _SheetFocus(
+                      take: takeFocus,
+                      child: _DifySheet(
+                        detents: detents,
+                        initialDetent: initialDetent,
+                        controller: controller,
+                        requestClose: dismiss == null
+                            ? null
+                            : () async {
+                                dismiss();
+                                await SchedulerBinding.instance.endOfFrame;
+                                return isOpen();
+                              },
+                        modalRoute: true,
+                        shadow: false,
+                        child: DifySelectionRegion(child: child),
+                      ),
                     ),
                   ),
                 ),
@@ -1452,6 +1471,86 @@ class DifyPortalSheetFrame extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The focus of a sheet shown from a page's tree ([DifyPortalSheetFrame.takeFocus]): when it opens, the focus moves
+/// into the sheet unless it is there already (a portal's own scope around it), so a field behind it gives up the
+/// keyboard; the node that had the focus is remembered and, when the sheet goes with the focus still in it, gets it
+/// back after the frame (a text field keeps its selection, so an insert lands at its caret).
+///
+/// A screen reader's focus comes back too, as a route's does ([Navigator]): the node it was on when the sheet opened
+/// (the control that opened it) gets it again when the sheet goes, not the page's route name.
+class _SheetFocus extends StatefulWidget {
+  const _SheetFocus({required this.take, required this.child});
+
+  final bool take;
+  final Widget child;
+
+  @override
+  State<_SheetFocus> createState() => _SheetFocusState();
+}
+
+class _SheetFocusState extends State<_SheetFocus> {
+  final _scope = FocusScopeNode(debugLabel: 'DifyPortalSheetFrame');
+  FocusNode? _previous;
+
+  /// The semantics node a screen reader had its focus on when the sheet opened (the trigger), if any.
+  int? _accessibilityFocus;
+
+  /// As [Navigator] waits before it moves a screen reader's focus back on Android: the system's own refocus first.
+  static const _androidRefocusDelay = Duration(milliseconds: 300);
+
+  /// Gives the screen reader's focus back to [_accessibilityFocus] once the sheet's nodes are gone.
+  void _restoreAccessibilityFocus() {
+    final node = _accessibilityFocus;
+    if (node == null) return;
+    final delay = switch (defaultTargetPlatform) {
+      TargetPlatform.android => _androidRefocusDelay,
+      TargetPlatform.iOS => Duration.zero,
+      _ => null,
+    };
+    if (delay == null) return;
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(delay);
+      await SystemChannels.accessibility.send(const FocusSemanticEvent().toMap(nodeId: node));
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _accessibilityFocus = ServicesBinding.instance.accessibilityFocus.value;
+    if (!widget.take) return;
+    _previous = FocusManager.instance.primaryFocus;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final now = FocusManager.instance.primaryFocus;
+      if (now != null && (now == _scope || now.ancestors.contains(_scope))) return;
+      _scope.requestFocus();
+    });
+  }
+
+  @override
+  void deactivate() {
+    _restoreAccessibilityFocus();
+    // Before the sheet's nodes are taken out: is the focus still in it?
+    final previous = _previous;
+    if (widget.take && previous != null && _scope.hasFocus) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (previous.context != null && previous.canRequestFocus) previous.requestFocus();
+      });
+    }
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _scope.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FocusScope(node: _scope, child: widget.child);
 }
 
 /// The scrim of a sheet shown from a page's tree: window-wide, taking every pointer; a tap calls [onDismiss] (none:
@@ -1472,6 +1571,15 @@ class _PortalScrim extends StatelessWidget {
     );
     final dismiss = onDismiss;
     if (dismiss == null) return ExcludeSemantics(child: scrim);
-    return Semantics(container: true, button: true, label: label, onTap: dismiss, onDismiss: dismiss, child: scrim);
+    // Last in the reading order, as a route's barrier (OrdinalSortKey 1): TalkBack starts at the sheet's title.
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      onTap: dismiss,
+      onDismiss: dismiss,
+      sortKey: const OrdinalSortKey(1),
+      child: scrim,
+    );
   }
 }

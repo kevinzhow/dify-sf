@@ -3,6 +3,7 @@
 /// file-upload-setting.tsx, file-type-item.tsx and base/tag-input).
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -231,7 +232,8 @@ ConfigModalValidation validateConfigModalPayload({
 /// Confirms an input field; true closes the dialog (Dify keeps it open when the panel refuses, e.g. a duplicate).
 typedef ConfigVarConfirm = bool Function(Map<String, Object?> payload, VarChange? moreInfo);
 
-/// Opens ConfigModal over the screen: "Add Input Field" ([isCreate]) or "Edit Input Field" for [payload].
+/// Opens ConfigModal ([showDifyDialog]): "Add Input Field" ([isCreate]) or "Edit Input Field" for [payload]. On a
+/// phone it is a bottom sheet (the design's dialog form): Back closes it before the settings sheet under it.
 void showConfigVarModal(
   BuildContext context, {
   bool isCreate = false,
@@ -244,11 +246,10 @@ void showConfigVarModal(
   ValueChanged<String>? toastError,
   ValueChanged<String>? onOpenUrl,
 }) {
-  late final OverlayEntry entry;
-  entry = OverlayEntry(
-    // Inside the window's safe area, as when the app kept the whole navigator inside it.
-    builder: (_) => DifyOverlaySafeArea(
-      child: ConfigVarModal(
+  unawaited(
+    showDifyDialog<void>(
+      context,
+      builder: (dialog) => ConfigVarModal(
         isCreate: isCreate,
         payload: payload,
         supportFile: supportFile,
@@ -257,16 +258,15 @@ void showConfigVarModal(
         maxFileUploadLimit: maxFileUploadLimit,
         toastError: toastError,
         onOpenUrl: onOpenUrl,
-        onClose: () => entry.remove(),
+        onClose: () => Navigator.of(dialog).pop(),
         onConfirm: (p, m) {
           final ok = onConfirm(p, m);
-          if (ok) entry.remove();
+          if (ok) Navigator.of(dialog).pop();
           return ok;
         },
       ),
     ),
   );
-  Overlay.of(context, rootOverlay: true).insert(entry);
 }
 
 /// ConfigModal: dify-ui's Dialog (`w-120 rounded-2xl`, backdrop) with the title, the form fields and Cancel / Save.
@@ -301,7 +301,6 @@ class ConfigVarModal extends StatefulWidget {
 class _ConfigVarModalState extends State<ConfigVarModal> {
   late Map<String, Object?> _temp = normalizeSelectDefaultValue(widget.payload ?? newVarInWorkflow());
   ({String field, String message})? _error;
-  final _focus = FocusNode(debugLabel: 'config var modal');
   final _nameFocus = FocusNode(debugLabel: 'config var name');
 
   @override
@@ -312,7 +311,6 @@ class _ConfigVarModalState extends State<ConfigVarModal> {
 
   @override
   void dispose() {
-    _focus.dispose();
     _nameFocus.dispose();
     super.dispose();
   }
@@ -384,87 +382,47 @@ class _ConfigVarModalState extends State<ConfigVarModal> {
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.sizeOf(context).height - 32;
-    return DifySurface(
-      child: CallbackShortcuts(
-        bindings: {const SingleActivator(LogicalKeyboardKey.escape): widget.onClose},
-        child: Focus(
-          focusNode: _focus,
-          autofocus: true,
-          child: Stack(
+    final title = _ad(DifyI18n.tr, 'variableConfig.${widget.isCreate ? 'addModalTitle' : 'editModalTitle'}');
+    final sheet = DifyDialogFrame.sheetOf(context);
+    return DifyDialogSurface(
+      key: const Key('config-var-modal'),
+      label: title,
+      namesRoute: true,
+      bordered: true,
+      maxHeight: double.infinity,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DifyDialogTitle(
+            title: title,
+            onClose: widget.onClose,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: DifyTextLine(title, style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary)),
+            ),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: sheet ? const EdgeInsets.fromLTRB(16, 8, 16, 16) : const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              child: _fields(),
+            ),
+          ),
+          DifyAlertDialogActions(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
             children: [
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: widget.onClose,
-                  child: ColoredBox(color: DifyColors.backgroundOverlay),
-                ),
+              DifyButton(
+                onPressed: widget.onClose,
+                child: DifyTextLine(DifyI18n.tr('common', 'operation.cancel')),
               ),
-              Center(
-                child: Semantics(
-                  scopesRoute: true,
-                  namesRoute: true,
-                  explicitChildNodes: true,
-                  label: _ad(DifyI18n.tr, 'variableConfig.${widget.isCreate ? 'addModalTitle' : 'editModalTitle'}'),
-                  child: Container(
-                    key: const Key('config-var-modal'),
-                    width: 480,
-                    constraints: BoxConstraints(maxHeight: maxHeight),
-                    decoration: BoxDecoration(
-                      color: DifyColors.componentsPanelBg,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: DifyColors.componentsPanelBorder, width: 0.5),
-                      boxShadow: DifyShadows.xl,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                          child: DifyTextLine(
-                            _ad(
-                              DifyI18n.tr,
-                              'variableConfig.${widget.isCreate ? 'addModalTitle' : 'editModalTitle'}',
-                            ),
-                            style: difyTextStyle(DifyType.title2xlSemiBold, DifyColors.textPrimary),
-                          ),
-                        ),
-                        Flexible(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-                            child: _fields(),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            spacing: 8,
-                            children: [
-                              Flexible(
-                                child: DifyButton(
-                                  onPressed: widget.onClose,
-                                  child: DifyTextLine(DifyI18n.tr('common', 'operation.cancel')),
-                                ),
-                              ),
-                              Flexible(
-                                child: DifyButton(
-                                  variant: DifyButtonVariant.primary,
-                                  onPressed: _confirm,
-                                  child: DifyTextLine(DifyI18n.tr('common', 'operation.save')),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              DifyButton(
+                variant: DifyButtonVariant.primary,
+                onPressed: _confirm,
+                child: DifyTextLine(DifyI18n.tr('common', 'operation.save')),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -731,7 +689,8 @@ class _FileDefaultPlaceholder extends StatelessWidget {
 
 // ---- small form parts --------------------------------------------------------------------------------------------
 
-/// A `label` row: the checkbox and its `system-sm-semibold` text (a tap on either toggles), `h-6 space-x-2`.
+/// A `label` row: the checkbox and its `system-sm-semibold` text (a tap on either toggles), `h-6 space-x-2`
+/// ([DifyCheckboxLabel]: one node; on a phone the whole row, touch-high), then [trailing].
 class _CheckRow extends StatelessWidget {
   const _CheckRow({
     required this.label,
@@ -746,28 +705,25 @@ class _CheckRow extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 24,
-    child: Row(
-      spacing: 8,
-      children: [
-        DifyCheckbox(checked: checked, disabled: disabled, label: label, onChanged: onChanged),
-        Flexible(
-          child: GestureDetector(
-            onTap: disabled ? null : () => onChanged(!checked),
-            child: ExcludeSemantics(
-              child: DifyTextLine(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
-              ),
-            ),
+  Widget build(BuildContext context) => Row(
+    spacing: 8,
+    children: [
+      Flexible(
+        child: DifyCheckboxLabel(
+          label: label,
+          checked: checked,
+          disabled: disabled,
+          onChanged: onChanged,
+          child: DifyTextLine(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: difyTextStyle(DifyType.systemSmSemibold, DifyColors.textSecondary),
           ),
         ),
-        ?trailing,
-      ],
-    ),
+      ),
+      ?trailing,
+    ],
   );
 }
 
