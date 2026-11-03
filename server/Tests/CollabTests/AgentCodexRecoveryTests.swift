@@ -31,6 +31,22 @@ struct AgentCodexRecoveryTests {
         #expect(!(try await scopes.offerCodexRecovery(token: token, lane: "child", checkpoint: Self.checkpoint)))
     }
 
+    @Test func cancellationCannotReserveOrConsumeTheRecovery() async throws {
+        let scopes = AgentModelScopes(), token = try await scopes.activate(Self.scope()), idle = Self.idle()
+        defer { idle.cancel() }
+        try await scopes.openCodexSocket(token: token, lane: "root", id: "one", task: idle)
+        try await scopes.startCodexSocket(token: token, lane: "root")
+        let cancelled = Task {
+            try? await Task.sleep(for: .seconds(30))
+            return try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint)
+        }
+        cancelled.cancel()
+        do { _ = try await cancelled.value; Issue.record("Cancellation authorized recovery") }
+        catch is CancellationError { }
+        // The cancelled reservation did not consume the execution's one permitted recovery.
+        #expect(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint))
+    }
+
     @Test func concurrentChildrenCannotReserveTwoRecoveries() async throws {
         let scopes = AgentModelScopes(), token = try await scopes.activate(Self.scope()), task = Self.idle(); defer { task.cancel() }
         for lane in ["root", "child"] {

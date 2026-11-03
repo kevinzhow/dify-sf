@@ -478,6 +478,7 @@ struct AgentCodexWebSocketService: Service {
                     routes.logger.warning("codex websocket operation failed status=\(safe.status) code=\(safe.code) error_type=\(String(reflecting: type(of: error)))")
                     await session.finish()
                     if error is AgentCodexTransportLoss {
+                        try Task.checkCancellation()
                         let current = try await routes.agentModelScopes.activeScope(token: token)
                         try await routes.requireActiveAgentCodexScope(current)
                         let checkpoint = await session.checkpoint()
