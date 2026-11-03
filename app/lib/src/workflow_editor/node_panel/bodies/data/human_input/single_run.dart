@@ -205,16 +205,24 @@ class _HumanInputRunFormState extends State<HumanInputRunForm> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Row(
               children: [
-                DifyPressable(
-                  semanticLabel: hi('singleRun.back'),
-                  onPressed: w.onBack,
-                  builder: (context, _, _) => Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      RemixIcon('arrow-left-line', size: 16, color: DifyColors.textAccent),
-                      const SizedBox(width: 4),
-                      DifyText(hi('singleRun.back'), DifyType.systemSmSemiboldUppercase, color: DifyColors.textAccent),
-                    ],
+                // A phone's sheet: the link is a 44 px touch box.
+                DifyTouchArea.inPhoneSheet(
+                  context,
+                  DifyPressable(
+                    semanticLabel: hi('singleRun.back'),
+                    onPressed: w.onBack,
+                    builder: (context, _, _) => Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        RemixIcon('arrow-left-line', size: 16, color: DifyColors.textAccent),
+                        const SizedBox(width: 4),
+                        DifyText(
+                          hi('singleRun.back'),
+                          DifyType.systemSmSemiboldUppercase,
+                          color: DifyColors.textAccent,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 Padding(
