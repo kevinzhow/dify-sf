@@ -12,6 +12,7 @@ import 'package:dify_sf_app/src/settings/members/members_page.dart';
 import 'package:dify_sf_app/src/settings/preference_page.dart';
 import 'package:dify_sf_app/src/shell/phone_home_shell.dart';
 import 'package:dify_sf_app/src/shell/phone_page.dart';
+import 'package:dify_sf_app/src/settings/members/member_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -74,8 +75,9 @@ void main() {
     }
 
     await open('account-tab-members', MembersPage);
-    // The members table scrolls sideways instead of being cut.
-    expect(find.byKey(const ValueKey('members-table-scroll')), findsOneWidget);
+    // The members are rows on a phone (subpages PR): no table to scroll sideways.
+    expect(find.byKey(const ValueKey('members-table-scroll')), findsNothing);
+    expect(find.byType(MemberRow), findsWidgets);
     await t.tap(find.byType(DifyAppBarBackButton));
     await settle(t);
     expect(find.byType(PhonePage), findsNothing);

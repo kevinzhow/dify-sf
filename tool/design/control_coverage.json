@@ -116,9 +116,10 @@
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
         "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart",
-        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart"
+        "app/test/dify_spec/dify_ui/dialog_sheet_test.dart",
+        "app/test/phone/phone_subpages_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Batch 4a device check: touch-high (44 px) inside a sheet in a compact window, Dify's sizes elsewhere. Polish (after batch 4): a leading or trailing DifyKeycaps a phone does not show leaves the row with its gap (the label stays centred). In a compact window's dialog (DifyDialogFrame) a button is touch-high too."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Batch 4a device check: touch-high (44 px) inside a sheet in a compact window, Dify's sizes elsewhere. Polish (after batch 4): a leading or trailing DifyKeycaps a phone does not show leaves the row with its gap (the label stays centred). In a compact window's dialog (DifyDialogFrame) a button is touch-high too. Subpages PR: touch-high also inside a DifyTouchSurface (a pushed phone page, a drawer shown as a page) in a compact window."
     },
     "button_style.dart": {
       "kind": "text-composition",
@@ -152,9 +153,10 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/phone/phone_subpages_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Subpages PR: in a compact window the chip is a DifyFilterChip (icon, the selected item's name, a down arrow) opening its items as an action sheet with the current one checked; no clear button (the sheet lists the cleared item too)."
     },
     "collapse.dart": {
       "kind": "gallery",
@@ -223,9 +225,10 @@
         "app/test/design_typography_test.dart",
         "app/test/dify_spec/dify_ui/drawer_test.dart",
         "app/test/dify_spec/features/new_feature_panel/feature_panel_drawer_test.dart",
-        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart"
+        "app/test/dify_spec/dify_ui/edge_to_edge_test.dart",
+        "app/test/phone/phone_subpages_test.dart"
       ],
-      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states."
+      "note": "Shared typography primitive plus functional/composition tests; no claim of exhaustive browser states. Subpages PR: in a compact window showDifyDrawer is a page (raft-flutter's RaftPresentationPolicy.detail) unless pageOnCompact is false: edge to edge, no rounded border, content in the safe area (DifyDrawerPage), touch-sized controls (DifyTouchSurface); the live width switches the form with the content's state kept."
     },
     "emoji_catalog.dart": {
       "kind": "text-composition",
@@ -487,9 +490,10 @@
       "kind": "gallery",
       "evidence": [
         "app/tool/control_gallery.dart",
-        "app/test/control_gallery_typography_test.dart"
+        "app/test/control_gallery_typography_test.dart",
+        "app/test/phone/phone_subpages_test.dart"
       ],
-      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery."
+      "note": "Actual shared widgets: native real-font geometry and Wasm interaction gallery. Subpages PR: in a compact window one wrapping row of 44 px previous / page summary / next and the touch segmented page size; no page buttons, no hover-only 'Items per page'."
     },
     "placement.dart": {
       "kind": "layout-or-non-text",
@@ -809,9 +813,10 @@
         "app/test/dify_spec/dify_ui/touch_target_edges_test.dart",
         "app/test/dify_spec/dify_ui/sheet_portal_test.dart",
         "app/test/phone/phone_node_sheet_test.dart",
-        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart"
+        "app/test/dify_spec/dify_ui/phone_touch_polish_test.dart",
+        "app/test/phone/phone_subpages_test.dart"
       ],
-      "note": "Hit-area expansion and the icon-only touch button (with its toggle state); no text of their own. DifyTouchArea (batch 4a): a small control in a real 48 px box with its target. Round 2: DifyTouchArea.accessibleBox makes the box the control's accessible bounds (MergeSemantics). Polish (after batch 4): DifyTouchTarget.accessible (raft-flutter's RaftTouchTarget: the hit area is also the control's accessible bounds, one merged node; only inside a box of the control's own that holds the whole hit area) and DifyTouchArea.inPhoneSheet / appliesIn (a small control in a phone sheet: a 44 px box that is its accessible bounds; the control's edge must be hittable, no dead padding inside the box). PR #89 review: every reported box tapped 2 dp inside each edge in the tests."
+      "note": "Hit-area expansion and the icon-only touch button (with its toggle state); no text of their own. DifyTouchArea (batch 4a): a small control in a real 48 px box with its target. Round 2: DifyTouchArea.accessibleBox makes the box the control's accessible bounds (MergeSemantics). Polish (after batch 4): DifyTouchTarget.accessible (raft-flutter's RaftTouchTarget: the hit area is also the control's accessible bounds, one merged node; only inside a box of the control's own that holds the whole hit area) and DifyTouchArea.inPhoneSheet / appliesIn (a small control in a phone sheet: a 44 px box that is its accessible bounds; the control's edge must be hittable, no dead padding inside the box). PR #89 review: every reported box tapped 2 dp inside each edge in the tests. Subpages PR: DifyTouchSurface marks a pushed phone page or a drawer shown as a page; DifyTouchArea.appliesIn (and DifyButton's touch height) include it, so the controls there are touch-sized as in a sheet."
     },
     "workspace_avatar.dart": {
       "kind": "text-composition",
