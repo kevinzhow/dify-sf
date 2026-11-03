@@ -9,7 +9,10 @@
 /// In a compact window (a phone, dify-sf) there is no sidebar: the editor fills the page edge to edge (or, without
 /// the right to edit, the page the guard leads to, under an app bar), the app's other pages open as pushed pages with
 /// an app bar from the editor's "…" menu (back returns to the editor), and so do the app's operations (edit info,
-/// duplicate, export, import, delete).
+/// duplicate, export, import, delete). A landscape phone (a short window driven by touch) keeps that phone shell, so
+/// turning the phone changes nothing here. On a tablet (touch, not short) the other pages keep the sidebar with touch
+/// sizes, and the editor fills the window edge to edge with its touch chrome (its "…" opens the other pages): beside
+/// a sidebar, the canvas and the editor's side panel would not fit.
 library;
 
 import 'dart:async';
@@ -289,7 +292,17 @@ class AppDetailPageState extends State<AppDetailPage> {
     _select(page, query);
   }
 
-  static bool _compact(BuildContext context) => DifyWindowClass.of(context) == DifyWindowClass.compact;
+  /// The phone shell (no sidebar, the app's other pages pushed over the root page): a compact window, or a short one
+  /// driven by touch (a landscape phone).
+  static bool _compact(BuildContext context) => switch (DifyLayoutMode.of(context)) {
+    DifyLayoutMode.phone => true,
+    DifyLayoutMode.touch => DifyWindowClass.shortOf(context),
+    DifyLayoutMode.desktop => false,
+  };
+
+  /// A tablet's editor: edge to edge without the sidebar (the touch chrome's "…" has the other pages).
+  static bool _touchEditor(BuildContext context, AppDetailPageId? page) =>
+      page == AppDetailPageId.workflow && DifyLayoutMode.of(context) == DifyLayoutMode.touch;
 
   /// The page a phone shows under its app's pushed pages: the editor when the user may open it, else the page the
   /// guard leads to. Null until the app is loaded.
@@ -428,7 +441,9 @@ class AppDetailPageState extends State<AppDetailPage> {
     final app = _app?.value;
     final page = _page;
     final title = '${appDetailPageTitle(page)} · ${app?.name ?? _c('menus.appDetail')}';
-    if (_compact(context)) return DifyDocumentTitle(title: title, child: _phone(context, app, page));
+    if (_compact(context) || (app != null && _touchEditor(context, page))) {
+      return DifyDocumentTitle(title: title, child: _phone(context, app, page));
+    }
     return DifyDocumentTitle(
       title: title,
       child: DifyPage(

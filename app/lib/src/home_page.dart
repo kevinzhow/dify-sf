@@ -104,6 +104,12 @@ class _HomePageState extends State<HomePage> {
   bool _phone(BuildContext context) =>
       DifyWindowClass.of(context) == DifyWindowClass.compact && AuthScope.of(context).account != null;
 
+  /// Pages pushed from here draw under the system bars in the touch layout (a phone, and a tablet or a landscape
+  /// phone, whose editor has the phone's bars); their own chrome pads them, and their desktop forms keep to the safe
+  /// area themselves.
+  bool _edgeToEdge(BuildContext context) =>
+      DifyLayoutMode.of(context) != DifyLayoutMode.desktop && AuthScope.of(context).account != null;
+
   @override
   void initState() {
     super.initState();
@@ -263,7 +269,7 @@ class _HomePageState extends State<HomePage> {
     await Navigator.of(context).push(
       difyPageRoute<void>(
         // On a phone the page's own background reaches under the system bars (its content stays safe).
-        edgeToEdge: _phone(context),
+        edgeToEdge: _edgeToEdge(context),
         // The schedule trigger reads the account's time zone (Dify's `userProfile.timezone`).
         builder: (_) => Builder(
           builder: (context) => ScheduleHost(
@@ -311,7 +317,7 @@ class _HomePageState extends State<HomePage> {
     // the Studio.
     await Navigator.of(
       context,
-    ).push(difyPageRoute<void>(edgeToEdge: _phone(context), builder: (_) => _appDetail(app, path)));
+    ).push(difyPageRoute<void>(edgeToEdge: _edgeToEdge(context), builder: (_) => _appDetail(app, path)));
   }
 
   Map<Type, Object> _appDetailServices(AuthController auth) {
@@ -340,7 +346,9 @@ class _HomePageState extends State<HomePage> {
       openApp: (copy, path) => unawaited(
         Navigator.of(
           context,
-        ).pushReplacement(difyPageRoute<void>(edgeToEdge: _phone(context), builder: (_) => _appDetail(copy, path))),
+        ).pushReplacement(
+          difyPageRoute<void>(edgeToEdge: _edgeToEdge(context), builder: (_) => _appDetail(copy, path)),
+        ),
       ),
       editor: (context, host) => ValueListenableBuilder(
         valueListenable: host.app,
