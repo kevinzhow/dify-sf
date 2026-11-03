@@ -389,8 +389,11 @@ class _KeyValueInputState extends State<KeyValueInput> {
       cursor: SystemMouseCursors.text,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Container(
-        color: _hovered ? DifyColors.stateBaseHover : null,
+      // The colours are decorations, always there: a Container whose `color` comes and goes inserts and removes a box
+      // above the editor, which rebuilds the editor; focusing it then (the focused colour) left the focused field
+      // without its text input connection, so a phone's keyboard never opened.
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: _hovered ? DifyColors.stateBaseHover : null),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -398,7 +401,7 @@ class _KeyValueInputState extends State<KeyValueInput> {
               // `px-3 py-1 min-h-8`.
               child: Container(
                 constraints: const BoxConstraints(minHeight: 32),
-                color: _focused ? DifyColors.componentsInputBgActive : null,
+                decoration: BoxDecoration(color: _focused ? DifyColors.componentsInputBgActive : null),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 child: editor,
               ),
