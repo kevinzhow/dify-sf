@@ -197,7 +197,7 @@ actor AgentModelScopes {
     private var entries: [String: Entry] = [:]
     private var generations: [String: Int] = [:]
     // Survives operation/token replacement for this same node execution; children share it.
-    private var recoveredExecutions: Set<String> = []
+    private var recoveryAttempts: [String: Int] = [:]
 
     func activate(_ scope: AgentModelScope) throws -> String {
         guard scope.generation >= 1, scope.maxCalls >= 1, scope.maxCalls <= 1000,
@@ -321,22 +321,25 @@ actor AgentModelScopes {
         return recovery
     }
 
-    /// The old call has already been settled. Reserve the one attempt atomically before
+    /// The old call has already been settled. Reserve a bounded attempt atomically before
     /// closing downstream; releasing the old lane here avoids a reconnect/cleanup race.
-    func offerCodexRecovery(token: String, lane: String, checkpoint: AgentCodexSocketCheckpoint) throws -> Bool {
+    func offerCodexRecovery(token: String, lane: String, checkpoint: AgentCodexSocketCheckpoint) throws -> Int? {
         try Task.checkCancellation()
         let digest = Tokens.sha256(token)
         guard var entry = entries[digest], entry.scope.expiresAt > Date(),
               generations[entry.scope.executionKey] == entry.scope.generation else { throw Self.denied() }
         guard entry.scope.codexWebsocketRecoveryEnabled, entry.startedSocketLanes.contains(lane),
-              !checkpoint.unsafe, !recoveredExecutions.contains(entry.scope.executionKey),
-              (entry.calls.max() ?? 0) < entry.scope.maxCalls else { return false }
-        recoveredExecutions.insert(entry.scope.executionKey)
-        entry.recoveryLanes[lane] = checkpoint
+              !checkpoint.unsafe, entry.recoveryLanes[lane] == nil, entry.socketIDs[lane] != nil,
+              recoveryAttempts[entry.scope.executionKey, default: 0] < AgentCodexRecoveryPolicy.attempts,
+              (entry.calls.max() ?? 0) < entry.scope.maxCalls else { return nil }
+        let attempt = recoveryAttempts[entry.scope.executionKey, default: 0] + 1
+        recoveryAttempts[entry.scope.executionKey] = attempt
+        var reserved = checkpoint; reserved.recoveryAttempt = attempt
+        entry.recoveryLanes[lane] = reserved
         if let old = entry.socketIDs.removeValue(forKey: lane) { entry.sockets[old] = nil }
         entry.socketLanes.remove(lane)
         entries[digest] = entry
-        return true
+        return attempt
     }
 
     func startCodexSocket(token: String, lane: String) throws {

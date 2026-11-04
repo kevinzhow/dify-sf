@@ -15,20 +15,18 @@ struct AgentCodexRecoveryTests {
     @Test(arguments: [false, true]) func deploymentMustOptInAndCounterIsShared(enabled: Bool) async throws {
         let scopes = AgentModelScopes(); var s = Self.scope(); s.codexWebsocketRecoveryEnabled = enabled
         let token = try await scopes.activate(s), task = Self.idle(); defer { task.cancel() }
-        try await scopes.openCodexSocket(token: token, lane: "root", id: "one", task: task)
-        try await scopes.startCodexSocket(token: token, lane: "root")
-        let first = try await scopes.claimCodex(token: token); await scopes.finish(first, usage: nil, succeeded: false)
-        #expect(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint) == enabled)
-        if enabled {
-            let c = try await scopes.openCodexSocket(token: token, lane: "root", id: "two", task: task)
-            #expect(c?.parameters == "stable")
-            let second = try await scopes.claimCodex(token: token); #expect(second.index == 2)
-            await scopes.finish(second, usage: nil)
-            #expect(!(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint)))
+        for (offset, lane) in ["root", "child", "other-child", "fourth"].enumerated() {
+            try await scopes.openCodexSocket(token: token, lane: lane, id: lane, task: task)
+            try await scopes.startCodexSocket(token: token, lane: lane)
+            let claim = try await scopes.claimCodex(token: token); #expect(claim.index == offset + 1)
+            await scopes.finish(claim, usage: nil, succeeded: false)
+            let attempt = try await scopes.offerCodexRecovery(token: token, lane: lane, checkpoint: Self.checkpoint)
+            #expect(attempt == (enabled && offset < 3 ? offset + 1 : nil))
+            if attempt != nil {
+                let c = try await scopes.openCodexSocket(token: token, lane: lane, id: "replacement-\(lane)", task: task)
+                #expect(c?.parameters == "stable" && c?.recoveryAttempt == attempt)
+            }
         }
-        try await scopes.openCodexSocket(token: token, lane: "child", id: "child", task: task)
-        try await scopes.startCodexSocket(token: token, lane: "child")
-        #expect(!(try await scopes.offerCodexRecovery(token: token, lane: "child", checkpoint: Self.checkpoint)))
     }
 
     @Test func cancellationCannotReserveOrConsumeTheRecovery() async throws {
@@ -43,26 +41,30 @@ struct AgentCodexRecoveryTests {
         cancelled.cancel()
         do { _ = try await cancelled.value; Issue.record("Cancellation authorized recovery") }
         catch is CancellationError { }
-        // The cancelled reservation did not consume the execution's one permitted recovery.
-        #expect(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint))
+        // The cancelled reservation did not consume the execution's recovery quota.
+        #expect(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint) != nil)
     }
 
-    @Test func concurrentChildrenCannotReserveTwoRecoveries() async throws {
+    @Test func concurrentChildrenCannotExceedThreeRecoveries() async throws {
         let scopes = AgentModelScopes(), token = try await scopes.activate(Self.scope()), task = Self.idle(); defer { task.cancel() }
-        for lane in ["root", "child"] {
+        for lane in ["root", "a", "b", "c", "d", "e", "f", "g"] {
             try await scopes.openCodexSocket(token: token, lane: lane, id: lane, task: task)
             try await scopes.startCodexSocket(token: token, lane: lane)
         }
-        async let root = scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint)
-        async let child = scopes.offerCodexRecovery(token: token, lane: "child", checkpoint: Self.checkpoint)
-        let (r, c) = try await (root, child); #expect([r, c].filter { $0 }.count == 1)
+        let results = try await withThrowingTaskGroup(of: Int?.self, returning: [Int].self) { group in
+            for lane in ["root", "a", "b", "c", "d", "e", "f", "g"] {
+                group.addTask { try await scopes.offerCodexRecovery(token: token, lane: lane, checkpoint: Self.checkpoint) }
+            }
+            var results: [Int] = []; for try await value in group { if let value { results.append(value) } }; return results
+        }
+        #expect(results.sorted() == [1, 2, 3])
     }
 
     @Test func staleCloseCannotReleaseTheReplacementSocket() async throws {
         let scopes = AgentModelScopes(), token = try await scopes.activate(Self.scope()), task = Self.idle(); defer { task.cancel() }
         try await scopes.openCodexSocket(token: token, lane: "root", id: "old", task: task)
         try await scopes.startCodexSocket(token: token, lane: "root")
-        #expect(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint))
+        #expect(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint) != nil)
         _ = try await scopes.openCodexSocket(token: token, lane: "root", id: "new", task: task)
         await scopes.closeCodexSocket(token: token, lane: "root", id: "old")
         do { try await scopes.openCodexSocket(token: token, lane: "root", id: "third", task: task); Issue.record("Stale close released a new socket") }
@@ -74,12 +76,16 @@ struct AgentCodexRecoveryTests {
         let old = try await scopes.activate(s)
         try await scopes.openCodexSocket(token: old, lane: "root", id: "old", task: task)
         try await scopes.startCodexSocket(token: old, lane: "root")
-        #expect(try await scopes.offerCodexRecovery(token: old, lane: "root", checkpoint: Self.checkpoint))
+        #expect(try await scopes.offerCodexRecovery(token: old, lane: "root", checkpoint: Self.checkpoint) != nil)
         _ = await scopes.revoke(token: old)
         let new = try await scopes.activate(s)
         try await scopes.openCodexSocket(token: new, lane: "child", id: "new", task: task)
         try await scopes.startCodexSocket(token: new, lane: "child")
-        #expect(!(try await scopes.offerCodexRecovery(token: new, lane: "child", checkpoint: Self.checkpoint)))
+        #expect(try await scopes.offerCodexRecovery(token: new, lane: "child", checkpoint: Self.checkpoint) == 2)
+        _ = try await scopes.openCodexSocket(token: new, lane: "child", id: "replacement", task: task)
+        #expect(try await scopes.offerCodexRecovery(token: new, lane: "child", checkpoint: Self.checkpoint) == 3)
+        _ = try await scopes.openCodexSocket(token: new, lane: "child", id: "last", task: task)
+        #expect(try await scopes.offerCodexRecovery(token: new, lane: "child", checkpoint: Self.checkpoint) == nil)
         do { _ = try await scopes.offerCodexRecovery(token: old, lane: "root", checkpoint: Self.checkpoint); Issue.record("Revoked capability recovered") } catch {}
     }
 
@@ -88,9 +94,9 @@ struct AgentCodexRecoveryTests {
         let token = try await scopes.activate(s), task = Self.idle(); defer { task.cancel() }
         try await scopes.openCodexSocket(token: token, lane: "root", id: "one", task: task)
         try await scopes.startCodexSocket(token: token, lane: "root")
-        #expect(!(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: .init(parameters: nil, unsafe: true))))
+        #expect(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: .init(parameters: nil, unsafe: true)) == nil)
         let last = try await scopes.claimCodex(token: token); await scopes.finish(last, usage: nil, succeeded: false)
-        #expect(!(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint)))
+        #expect(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint) == nil)
     }
 
     @Test func expiryAndOwnershipChangeStillRejectRecovery() async throws {
@@ -106,6 +112,73 @@ struct AgentCodexRecoveryTests {
         try await expiring.startCodexSocket(token: token, lane: "root")
         try await Task.sleep(for: .milliseconds(80))
         do { _ = try await expiring.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint); Issue.record("Expired scope recovered") } catch {}
+    }
+
+    @Test func reservationCannotBeRepeatedBeforeReconnect() async throws {
+        let scopes = AgentModelScopes(), token = try await scopes.activate(Self.scope()), task = Self.idle(); defer { task.cancel() }
+        try await scopes.openCodexSocket(token: token, lane: "root", id: "old", task: task)
+        try await scopes.startCodexSocket(token: token, lane: "root")
+        #expect(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint) == 1)
+        #expect(try await scopes.offerCodexRecovery(token: token, lane: "root", checkpoint: Self.checkpoint) == nil)
+        let checkpoint = try await scopes.openCodexSocket(token: token, lane: "root", id: "new", task: task)
+        #expect(checkpoint?.recoveryAttempt == 1)
+    }
+
+    @Test func replacementFailureKeepsTheOriginalToolAndParameterCheckpoint() async throws {
+        try await withFakeDaemon { daemon, _ in
+            try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
+                let (scope, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: "http://127.0.0.1:1")
+                let connection = try AgentResponsesConnection(provider: AgentModelWire.compatible, model: scope.model,
+                    credentials: ["api_type": "responses", "endpoint_url": "http://127.0.0.1:1", "api_key": "fixture-key"])
+                let original = AgentCodexSocketCheckpoint(parameters: "original-parameters", recoveryAttempt: 2,
+                    pendingTools: ["dispatched-effect"], announcedTools: 1)
+                let replacement = AgentCodexSocketSession(routes: routes, token: token, lane: "root", connection: connection, recovery: original)
+                let retained = await replacement.checkpoint()
+                #expect(retained.parameters == "original-parameters" && retained.pendingTools == ["dispatched-effect"])
+                #expect(retained.recoveryAttempt == 2 && retained.announcedTools == 1)
+            }
+        }
+    }
+
+    @Test func eachRecoveryAttemptIsPersistedWithItsActualNumber() async throws {
+        try await withServerAndRoutes { api, store, routes in
+            var session = try await AgentExecutionStoreTests.seed(api, store)
+            let operation = "\(session.executionID):0:0"
+            try await store.startAgentOperation(session: session, operation: operation, digest: "fixture", tokenHash: "fixture")
+            session = try #require(try await store.agentSession(execution: session.executionID))
+            var scope = Self.scope(); scope.executionID = session.executionID; scope.operationID = operation
+            for attempt in 1...3 {
+                let claim = AgentModelScopes.Claim(digest: "fixture", scope: scope, index: attempt, codex: true)
+                try await routes.recordCodexModelCall(scope: scope, claim: claim, phase: "started",
+                    body: ["recovery_attempt": .int(attempt)], model: scope.model, usage: nil, status: nil, transport: "websocket")
+            }
+            let events = try await store.agentEventRecords(execution: session.executionID)
+            let attempts = try events.flatMap { try JSONValue.parse($0.record).array ?? [] }.compactMap { $0["data"]?["recovery_attempt"]?.int }
+            #expect(attempts == [1, 2, 3])
+        }
+    }
+
+    @Test func backoffHonorsDeadlineAndCancellation() async throws {
+        #expect((1...3).map(AgentCodexRecoveryPolicy.delayMilliseconds) == [1000, 2000, 4000])
+        do { try await AgentCodexRecoveryPolicy.wait(attempt: 3, expiresAt: Date().addingTimeInterval(0.1)); Issue.record("Backoff extended deadline") }
+        catch let e as AgentCodexSocketError { #expect(e.code == "agent_run_forbidden") }
+        let task = Task { try await AgentCodexRecoveryPolicy.wait(attempt: 3, expiresAt: Date().addingTimeInterval(30)) }
+        task.cancel()
+        do { try await task.value; Issue.record("Cancelled backoff continued") } catch is CancellationError {}
+    }
+
+    @Test func onlyTransientTransportLossesAreEligible() {
+        for code: UInt16 in [1000, 1002, 1003, 1007, 1008, 1009, 1010, 4001] {
+            #expect(!AgentCodexRecoveryPolicy.isTransient(AgentCodexTransportLoss.closeFrame(code)))
+        }
+        for code: UInt16 in [1001, 1011, 1012, 1013] {
+            #expect(AgentCodexRecoveryPolicy.isTransient(AgentCodexTransportLoss.closeFrame(code)))
+        }
+        #expect(AgentCodexRecoveryPolicy.isTransient(AgentCodexTransportLoss.eof))
+        #expect(AgentCodexRecoveryPolicy.isTransient(IOError(errnoCode: 104, reason: "reset")))
+        #expect(!AgentCodexRecoveryPolicy.isTransient(CancellationError()))
+        #expect(!AgentCodexRecoveryPolicy.isTransient(AgentCodexSocketError(status: 401, code: "unauthorized")))
+        #expect(!AgentCodexRecoveryPolicy.isTransient(AgentCodexSocketError(status: 502, code: "agent_model_protocol")))
     }
 
     @Test(arguments: [false, true], ["function_call", "custom_tool_call"]) func dispatchedToolRequiresItsActualResultBeforeAnotherGeneration(resultKnown: Bool, kind: String) async throws {

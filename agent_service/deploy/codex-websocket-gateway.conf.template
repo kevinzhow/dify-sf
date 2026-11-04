@@ -26,7 +26,9 @@ http {
         "" absent;
         ~*^chunked$ chunked;
     }
-    log_format codex_diagnostics escape=json '{"event":"codex_gateway","request_id":"$request_id","request_bytes_including_headers":$request_length,"content_length":"$codex_content_length","transfer_encoding":"$codex_transfer_encoding","status":$status,"upstream_status":"$upstream_status","upstream_bytes_sent":"$upstream_bytes_sent","upstream_content_length":"$codex_upstream_content_length","upstream_transfer_encoding":"$codex_upstream_transfer_encoding","seconds":$request_time,"upstream_seconds":"$upstream_response_time"}';
+    # $connection correlates native nginx error_log *connection entries (timeout/reset/peer-close).
+    # Completion/status alone do not identify which peer initiated a WebSocket shutdown.
+    log_format codex_diagnostics escape=json '{"event":"codex_gateway","request_id":"$request_id","request_bytes_including_headers":$request_length,"content_length":"$codex_content_length","transfer_encoding":"$codex_transfer_encoding","status":$status,"upstream_status":"$upstream_status","upstream_bytes_sent":"$upstream_bytes_sent","upstream_content_length":"$codex_upstream_content_length","upstream_transfer_encoding":"$codex_upstream_transfer_encoding","seconds":$request_time,"upstream_seconds":"$upstream_response_time","connection":"$connection","connection_requests":"$connection_requests","request_complete":"$request_completion","upstream_peer":"$upstream_addr","upstream_connect_seconds":"$upstream_connect_time","upstream_header_seconds":"$upstream_header_time","upstream_bytes_received":"$upstream_bytes_received"}';
     access_log /dev/stdout codex_diagnostics;
     client_body_temp_path /tmp/client_body;
     proxy_temp_path /tmp/proxy;

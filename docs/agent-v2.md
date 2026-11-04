@@ -1532,7 +1532,7 @@ JSON keepalives every 15 seconds prevent Codex's message timer from confusing lo
 WebSocket pings alone do not reset that timer in the pinned client.
 
 A deployment can explicitly enable `COLLAB_AGENT_CODEX_WEBSOCKET_RECOVERY_ENABLED=true` (default `false`). For
-WebSocket operations only, an upstream EOF, reset or close can then reserve **one recovery for the whole node
+WebSocket operations only, an upstream EOF, connection reset or transient close can reserve **up to three recoveries for the whole node
 execution**, shared by root and child lanes and retained across capability replacement. The API closes the lost
 socket without a terminal error, allowing the unchanged live Codex process to reconnect with its own full input.
 It preserves the current workspace and completed tool results; the API never reruns tools or caches history.
@@ -1552,13 +1552,25 @@ native client and a fake upstream; see pinned Codex's
 Tool checkpoint logs distinguish announced, dispatchable, acknowledged and recovery-ready/refused stages.
 They include execution identity, hashed lane/tool identities, counts and at most eight pending identity hashes;
 no names, arguments, outputs or conversation bodies are recorded. Identity sets are bounded to 256 entries.
-The next accepted generation is audited with `recovery_attempt: 1`; subsequent requests resume incremental mode.
+The first accepted generation after each recovery is audited with its actual `recovery_attempt: 1`, `2` or `3`; subsequent requests resume incremental mode.
 
 The failed call and the recovery both consume the existing call budget. File, request, output and time limits do
 not increase. Revocation, expiry, ownership changes, invalid requests and authentication errors never authorize
-recovery. A second loss ends the operation under the strict policy. The quota is reserved even if the replacement
-fails, so reconnect loops cannot keep restarting a node. Additional generation cost and incomplete upstream usage
+recovery. Replacement sockets wait 1, 2 and 4 seconds respectively before contacting the provider; the wait is
+cancellable, rechecks authorization, and must fit within the original deadline. Normal/policy/protocol close codes
+are terminal; only close codes 1001, 1011, 1012 and 1013 are eligible alongside EOF and connection errors
+(reset, abort, broken pipe, timeout or refusal). A fourth eligible loss ends the operation.
+The quota is reserved atomically even if the replacement fails, so reconnect loops cannot keep restarting a node. Additional generation cost and incomplete upstream usage
 remain subject to the provider's normal billing; recovery cannot guarantee a particular token cost.
+
+Connection diagnostics distinguish local gateway request IDs from provider handshake IDs. Each outgoing handshake
+gets a generated `X-Client-Request-Id`; bounded `x-request-id` and `cf-ray` response IDs, HTTP upgrade status,
+configured scheme/host/port and actual peer IP/port are recorded, including refused upgrades. Logs retain only
+close codes, safe error categories/errno, elapsed time and first **locally observed** termination stage; never
+credentials, full URLs, header dumps, close reason text or message bodies. The optional nginx gateway template
+adds connection correlation, peer, byte and handshake timing fields; native nginx error logs provide timeout/reset
+reasons when available. Clean EOF/101 and observation order do not prove a remote initiator. Correlate these IDs
+with remote operator logs before attributing a failure. See [OpenAI request IDs](https://developers.openai.com/api/reference/overview#debugging-requests).
 
 Ordinary HTTP requests carrying `X-DifySF-Require-Incremental` fail with 400 `incremental_required` before spending
 any call slot or contacting the provider. There is no automatic HTTP fallback or full-history reconstruction.
