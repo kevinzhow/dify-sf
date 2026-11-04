@@ -146,7 +146,7 @@ struct AgentCodexRecoveryTests {
             let operation = "\(session.executionID):0:0"
             try await store.startAgentOperation(session: session, operation: operation, digest: "fixture", tokenHash: "fixture")
             session = try #require(try await store.agentSession(execution: session.executionID))
-            var scope = Self.scope(); scope.executionID = session.executionID; scope.operationID = operation
+            var scope = Self.scope(); scope.execution["execution_id"] = .string(session.executionID); scope.operationID = operation
             for attempt in 1...3 {
                 let claim = AgentModelScopes.Claim(digest: "fixture", scope: scope, index: attempt, codex: true)
                 try await routes.recordCodexModelCall(scope: scope, claim: claim, phase: "started",

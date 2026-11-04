@@ -1568,8 +1568,14 @@ gets a generated `X-Client-Request-Id`; bounded `x-request-id` and `cf-ray` resp
 configured scheme/host/port and actual peer IP/port are recorded, including refused upgrades. Logs retain only
 close codes, safe error categories/errno, elapsed time and first **locally observed** termination stage; never
 credentials, full URLs, header dumps, close reason text or message bodies. The optional nginx gateway template
-adds connection correlation, peer, byte and handshake timing fields; native nginx error logs provide timeout/reset
-reasons when available. Clean EOF/101 and observation order do not prove a remote initiator. Correlate these IDs
+adds connection correlation, peer, byte and handshake timing fields. Its optional
+`agent_service/deploy/codex-gateway-diagnostics.sh` launcher enables info-level closure observations and passes
+**all stderr** through `codex-gateway-error-log.awk` before logging it. This avoids leaking URLs/header values from
+native nginx info logs; it requires the nginx image's existing mawk (`-W interactive` prevents pipe buffering).
+Mount the two files read-only together and run the launcher with the rendered nginx config path instead of the
+image's default entrypoint when deploying diagnostics. Timeout/peer-close/reset categories are recorded only when
+nginx emits them; unknown causes remain unknown, and access logs continue to stdout.
+Do not turn on raw info/debug logging or forward raw error lines. Clean EOF/101 and observation order do not prove a remote initiator. Correlate these IDs
 with remote operator logs before attributing a failure. See [OpenAI request IDs](https://developers.openai.com/api/reference/overview#debugging-requests).
 
 Ordinary HTTP requests carrying `X-DifySF-Require-Incremental` fail with 400 `incremental_required` before spending

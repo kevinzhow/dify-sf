@@ -15,7 +15,7 @@ public struct AgentServiceConfig: Sendable {
     public var inlineEnabled: Bool
     /// Optional internal WebSocket listener. Zero keeps the existing HTTP path unchanged.
     public var codexWebsocketPort: Int
-    /// Explicit deployment opt-in: one lost WebSocket may recover per node execution.
+    /// Explicit deployment opt-in: at most three WebSocket recoveries per node execution.
     public var codexWebsocketRecoveryEnabled: Bool
     public var shellEnabled: Bool
 

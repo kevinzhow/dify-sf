@@ -415,7 +415,7 @@ struct AgentCodexWebSocketTests {
             try await withServerAndRoutes(config: AgentModelGatewayRouteTests.config(daemon)) { api, store, routes in
                 var (scope, token) = try await AgentResponsesRouteTests.fixture(api, store, routes, endpoint: provider.endpoint)
                 _ = await routes.agentModelScopes.revoke(token: token)
-                scope.codexWebsocketRecoveryEnabled = true
+                scope.codexWebsocketRecoveryEnabled = true; scope.maxCalls = 20
                 token = try await routes.agentModelScopes.activate(scope)
                 let (ports, signal) = AsyncStream<Int>.makeStream(bufferingPolicy: .bufferingNewest(1))
                 let log = CodexSocketLog()
