@@ -114,6 +114,11 @@ extension Routes {
             "reasoning_effort": body["reasoning"]?["effort"] ?? .null,
             "include": body["include"] ?? .array([]), "max_output_tokens": body["max_output_tokens"] ?? .null]
         if let attempt = body["recovery_attempt"]?.int, (1...AgentCodexRecoveryPolicy.attempts).contains(attempt) { data["recovery_attempt"] = .int(attempt) }
+        if body["reconnect_reason"] == .string(AgentCodexReconnectReason.connectionExpired.rawValue),
+           let count = body["connection_rotation"]?.int, (1...AgentCodexRotationPolicy.maximumRotations).contains(count) {
+            data["reconnect_reason"] = body["reconnect_reason"]
+            data["connection_rotation"] = .int(count)
+        }
         data["transport"] = .string(transport)
         data["has_previous_response_id"] = .bool(body["previous_response_id"] != nil)
         if let receivedBytes { data["received_bytes"] = .int(receivedBytes) }

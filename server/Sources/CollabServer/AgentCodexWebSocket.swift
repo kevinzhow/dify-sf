@@ -25,6 +25,7 @@ struct AgentCodexSocketError: Error, Sendable {
     }
     static func safe(_ error: any Error) -> Self {
         if let error = error as? Self { return error }
+        if let loss = error as? AgentCodexTransportLoss, case .connectionExpired = loss { return .init(status: 400, code: "agent_connection_expired") }
         if error is AgentCodexCallLimit { return .init(status: 429, code: "agent_call_limit") }
         if error is AgentModelFileError { return .init(status: 422, code: "file_error") }
         if let error = error as? ServerError {
@@ -117,9 +118,21 @@ struct AgentCodexSocketCheckpoint: Sendable {
     var pendingTools: Set<String> = []
     var unsafe = false
     var announcedTools = 0
+    var rotationCount = 0
+    var reconnectReason: AgentCodexReconnectReason = .transport
 }
 
-enum AgentCodexTransportLoss: Error { case eof, closeFrame(UInt16), reset }
+enum AgentCodexReconnectReason: String, Sendable { case transport, connectionExpired = "connection_expired" }
+
+enum AgentCodexRotationPolicy {
+    // Explicit expiry events on younger connections use the fault budget instead.
+    static let minimumLifetimeSeconds: TimeInterval = 55 * 60
+    // Covers the server's 24-hour ceiling with eight concurrent lanes; the actual deadline is unchanged.
+    static let maximumRotations = 8 * Int(ceil(86400 / minimumLifetimeSeconds))
+    static func isNormalExpiry(age: TimeInterval) -> Bool { age.isFinite && age >= minimumLifetimeSeconds }
+}
+
+enum AgentCodexTransportLoss: Error { case eof, closeFrame(UInt16), reset, connectionExpired }
 
 enum AgentCodexRecoveryPolicy {
     static let attempts = 3
@@ -128,6 +141,7 @@ enum AgentCodexRecoveryPolicy {
         if let loss = error as? AgentCodexTransportLoss {
             switch loss {
             case .eof, .reset: return true
+            case .connectionExpired: return false
             case .closeFrame(let code): return [1001, 1011, 1012, 1013].contains(code)
             }
         }
@@ -197,6 +211,8 @@ actor AgentCodexSocketSession {
         let digest = Tokens.sha256(String(decoding: canonical, as: UTF8.self))
         let recoveringGeneration = recovery != nil && request.body["generate"] != false
         let recoveryAttempt = recovery?.recoveryAttempt ?? 0
+        let rotationCount = recovery?.rotationCount ?? 0
+        let reconnectReason = recovery?.reconnectReason
         // Results in the live Codex input acknowledge old tool calls. Nothing here executes them.
         for item in request.body["input"]?.array ?? [] {
             if ["function_call_output", "custom_tool_call_output"].contains(item["type"]?.string ?? ""),
@@ -232,7 +248,13 @@ actor AgentCodexSocketSession {
         // Keep audit metadata only. The initial image/history payload must be
         // released after its write, not cached for this socket's lifetime.
         body = JSONObject(request.body.filter { ["reasoning", "include", "max_output_tokens", "previous_response_id", "generate"].contains($0.key) })
-        if recoveringGeneration { body["recovery_attempt"] = .int(recoveryAttempt) }
+        if recoveringGeneration {
+            if recoveryAttempt > 0 { body["recovery_attempt"] = .int(recoveryAttempt) }
+            if reconnectReason == .connectionExpired {
+                body["connection_rotation"] = .int(rotationCount)
+                body["reconnect_reason"] = .string(AgentCodexReconnectReason.connectionExpired.rawValue)
+            }
+        }
         var upstream = request.body; upstream["type"] = "response.create"
         let encoded = JSONValue.object(upstream).compactJSON()
         received = bytes.count; sent = encoded.utf8.count; usage = nil
@@ -277,6 +299,12 @@ actor AgentCodexSocketSession {
             let code = raw.utf8.count <= 128 && raw.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_") }) ? raw : "unknown"
             let status = value["status"]?.int ?? value["status_code"]?.int ?? 0
             routes.logger.info("codex websocket event type=\(type) bytes=\(bytes.count) status=\(status) code=\(code) warmup=\(body["generate"] == false)", metadata: diagnostics?.metadata)
+        }
+        // A connection-scoped expiry can arrive between responses or during warmup.
+        // Preserve the checkpoint and settle any in-flight claim in the lifecycle catch.
+        if type == "error", value["error"]?["code"] == "websocket_connection_limit_reached",
+           (value["status"]?.int ?? value["status_code"]?.int) == 400 {
+            throw AgentCodexTransportLoss.connectionExpired
         }
         if let raw = value["response"]?["usage"], raw.object != nil { usage = LLMUsage(json: raw) }
         func tool(_ item: JSONValue, complete: Bool) {
@@ -328,7 +356,7 @@ actor AgentCodexSocketSession {
     func checkpoint() -> AgentCodexSocketCheckpoint {
         // A replacement may fail during connect/warmup before it reconciles its input.
         // Keep the original unknown-result guard and parameter digest for another attempt.
-        recovery ?? .init(parameters: parameters, pendingTools: tools.pending, unsafe: tools.unsafe, announcedTools: tools.announced.count)
+        recovery ?? .init(parameters: generationStarted ? parameters : nil, pendingTools: tools.pending, unsafe: tools.unsafe, announcedTools: tools.announced.count)
     }
 
     private func logTools(phase: String, id: String? = nil, checkpoint: AgentCodexSocketCheckpoint? = nil) {
@@ -363,6 +391,7 @@ struct AgentCodexWebSocketService: Service {
     let port: Int
     var onListening: (@Sendable (Int) -> Void)? = nil
     var diagnosticsLogger: Logger? = nil
+    var connectionUptime: @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     static let path = "/inner/agent/codex/v1/responses"
 
     private enum Upgraded: Sendable {
@@ -486,13 +515,19 @@ struct AgentCodexWebSocketService: Service {
                 let connection = try AgentResponsesConnection(provider: scope.provider, model: scope.model, credentials: credentials)
                 let session = AgentCodexSocketSession(routes: routes, token: token, lane: lane, connection: connection,
                     diagnostics: diagnostics, recovery: recovery)
+                var upstreamOpenedAt: TimeInterval?
                 do {
                     let upstream: NIOAsyncChannel<WebSocketFrame, WebSocketFrame>
                     do {
                         if let recovery {
-                            diagnostics.recovery(attempt: recovery.recoveryAttempt,
-                                delayMilliseconds: AgentCodexRecoveryPolicy.delayMilliseconds(attempt: recovery.recoveryAttempt))
-                            try await AgentCodexRecoveryPolicy.wait(attempt: recovery.recoveryAttempt, expiresAt: scope.expiresAt)
+                            if recovery.reconnectReason == .connectionExpired {
+                                diagnostics.rotation(count: recovery.rotationCount)
+                                try Task.checkCancellation()
+                            } else {
+                                diagnostics.recovery(attempt: recovery.recoveryAttempt,
+                                    delayMilliseconds: AgentCodexRecoveryPolicy.delayMilliseconds(attempt: recovery.recoveryAttempt))
+                                try await AgentCodexRecoveryPolicy.wait(attempt: recovery.recoveryAttempt, expiresAt: scope.expiresAt)
+                            }
                             try await routes.requireActiveAgentCodexScope(try await routes.agentModelScopes.activeScope(token: token))
                         }
                         upstream = try await AgentCodexUpstream.connect(connection, diagnostics: diagnostics)
@@ -502,6 +537,7 @@ struct AgentCodexWebSocketService: Service {
                         if AgentCodexRecoveryPolicy.isTransient(error) { throw AgentCodexTransportLoss.reset }
                         throw error
                     }
+                    upstreamOpenedAt = connectionUptime()
                     upstream.channel.closeFuture.whenComplete { result in
                         if case .failure(let error) = result {
                             diagnostics.ended(.upstreamChannel, .error, error: error)
@@ -609,14 +645,18 @@ struct AgentCodexWebSocketService: Service {
                 } catch {
                     let safe = AgentCodexSocketError.safe(error)
                     routes.logger.warning("codex websocket operation failed status=\(safe.status) code=\(safe.code) error_type=\(String(reflecting: type(of: error)))", metadata: diagnostics.metadata)
-                    await session.finish()
-                    if error is AgentCodexTransportLoss, AgentCodexRecoveryPolicy.isTransient(error) {
+                    let expired = (error as? AgentCodexTransportLoss).map { if case .connectionExpired = $0 { true } else { false } } ?? false
+                    await session.finish(status: expired ? 400 : 502)
+                    if expired || (error is AgentCodexTransportLoss && AgentCodexRecoveryPolicy.isTransient(error)) {
                         try Task.checkCancellation()
                         let current = try await routes.agentModelScopes.activeScope(token: token)
                         try await routes.requireActiveAgentCodexScope(current)
                         let checkpoint = await session.checkpoint()
-                        if let attempt = try await routes.agentModelScopes.offerCodexRecovery(token: token, lane: lane, checkpoint: checkpoint) {
-                            routes.logger.warning("codex websocket recovery reserved execution=\(current.executionID) generation=\(current.generation) attempt=\(attempt)", metadata: diagnostics.metadata)
+                        let age = upstreamOpenedAt.map { max(0, connectionUptime() - $0) } ?? 0
+                        let normalExpiry = expired && AgentCodexRotationPolicy.isNormalExpiry(age: age)
+                        if let attempt = try await routes.agentModelScopes.offerCodexRecovery(token: token, lane: lane, checkpoint: checkpoint,
+                            normalExpiry: normalExpiry, socketID: diagnostics.socketID) {
+                            routes.logger.warning("codex websocket reconnect reserved execution=\(current.executionID) generation=\(current.generation) reason=\(normalExpiry ? "connection_expired" : "transport") count=\(attempt)", metadata: diagnostics.metadata)
                             // No terminal400: let the unchanged live Codex recover its own context/results.
                             downstream.channel.close(promise: nil)
                             return

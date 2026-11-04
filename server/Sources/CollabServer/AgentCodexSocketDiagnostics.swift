@@ -19,6 +19,7 @@ final class AgentCodexSocketDiagnostics: Sendable {
     }
     enum End: String, Sendable { case eof, closeFrame = "close_frame", unexpectedFrame = "unexpected_frame", error, cancelled, channelClosed = "channel_closed" }
 
+    let socketID: String
     let logger: Logger
     let clientRequestID = UUID().uuidString
     private let base: Logger.Metadata
@@ -28,7 +29,7 @@ final class AgentCodexSocketDiagnostics: Sendable {
     private let sequence = Mutex(0)
 
     init(logger: Logger, socketID: String, requestID: String?) {
-        self.logger = logger
+        self.logger = logger; self.socketID = socketID
         var fields: Logger.Metadata = ["socket_id": "\(socketID)"]
         if let id = HTTPFailureDiagnostics.validatedRequestID(requestID) { fields["request_id"] = "\(id)" }
         base = fields
@@ -78,6 +79,11 @@ final class AgentCodexSocketDiagnostics: Sendable {
     func recovery(attempt: Int, delayMilliseconds: Int) {
         logger.info("codex websocket recovery backoff", metadata: metadata.merging([
             "recovery_attempt": "\(attempt)", "backoff_ms": "\(delayMilliseconds)"] ) { _, new in new })
+    }
+
+    func rotation(count: Int) {
+        logger.info("codex websocket connection rotation", metadata: metadata.merging([
+            "reconnect_reason": "connection_expired", "rotation_count": "\(count)"] ) { _, new in new })
     }
 
     func ended(_ stage: Stage, _ end: End, error: (any Error)? = nil, closeCode: UInt16? = nil) {
