@@ -231,6 +231,58 @@ void main() {
       expect(result['message'], isNot(contains('no hand-in')));
     });
 
+    final notHandedIn = <String, void Function(FakeCodexAppServer)>{
+      'not JSON': (s) => _write(s, raw: '{unfinished json'),
+      'against the schema': (s) => _write(s, json: {'notes': 1}),
+      'a file that is not there': (s) => _write(
+        s,
+        json: {'notes': 'x', 'report': '$checkpointDir/1/gone.csv'},
+      ),
+      'a file of the wrong type': (s) {
+        _write(s, json: {'notes': 'x', 'report': '$checkpointDir/1/r.png'});
+        s.sandbox.files['/workspace/$checkpointDir/1/r.png'] = [1, 2];
+      },
+    };
+    for (final MapEntry(key: name, value: write) in notHandedIn.entries) {
+      test('a checkpoint with $name does not stop a run that can still '
+          'finish by itself', () async {
+        checkpointReserveForTests = 3;
+        addTearDown(() => checkpointReserveForTests = null);
+        final fake = FakeCodexAppServer(
+          turn: (s) async {
+            s.usage();
+            write(s);
+            await Future<void>.delayed(const Duration(seconds: 3));
+            s.sandbox.files['/workspace/$_reportPath'] = utf8.encode('a\n1\n');
+            s.message(jsonEncode(_valid), phase: 'final_answer');
+            s.complete({'status': 'completed'});
+          },
+        );
+        final (result, names) = await _ran(fake, timeoutSeconds: 4);
+        expect(names.last, 'succeeded', reason: jsonEncode(result));
+        expect(result['partial'], isNull);
+        expect(fake.methods, isNot(contains('turn/interrupt')));
+      });
+    }
+
+    test('a run with a bad checkpoint that does not finish still fails at '
+        'the limit', () async {
+      checkpointReserveForTests = 1;
+      addTearDown(() => checkpointReserveForTests = null);
+      final watch = Stopwatch()..start();
+      final fake = FakeCodexAppServer(
+        turn: (s) async {
+          s.usage();
+          _write(s, raw: '{unfinished json');
+        },
+      );
+      final (result, names) = await _ran(fake, timeoutSeconds: 2);
+      expect(names.last, 'failed');
+      expect(result['error_type'], 'timeout');
+      expect(result['message'], 'the run exceeded 2 seconds');
+      expect(watch.elapsedMilliseconds, greaterThanOrEqualTo(2000));
+    });
+
     test('timeout with no checkpoint runs to the limit', () async {
       final watch = Stopwatch()..start();
       final fake = FakeCodexAppServer(turn: (s) async => s.usage());

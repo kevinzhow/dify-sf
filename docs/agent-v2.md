@@ -518,9 +518,10 @@ the run fails exactly as without this section.
 For `timeout` the read comes earlier:
 
 - The Swift gateway refuses uploads once the operation's deadline has passed, and it ends together with
-  `timeout_seconds`. So `min(120, max(1, timeout_seconds / 10))` seconds before the limit the service looks for the
-  file. If it is there, the turn is interrupted and the run goes on as a `timeout` failure with a hand-in. If not, the
-  run goes on to the limit and fails `timeout` as before (a checkpoint written after that look is not handed in). With
+  `timeout_seconds`. So `min(120, max(1, timeout_seconds / 10))` seconds before the limit the service looks at the
+  file and checks it as below, without uploading anything. If it qualifies, the turn is interrupted and the run goes on
+  as a `timeout` failure with a hand-in. If it is missing or does not qualify, the run goes on to the limit: it can still
+  finish by itself, and otherwise fails `timeout` as before (a checkpoint written after that look is not handed in). With
   declared outputs the time notice of [Near-budget submit](#near-budget-submit) counts to that moment, not to the limit.
 
 **The result.** The file is parsed and checked like a final answer: optional nulls dropped, `candidate_errors` per the

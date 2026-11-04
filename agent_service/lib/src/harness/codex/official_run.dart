@@ -264,19 +264,22 @@ class _OfficialCodexRun {
   }
 
   /// [checkpointReserveSeconds] before the timeout: a run with a checkpoint
-  /// stops now, while the gateway still takes its files. Without one it goes
-  /// on to the timeout.
+  /// that would be handed in stops now, while the gateway still takes its
+  /// files. Without one, or with one that does not qualify, it goes on to the
+  /// timeout. Nothing is uploaded here: the run may still finish by itself.
   void _stopForCheckpoint() {
-    final sandbox = _sandbox;
-    if (sandbox == null || !_checkpointUsable || _turnDone.isCompleted) return;
+    if (_sandbox == null || !_checkpointUsable || _turnDone.isCompleted) return;
     unawaited(() async {
-      final bool found;
-      try {
-        found = (await sandbox.statFile(checkpointFile)).error == null;
-      } catch (_) {
+      final (handIn, problem) = await _readCheckpoint('timeout', upload: false);
+      if (handIn == null) {
+        if (problem != null) {
+          run.log?.call(
+            'run ${run.runId}: not stopping for the checkpoint: $problem',
+          );
+        }
         return;
       }
-      if (found && !_turnDone.isCompleted) {
+      if (!_turnDone.isCompleted) {
         _abort(
           'timeout',
           'the run reached its hand-in time, '
@@ -330,9 +333,11 @@ class _OfficialCodexRun {
 
   /// The checkpoint as a valid candidate with its files uploaded, or the
   /// reason it cannot be handed in (null: there is none, or none may be).
-  /// Never throws: the run's own failure must survive whatever goes wrong here.
+  /// With [upload] false its files are only checked, and the candidate is not
+  /// one to hand in. Never throws: the run's own failure must survive whatever
+  /// goes wrong here.
   Future<(({Map<String, Object?> candidate, String text})?, String?)>
-  _readCheckpoint(String type) async {
+  _readCheckpoint(String type, {bool upload = true}) async {
     final schema = r.outputSchema;
     final sandbox = _sandbox;
     if (schema == null ||
@@ -363,7 +368,11 @@ class _OfficialCodexRun {
       var errors = await candidateErrors(schema, map);
       Map<String, Object?>? candidate;
       if (errors.isEmpty) {
-        (candidate, errors) = await run._resolveFileOutputs(map, errors);
+        (candidate, errors) = await run._resolveFileOutputs(
+          map,
+          errors,
+          upload: upload,
+        );
       }
       if (errors.isNotEmpty) {
         return (

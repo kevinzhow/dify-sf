@@ -1462,12 +1462,14 @@ class AgentRun {
 
   /// Uploads the declared file outputs of [candidate]. A path that is not a
   /// usable workspace file is a candidate error for its field; a failed
-  /// upload throws [SandboxFailure] (`file_error`).
+  /// upload throws [SandboxFailure] (`file_error`). With [upload] false the
+  /// paths are only checked: nothing is sent and the values stay paths.
   Future<(Map<String, Object?>, List<Map<String, Object?>>)>
   _resolveFileOutputs(
     Map<String, Object?> candidate,
-    List<Map<String, Object?>> errors,
-  ) async {
+    List<Map<String, Object?>> errors, {
+    bool upload = true,
+  }) async {
     if (candidate.containsKey(partialHandinOutput)) {
       candidate = {...candidate}..remove(partialHandinOutput);
     }
@@ -1533,6 +1535,7 @@ class AgentRun {
         allErrors.add({'field': field, 'error': error});
         continue;
       }
+      if (!upload) continue;
       for (final f in resolved) {
         final bytes = await sandbox!.readFile(f.real, f.size);
         try {
