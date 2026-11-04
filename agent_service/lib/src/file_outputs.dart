@@ -10,6 +10,7 @@
 /// "mime_types": ["text/csv"]}}`; both constraint lists are optional.
 library;
 
+import 'checkpoint.dart';
 import 'output_tool.dart';
 
 const fileOutputKeyword = 'x-dify-sf-file';
@@ -164,8 +165,9 @@ Object? replaceAt(Object? root, List<Object> path, Object? value) {
   return root;
 }
 
-/// [schema] without the `x-dify-sf-file` keyword, as the model sees it; a file
-/// property without a description says that it takes a workspace path.
+/// [schema] without the `x-dify-sf-file` keyword and the service's
+/// [partialHandinOutput], as the model sees it; a file property without a
+/// description says that it takes a workspace path.
 Map<String, Object?> modelFacingSchema(Map<String, Object?> schema) {
   Object? walk(Object? node) {
     if (node is Map) {
@@ -184,7 +186,23 @@ Map<String, Object?> modelFacingSchema(Map<String, Object?> schema) {
     return node;
   }
 
-  return (walk(schema) as Map).cast<String, Object?>();
+  final out = (walk(schema) as Map).cast<String, Object?>();
+  // Filled by the service on a checkpoint hand-in, never by the model.
+  final props = out['properties'];
+  if (props is Map && props.containsKey(partialHandinOutput)) {
+    out['properties'] = {...props}..remove(partialHandinOutput);
+    final required = out['required'];
+    if (required is List) {
+      out['required'] = [...required]..remove(partialHandinOutput);
+    }
+  }
+  return out;
+}
+
+/// Whether [schema] declares the [partialHandinOutput] output.
+bool declaresPartialHandin(Map<String, Object?> schema) {
+  final props = schema['properties'];
+  return props is Map && props.containsKey(partialHandinOutput);
 }
 
 /// MIME types by extension; `file --mime-type` decides for the rest.

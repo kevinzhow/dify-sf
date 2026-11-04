@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:schemantic/schemantic.dart';
 
 import 'ask_human.dart';
+import 'checkpoint.dart';
 import 'executor_profiles.dart' show Egress;
 import 'file_outputs.dart';
 import 'gateway.dart';
@@ -476,24 +477,7 @@ class AgentRun {
     // log is where the reason of a failed run stays.
     final type = data['error_type'];
     var message = data['message']?.toString();
-    if (message != null) {
-      // Mask before clipping so even a credential crossing the limit is hidden.
-      final secrets =
-          [
-              serviceKey,
-              runToken,
-              request.codexRunToken,
-            ].whereType<String>().where((s) => s.isNotEmpty).toList()
-            ..sort((a, b) => b.length.compareTo(a.length));
-      for (final secret in secrets) {
-        message = message!.replaceAll(secret, '[redacted]');
-      }
-      final chars = message!.runes;
-      message = jsonEncode(
-        String.fromCharCodes(chars.take(2000)) +
-            (chars.length > 2000 ? '…' : ''),
-      );
-    }
+    if (message != null) message = _forLog(message);
     log?.call(
       'run $runId ended $event${type == null ? '' : ' ($type)'}'
       '${message == null ? '' : ': $message'}',
@@ -501,6 +485,26 @@ class AgentRun {
     _events.add(e);
     unawaited(_events.close());
     _done.complete(e);
+  }
+
+  /// [text] for the service log: credentials masked (before clipping, so
+  /// even one crossing the limit is hidden), at most 2000 code points, quoted.
+  String _forLog(String text) {
+    final secrets =
+        [
+            serviceKey,
+            runToken,
+            request.codexRunToken,
+          ].whereType<String>().where((s) => s.isNotEmpty).toList()
+          ..sort((a, b) => b.length.compareTo(a.length));
+    var masked = text;
+    for (final secret in secrets) {
+      masked = masked.replaceAll(secret, '[redacted]');
+    }
+    final chars = masked.runes;
+    return jsonEncode(
+      String.fromCharCodes(chars.take(2000)) + (chars.length > 2000 ? '…' : ''),
+    );
   }
 
   Future<void> start() async {
@@ -1464,6 +1468,9 @@ class AgentRun {
     Map<String, Object?> candidate,
     List<Map<String, Object?>> errors,
   ) async {
+    if (candidate.containsKey(partialHandinOutput)) {
+      candidate = {...candidate}..remove(partialHandinOutput);
+    }
     final sites = fileSites(request.outputSchema!, candidate);
     if (sites.isEmpty) return (candidate, errors);
     Object? out = Map<String, Object?>.of(candidate);

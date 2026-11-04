@@ -151,10 +151,6 @@ class _OfficialCodexRun {
   /// With `codex_session.retain`: the turns the thread had before this run.
   int _turnsBefore = 0;
 
-  /// Set when the turn completed: the `succeeded` result (built by
-  /// [execute]'s finish) still needs CODEX_HOME to keep the session.
-  bool _completedTurn = false;
-
   static final Random _random = Random.secure();
 
   /// Runs the turn and ends the run. CODEX_HOME is removed before the
@@ -163,9 +159,19 @@ class _OfficialCodexRun {
   /// races the removal.
   Future<void> execute() async {
     run._onStop = _interrupt;
+    final handInTime = r.outputSchema == null
+        ? null
+        : Timer(
+            Duration(
+              seconds:
+                  r.timeoutSeconds - checkpointReserveSeconds(r.timeoutSeconds),
+            ),
+            _stopForCheckpoint,
+          );
     try {
       await _execute();
     } finally {
+      handInTime?.cancel();
       // Also when something else was thrown (the run then fails internal).
       await _removeHome();
     }
@@ -180,11 +186,11 @@ class _OfficialCodexRun {
       } on _Finish catch (f) {
         finish = f.run;
       } on SandboxFailure catch (e) {
-        finish = () async => run._fail(e.errorType, e.message);
+        finish = () => _failOrHandIn(e.errorType, e.message);
       } on ShellctlException catch (e) {
-        finish = () async => run._fail('sandbox_error', e.toolText);
+        finish = () => _failOrHandIn('sandbox_error', e.toolText);
       } on CodexRpcError catch (e) {
-        finish = () async => run._fail('internal', '$e');
+        finish = () => _failOrHandIn('internal', '$e');
       }
     } finally {
       stopped = run._stopReason;
@@ -194,9 +200,8 @@ class _OfficialCodexRun {
       await _removeHome();
       return run._finishStopped(stopped ?? run._stopReason!);
     }
-    // Only a completed turn's result keeps the session (and removes the
-    // home itself once done).
-    if (!_completedTurn) await _removeHome();
+    // A completed turn's result and a hand-in keep the session; every finish
+    // removes the home itself before the terminal event.
     await finish();
   }
 
@@ -234,7 +239,154 @@ class _OfficialCodexRun {
   }
 
   Never _failWith(String type, String message) =>
-      throw _Finish(() async => run._fail(type, message));
+      throw _Finish(() => _failOrHandIn(type, message));
+
+  // ---- checkpoint hand-in (docs/agent-v2.md, "Checkpoint hand-in") ---------
+
+  /// False when an operation without a continuation could not clear an older
+  /// checkpoint: what is there may belong to an earlier round.
+  bool _checkpointUsable = true;
+
+  /// Before anything runs in an operation without a continuation.
+  Future<void> _clearCheckpoint(ExecutionSandbox sandbox) async {
+    if (r.continuation != null || r.outputSchema == null) return;
+    final dir = '${sandbox.layout.workspaceDir}/$checkpointDir';
+    try {
+      final c = await sandbox.control('rm -rf -- ${shellQuote(dir)}');
+      if (c.exitCode != 0) throw StateError('${c.status} ${c.output.trim()}');
+    } catch (e) {
+      _checkpointUsable = false;
+      run.log?.call(
+        'run ${run.runId}: could not clear $checkpointDir, no hand-in in this '
+        'operation: $e',
+      );
+    }
+  }
+
+  /// [checkpointReserveSeconds] before the timeout: a run with a checkpoint
+  /// stops now, while the gateway still takes its files. Without one it goes
+  /// on to the timeout.
+  void _stopForCheckpoint() {
+    final sandbox = _sandbox;
+    if (sandbox == null || !_checkpointUsable || _turnDone.isCompleted) return;
+    unawaited(() async {
+      final bool found;
+      try {
+        found = (await sandbox.statFile(checkpointFile)).error == null;
+      } catch (_) {
+        return;
+      }
+      if (found && !_turnDone.isCompleted) {
+        _abort(
+          'timeout',
+          'the run reached its hand-in time, '
+              '${checkpointReserveSeconds(r.timeoutSeconds)} seconds before '
+              'the limit of ${r.timeoutSeconds} seconds',
+        );
+      }
+    }());
+  }
+
+  /// Ends a failed run: `succeeded` with the checkpoint when there is a usable
+  /// one, else `failed` as if there were none (a checkpoint that does not
+  /// qualify is named in the message). A stop during the hand-in wins.
+  Future<void> _failOrHandIn(String type, String message) async {
+    final (handIn, problem) = await _readCheckpoint(type);
+    final stopped = run._stopReason;
+    if (stopped != null) {
+      await _removeHome();
+      return run._finishStopped(stopped);
+    }
+    if (handIn == null) {
+      await _removeHome();
+      return run._fail(
+        type,
+        problem == null ? message : '$message; no hand-in: $problem',
+      );
+    }
+    run.log?.call(
+      'run ${run.runId}: handing in the checkpoint instead of failing $type: '
+      '${run._forLog(message)}',
+    );
+    final session = r.retainsSession
+        ? await _keepSession(failedTurn: true)
+        : null;
+    await _removeHome();
+    final partial = {
+      'reason': type,
+      'notice_call_index': run._notice?.callIndex,
+      'handin': 'checkpoint',
+      'call_index': _calls,
+    };
+    run._finish('succeeded', {
+      'candidate': handIn.candidate,
+      'candidate_errors': const <Object?>[],
+      'snapshot': _snapshot(handIn.text, handIn: partial),
+      'usage': run.usage.toJson(),
+      'partial': partial,
+      'session': ?session,
+    });
+  }
+
+  /// The checkpoint as a valid candidate with its files uploaded, or the
+  /// reason it cannot be handed in (null: there is none, or none may be).
+  /// Never throws: the run's own failure must survive whatever goes wrong here.
+  Future<(({Map<String, Object?> candidate, String text})?, String?)>
+  _readCheckpoint(String type) async {
+    final schema = r.outputSchema;
+    final sandbox = _sandbox;
+    if (schema == null ||
+        sandbox == null ||
+        !_checkpointUsable ||
+        run._stopReason != null ||
+        !checkpointErrorTypes.contains(type)) {
+      return (null, null);
+    }
+    try {
+      final st = await sandbox.statFile(checkpointFile);
+      if (st.error != null) {
+        return st.error!.endsWith('does not exist in the workspace')
+            ? (null, null)
+            : (null, st.error);
+      }
+      if (st.size > checkpointMaxBytes) {
+        return (
+          null,
+          '$checkpointFile has more than $checkpointMaxBytes bytes',
+        );
+      }
+      final text = utf8.decode(await sandbox.readFile(st.realPath!, st.size));
+      final parsed = jsonDecode(text);
+      if (parsed is! Map) return (null, '$checkpointFile is not a JSON object');
+      final map = (dropOptionalNulls(modelFacingSchema(schema), parsed) as Map)
+          .cast<String, Object?>();
+      var errors = await candidateErrors(schema, map);
+      Map<String, Object?>? candidate;
+      if (errors.isEmpty) {
+        (candidate, errors) = await run._resolveFileOutputs(map, errors);
+      }
+      if (errors.isNotEmpty) {
+        return (
+          null,
+          'the checkpoint is not valid: '
+              '${errors.map((e) => '${e['field']}: ${e['error']}').join('; ')}',
+        );
+      }
+      return (
+        (
+          candidate: {
+            ...candidate!,
+            if (declaresPartialHandin(schema))
+              partialHandinOutput: partialHandinNote(type, _calls),
+          },
+          text: text,
+        ),
+        null,
+      );
+    } catch (e) {
+      return (null, 'reading the checkpoint failed: $e');
+    }
+  }
 
   /// Adds [info] to the held `run_started`'s `runtime`.
   void _addRuntime(Map<String, Object?> info) {
@@ -711,8 +863,10 @@ class _OfficialCodexRun {
   /// or a failed copy, which is logged and recorded
   /// ([SessionState.saveFailed]): the round stays `succeeded` and the next
   /// round fails `session_restore_failed` instead of resuming an older
-  /// turn. Never throws.
-  Future<Map<String, Object?>> _keepSession() async {
+  /// turn. After a [failedTurn] (a hand-in) a save that fails records nothing:
+  /// as for a failed round, the next round finds what was there before. Never
+  /// throws.
+  Future<Map<String, Object?>> _keepSession({bool failedTurn = false}) async {
     final key = r.workspaceKey!;
     final sandbox = _sandbox;
     final home = _home;
@@ -723,7 +877,7 @@ class _OfficialCodexRun {
         'run ${run.runId}: $message; the next round of this node cannot '
         'resume it',
       );
-      run.store.setSessionSaveFailed(key, message);
+      if (!failedTurn) run.store.setSessionSaveFailed(key, message);
       return {
         'saved': false,
         'error': {'code': 'save_failed', 'message': message},
@@ -995,6 +1149,7 @@ class _OfficialCodexRun {
     final session = await run._shellSession();
     _checkStopped();
     final sandbox = _sandbox = session.sandbox;
+    await _clearCheckpoint(sandbox);
     // The kept session must match the kept workspace (before anything runs).
     final resume = r.retainsSession ? _sessionToResume(sandbox) : null;
     final baseUrl =
@@ -1420,7 +1575,9 @@ class _OfficialCodexRun {
         (hasMessageOrTool ? null : _unphased?['text'] as String?) ??
         '';
     final schema = r.outputSchema;
-    _completedTurn = true;
+    final earlierHandIn =
+        (r.continuation?.snapshot['checkpoint_handin'] as Map?)
+            ?.cast<String, Object?>();
     return () async {
       Object? candidate;
       var errors = <Map<String, Object?>>[];
@@ -1439,6 +1596,16 @@ class _OfficialCodexRun {
           } on SandboxFailure catch (e) {
             await _removeHome();
             return run._fail(e.errorType, e.message);
+          }
+          // An output retry of a hand-in stays marked as one.
+          if (earlierHandIn != null && declaresPartialHandin(schema)) {
+            candidate = {
+              ...candidate as Map<String, Object?>,
+              partialHandinOutput: partialHandinNote(
+                '${earlierHandIn['reason']}',
+                earlierHandIn['call_index'] as int,
+              ),
+            };
           }
         } else {
           candidate = null;
@@ -1459,15 +1626,18 @@ class _OfficialCodexRun {
       run._finish('succeeded', {
         'candidate': candidate,
         'candidate_errors': errors,
-        'snapshot': _snapshot(text),
+        'snapshot': _snapshot(text, handIn: earlierHandIn),
         'usage': run.usage.toJson(),
-        'partial': run._partial,
+        'partial': earlierHandIn ?? run._partial,
         'session': ?session,
       });
     };
   }
 
-  Map<String, Object?> _snapshot(String finalAnswer) => {
+  Map<String, Object?> _snapshot(
+    String finalAnswer, {
+    Map<String, Object?>? handIn,
+  }) => {
     'envelope': envelopeName,
     'revision': ((r.continuation?.snapshot['revision'] as int?) ?? 0) + 1,
     'harness_style': HarnessStyle.codex.wire,
@@ -1488,6 +1658,7 @@ class _OfficialCodexRun {
     }.toList(),
     'workspace_ref': run._workspaceRef,
     'executor_profile': r.executorProfile,
+    'checkpoint_handin': ?handIn,
   };
 
   // ---- Codex events -> dify-sf events -------------------------------------
@@ -1812,7 +1983,12 @@ class _OfficialCodexRun {
     final need = callsToFinish(r);
     final callIndex = _calls + 1;
     final remainingCalls = r.maxTurns - callIndex + 1;
-    final remaining = Duration(seconds: r.timeoutSeconds) - run._clock.elapsed;
+    // With declared outputs the run may stop for its checkpoint before the
+    // limit: the model's time ends there.
+    final limit = r.outputSchema == null
+        ? r.timeoutSeconds
+        : r.timeoutSeconds - checkpointReserveSeconds(r.timeoutSeconds);
+    final remaining = Duration(seconds: limit) - run._clock.elapsed;
     final BudgetReason reason;
     if (remainingCalls <= noticeCalls(r)) {
       reason = BudgetReason.maxTurns;

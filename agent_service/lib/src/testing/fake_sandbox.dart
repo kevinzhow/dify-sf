@@ -305,6 +305,12 @@ class FakeShellctl {
         'ok ${files[real]!.length} ${mimeTypes[real] ?? 'text/plain'}\n$real\n',
       );
     }
+    final rm = RegExp(r"rm -rf -- ('[^']*')").firstMatch(script);
+    if (rm != null) {
+      final p = _unquote(rm.group(1)!);
+      files.removeWhere((k, _) => k == p || k.startsWith('$p/'));
+      return (0, '');
+    }
     var out = '';
     final append = RegExp(
       r"base64 -d >> ('[^']*') <<'DIFYSF_EOF'\n([\s\S]*?)\nDIFYSF_EOF",

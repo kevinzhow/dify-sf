@@ -87,6 +87,9 @@ class FakeCodexAppServer {
   /// [codexHome]); [startRun] attaches it.
   void attach(FakeShellctl s) => _shellctl = s;
 
+  /// The fake sandbox (its `files`), while the turn plays.
+  FakeShellctl get sandbox => _shellctl!;
+
   /// Binds the WebSocket port (done by [startRun]).
   Future<void> start() => _start();
 
@@ -417,11 +420,16 @@ class FakeCodexAppServer {
 Map<String, Object?> officialCodexOp({
   Object? effort,
   int maxTurns = 10,
+  int timeoutSeconds = 30,
   Map<String, Object?>? outputSchema,
   int? contextWindow,
   List<String>? reasoningEfforts,
 }) {
-  final o = operation(maxTurns: maxTurns, outputSchema: outputSchema);
+  final o = operation(
+    maxTurns: maxTurns,
+    timeoutSeconds: timeoutSeconds,
+    outputSchema: outputSchema,
+  );
   final model = Map.of(o['model'] as Map<String, Object?>)
     ..['run_token'] = 'secret-run-token';
   if (effort != null) model['parameters'] = {'reasoning_effort': effort};

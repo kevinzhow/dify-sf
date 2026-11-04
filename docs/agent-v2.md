@@ -234,7 +234,7 @@ Swift server then reads `GET /v1/runs/{run_id}`.
 | `plan` | `codex` style with `tools.update_plan`: `{"explanation", "plan": [{"step", "status"}], "call_index"}` |
 | `compaction` | Official Codex runtime: `{"phase": "started" \| "finished", "call_index"}` around Codex's compaction of the conversation (a `contextCompaction` item of the root thread) |
 | `model_retry` | `codex` style: `{"call_index", "attempt", "layer": "request" \| "stream", "kind", "message", "delay_ms"}` before a retried model call (see [Harness styles](#harness-styles)); the official Codex runtime sends `"layer": "codex"`, `kind` = Codex's error code, `attempt` and `delay_ms` null |
-| `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage", "partial", "session"?}`; `partial` is `null`, or `{"reason", "notice_call_index"}` when the result came after a budget notice; `session` with `codex_session.retain`: `{"saved": true, "thread_id", "turns"}` or `{"saved": false, "error": {"code": "save_failed", "message"}}` (see [Codex session retained across rounds](#codex-session-retained-across-rounds)) |
+| `succeeded` | `{"candidate": {…}, "candidate_errors": […], "snapshot": <envelope>, "usage", "partial", "session"?}`; `partial` is `null`, or `{"reason", "notice_call_index"}` when the result came after a budget notice, or `{"reason", "notice_call_index", "handin": "checkpoint", "call_index"}` when the run failed and handed in its checkpoint (see [Checkpoint hand-in](#checkpoint-hand-in)); `session` with `codex_session.retain`: `{"saved": true, "thread_id", "turns"}` or `{"saved": false, "error": {"code": "save_failed", "message"}}` (see [Codex session retained across rounds](#codex-session-retained-across-rounds)) |
 | `paused` | `{"question_id", "tool_call_id", "question": <ask_human args>, "snapshot": <envelope>, "usage"}` |
 | `failed` | `{"error_type", "message", "usage", "snapshot"?}` |
 | `cancelled` | `{"usage", "snapshot"?}` |
@@ -495,6 +495,58 @@ what it has before the limit is reached:
   `final_output` or `ask_human`, those tools are not run (no call is left to read their results) and the run fails
   `max_turns` at once, with "the model was told to finish at call N" in the message. The time limit stays a hard
   stop: `timeout` as before.
+
+### Checkpoint hand-in
+
+A dify-sf extension of the official Codex runtime (`harness_style: codex` with Codex in the sandbox; the other
+runtimes ignore the file): a run with declared outputs that fails after real work can hand in the agent's last complete
+work instead of losing the round. No request field turns it on: an agent that never writes the file fails as before.
+
+**The checkpoint.** `/workspace/.dify-sf/checkpoint/final_output.json`: a JSON object like the arguments of
+`final_output` (file outputs: workspace-relative paths; output filenames come from those paths). What counts as
+complete is the agent's and the workflow's decision: the service checks the same things as for `final_output` and
+nothing about the work. The writer copies the files first (they must not change afterwards, so into a directory of
+their own, for example under `.dify-sf/checkpoint/<n>/`) and then replaces the JSON file with a rename, so the file
+always names a complete set. At most 4 MiB.
+
+**When it is read.** Once, when the run is about to end `failed` with `model_error`, `model_quota`, `max_turns`,
+`timeout`, `sandbox_error` or `internal`, after Codex and the run's shell jobs have stopped. `cancelled`, `cancel_lost`,
+a service shutdown and the other error types never hand in. Without output schema, without a sandbox or without the file,
+the run fails exactly as without this section.
+
+For `timeout` the read comes earlier:
+
+- The Swift gateway refuses uploads once the operation's deadline has passed, and it ends together with
+  `timeout_seconds`. So `min(120, max(1, timeout_seconds / 10))` seconds before the limit the service looks for the
+  file. If it is there, the turn is interrupted and the run goes on as a `timeout` failure with a hand-in. If not, the
+  run goes on to the limit and fails `timeout` as before (a checkpoint written after that look is not handed in). With
+  declared outputs the time notice of [Near-budget submit](#near-budget-submit) counts to that moment, not to the limit.
+
+**The result.** The file is parsed and checked like a final answer: optional nulls dropped, `candidate_errors` per the
+schema, every file output checked (inside the workspace, extensions, MIME types, 64 MiB) and uploaded. If anything
+fails, the run ends `failed` with its original `error_type` and the reason appended to its message ("…; no hand-in:
+the checkpoint is not valid: …"): a bad checkpoint never becomes an output retry. Otherwise it ends **`succeeded`**:
+
+- `candidate` from the checkpoint and `candidate_errors` empty.
+- `partial`: `{"reason": <the error type>, "notice_call_index": <the budget notice's call or null>, "handin":
+  "checkpoint", "call_index": <model calls seen by the runtime>}`. The failure's raw message is only in the service log.
+- With `codex_session.retain`: the session is kept as for any `succeeded` round, so the next round resumes the thread,
+  failed last turn included (tested with the real binary). If the save fails, `session` says so and nothing is recorded:
+  as after a failed round the next round finds what was there before, not `session_restore_failed`.
+- `snapshot` as usual, with `checkpoint_handin`: an output retry of a hand-in (the Swift server's checks disagree with
+  the service's) stays marked in `partial` and in the output below.
+
+**Telling the workflow.** `partial` reaches the Swift server, whose `AgentRuntime.partialResult` keeps it in the node's
+`agent_partial` metadata only for `reason` `max_turns` or `timeout` with a `notice_call_index`, and metadata is not a
+workflow variable. So a schema may declare an optional top-level string output named **`partial_handin`**: the service
+removes it from the schema the model sees (`modelFacingSchema`), removes it from anything a model gives, and fills it on a hand-in
+with public text, for example `model_error: the model connection failed at about model call 145; this is the last
+checkpoint, not a finished hand-in`. Empty in a normal run (not produced): a workflow branches on it. It must be
+optional (`required: false`); a schema without it is sent to the model as before.
+
+**Across rounds.** An operation without a `continuation` removes `.dify-sf/checkpoint/` before anything runs (a retained
+workspace would otherwise hand in the previous round's work for this round's failure; if the removal fails, this
+operation hands in nothing). An answer or an output retry keeps it.
 
 ### Prompt cache
 
@@ -832,7 +884,8 @@ says what the next round finds:
 | `save_failed` | a round succeeded but its rollout was not saved (over 128 MiB, a copy or hash error; `save_error`) | fails `session_restore_failed` "… (record): the previous round's session was not saved: …"; never a new thread |
 
 A round that fails, is cancelled or times out changes nothing: a `saved` session stays the one the next round resumes
-(its later turns are lost; its workspace changes stay).
+(its later turns are lost; its workspace changes stay). A round that hands in a checkpoint ended `succeeded` (see
+[Checkpoint hand-in](#checkpoint-hand-in)): its session is saved when it can be.
 
 **Conversation.** With `retain`, `thread/start` is sent with `ephemeral: false`. `CODEX_HOME` stays in the home and is
 written fresh for every run (`config.toml`, `models.json`, `AGENTS.md`): nothing the model can write configures Codex.
