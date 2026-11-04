@@ -1556,7 +1556,8 @@ The first accepted generation after each recovery is audited with its actual `re
 
 The failed call and the recovery both consume the existing call budget. File, request, output and time limits do
 not increase. Revocation, expiry, ownership changes, invalid requests and authentication errors never authorize
-recovery. Replacement sockets wait 1, 2 and 4 seconds respectively before contacting the provider; the wait is
+recovery. The Agent configures the pinned client with three WebSocket stream retries (HTTP remains two), so consecutive
+losses can use the full server allowance. Replacement sockets wait 1, 2 and 4 seconds respectively before contacting the provider; the wait is
 cancellable, rechecks authorization, and must fit within the original deadline. Normal/policy/protocol close codes
 are terminal; only close codes 1001, 1011, 1012 and 1013 are eligible alongside EOF and connection errors
 (reset, abort, broken pipe, timeout or refusal). A fourth eligible loss ends the operation.

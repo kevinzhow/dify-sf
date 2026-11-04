@@ -1770,7 +1770,7 @@ class _OfficialCodexRun {
             .trim();
         _onWebsocketFallback(
           'the model request kept failing on the WebSocket and Codex\'s '
-          'stream retries ($codexStreamMaxRetries) were used up'
+          'stream retries ($codexWebsocketStreamMaxRetries) were used up'
           '${why.isEmpty ? '' : ': $why'}',
         );
       case 'warning' || 'configWarning' || 'deprecationNotice':

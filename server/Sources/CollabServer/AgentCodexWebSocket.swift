@@ -659,8 +659,15 @@ private final class AgentCodexHandshakeObserver: ChannelInboundHandler, Removabl
     let diagnostics: AgentCodexSocketDiagnostics?
     let secrets: [String]
     init(diagnostics: AgentCodexSocketDiagnostics?, secrets: [String]) { self.diagnostics = diagnostics; self.secrets = secrets }
+    func channelActive(context: ChannelHandlerContext) {
+        diagnostics?.peer(channel: context.channel)
+        context.fireChannelActive()
+    }
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        if case .head(let head) = unwrapInboundIn(data) { diagnostics?.handshake(head, secrets: secrets) }
+        if case .head(let head) = unwrapInboundIn(data) {
+            diagnostics?.peer(channel: context.channel)
+            diagnostics?.handshake(head, secrets: secrets)
+        }
         context.fireChannelRead(data)
     }
 }

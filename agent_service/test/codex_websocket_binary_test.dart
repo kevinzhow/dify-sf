@@ -436,7 +436,7 @@ void main() {
     'switches to HTTP; the run ends with the fallback error',
     () async {
       final rig = await _Rig.start([
-        for (var i = 0; i <= codexStreamMaxRetries; i++)
+        for (var i = 0; i <= codexWebsocketStreamMaxRetries; i++)
           ScriptedCall(drop: true),
         ScriptedCall.responses([_message('never')]),
       ], mode: CodexWebsocketMode.accept);

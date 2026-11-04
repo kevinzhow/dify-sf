@@ -80,6 +80,9 @@ const codexOptOutNotifications = [
 /// the gateway counts against `max_turns`.
 const codexRequestMaxRetries = 2;
 const codexStreamMaxRetries = 2;
+// Match the API's three shared node recoveries, including consecutive losses.
+// HTTP keeps its existing stream retry policy; the gateway still owns admission.
+const codexWebsocketStreamMaxRetries = 3;
 
 /// How long Codex waits for a Responses WebSocket handshake (its default,
 /// written into `config.toml` so the run's startup check agrees with it).
@@ -239,7 +242,10 @@ String codexConfigToml({
   ];
   b
     ..writeln('request_max_retries = $codexRequestMaxRetries')
-    ..writeln('stream_max_retries = $codexStreamMaxRetries')
+    ..writeln(
+      'stream_max_retries = '
+      '${websocket ? codexWebsocketStreamMaxRetries : codexStreamMaxRetries}',
+    )
     ..writeln()
     // The commands get the node's environment as the other styles do
     // (Codex's default KEY/SECRET/TOKEN filter off), never the run token,

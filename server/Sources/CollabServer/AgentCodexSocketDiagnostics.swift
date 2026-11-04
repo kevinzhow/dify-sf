@@ -47,11 +47,21 @@ final class AgentCodexSocketDiagnostics: Sendable {
             "endpoint_scheme": "\(url.scheme ?? "unknown")", "endpoint_port": "\(url.port ?? (url.scheme == "https" ? 443 : 80))"]
         // Host/IP and ports only: never path, query, userinfo or full endpoint URL.
         if let host = Self.requestID(url.host) { fields["endpoint_host"] = "\(host)" }
-        if let ip = channel.remoteAddress?.ipAddress { fields["upstream_peer_ip"] = "\(ip)" }
-        if let port = channel.remoteAddress?.port { fields["upstream_peer_port"] = "\(port)" }
-        if let port = channel.localAddress?.port { fields["upstream_local_port"] = "\(port)" }
         handshakeFields.withLock { $0.merge(fields) { _, new in new } }
         logger.info("codex websocket upstream connecting", metadata: metadata)
+    }
+
+    /// ClientBootstrap runs pipeline setup before TCP connect; addresses are only
+    /// authoritative once the channel is active (or an HTTP response arrives).
+    func peer(channel: Channel) {
+        guard let ip = channel.remoteAddress?.ipAddress, let port = channel.remoteAddress?.port else { return }
+        let first = handshakeFields.withLock { fields in
+            guard fields["upstream_peer_ip"] == nil else { return false }
+            fields["upstream_peer_ip"] = "\(ip)"; fields["upstream_peer_port"] = "\(port)"
+            if let local = channel.localAddress?.port { fields["upstream_local_port"] = "\(local)" }
+            return true
+        }
+        if first { logger.info("codex websocket upstream peer", metadata: metadata) }
     }
 
     func handshake(_ head: HTTPResponseHead, secrets: [String]) {
@@ -73,7 +83,8 @@ final class AgentCodexSocketDiagnostics: Sendable {
     func ended(_ stage: Stage, _ end: End, error: (any Error)? = nil, closeCode: UInt16? = nil) {
         let ordinal = sequence.withLock { value in value += 1; return value }
         var fields = metadata
-        fields["elapsed_ms"] = "\(started.duration(to: .now).components.seconds * 1000 + started.duration(to: .now).components.attoseconds / 1_000_000_000_000_000)"
+        let elapsed = started.duration(to: .now).components
+        fields["elapsed_ms"] = "\(elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000)"
         fields["stage"] = "\(stage.rawValue)"
         fields["end"] = "\(end.rawValue)"
         fields["terminal_sequence"] = "\(ordinal)"

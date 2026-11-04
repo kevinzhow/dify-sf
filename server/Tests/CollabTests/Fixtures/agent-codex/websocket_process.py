@@ -47,9 +47,10 @@ try:
     thread = started['result']['thread']['id']
     send({'id':3,'method':'turn/start','params':{'threadId':thread,'input':[{'type':'text','text':'Return a short synthetic fixture answer.'}],'effort':'max'}})
     done = until(lambda v:v.get('method')=='turn/completed')
-    assert done['params']['turn']['status']=='completed'
     mode=os.environ.get('CODEX_FIXTURE_RECOVERY')
-    turns=4 if mode in ('thrice','exhausted') else 2
+    expected='failed' if mode=='burst_exhausted' else 'completed'
+    assert done['params']['turn']['status']==expected,done
+    turns=1 if mode=='burst_exhausted' else 4 if mode in ('thrice','exhausted') else 2
     for turn in range(2,turns+1):
         send({'id':turn+2,'method':'turn/start','params':{'threadId':thread,'input':[{'type':'text','text':'One more synthetic answer.'}],'effort':'max'}})
         done=until(lambda v:v.get('method')=='turn/completed')

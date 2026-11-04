@@ -62,7 +62,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.connection.sendall(b'\x88'+bytes([len(reason)])+reason)
                     self.close_connection=True
                     return
-                if failure and not warm and (call==2 or failure in ('twice','thrice','exhausted') and call==4 or failure in ('thrice','exhausted') and call==6 or failure=='exhausted' and call==8):
+                if failure and not warm and (call==2 or failure in ('twice','thrice','exhausted') and call==4 or failure in ('thrice','exhausted') and call==6 or failure=='exhausted' and call==8 or failure=='burst' and call in (3,4) or failure=='burst_exhausted' and call in (3,4,5)):
                     frame(self.connection,{'type':'response.in_progress','response':{'id':response}})
                     if failure in ('partial', 'arguments_done', 'custom_partial'):
                         partial={'type':'function_call','id':'fc_partial','call_id':'call_partial','name':'exec_command','arguments':''}

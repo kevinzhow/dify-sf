@@ -200,7 +200,7 @@ struct AgentCodexWebSocketTests {
         let head = try #require(log.snapshot.first { $0.message == "codex websocket upstream handshake" })
         #expect(head.fields["upstream_handshake_status"] == "403" && head.fields["upstream_request_id"] == "req_refused_fixture")
         let endpoint = try #require(log.snapshot.first { $0.message == "codex websocket upstream connecting" })
-        #expect(endpoint.fields["endpoint_host"] == "127.0.0.1" && endpoint.fields["upstream_peer_ip"] == "127.0.0.1")
+        #expect(endpoint.fields["endpoint_host"] == "127.0.0.1" && head.fields["upstream_peer_ip"] == "127.0.0.1")
         #expect(!String(describing: log.snapshot).contains("fixture-private-cookie"))
     }
 
@@ -407,7 +407,7 @@ struct AgentCodexWebSocketTests {
         }
     }
 
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["AGENT_CODEX_BINARY"] != nil), arguments: ["eof", "reset", "twice", "thrice", "exhausted", "partial", "arguments_done", "custom_partial", "background"])
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["AGENT_CODEX_BINARY"] != nil), arguments: ["eof", "reset", "twice", "thrice", "exhausted", "burst", "burst_exhausted", "partial", "arguments_done", "custom_partial", "background"])
     func actualCodexRecoversThreeTimesWithoutRepeatingAnExecutedTool(failure: String) async throws {
         let provider = try await CodexWSProvider.start(failure: failure)
         defer { provider.process.terminate(); provider.process.waitUntilExit() }
@@ -440,12 +440,13 @@ struct AgentCodexWebSocketTests {
                 #expect(result.0 == 0, "Synthetic recovery failed: \(result.2)")
                 #expect(result.1.contains("\"toolExecutions\": 1"))
                 let records = try provider.values(), calls = records.filter { $0["call"] != nil && $0["warmup"] == false }
-                let recoveries = ["twice": 2, "thrice": 3, "exhausted": 3][failure] ?? 1
-                let expectedCalls = ["twice": 5, "thrice": 8, "exhausted": 8][failure] ?? 4
+                let recoveries = ["twice": 2, "thrice": 3, "exhausted": 3, "burst": 3, "burst_exhausted": 3][failure] ?? 1
+                let expectedCalls = ["twice": 5, "thrice": 8, "exhausted": 8, "burst": 6, "burst_exhausted": 5][failure] ?? 4
                 #expect(records.filter { $0["authorized"] == true }.count == recoveries + 1)
                 #expect(calls.count == expectedCalls)
                 #expect(calls[1]["previous"] == "resp_ws_1")
-                for (attempt, callIndex) in [2, 4, 6].prefix(recoveries).enumerated() {
+                let recoveryIndexes = failure.hasPrefix("burst") ? [2, 3, 4] : [2, 4, 6]
+                for (attempt, callIndex) in recoveryIndexes.prefix(recoveries).enumerated() {
                     #expect(calls[callIndex]["connection"] == .int(attempt + 2) && calls[callIndex]["previous"] == .null)
                     #expect(calls[callIndex]["toolResults"] == ["call_ws_1"])
                     #expect(calls[callIndex]["toolCalls"] == ["call_ws_1"])

@@ -302,7 +302,7 @@ void main() {
           'supports_websockets = true\n'
           'websocket_connect_timeout_ms = 15000\n'
           'http_headers = { "X-DifySF-Require-Incremental" = "v1" }\n'
-          'request_max_retries = 2\nstream_max_retries = 2\n',
+          'request_max_retries = 2\nstream_max_retries = 3\n',
         ),
       );
       // The app-server's log settings never reach the commands.
@@ -313,8 +313,10 @@ void main() {
           '"LOG_FORMAT"]',
         ),
       );
-      // Nothing else differs from the HTTP transport's file.
+      expect(http, contains('stream_max_retries = 2\n'));
+      // Other than transport setup and its bounded retry allowance, HTTP is unchanged.
       String rest(String t) => t
+          .replaceAll('stream_max_retries = 3\n', 'stream_max_retries = 2\n')
           .replaceAll('supports_websockets = true\n', '')
           .replaceAll('supports_websockets = false\n', '')
           .replaceAll('websocket_connect_timeout_ms = 15000\n', '')

@@ -1,6 +1,7 @@
 """Run with python3 -m unittest discover -s agent_service/test/deploy -p '*_test.py'."""
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import tempfile
@@ -63,6 +64,28 @@ class GatewayDiagnosticsTest(unittest.TestCase):
             self.assertEqual(json.loads(result.stderr)['reason'], 'timeout')
             self.assertNotIn('secret-header', result.stderr)
             self.assertEqual(sorted(p.name for p in root.iterdir()), ['nginx', 'nginx.conf'])
+
+    def test_launcher_forwards_the_nginx_images_quit_signal(self):
+        with tempfile.TemporaryDirectory(prefix='codex-gateway-test-') as directory:
+            root = Path(directory)
+            fake = root / 'nginx'
+            fake.write_text('#!/usr/bin/python3\nimport signal,time,sys\nsignal.signal(signal.SIGQUIT,lambda *a:sys.exit(0))\n'
+                            'print("ready",flush=True)\nwhile True:time.sleep(.01)\n')
+            fake.chmod(0o755)
+            config = root / 'nginx.conf'
+            config.write_text('error_log /dev/stderr warn;\n')
+            env = dict(os.environ, PATH=str(root) + ':' + os.environ['PATH'], TMPDIR=str(root))
+            process = subprocess.Popen(['sh', str(LAUNCHER), str(config)], env=env,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            try:
+                self.assertEqual(process.stdout.readline().strip(), 'ready')
+                process.send_signal(signal.SIGQUIT)
+                out, err = process.communicate(timeout=3)
+                self.assertEqual(process.returncode, 0)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.communicate()
 
     def test_launcher_rejects_an_unrecognized_logging_config(self):
         with tempfile.TemporaryDirectory(prefix='codex-gateway-test-') as directory:
