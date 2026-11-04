@@ -31,6 +31,12 @@ class GatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(rows[1]['reason'], 'unclassified')
         self.assertEqual(rows[1]['direction'], 'unknown')
 
+    def test_request_text_cannot_forge_the_close_reason(self):
+        row = self.classify('2026 [info] 1#1: *9 client sent too long header line: "upstream timed out (110: private) while reading upstream"\n')[0]
+        self.assertEqual(row['reason'], 'invalid_request_or_configuration')
+        self.assertEqual(row['direction'], 'unknown')
+        self.assertEqual(row['system_errno'], '')
+
     def test_tunnel_reset_does_not_invent_which_peer_sent_it(self):
         row = self.classify('2026 [info] 1#1: *7 recv() failed (104: private) while proxying upgraded connection\n')[0]
         self.assertEqual(row['reason'], 'connection_reset')
