@@ -1611,6 +1611,23 @@ native client and a fake upstream; see pinned Codex's
 [stream event parser](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/codex-api/src/sse/responses.rs) and
 [tool dispatch](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/core/src/stream_events_utils.rs).
 
+An upstream `error` with status 400 and exact code `websocket_connection_limit_reached` is a connection-scoped
+expiry, including when it arrives between responses or during warmup. With recovery enabled, it closes the old
+socket and offers the same parameter/tool-result checkpoint before Codex reconnects and supplies its own full
+context; swapping only the upstream socket cannot preserve `store:false` response IDs. A connection open for at
+least 55 minutes uses a separate allowance of at most 216 normal rotations for the entire node execution, shared
+by child lanes and retained across capability replacement (the 24-hour server ceiling and eight concurrent lanes). These rotations do not consume the three transient
+failure recoveries or add delay. An earlier expiry event uses the ordinary fault allowance and backoff, preventing
+repeated premature "expiry" from authorizing unlimited reconnects. Replacement connect/warmup transport failures
+also spend the fault allowance. The original deadline, model-call/file limits, opt-in flag, durable ownership,
+parameter pinning, tool-result checks and HTTP fallback refusal all still apply. No proactive 55-minute rotation
+is performed. Each generating request, including a replay after expiry, consumes a normal call and records usage;
+connection renewal is not a promise of free model generation.
+
+The first generation after a normal rotation is audited with `reconnect_reason: connection_expired` and
+`connection_rotation: N`; fault retries retain their actual `recovery_attempt: 1..3`. Rotation diagnostics record
+only the reason and count in addition to the existing safe connection identifiers.
+
 Tool checkpoint logs distinguish announced, dispatchable, acknowledged and recovery-ready/refused stages.
 They include execution identity, hashed lane/tool identities, counts and at most eight pending identity hashes;
 no names, arguments, outputs or conversation bodies are recorded. Identity sets are bounded to 256 entries.

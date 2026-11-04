@@ -407,7 +407,7 @@ struct AgentCodexWebSocketTests {
         }
     }
 
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["AGENT_CODEX_BINARY"] != nil), arguments: ["eof", "reset", "twice", "thrice", "exhausted", "burst", "burst_exhausted", "partial", "arguments_done", "custom_partial", "background"])
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["AGENT_CODEX_BINARY"] != nil), arguments: ["eof", "reset", "twice", "thrice", "exhausted", "burst", "burst_exhausted", "partial", "arguments_done", "custom_partial", "background", "expiry_idle", "expiry_warmup", "expiry_active", "expiry_twice", "expiry_early"])
     func actualCodexRecoversThreeTimesWithoutRepeatingAnExecutedTool(failure: String) async throws {
         let provider = try await CodexWSProvider.start(failure: failure)
         defer { provider.process.terminate(); provider.process.waitUntilExit() }
@@ -418,8 +418,10 @@ struct AgentCodexWebSocketTests {
                 scope.codexWebsocketRecoveryEnabled = true; scope.maxCalls = 20
                 token = try await routes.agentModelScopes.activate(scope)
                 let (ports, signal) = AsyncStream<Int>.makeStream(bufferingPolicy: .bufferingNewest(1))
-                let log = CodexSocketLog()
-                let service = AgentCodexWebSocketService(routes: routes, host: "127.0.0.1", port: 0, onListening: { signal.yield($0); signal.finish() }, diagnosticsLogger: log.logger)
+                let log = CodexSocketLog(), uptime = Mutex<TimeInterval>(0)
+                let mature = failure.hasPrefix("expiry_") && failure != "expiry_early"
+                let service = AgentCodexWebSocketService(routes: routes, host: "127.0.0.1", port: 0, onListening: { signal.yield($0); signal.finish() }, diagnosticsLogger: log.logger,
+                    connectionUptime: { mature ? uptime.withLock { value in defer { value += 3600 }; return value } : ProcessInfo.processInfo.systemUptime })
                 let listener = Task { try await service.run() }; defer { listener.cancel() }
                 var iterator = ports.makeAsyncIterator(); let port = try #require(await iterator.next())
                 let script = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/agent-codex/websocket_process.py").path
@@ -440,22 +442,31 @@ struct AgentCodexWebSocketTests {
                 #expect(result.0 == 0, "Synthetic recovery failed: \(result.2)")
                 #expect(result.1.contains("\"toolExecutions\": 1"))
                 let records = try provider.values(), calls = records.filter { $0["call"] != nil && $0["warmup"] == false }
-                let recoveries = ["twice": 2, "thrice": 3, "exhausted": 3, "burst": 3, "burst_exhausted": 3][failure] ?? 1
-                let expectedCalls = ["twice": 5, "thrice": 8, "exhausted": 8, "burst": 6, "burst_exhausted": 5][failure] ?? 4
+                let recoveries = ["twice": 2, "thrice": 3, "exhausted": 3, "burst": 3, "burst_exhausted": 3, "expiry_twice": 2][failure] ?? 1
+                let expectedCalls = ["twice": 5, "thrice": 8, "exhausted": 8, "burst": 6, "burst_exhausted": 5, "expiry_idle": 3, "expiry_warmup": 3, "expiry_twice": 5][failure] ?? 4
                 #expect(records.filter { $0["authorized"] == true }.count == recoveries + 1)
                 #expect(calls.count == expectedCalls)
                 guard calls.count == expectedCalls else { return }
-                #expect(calls[1]["previous"] == "resp_ws_1")
-                let recoveryIndexes = failure.hasPrefix("burst") ? [2, 3, 4] : [2, 4, 6]
+                if !["expiry_idle", "expiry_warmup"].contains(failure) { #expect(calls[1]["previous"] == "resp_ws_1") }
+                let recoveryIndexes = failure == "expiry_warmup" ? [0] : failure == "expiry_idle" ? [1] : failure.hasPrefix("burst") ? [2, 3, 4] : [2, 4, 6]
                 for (attempt, callIndex) in recoveryIndexes.prefix(recoveries).enumerated() {
                     #expect(calls[callIndex]["connection"] == .int(attempt + 2) && calls[callIndex]["previous"] == .null)
-                    #expect(calls[callIndex]["toolResults"] == ["call_ws_1"])
-                    #expect(calls[callIndex]["toolCalls"] == ["call_ws_1"])
+                    if failure != "expiry_warmup" {
+                        #expect(calls[callIndex]["toolResults"] == ["call_ws_1"])
+                        #expect(calls[callIndex]["toolCalls"] == ["call_ws_1"])
+                    }
                 }
                 if failure == "background" { #expect(calls[2]["runningToolResult"] == true) }
                 let backoffs = log.snapshot.filter { $0.message == "codex websocket recovery backoff" }
-                #expect(backoffs.compactMap { $0.fields["recovery_attempt"] } == (1...recoveries).map(String.init))
-                #expect(backoffs.compactMap { $0.fields["backoff_ms"] } == ["1000", "2000", "4000"].prefix(recoveries).map { $0 })
+                let rotations = log.snapshot.filter { $0.message == "codex websocket connection rotation" }
+                if mature {
+                    #expect(backoffs.isEmpty)
+                    #expect(rotations.compactMap { $0.fields["rotation_count"] } == (1...recoveries).map(String.init))
+                } else {
+                    #expect(rotations.isEmpty)
+                    #expect(backoffs.compactMap { $0.fields["recovery_attempt"] } == (1...recoveries).map(String.init))
+                    #expect(backoffs.compactMap { $0.fields["backoff_ms"] } == ["1000", "2000", "4000"].prefix(recoveries).map { $0 })
+                }
                 let handshakes = log.snapshot.filter { $0.message == "codex websocket upstream handshake" }
                 #expect(handshakes.count == recoveries + 1)
                 #expect(handshakes.allSatisfy { $0.fields["upstream_request_id"]?.hasPrefix("req_fixture_") == true && $0.fields["upstream_handshake_status"] == "101" })

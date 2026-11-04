@@ -52,6 +52,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 record({'connection':connection,'warmup':warm,'call':call,'bytes':n,'previous':body.get('previous_response_id'),'model':body['model'],'store':body.get('store'),'effort':body.get('reasoning',{}).get('effort'),'max_output_tokens':body.get('max_output_tokens'),'inputs':len(body['input']),'types':[x.get('type') for x in body['input']], 'toolCalls':[x.get('call_id') for x in body['input'] if x.get('type') in ('function_call','custom_tool_call')], 'toolResults':[x.get('call_id') for x in body['input'] if x.get('type')=='function_call_output'], 'runningToolResult':any(x.get('type')=='function_call_output' and 'Process running with session ID' in str(x.get('output','')) for x in body['input'])})
                 response='resp_ws_warm' if warm else 'resp_ws_'+str(call)
                 frame(self.connection,{'type':'response.created','response':{'id':response}})
+                if failure == 'expiry_warmup' and warm and connection == 1:
+                    frame(self.connection,{'type':'error','status':400,'error':{'type':'invalid_request_error','code':'websocket_connection_limit_reached','message':'private expiry fixture'}})
+                    self.close_connection=True
+                    return
                 if failure_mode == 'eof':
                     self.connection.shutdown(socket.SHUT_RDWR)
                     self.close_connection=True
@@ -62,8 +66,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.connection.sendall(b'\x88'+bytes([len(reason)])+reason)
                     self.close_connection=True
                     return
-                if failure and not warm and (call==2 or failure in ('twice','thrice','exhausted') and call==4 or failure in ('thrice','exhausted') and call==6 or failure=='exhausted' and call==8 or failure=='burst' and call in (3,4) or failure=='burst_exhausted' and call in (3,4,5)):
+                if failure and failure not in ('expiry_idle','expiry_warmup') and not warm and (call==2 or failure=='expiry_twice' and call==4 or failure in ('twice','thrice','exhausted') and call==4 or failure in ('thrice','exhausted') and call==6 or failure=='exhausted' and call==8 or failure=='burst' and call in (3,4) or failure=='burst_exhausted' and call in (3,4,5)):
                     frame(self.connection,{'type':'response.in_progress','response':{'id':response}})
+                    if failure.startswith('expiry_'):
+                        frame(self.connection,{'type':'error','status':400,'error':{'type':'invalid_request_error','code':'websocket_connection_limit_reached','message':'private expiry fixture'}})
+                        self.close_connection=True
+                        return
                     if failure in ('partial', 'arguments_done', 'custom_partial'):
                         partial={'type':'function_call','id':'fc_partial','call_id':'call_partial','name':'exec_command','arguments':''}
                         if failure=='custom_partial':partial={'type':'custom_tool_call','id':'fc_partial','call_id':'call_partial','name':'apply_patch','input':''}
@@ -87,11 +95,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     else:
                         item={'type':'message','id':'msg_ws_'+str(call),'role':'assistant','status':'completed','phase':'final_answer','content':[{'type':'output_text','text':'Synthetic WebSocket complete.','annotations':[]}]}
                     if failure and call==1:item['arguments']=json.dumps({'cmd':'printf fixture-delta >> recovery-counter; cat recovery-counter'})
+                    if failure=='expiry_idle' and call==1:item['arguments']=json.dumps({'cmd':'printf fixture-delta >> recovery-counter; sleep 1; cat recovery-counter'})
                     if failure=='background' and call==1:item['arguments']=json.dumps({'cmd':'printf fixture-delta >> recovery-counter; sleep 6; printf completed > recovery-finished', 'yield_time_ms':1000})
                     output=[item]
                     frame(self.connection,{'type':'response.output_item.added','output_index':0,'item':item})
                     frame(self.connection,{'type':'response.output_item.done','output_index':0,'item':item})
                 frame(self.connection,{'type':'response.completed','response':{'id':response,'status':'completed','output':output,'usage':{'input_tokens':0 if warm else 20,'output_tokens':0 if warm else 3,'total_tokens':0 if warm else 23,'input_tokens_details':{'cached_tokens':0 if warm else 12}}}})
+                if failure == 'expiry_idle' and not warm and call == 1:
+                    time.sleep(.05)
+                    frame(self.connection,{'type':'error','status':400,'error':{'type':'invalid_request_error','code':'websocket_connection_limit_reached','message':'private expiry fixture'}})
+                    self.close_connection=True
+                    return
         except (EOFError,ConnectionError,OSError): pass
 server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler)
 print(server.server_address[1],flush=True);server.serve_forever()

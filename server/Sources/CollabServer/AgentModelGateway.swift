@@ -198,6 +198,7 @@ actor AgentModelScopes {
     private var generations: [String: Int] = [:]
     // Survives operation/token replacement for this same node execution; children share it.
     private var recoveryAttempts: [String: Int] = [:]
+    private var connectionRotations: [String: Int] = [:]
 
     func activate(_ scope: AgentModelScope) throws -> String {
         guard scope.generation >= 1, scope.maxCalls >= 1, scope.maxCalls <= 1000,
@@ -323,18 +324,33 @@ actor AgentModelScopes {
 
     /// The old call has already been settled. Reserve a bounded attempt atomically before
     /// closing downstream; releasing the old lane here avoids a reconnect/cleanup race.
-    func offerCodexRecovery(token: String, lane: String, checkpoint: AgentCodexSocketCheckpoint) throws -> Int? {
+    func offerCodexRecovery(token: String, lane: String, checkpoint: AgentCodexSocketCheckpoint,
+                            normalExpiry: Bool = false, socketID: String? = nil) throws -> Int? {
         try Task.checkCancellation()
         let digest = Tokens.sha256(token)
         guard var entry = entries[digest], entry.scope.expiresAt > Date(),
               generations[entry.scope.executionKey] == entry.scope.generation else { throw Self.denied() }
         guard entry.scope.codexWebsocketRecoveryEnabled, entry.startedSocketLanes.contains(lane),
               !checkpoint.unsafe, entry.recoveryLanes[lane] == nil, entry.socketIDs[lane] != nil,
-              recoveryAttempts[entry.scope.executionKey, default: 0] < AgentCodexRecoveryPolicy.attempts,
+              socketID == nil || entry.socketIDs[lane] == socketID,
               (entry.calls.max() ?? 0) < entry.scope.maxCalls else { return nil }
-        let attempt = recoveryAttempts[entry.scope.executionKey, default: 0] + 1
-        recoveryAttempts[entry.scope.executionKey] = attempt
-        var reserved = checkpoint; reserved.recoveryAttempt = attempt
+        let key = entry.scope.executionKey
+        var reserved = checkpoint
+        let attempt: Int
+        if normalExpiry {
+            guard connectionRotations[key, default: 0] < AgentCodexRotationPolicy.maximumRotations else { return nil }
+            attempt = connectionRotations[key, default: 0] + 1
+            connectionRotations[key] = attempt
+            reserved.rotationCount = attempt
+            reserved.recoveryAttempt = 0
+            reserved.reconnectReason = .connectionExpired
+        } else {
+            guard recoveryAttempts[key, default: 0] < AgentCodexRecoveryPolicy.attempts else { return nil }
+            attempt = recoveryAttempts[key, default: 0] + 1
+            recoveryAttempts[key] = attempt
+            reserved.recoveryAttempt = attempt
+            reserved.reconnectReason = .transport
+        }
         entry.recoveryLanes[lane] = reserved
         if let old = entry.socketIDs.removeValue(forKey: lane) { entry.sockets[old] = nil }
         entry.socketLanes.remove(lane)
