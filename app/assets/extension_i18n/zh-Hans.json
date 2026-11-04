@@ -60,7 +60,10 @@
     "inline.runtimeSelection": "模型参数（服务商及模型）",
     "inline.runtimeModel": "模型参数",
     "inline.runtimeReasoning": "推理强度参数",
-    "inline.fromConfiguration": "使用 Agent 配置中的值"
+    "inline.fromConfiguration": "使用 Agent 配置中的值",
+    "inline.progressQueued": "排队中",
+    "inline.progressWaiting": "正在等待执行名额。",
+    "inline.progressQueueExpired": "等待执行名额超时。"
   },
   "common": {
     "web.fontLoadFailed": "部分文字加载失败，请联网后重试。",

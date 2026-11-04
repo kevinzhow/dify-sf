@@ -523,10 +523,17 @@ of `run_started`, `thought`, `tool_call`, `model_call`, `commentary`, `plan`, `p
   marked `agent_partial`.
 - Time: the smallest of the server's node timeout (`COLLAB_AGENT_TIMEOUT_SECONDS`, default 1800), the profile's
   `timeout_seconds_max` and the server ceiling (`COLLAB_AGENT_TIMEOUT_SECONDS_MAX`, default 86400). Time spent waiting
-  for a person does not count. The `default` profile keeps 1800 seconds.
+  for a person does not count. For new executions, waiting for an API execution slot is also excluded;
+  the execution timer starts after admission, before agent-service preparation. Resumes retain time already used
+  and output retries share the same deadline. Old paused executions keep their original timing behavior.
+  The `default` profile keeps 1800 seconds.
 - Size: task at most 256 KiB; at most 128 input files. Outside Codex's Responses route, the images of one task may have
   at most 6 MiB together.
-- Concurrency: the server runs a bounded number of agent operations at once (default 2); others wait.
+- Concurrency: the server runs a bounded number of agent operations at once (default 2); others show “Queued”.
+  Their separate wait is bounded by `COLLAB_AGENT_ADMISSION_TIMEOUT_SECONDS` (default 10800, 1..86400).
+  A wait that expires fails with `AgentAdmissionTimeout`, without dispatching an agent operation.
+  Node metadata separates queue time (`agent_queue_elapsed_time`) from execution time (`agent_active_elapsed_time`);
+  overall workflow elapsed time still includes waiting.
 
 ## 7. Minimal working example
 

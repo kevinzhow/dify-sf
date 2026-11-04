@@ -23,7 +23,9 @@ class AgentCanvasProgress extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DifyTextLine(
-            DifyI18n.tr('agent-v-2', 'inline.progressCalls', {'count': progress.calls, 'max': progress.maximum}),
+            progress.queued
+                ? DifyI18n.tr('agent-v-2', 'inline.progressQueued')
+                : DifyI18n.tr('agent-v-2', 'inline.progressCalls', {'count': progress.calls, 'max': progress.maximum}),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: difyTextStyle(DifyType.systemXsMedium, DifyColors.textAccent),
@@ -32,7 +34,11 @@ class AgentCanvasProgress extends StatelessWidget {
           SizedBox(
             height: 36,
             child: DifyTextLine(
-              progress.partialReason == 'session_save_failed'
+              progress.queued
+                  ? DifyI18n.tr('agent-v-2', 'inline.progressWaiting')
+                  : progress.admissionPhase == 'expired'
+                  ? DifyI18n.tr('agent-v-2', 'inline.progressQueueExpired')
+                  : progress.partialReason == 'session_save_failed'
                   ? DifyI18n.tr('agent-v-2', 'inline.sessionSaveFailed')
                   : progress.partialReason != null
                   ? DifyI18n.tr('agent-v-2', 'inline.partialResult')

@@ -28,7 +28,11 @@ cannot substitute for a missing profile confirmation.
 The existing node timeout is configured by `COLLAB_AGENT_TIMEOUT_SECONDS` (default 1800). The new server ceiling is
 `COLLAB_AGENT_TIMEOUT_SECONDS_MAX` (default 86400, bounded to 1..86400). The effective active timeout is the minimum
 of the node timeout, the selected profile's cap and the server ceiling; the same remaining budget drives Swift's
-actual deadline and the operation limit. Previously recorded active time is deducted after a pause. The default
+actual deadline and the operation limit. Previously recorded active time is deducted after a pause.
+New executions (usage `timing_version: 2`) start this clock after the API's atomic capacity admission, before dispatch;
+agent-service setup and output retries still consume it. Queue waiting is separately bounded by
+`COLLAB_AGENT_ADMISSION_TIMEOUT_SECONDS` (default 10800, clamp 1..86400), with `admission` log phases and separate
+queue/execution elapsed metadata. Existing paused sessions without the marker keep their previous timing behavior. The default
 profile retains its 1800-second cap even when a deployment raises the node timeout for longer profiles. No per-node
 timeout or turn-budget UI is introduced; `max_turns` remains 50.
 

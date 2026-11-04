@@ -54,8 +54,8 @@ struct ServerAgentRuntime: AgentRuntime {
     }
 
     func run(nodeID: String, data: AgentNodeData, context: NodeRunContext) async throws -> AgentNodeDecision {
-        let activeStarted = ContinuousClock.now
-        let activeWallStarted = Date()
+        let entered = ContinuousClock.now
+        let queuedAt = Date()
         let (stored, configured) = try await configuration(nodeID, data)
         guard let execution = context.executionId else { throw NodeError("AgentExecutionMissing", "Agent nodes require a workflow execution") }
         let existing = try await routes.store.agentSession(execution: execution)
@@ -67,14 +67,43 @@ struct ServerAgentRuntime: AgentRuntime {
         let timeout = AgentExecutionPolicy.timeout(node: routes.config.agentService.timeoutSeconds,
             profile: profile?.timeoutSecondsMax ?? (soul.executorProfile == "default" ? 1800 : nil),
             server: routes.config.agentService.timeoutSecondsMax)
-        var deadline = activeWallStarted.addingTimeInterval(Double(timeout))
+        var timing = try AgentExecutionTiming(timeout: timeout, admissionTimeout: routes.config.agentService.admissionTimeoutSeconds,
+            usage: try existing.map { try JSONValue.parse($0.usage) }, queuedAt: queuedAt, entered: entered)
+        guard timing.remainingExecutionSeconds > 0 else { throw NodeError("AgentTimeout", "The agent execution exhausted its time budget") }
+        func timedFailure(_ error: NodeError, usage: LLMUsage = .empty) -> AgentNodeDecision {
+            let metadata: JSONObject = ["agent_active_elapsed_time": .double(timing.activeElapsed())]
+            return .completed(NodeRunResult(status: .failed,
+                metadata: metadata.merging(timing.metadata),
+                llmUsage: usage, error: error.message, errorType: error.errorTypeName))
+        }
+        let admissionRun = "admission:\(execution):\(existing?.resumeSequence ?? 0)"
+        var announcedQueue = false
+        func admissionData(_ phase: String) -> JSONObject {
+            ["phase": .string(phase), "queued_at": .double(queuedAt.timeIntervalSince1970),
+             "max_turns": .int(maxTurns), "execution_timeout_seconds": .int(timeout),
+             "queue_timeout_seconds": .int(routes.config.agentService.admissionTimeoutSeconds)]
+        }
+        func publishAdmission(_ phase: String, event: Int) async {
+            guard !context.isAborted(), let channel = await routes.runChannels.existing(runID) else { return }
+            let projected = AgentTrace.project(run: admissionRun, node: nodeID, event: event, name: "admission", data: admissionData(phase), secrets: [])
+            if let log = projected.log { await channel.publish(RunExecution.sse(["event": "agent_log", "workflow_run_id": .string(runID), "data": log])) }
+        }
         func admitted<T>(_ work: () async throws -> T) async throws -> T {
             while true {
                 try Task.checkCancellation()
                 if context.isAborted() { throw CancellationError() }
-                guard Date() < deadline else { throw NodeError("AgentTimeout", "Agent admission exceeded its deadline") }
+                guard Date() < timing.waitingDeadline else {
+                    if timing.isWaitingForAdmission {
+                        if announcedQueue { await publishAdmission("expired", event: 1) }
+                        throw NodeError("AgentAdmissionTimeout", "The agent exceeded its wait for execution capacity")
+                    }
+                    throw NodeError("AgentTimeout", "The agent execution exceeded its deadline")
+                }
                 do { return try await work() }
-                catch StoreError.agentCapacityFull { try await Task.sleep(for: .milliseconds(250)) }
+                catch StoreError.agentCapacityFull {
+                    if !announcedQueue { announcedQueue = true; await publishAdmission("queued", event: 0) }
+                    try await Task.sleep(for: .milliseconds(250))
+                }
             }
         }
         let modelEnvelope = try await modelEnvelope(soul)
@@ -106,9 +135,13 @@ struct ServerAgentRuntime: AgentRuntime {
             continuation = ["kind": "answer", "snapshot": try JSONValue.parse(snapshot), "question_id": .string(questionID),
                 "result": try await question.answer(form, files: files)]
         } else {
-            session = try await admitted { try await routes.store.createAgentSession(.init(executionID: execution, workflowRunID: runID, docID: appID,
-                nodeID: nodeID, agentID: data.agentID, configSnapshotID: data.snapshotID, ownerID: routes.agentOwner),
-                maxConcurrent: routes.config.agentService.maxConcurrent) }
+            do {
+                session = try await admitted { try await routes.store.createAgentSession(.init(executionID: execution, workflowRunID: runID, docID: appID,
+                    nodeID: nodeID, agentID: data.agentID, configSnapshotID: data.snapshotID, ownerID: routes.agentOwner),
+                    maxConcurrent: routes.config.agentService.maxConcurrent) }
+            } catch let error as NodeError where error.errorTypeName == "AgentAdmissionTimeout" || error.errorTypeName == "AgentTimeout" {
+                return timedFailure(error)
+            }
         }
         let service = AgentServiceClient(config: routes.config.agentService)
         let selectedModel = soul.json["model"]!.object!
@@ -139,15 +172,11 @@ struct ServerAgentRuntime: AgentRuntime {
         var roundUsage = LLMUsage.empty
         var recordedUsage = try JSONValue.parse(session.usage)
         var cumulative = LLMUsage(json: recordedUsage)
-        let previousElapsed = recordedUsage["active_elapsed_time"]?.double ?? 0
-        deadline = deadline.addingTimeInterval(-previousElapsed)
-        func activeElapsed() -> Double {
-            let duration = (ContinuousClock.now - activeStarted).components
-            return previousElapsed + Double(duration.seconds) + Double(duration.attoseconds) / 1e18
-        }
+        func activeElapsed() -> Double { timing.activeElapsed() }
         func usageJSON() -> String {
             var json = cumulative.json.object ?? [:]
             json["active_elapsed_time"] = .double(activeElapsed())
+            json = json.merging(timing.usage)
             json["node_started"] = recordedUsage["node_started"] ?? .null
             json["shell_enabled"] = .bool(shellAvailable)
             json["view_image"] = .bool(viewImage)
@@ -189,7 +218,7 @@ struct ServerAgentRuntime: AgentRuntime {
                 "system_prompt": .string(prompt.system), "task": .array(prompt.task), "output_schema": data.outputSchema ?? .null,
                 "executor_profile": .string(soul.executorProfile),
                 "tools": ["ask_human": .bool(soul.askHuman), "shell": .bool(shellAvailable), "view_image": .bool(viewImage), "report_progress": .bool(reportProgress)], "env": .object(env), "files": .array(prompt.files),
-                "limits": ["max_turns": .int(maxTurns), "timeout_seconds": .int(max(1, Int(deadline.timeIntervalSinceNow)))], "continuation": continuation]
+                "limits": ["max_turns": .int(maxTurns), "timeout_seconds": .int(max(1, timing.remainingExecutionSeconds))], "continuation": continuation]
             if soul.harnessStyle == "codex" {
                 body["harness_style"] = "codex"
                 var tools = body["tools"]!.object!
@@ -198,12 +227,7 @@ struct ServerAgentRuntime: AgentRuntime {
             }
             if retainSession { body["codex_session"] = ["retain": true] }
             // Identities are fixed across uncertain transport retries. Secrets are never persisted in the operation ledger.
-            let scope = AgentModelScope(operationID: operation, generation: session.generation, execution: identity,
-                provider: soul.provider!, model: soul.model!, maxCalls: maxTurns, expiresAt: deadline, inputFileIDs: prompt.inputFileIDs,
-                endUserID: endUserID, modelParameters: soul.modelParameters, credentialReference: soul.json["model"]?["credential_ref"], durableOwner: routes.agentOwner, harnessStyle: soul.harnessStyle, modelWire: wire,
-                outputTokenLimit: modelEnvelope["max_output_tokens"]?.int,
-                codexWebsocketRecoveryEnabled: routes.config.agentService.codexWebsocketRecoveryEnabled && modelEnvelope["transport"] == "websocket")
-            let token = try await routes.agentModelScopes.activate(scope)
+            let token = Tokens.random()
             if soul.harnessStyle == "codex", wire == "responses" {
                 var model = body["model"]!.object!
                 model["run_token"] = .string(token)
@@ -211,8 +235,25 @@ struct ServerAgentRuntime: AgentRuntime {
             }
             do {
                 try await admitted { try await routes.store.startAgentOperation(session: session, operation: operation,
-                    digest: Self.operationDigest(body), tokenHash: Tokens.sha256(token), startedData: startedData.compactJSON(), maxConcurrent: routes.config.agentService.maxConcurrent) }
+                    digest: Self.operationDigest(body), tokenHash: Tokens.sha256(token), startedData: startedData.compactJSON(), maxConcurrent: routes.config.agentService.maxConcurrent,
+                    timingVersion: timing.version) }
+                timing.admitted()
+                let deadline = timing.deadline
+                let scope = AgentModelScope(operationID: operation, generation: session.generation, execution: identity,
+                    provider: soul.provider!, model: soul.model!, maxCalls: maxTurns, expiresAt: deadline, inputFileIDs: prompt.inputFileIDs,
+                    endUserID: endUserID, modelParameters: soul.modelParameters, credentialReference: soul.json["model"]?["credential_ref"], durableOwner: routes.agentOwner, harnessStyle: soul.harnessStyle, modelWire: wire,
+                    outputTokenLimit: modelEnvelope["max_output_tokens"]?.int,
+                    codexWebsocketRecoveryEnabled: routes.config.agentService.codexWebsocketRecoveryEnabled && modelEnvelope["transport"] == "websocket")
+                _ = try await routes.agentModelScopes.activate(scope, token: token)
                 session = try requireAgentSession(try await routes.store.agentSession(execution: execution))
+                if announcedQueue {
+                    try await routes.recordAgentEvent(session: session, run: admissionRun, event: 0, name: "admission", data: admissionData("queued"), secrets: [])
+                    var ready = admissionData("admitted")
+                    ready["admitted_at"] = timing.admittedAt.map { .double($0.timeIntervalSince1970) } ?? .null
+                    ready["queued_elapsed_time"] = .double(timing.queuedElapsed)
+                    try await routes.recordAgentEvent(session: session, run: admissionRun, event: 1, name: "admission", data: ready, secrets: [])
+                    announcedQueue = false
+                }
                 let remote = try await service.begin(body, token: token, execution: execution,
                     generation: session.generation, deadline: deadline, isAborted: context.isAborted)
                 try await routes.store.recordAgentRun(session: session, run: remote)
@@ -275,6 +316,7 @@ struct ServerAgentRuntime: AgentRuntime {
                     let succeeded = decision.action == .succeeded
                     var processData: JSONObject = ["agent_id": .string(data.agentID), "agent_config_snapshot_id": .string(data.snapshotID), "workflow_agent_binding_id": data.bindingID.map(JSONValue.string) ?? .null, "agent_output_checks": .array(decision.checks.map(\.json))]
                     var metadata: JSONObject = ["agent_config_snapshot_id": .string(data.snapshotID), "total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_partial": partial ?? .null, "agent_log": try await routes.agentLogPreview(session)]
+                    metadata = metadata.merging(timing.metadata)
                     if retainSession {
                         let state = try AgentRetainedSessionStatus.normalize(result["session"])
                         processData["agent_session"] = .object(state)
@@ -294,7 +336,7 @@ struct ServerAgentRuntime: AgentRuntime {
                     let errorType = result["error_type"]?.string ?? "cancel_lost"
                     let known: Set<String> = ["model_error", "model_quota", "max_turns", "timeout", "ask_human_invalid", "sandbox_unavailable", "sandbox_error", "file_error", "session_restore_failed", "session_save_failed", "cancel_lost", "internal"]
                     pending.addAgentOutcome(.init(session: session, status: "failed", usage: usageJSON()))
-                    let value = NodeRunResult(status: .failed, inputs: inputs, metadata: ["total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_partial": partial ?? .null, "agent_log": try await routes.agentLogPreview(session)], llmUsage: roundUsage,
+                    let value = NodeRunResult(status: .failed, inputs: inputs, metadata: timing.metadata.merging(["total_tokens": .int(cumulative.totalTokens), "agent_active_elapsed_time": .double(activeElapsed()), "agent_partial": partial ?? .null, "agent_log": try await routes.agentLogPreview(session)]), llmUsage: roundUsage,
                         error: "The agent operation did not complete", errorType: known.contains(errorType) ? errorType : "internal")
                     try await pending.agentCommits.commit(execution, result: value)
                     return .completed(value)
@@ -304,7 +346,12 @@ struct ServerAgentRuntime: AgentRuntime {
                 _ = await routes.agentModelScopes.revoke(token: token)
                 try? await routes.store.abandonAgentExecution(execution: execution, owner: routes.agentOwner, generation: session.generation)
                 if error is CancellationError { throw CancellationError() }
-                if let error = error as? NodeError { throw error }
+                if let error = error as? NodeError {
+                    if error.errorTypeName == "AgentAdmissionTimeout" || error.errorTypeName == "AgentTimeout" {
+                        return timedFailure(error, usage: roundUsage)
+                    }
+                    throw error
+                }
                 throw NodeError("AgentExecutionFailed", "The agent operation could not be committed")
             }
         }

@@ -8,6 +8,17 @@ import Testing
 
 @Suite("Agent durable execution transactions", .enabled(if: testDbHost != nil))
 struct AgentExecutionStoreTests {
+    @Test func newTimingMarkerIsDurableAtDispatchAndPreservesPinnedUsage() async throws {
+        try await withServer { api, store, _ in
+            let session = try await Self.seed(api, store)
+            _ = try await store.pinAgentModel(session: session, selection: "{\"fixture\":true}")
+            try await store.startAgentOperation(session: session, operation: session.executionID + ":0:0", digest: "fixture", tokenHash: "fixture", timingVersion: 2)
+            let current = try #require(try await store.agentSession(execution: session.executionID))
+            let usage = try JSONValue.parse(current.usage)
+            #expect(usage["timing_version"] == 2 && usage["model_selection"]?["fixture"] == true)
+            #expect(current.status == "running")
+        }
+    }
     @Test func resolvedModelIsImmutableAndUsesTheExistingOwnershipLease() async throws {
         try await withServer { api, store, _ in
             let session = try await Self.seed(api, store)
