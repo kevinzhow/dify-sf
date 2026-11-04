@@ -232,9 +232,11 @@ void main() {
     });
   });
 
-  for (final (maxTurns, noticeAt) in [(39, 39), (200, 180)]) {
+  // (200, 175): 26 calls left by the count here = 21 to finish and wrap up +
+  // the 5 the gateway may have counted without the service seeing them.
+  for (final (maxTurns, noticeAt, left) in [(39, 39, 1), (200, 175, 21)]) {
     test('max_turns $maxTurns: the notice is steered in before call '
-        '$noticeAt (remaining_calls ${maxTurns - noticeAt + 1})', () async {
+        '$noticeAt (remaining_calls $left)', () async {
       late FakeCodexAppServer fake;
       fake = FakeCodexAppServer(
         turn: (s) async {
@@ -266,7 +268,6 @@ void main() {
         'reason': 'max_turns',
         'notice_call_index': noticeAt,
       });
-      final left = maxTurns - noticeAt + 1;
       final notice = (await h.events(run))
           .singleWhere((e) => e.event == 'budget_notice');
       expect(notice.data, {
@@ -286,6 +287,52 @@ void main() {
       );
     });
   }
+
+  test('retries Codex announces bring the notice forward: each was a call at '
+      'the gateway', () async {
+    late FakeCodexAppServer fake;
+    fake = FakeCodexAppServer(
+      turn: (s) async {
+        // 3 announced retries among the first calls: the threshold (26 left by
+        // the count here) comes 3 finished calls earlier than without them.
+        for (var i = 0; i < 3; i++) {
+          s.notify('error', {
+            'threadId': 'thr_root',
+            'turnId': 'turn_1',
+            'willRetry': true,
+            'error': {'message': 'stream disconnected'},
+          });
+        }
+        for (var i = 1; i < 172; i++) {
+          s.usage();
+        }
+        final until = DateTime.now().add(const Duration(seconds: 10));
+        while (!s.methods.contains('turn/steer') &&
+            DateTime.now().isBefore(until)) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        s
+          ..message('What I have.', phase: 'final_answer', id: 'm1')
+          ..usage()
+          ..complete({'status': 'completed'});
+      },
+    );
+    final (h, run, _) = await fake.startRun(
+      officialCodexOp(maxTurns: 200),
+      limits: {'max_turns_max': 1000},
+    );
+    final status = await h.waitEnded(run, timeout: const Duration(seconds: 30));
+    expect(status['status'], 'succeeded', reason: jsonEncode(status));
+    final notice = (await h.events(run))
+        .singleWhere((e) => e.event == 'budget_notice');
+    // The last usage before the threshold: 171 finished + 3 retried = 174,
+    // 26 left by this count, 21 once the unseen margin is off.
+    expect(notice.data, {
+      'reason': 'max_turns',
+      'call_index': 172,
+      'remaining_calls': 21,
+    });
+  });
 
   test('app-server diagnostics mask the temporary capability', () async {
     final fake = FakeCodexAppServer(

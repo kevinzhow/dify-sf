@@ -87,6 +87,9 @@ class FakeCodexAppServer {
   /// [codexHome]); [startRun] attaches it.
   void attach(FakeShellctl s) => _shellctl = s;
 
+  /// The fake sandbox (its `files`), while the turn plays.
+  FakeShellctl get sandbox => _shellctl!;
+
   /// Binds the WebSocket port (done by [startRun]).
   Future<void> start() => _start();
 
@@ -230,7 +233,15 @@ class FakeCodexAppServer {
             'status': 'inProgress',
           },
         });
-        unawaited(Future<void>.delayed(Duration.zero, () => turn(this)));
+        // Not at once: frames that reach the run in one read are handled before
+        // it has the turn's ID, and it drops token usage without a known turn
+        // (seen under load: a run with 2 calls counted 0).
+        unawaited(
+          Future<void>.delayed(
+            const Duration(milliseconds: 50),
+            () => turn(this),
+          ),
+        );
       case 'turn/interrupt':
         reply(<String, Object?>{});
         complete({'status': 'interrupted'});
@@ -417,11 +428,16 @@ class FakeCodexAppServer {
 Map<String, Object?> officialCodexOp({
   Object? effort,
   int maxTurns = 10,
+  int timeoutSeconds = 30,
   Map<String, Object?>? outputSchema,
   int? contextWindow,
   List<String>? reasoningEfforts,
 }) {
-  final o = operation(maxTurns: maxTurns, outputSchema: outputSchema);
+  final o = operation(
+    maxTurns: maxTurns,
+    timeoutSeconds: timeoutSeconds,
+    outputSchema: outputSchema,
+  );
   final model = Map.of(o['model'] as Map<String, Object?>)
     ..['run_token'] = 'secret-run-token';
   if (effort != null) model['parameters'] = {'reasoning_effort': effort};

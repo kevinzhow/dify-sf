@@ -412,7 +412,7 @@ class ScriptedGateway {
   final String? codexRunToken;
 
   /// POSTs the Codex entry answers before `usage_limit_reached`.
-  final int? codexCallLimit;
+  int? codexCallLimit;
   int codexCalls = 0;
 
   /// The Codex entry's answer to a WebSocket upgrade.
@@ -464,6 +464,9 @@ class ScriptedGateway {
   ];
 
   void enqueue(ScriptedCall call) => _calls.add(call);
+
+  /// Drops the calls not yet answered.
+  void clearCalls() => _calls.clear();
 
   /// Base of the file URLs handed out: this gateway's own address when it
   /// listens on loopback, else none (relative URLs, which the agent service

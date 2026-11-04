@@ -56,7 +56,9 @@ class LocalBox {
       !script.contains('--version') &&
       !script.contains('debug models --bundled') &&
       !script.contains('app-server --listen') &&
-      (script.contains("'/workspace") || script.contains('/home/dify/agent'));
+      (script.contains("'/workspace") ||
+          script.contains('/home/dify/agent') ||
+          script.startsWith('dd if='));
 
   (int, String) runSync(String script) {
     final r = Process.runSync('bash', [
