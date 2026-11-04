@@ -12,6 +12,7 @@ public struct AgentServiceConfig: Sendable {
     public var maxConcurrent: Int
     public var timeoutSeconds: Int
     public var timeoutSecondsMax: Int
+    public var admissionTimeoutSeconds: Int
     public var inlineEnabled: Bool
     /// Optional internal WebSocket listener. Zero keeps the existing HTTP path unchanged.
     public var codexWebsocketPort: Int
@@ -29,6 +30,7 @@ public struct AgentServiceConfig: Sendable {
         maxConcurrent = max(1, reader.int(forKey: "collab.agent.maxConcurrent", default: 2))
         timeoutSeconds = max(1, reader.int(forKey: "collab.agent.timeoutSeconds", default: 1800))
         timeoutSecondsMax = max(1, min(86400, reader.int(forKey: "collab.agent.timeoutSecondsMax", default: 86400)))
+        admissionTimeoutSeconds = max(1, min(86400, reader.int(forKey: "collab.agent.admissionTimeoutSeconds", default: 10800)))
     }
 
     public var isConfigured: Bool { !url.isEmpty && !key.isEmpty }
@@ -200,7 +202,13 @@ actor AgentModelScopes {
     private var recoveryAttempts: [String: Int] = [:]
     private var connectionRotations: [String: Int] = [:]
 
-    func activate(_ scope: AgentModelScope) throws -> String {
+    func activate(_ scope: AgentModelScope) throws -> String { try activate(scope, token: Tokens.random()) }
+
+    /// The runtime pre-mints the opaque token for the durable admission record,
+    /// then activates it only after capacity admission fixes the execution deadline.
+    func activate(_ scope: AgentModelScope, token: String) throws -> String {
+        guard (32...256).contains(token.utf8.count), token.allSatisfy({ $0.isASCII && !$0.isWhitespace }),
+              entries[Tokens.sha256(token)] == nil else { throw AgentModelGatewayRequest.invalid() }
         guard scope.generation >= 1, scope.maxCalls >= 1, scope.maxCalls <= 1000,
               !scope.operationID.isEmpty, !scope.appID.isEmpty, !scope.workflowRunID.isEmpty,
               !scope.executionID.isEmpty, !scope.userID.isEmpty, scope.expiresAt > Date() else {
@@ -217,7 +225,6 @@ actor AgentModelScopes {
             throw ServerError.http(status: 409, code: "agent_operation_active", message: "The execution already has an active operation")
         }
         generations[scope.executionKey] = scope.generation
-        let token = Tokens.random()
         entries[Tokens.sha256(token)] = Entry(scope: scope)
         return token
     }

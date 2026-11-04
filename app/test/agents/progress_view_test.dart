@@ -22,6 +22,58 @@ Map<String, Object?> log(int event, String kind, Map<String, Object?> data) => {
 
 void main() {
   setUpAll(() => DifyI18n.load('en-US'));
+  test('queue notifications survive replay and clear when execution starts', () {
+    final queued = AgentProgressView.advance(null, log(0, 'admission', {'phase': 'queued', 'max_turns': 200}));
+    expect(queued?.queued, isTrue);
+    expect(queued?.calls, 0);
+    expect(queued?.maximum, 200);
+    expect(AgentProgressView.parse(queued!.json), queued);
+    expect(AgentProgressView.advance(queued, log(0, 'admission', {'phase': 'queued'})), queued);
+    final admitted = AgentProgressView.advance(queued, log(1, 'admission', {'phase': 'admitted'}));
+    expect(admitted?.queued, isFalse);
+    final started = AgentProgressView.advance(admitted, {
+      ...log(1, 'run_started', {'max_turns': 200}),
+      'message_id': 'real-agent:1',
+    });
+    expect(started?.admissionPhase, isNull);
+    expect(started?.calls, 0);
+    expect(AgentProgressView.finished(queued, {})?.queued, isFalse);
+    final expired = AgentProgressView.advance(queued, log(1, 'admission', {'phase': 'expired'}));
+    expect(expired?.admissionPhase, 'expired');
+    expect(AgentProgressView.advance(expired, log(2, 'admission', {'phase': 'untrusted'})), expired);
+  });
+  testWidgets('queued canvas shows waiting rather than model execution', (t) async {
+    final queued = AgentProgressView.advance(null, log(0, 'admission', {'phase': 'queued', 'max_turns': 200}))!;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 240,
+            height: queued.height,
+            child: AgentCanvasProgress(nodeId: 'n1', progress: queued),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Queued'), findsOneWidget);
+    expect(find.text('Waiting for an execution slot.'), findsOneWidget);
+    expect(find.text('Model calls 0 / 200'), findsNothing);
+    final expired = AgentProgressView.advance(queued, log(1, 'admission', {'phase': 'expired'}))!;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 240,
+            height: expired.height,
+            child: AgentCanvasProgress(nodeId: 'n1', progress: expired),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('The wait for an execution slot timed out.'), findsOneWidget);
+    expect(find.text('Queued'), findsNothing);
+    expect(t.takeException(), isNull);
+  });
   test('profile maxima reject invalid node limits and old defaults remain 50', () {
     expect(InlineAgentChecks.validTurnLimit({}), isTrue);
     expect(
@@ -208,10 +260,7 @@ void main() {
         home: Center(
           child: SizedBox(
             width: 216,
-            child: AgentProgressImage(
-              url: 'https://console.invalid/fixture.png',
-              caption: 'Fixture preview',
-            ),
+            child: AgentProgressImage(url: 'https://console.invalid/fixture.png', caption: 'Fixture preview'),
           ),
         ),
       ),

@@ -1445,9 +1445,34 @@ anywhere are refused. Names match `^[a-z0-9][a-z0-9-]{0,63}$`.
   supervisor reports them, or `unavailable`: no supervisor, the supervisor could not be asked, or its copy of the
   profile differs from the service's (digest). The service caches it for 15 seconds. The Swift server treats every
   status but `ok` as not available.
-- Timeouts: the Swift server's own run timer stays authoritative. It uses the smaller of the node's timeout, the
-  profile's `timeout_seconds_max` and the server-wide cap, and sends that value as `limits.timeout_seconds`, so the
-  agent service never runs longer than Swift waits. `default` keeps 1800 s.
+- Timeouts: the Swift server's run timer remains authoritative, capped by the node,
+  selected profile and server maximum. New node executions record `usage.timing_version = 2`:
+  their execution budget starts after atomic capacity admission, immediately before
+  dispatch to the agent service. File download, sandbox startup, model calls, tools,
+  transport recovery and output retries all consume that same budget. A human pause
+  and waiting for admission do not; resuming deducts the previously recorded
+  `active_elapsed_time`, and output retries never restart the clock. The model
+  capability is activated only after admission, with the actual execution deadline.
+  `limits.timeout_seconds` is the remaining execution budget, not the queue wait.
+  Existing paused sessions without the version marker keep their original timing
+  semantics. No migration or budget refresh is applied to them.
+- Waiting for API-side agent capacity has its own finite limit:
+  `collab.agent.admissionTimeoutSeconds` (`COLLAB_AGENT_ADMISSION_TIMEOUT_SECONDS`),
+  default 10800 seconds, clamped to 1..86400. Pre-dispatch input/config preparation
+  is part of this waiting period; agent-service preparation is execution time.
+  Expiry is `AgentAdmissionTimeout`; cancellation never dispatches an operation.
+  This separates timers, without adding a durable FIFO scheduler or changing the
+  existing ownership, capacity, cancellation or restart rules.
+- Capacity contention publishes an ordinary `agent_log` event with
+  `metadata.event = admission` and `data.phase = queued`, then `admitted` or
+  `expired`. The running canvas says “Queued” while waiting. Before a session can
+  be created, queue notifications use the workflow's existing in-memory replay
+  channel; after admission, queued/admitted records are persisted with stable
+  message IDs. Waiting notifications alone do not create an execution capability.
+  Final version-two usage records `queued_elapsed_time` and `execution_started_at`
+  (Unix seconds for the current admission leg); node metadata exposes `agent_queue_elapsed_time`,
+  `agent_execution_started_at`, `agent_timing_version`, alongside the existing
+  `agent_active_elapsed_time`. Overall workflow elapsed time still includes waiting.
 - `limits.max_turns`: the node's setting (Swift, default 50), capped by the profile's `max_turns_max`; a larger value
   is refused with `422 invalid_request` as for the timeout. Without the shell the profile is not checked, as for
   every other profile rule. The Swift gateway's own per-operation call limit (`AgentModelScope.maxCalls`)

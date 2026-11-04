@@ -60,7 +60,10 @@
     "inline.runtimeSelection": "Model input (provider and model)",
     "inline.runtimeModel": "Model input",
     "inline.runtimeReasoning": "Reasoning effort input",
-    "inline.fromConfiguration": "Use the agent configuration"
+    "inline.fromConfiguration": "Use the agent configuration",
+    "inline.progressQueued": "Queued",
+    "inline.progressWaiting": "Waiting for an execution slot.",
+    "inline.progressQueueExpired": "The wait for an execution slot timed out."
   },
   "common": {
     "web.fontLoadFailed": "Some text could not be loaded. Reconnect and retry.",

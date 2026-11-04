@@ -13,10 +13,12 @@ class AgentProgressView {
     this.summary = '',
     this.imageJson,
     this.partialReason,
+    this.admissionPhase,
   });
   final String run, summary;
   final int cursor, calls, maximum;
-  final String? imageJson, partialReason;
+  final String? imageJson, partialReason, admissionPhase;
+  bool get queued => admissionPhase == 'queued';
   static Map<String, Object?> map(Object? value) => value is Map ? value.cast<String, Object?>() : const {};
   factory AgentProgressView.parse(Map<String, Object?> value) => AgentProgressView(
     run: '${value['run'] ?? ''}',
@@ -26,6 +28,7 @@ class AgentProgressView {
     summary: '${value['summary'] ?? ''}',
     imageJson: value['image_json'] as String?,
     partialReason: value['partial_reason'] as String?,
+    admissionPhase: value['admission_phase'] as String?,
   );
   Map<String, Object?> get json => {
     'run': run,
@@ -35,6 +38,7 @@ class AgentProgressView {
     'summary': summary,
     if (imageJson != null) 'image_json': imageJson,
     if (partialReason != null) 'partial_reason': partialReason,
+    if (admissionPhase != null) 'admission_phase': admissionPhase,
   };
   Map<String, Object?>? get image => imageJson == null ? null : map(jsonDecode(imageJson!));
   double get height => imageJson == null ? 104 : 236;
@@ -49,6 +53,7 @@ class AgentProgressView {
     if (cursor == null || cursor < 0 || old?.run == run && cursor <= old!.cursor) return old;
     final kind = map(log['metadata'])['event'], data = map(log['data']);
     if (!const {
+      'admission',
       'run_started',
       'thought',
       'commentary',
@@ -71,7 +76,15 @@ class AgentProgressView {
       return s.runes.take(max).map(String.fromCharCode).join();
     }
 
-    if (kind == 'run_started') {
+    String? admissionPhase;
+    if (kind == 'admission') {
+      final phase = data['phase'];
+      if (!const {'queued', 'admitted', 'expired'}.contains(phase)) return old;
+      admissionPhase = phase as String;
+      final n = data['max_turns'];
+      if (n is int && n >= 1 && n <= 1000) maximum = n;
+      summary = '';
+    } else if (kind == 'run_started') {
       final n = data['max_turns'];
       if (n is int && n >= 1 && n <= 1000) maximum = n;
       summary = '';
@@ -123,6 +136,7 @@ class AgentProgressView {
       maximum: maximum,
       summary: summary,
       imageJson: image,
+      admissionPhase: admissionPhase,
     );
   }
 
@@ -133,6 +147,16 @@ class AgentProgressView {
       for (final log in logs.whereType<Map>()) {
         view = advance(view, log.cast<String, Object?>());
       }
+    }
+    if (view?.queued == true) {
+      view = AgentProgressView(
+        run: view!.run,
+        cursor: view.cursor,
+        calls: view.calls,
+        maximum: view.maximum,
+        summary: view.summary,
+        imageJson: view.imageJson,
+      );
     }
     if (map(metadata['agent_session'])['saved'] == false) {
       return AgentProgressView(
@@ -167,7 +191,8 @@ class AgentProgressView {
       maximum == other.maximum &&
       summary == other.summary &&
       imageJson == other.imageJson &&
-      partialReason == other.partialReason;
+      partialReason == other.partialReason &&
+      admissionPhase == other.admissionPhase;
   @override
-  int get hashCode => Object.hash(run, cursor, calls, maximum, summary, imageJson, partialReason);
+  int get hashCode => Object.hash(run, cursor, calls, maximum, summary, imageJson, partialReason, admissionPhase);
 }

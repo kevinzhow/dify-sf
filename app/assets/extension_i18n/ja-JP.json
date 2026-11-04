@@ -69,7 +69,10 @@
     "inline.runtimeSelection": "モデル入力（プロバイダーとモデル）",
     "inline.runtimeModel": "モデル入力",
     "inline.runtimeReasoning": "推論強度の入力",
-    "inline.fromConfiguration": "エージェント設定の値を使用"
+    "inline.fromConfiguration": "エージェント設定の値を使用",
+    "inline.progressQueued": "待機中",
+    "inline.progressWaiting": "実行枠が空くのを待っています。",
+    "inline.progressQueueExpired": "実行枠の待機時間を超えました。"
   },
   "server-connection": {
     "title": "サーバーに接続",

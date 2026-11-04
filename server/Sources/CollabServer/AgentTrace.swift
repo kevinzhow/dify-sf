@@ -27,10 +27,10 @@ enum AgentTrace {
         let safe = redacted(.object(terminal ? JSONObject(data.filter { ["status", "error_type", "usage", "partial"].contains($0.key) }) : data), secrets: secrets)
         let key = "\(run):\(event)"
         let record: JSONValue = ["event_key": .string(key), "event": .string(name), "data": safe]
-        guard ["run_started", "thought", "tool_call", "model_call", "progress", "budget_notice", "commentary", "plan", "model_retry", "compaction", "error"].contains(name) else { return (record, nil) }
-        let label = name == "tool_call" ? (safe["name"]?.string ?? "Tool") : name
+        guard ["run_started", "thought", "tool_call", "model_call", "progress", "budget_notice", "commentary", "plan", "model_retry", "compaction", "error", "admission"].contains(name) else { return (record, nil) }
+        let label = name == "tool_call" ? (safe["name"]?.string ?? "Tool") : name == "admission" ? (data["phase"] == "queued" ? "Queued for execution" : data["phase"] == "expired" ? "Execution queue timed out" : "Starting execution") : name
         let log: JSONValue = ["message_id": .string(key), "node_id": .string(node), "label": .string(label),
-            "status": name == "error" ? "failed" : (data["phase"] == "started" ? "start" : "success"),
+            "status": name == "error" || name == "admission" && data["phase"] == "expired" ? "failed" : (["started", "queued"].contains(data["phase"]?.string ?? "") ? "start" : "success"),
             "data": safe, "metadata": ["event": .string(name), "event_id": .int(event)], "parent_id": .null]
         return (record, log)
     }
