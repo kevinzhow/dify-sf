@@ -274,7 +274,8 @@ class _OfficialCodexRun {
       if (handIn == null) {
         if (problem != null) {
           run.log?.call(
-            'run ${run.runId}: not stopping for the checkpoint: $problem',
+            'run ${run.runId}: not stopping for the checkpoint: '
+            '${run._forLog(problem)}',
           );
         }
         return;
@@ -392,6 +393,9 @@ class _OfficialCodexRun {
         ),
         null,
       );
+    } on FormatException {
+      // Its message quotes the file, which must not reach a log or a result.
+      return (null, '$checkpointFile is not valid UTF-8 JSON');
     } catch (e) {
       return (null, 'reading the checkpoint failed: $e');
     }

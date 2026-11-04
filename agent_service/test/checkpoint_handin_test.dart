@@ -265,6 +265,34 @@ void main() {
       });
     }
 
+    test(
+      'the look at a bad checkpoint logs nothing of the file or a credential',
+      () async {
+        checkpointReserveForTests = 2;
+        addTearDown(() => checkpointReserveForTests = null);
+        final fake = FakeCodexAppServer(
+          turn: (s) async {
+            s.usage();
+            _write(s, raw: '[secret-run-token');
+            await Future<void>.delayed(const Duration(seconds: 2));
+            s.sandbox.files['/workspace/$_reportPath'] = utf8.encode('a\n1\n');
+            s.message(jsonEncode(_valid), phase: 'final_answer');
+            s.complete({'status': 'completed'});
+          },
+        );
+        final (h, run, _) = await fake.startRun({
+          ...officialCodexOp(outputSchema: _schema, timeoutSeconds: 3),
+          'tools': {'shell': true},
+        });
+        await h.waitEnded(run, timeout: const Duration(seconds: 12));
+        final lines = h.logs
+            .where((l) => l.contains('not stopping for the checkpoint'))
+            .join('\n');
+        expect(lines, contains('not valid UTF-8 JSON'));
+        expect(lines, isNot(contains('secret-run-token')));
+      },
+    );
+
     test('a run with a bad checkpoint that does not finish still fails at '
         'the limit', () async {
       checkpointReserveForTests = 1;
