@@ -15,7 +15,7 @@ options = {
     'model_providers.difysf.requires_openai_auth': False,
     'model_providers.difysf.supports_websockets': True,
     'model_providers.difysf.http_headers': {'X-DifySF-Require-Incremental':'v1'},
-    'model_providers.difysf.stream_max_retries': 2 if os.environ.get('CODEX_FIXTURE_RECOVERY') else 0,
+    'model_providers.difysf.stream_max_retries': 3 if os.environ.get('CODEX_FIXTURE_RECOVERY') else 0,
 }
 args = [binary, 'app-server', '--listen', 'stdio://']
 for key, value in options.items():
@@ -47,16 +47,20 @@ try:
     thread = started['result']['thread']['id']
     send({'id':3,'method':'turn/start','params':{'threadId':thread,'input':[{'type':'text','text':'Return a short synthetic fixture answer.'}],'effort':'max'}})
     done = until(lambda v:v.get('method')=='turn/completed')
-    assert done['params']['turn']['status']=='completed'
-    send({'id':4,'method':'turn/start','params':{'threadId':thread,'input':[{'type':'text','text':'One more synthetic answer.'}],'effort':'max'}})
-    done = until(lambda v:v.get('method')=='turn/completed')
-    expected='failed' if os.environ.get('CODEX_FIXTURE_RECOVERY')=='twice' else 'completed'
+    mode=os.environ.get('CODEX_FIXTURE_RECOVERY')
+    expected='failed' if mode=='burst_exhausted' else 'completed'
     assert done['params']['turn']['status']==expected,done
+    turns=1 if mode=='burst_exhausted' else 4 if mode in ('thrice','exhausted') else 2
+    for turn in range(2,turns+1):
+        send({'id':turn+2,'method':'turn/start','params':{'threadId':thread,'input':[{'type':'text','text':'One more synthetic answer.'}],'effort':'max'}})
+        done=until(lambda v:v.get('method')=='turn/completed')
+        expected='failed' if mode=='exhausted' and turn==4 else 'completed'
+        assert done['params']['turn']['status']==expected,done
     count=(root/'recovery-counter').read_text().count('fixture-delta') if os.environ.get('CODEX_FIXTURE_RECOVERY') else None
     if os.environ.get('CODEX_FIXTURE_RECOVERY'):assert count==1,count
     assert not (root/'partial-was-executed').exists(), 'an incomplete tool was executed'
     if os.environ.get('CODEX_FIXTURE_RECOVERY')=='background':assert (root/'recovery-finished').read_text()=='completed'
-    print(json.dumps({'turns':2,'status':expected,'officialCodex':True,'accountLogin':False,'toolExecutions':count}))
+    print(json.dumps({'turns':turns,'status':expected,'officialCodex':True,'accountLogin':False,'toolExecutions':count}))
 finally:
     process.terminate()
     try:process.wait(timeout=5)

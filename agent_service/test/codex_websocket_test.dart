@@ -162,7 +162,7 @@ void main() {
     expect(
       result['message'],
       'Codex fell back from WebSockets to HTTP: the model request kept '
-      'failing on the WebSocket and Codex\'s stream retries (2) were used '
+      'failing on the WebSocket and Codex\'s stream retries (3) were used '
       'up: stream disconnected before completion: websocket closed by '
       'server before response.completed; Codex sends the model request it '
       'was making over HTTP right after switching (the whole conversation, '

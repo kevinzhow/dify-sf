@@ -3,6 +3,7 @@ import base64, hashlib, http.server, json, os, pathlib, socket, struct, threadin
 # ServiceLifecycle blocks termination signals; fixtures must not inherit that mask.
 signal.pthread_sigmask(signal.SIG_SETMASK, [])
 records=pathlib.Path(os.environ['CODEX_WS_RECORDS'])
+failure_mode=os.environ.get('CODEX_WS_FAILURE_MODE')
 lock=threading.Lock(); connections=0; calls=0
 failure=os.environ.get('CODEX_WS_FAILURE')
 
@@ -27,9 +28,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.path!='/v1/responses' or self.headers.get('Upgrade','').lower()!='websocket':
             self.send_response(404);self.send_header('Content-Length','0');self.end_headers();return
         with lock: connections+=1;connection=connections
+        if failure_mode=='handshake_refused':
+            self.send_response(403);self.send_header('x-request-id','req_refused_fixture');self.send_header('Content-Length','0');self.send_header('Set-Cookie','fixture-private-cookie');self.end_headers();return
         key=base64.b64encode(hashlib.sha1((self.headers['Sec-WebSocket-Key']+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).decode()
-        self.send_response(101);self.send_header('Upgrade','websocket');self.send_header('Connection','Upgrade');self.send_header('Sec-WebSocket-Accept',key);self.end_headers()
-        record({'connection':connection,'authorized':self.headers.get('Authorization')=='Bearer sk-native-fixture-only','beta':self.headers.get('OpenAI-Beta'),'no_run_header':self.headers.get('X-Agent-Run-Token') is None,'no_client_identity':self.headers.get('session-id') is None})
+        self.send_response(101);self.send_header('x-request-id','req_fixture_'+str(connection));self.send_header('cf-ray','edge-fixture');self.send_header('Set-Cookie','fixture-private-cookie');self.send_header('Upgrade','websocket');self.send_header('Connection','Upgrade');self.send_header('Sec-WebSocket-Accept',key);self.end_headers()
+        record({'clientRequestID':self.headers.get('X-Client-Request-Id'),'connectedAt':time.monotonic(),'connection':connection,'authorized':self.headers.get('Authorization')=='Bearer sk-native-fixture-only','beta':self.headers.get('OpenAI-Beta'),'no_run_header':self.headers.get('X-Agent-Run-Token') is None,'no_client_identity':self.headers.get('session-id') is None})
         try:
             while True:
                 a,b=exact(self.connection,2);n=b&127
@@ -49,7 +52,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 record({'connection':connection,'warmup':warm,'call':call,'bytes':n,'previous':body.get('previous_response_id'),'model':body['model'],'store':body.get('store'),'effort':body.get('reasoning',{}).get('effort'),'max_output_tokens':body.get('max_output_tokens'),'inputs':len(body['input']),'types':[x.get('type') for x in body['input']], 'toolCalls':[x.get('call_id') for x in body['input'] if x.get('type') in ('function_call','custom_tool_call')], 'toolResults':[x.get('call_id') for x in body['input'] if x.get('type')=='function_call_output'], 'runningToolResult':any(x.get('type')=='function_call_output' and 'Process running with session ID' in str(x.get('output','')) for x in body['input'])})
                 response='resp_ws_warm' if warm else 'resp_ws_'+str(call)
                 frame(self.connection,{'type':'response.created','response':{'id':response}})
-                if failure and not warm and (call==2 or failure=='twice' and call==4):
+                if failure_mode == 'eof':
+                    self.connection.shutdown(socket.SHUT_RDWR)
+                    self.close_connection=True
+                    return
+                if failure_mode == 'close':
+                    # Reason text deliberately contains a secret-shaped value: diagnostics retain only the close code.
+                    reason=struct.pack('!H',1001)+b'fixture-private-close-reason'
+                    self.connection.sendall(b'\x88'+bytes([len(reason)])+reason)
+                    self.close_connection=True
+                    return
+                if failure and not warm and (call==2 or failure in ('twice','thrice','exhausted') and call==4 or failure in ('thrice','exhausted') and call==6 or failure=='exhausted' and call==8 or failure=='burst' and call in (3,4) or failure=='burst_exhausted' and call in (3,4,5)):
                     frame(self.connection,{'type':'response.in_progress','response':{'id':response}})
                     if failure in ('partial', 'arguments_done', 'custom_partial'):
                         partial={'type':'function_call','id':'fc_partial','call_id':'call_partial','name':'exec_command','arguments':''}
