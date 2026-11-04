@@ -1950,8 +1950,9 @@ class _OfficialCodexRun {
   }
 
   /// One finished model call: usage and the near-budget notice (counted
-  /// here; the gateway counts every attempt). No `model_call` event: the
-  /// Swift server records model calls from its gateway.
+  /// here with the retries Codex announced; the gateway counts every
+  /// attempt, see [codexUnseenCalls]). No `model_call` event: the Swift
+  /// server records model calls from its gateway.
   void _onUsage(Map<String, Object?> p) {
     final last = ((p['tokenUsage'] as Map?)?['last'] as Map?) ?? const {};
     int n(Object? v) => v is num ? v.toInt() : 0;
@@ -1982,7 +1983,11 @@ class _OfficialCodexRun {
     if (run._notice != null || _threadId == null || _turnId == null) return;
     final need = callsToFinish(r);
     final callIndex = _calls + 1;
-    final remainingCalls = r.maxTurns - callIndex + 1;
+    // What the gateway may still admit, by what is seen here; the model is
+    // told the part of it that holds with the unseen attempts taken off.
+    final seenLeft = r.maxTurns - (_calls + _retries);
+    final unseen = codexUnseenCalls(r.maxTurns);
+    final remainingCalls = max(1, seenLeft - unseen);
     // With declared outputs the run may stop for its checkpoint before the
     // limit: the model's time ends there.
     final limit = r.outputSchema == null
@@ -1990,7 +1995,7 @@ class _OfficialCodexRun {
         : r.timeoutSeconds - checkpointReserveSeconds(r.timeoutSeconds);
     final remaining = Duration(seconds: limit) - run._clock.elapsed;
     final BudgetReason reason;
-    if (remainingCalls <= noticeCalls(r)) {
+    if (seenLeft <= noticeCalls(r) + unseen) {
       reason = BudgetReason.maxTurns;
     } else if (run._longestStep > Duration.zero &&
         remaining <= run._longestStep * need) {

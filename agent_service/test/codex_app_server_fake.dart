@@ -233,7 +233,15 @@ class FakeCodexAppServer {
             'status': 'inProgress',
           },
         });
-        unawaited(Future<void>.delayed(Duration.zero, () => turn(this)));
+        // Not at once: frames that reach the run in one read are handled before
+        // it has the turn's ID, and it drops token usage without a known turn
+        // (seen under load: a run with 2 calls counted 0).
+        unawaited(
+          Future<void>.delayed(
+            const Duration(milliseconds: 50),
+            () => turn(this),
+          ),
+        );
       case 'turn/interrupt':
         reply(<String, Object?>{});
         complete({'status': 'interrupted'});

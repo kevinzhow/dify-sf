@@ -84,6 +84,17 @@ const codexStreamMaxRetries = 2;
 // HTTP keeps its existing stream retry policy; the gateway still owns admission.
 const codexWebsocketStreamMaxRetries = 3;
 
+/// Attempts the gateway counts against `max_turns` that the service cannot
+/// see, kept on top of the near-budget notice's numbers of the official
+/// runtime. agent_service has no way to read the gateway's count (Codex talks
+/// to the gateway itself, and nothing brings the count back): it counts
+/// finished calls and the retries Codex announces, so what stays hidden is
+/// Codex's silent request retries, the first stream retry of a WebSocket, and
+/// calls lost with no usage notification. Measured over 70 operations of a
+/// real workload: 0 or 1 per operation, at most 3. None below 40 calls, as
+/// for [noticeReserve]: the notice comes as late as finishing allows there.
+int codexUnseenCalls(int maxTurns) => maxTurns >= 40 ? 5 : 0;
+
 /// How long Codex waits for a Responses WebSocket handshake (its default,
 /// written into `config.toml` so the run's startup check agrees with it).
 const codexWebsocketConnectTimeoutMs = 15000;

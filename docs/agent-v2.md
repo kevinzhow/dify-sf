@@ -477,7 +477,8 @@ what it has before the limit is reached:
 - On top of it the call budget keeps a wrap-up reserve: finishing a real task often takes more tool calls once the
   model is told to (export a result, a last render, write the declared files). `reserve = max_turns >= 40 ?
   min(20, max_turns / 10, rounded down) : 0`: `max_turns` 200 gets the notice with 22 calls left when files are
-  declared (21 without), `max_turns` below 40 as late as finishing allows (no reserve).
+  declared (21 without), `max_turns` below 40 as late as finishing allows (no reserve). The official Codex runtime counts
+  from what it can see and keeps a margin on top, see [Near-budget notice](#codex-runtime).
 - Before each model call the service compares what is left with these numbers. Calls: `max_turns - call_index + 1`
   (this call included) `<=` `need + reserve`. Time: the time left of `timeout_seconds` `<=` `need` times the longest
   step of this run so far (a step: from one model call's start to the next one's, its tools included; no reserve);
@@ -701,11 +702,18 @@ The snapshot of `succeeded` is `{"envelope", "revision", "harness_style": "codex
 previous final answer and the feedback (the conversation itself is not resumed in this step). A continuation of
 `kind: answer` is `422 snapshot_incompatible`.
 
-**Near-budget notice.** agent_service does not see the gateway's call numbers. It counts Codex's finished model calls
-(one token-usage notification each, sub-agents included) and, when the calls left reach what finishing needs plus the
-wrap-up reserve (or the time left, as in [Near-budget submit](#near-budget-submit)), sends the notice text with `turn/steer` and emits
-`budget_notice`. Codex retries and refused attempts count at the gateway but not here, so the notice can come late; the
-gateway's limit is the hard stop.
+**Near-budget notice.** agent_service does not see the gateway's call numbers: Codex talks to the gateway itself and
+no part of the protocol brings the count back. It counts what it sees: Codex's finished model calls (one token-usage
+notification each, sub-agents included) and the attempts Codex announces it retries (`error` with `willRetry`, every
+thread). What stays hidden are Codex's silent request retries (`request_max_retries`), the first retry of a WebSocket
+stream, and a call lost with no usage notification, so the count here can be behind the gateway's. On top of what
+finishing needs and the wrap-up reserve the notice therefore keeps `unseen = max_turns >= 40 ? 5 : 0` (a measured
+workload of 70 operations shows 0 or 1 hidden attempts per operation, at most 3): when `max_turns - (finished + retried)
+<= need + reserve + unseen` (or the time left is short, as in [Near-budget submit](#near-budget-submit)) it sends the notice text with
+`turn/steer` and emits `budget_notice`. `remaining_calls`, and the number in the text, leave `unseen` out: at `max_turns`
+200 with declared files the model is told 22 when 27 are left by the count here, so 22 holds while no more than 5
+attempts are hidden. It is a margin, not a guarantee: `call_index` is this count's, the gateway's number may be
+higher, and the gateway's limit stays the hard stop.
 
 **Stop.** `cancel`, lease loss, timeout and shutdown send `turn/interrupt`, close the connection, terminate the job and
 kill every process the run left (the shell session's reap): Codex and its commands end, and Codex's open model stream
