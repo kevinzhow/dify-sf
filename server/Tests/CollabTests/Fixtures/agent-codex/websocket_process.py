@@ -15,7 +15,7 @@ options = {
     'model_providers.difysf.requires_openai_auth': False,
     'model_providers.difysf.supports_websockets': True,
     'model_providers.difysf.http_headers': {'X-DifySF-Require-Incremental':'v1'},
-    'model_providers.difysf.stream_max_retries': 2 if os.environ.get('CODEX_FIXTURE_RECOVERY') else 0,
+    'model_providers.difysf.stream_max_retries': 3 if os.environ.get('CODEX_FIXTURE_RECOVERY') else 0,
 }
 args = [binary, 'app-server', '--listen', 'stdio://']
 for key, value in options.items():

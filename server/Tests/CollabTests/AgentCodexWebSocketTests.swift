@@ -444,6 +444,7 @@ struct AgentCodexWebSocketTests {
                 let expectedCalls = ["twice": 5, "thrice": 8, "exhausted": 8, "burst": 6, "burst_exhausted": 5][failure] ?? 4
                 #expect(records.filter { $0["authorized"] == true }.count == recoveries + 1)
                 #expect(calls.count == expectedCalls)
+                guard calls.count == expectedCalls else { return }
                 #expect(calls[1]["previous"] == "resp_ws_1")
                 let recoveryIndexes = failure.hasPrefix("burst") ? [2, 3, 4] : [2, 4, 6]
                 for (attempt, callIndex) in recoveryIndexes.prefix(recoveries).enumerated() {
